@@ -233,44 +233,34 @@ def weather_in(settings: UserSettings, city: str): # TODO защита от сп
     url = 'http://api.openweathermap.org/data/2.5/weather'
     weather = get(url, params={'APPID': config.weather_api_key, 'q': city, 'units': 'metric', 'lang': settings.lang}).json()
     weather_icon = weather['weather'][0]['icon']
-    match weather_icon:
-        case '01d': weather_icon = '☀'
-        case '01n': weather_icon = '🌑'
-        case '02d': weather_icon = '☀🌤'
-        case '02n': weather_icon = '🌑🌤'
-        case '03d': weather_icon = '☀🌥'
-        case '03n': weather_icon = '🌑🌥'
-        case '04d': weather_icon = '☀☁'
-        case '04n': weather_icon = '🌑☁'
-        case '09d': weather_icon = '☀🌨'
-        case '09n': weather_icon = '🌑🌨'
-        case '10d': weather_icon = '☀🌧'
-        case '10n': weather_icon = '🌑🌧'
-        case '11d': weather_icon = '☀⛈'
-        case '11n': weather_icon = '🌑⛈'
-        case '13d': weather_icon = '☀❄'
-        case '13n': weather_icon = '🌑❄'
-        case '50d': weather_icon = '☀🌫'
-        case '50n': weather_icon = '🌑🌫'
-        case _: weather_icon = weather['weather'][0]['main']
+    dn = {"d": "☀", "n": "🌑"}
+    we = {"01": "", "02": "🌤", "03": "🌥", "04": "☁", "09": "🌨", "10": "🌧", "11": "⛈", "13": "❄", "50": "🌫"}
+    de = {0: "⬆️", 45: "↗️", 90: "➡️", 135: "↘️", 180: "⬇️", 225: "↙️", 270: "⬅️", 315: "↖️"}
+
+    try:
+        weather_icon = dn[weather_icon[-1]] + we[weather_icon[:2]]
+    except KeyError:
+        weather_icon = weather['weather'][0]['main']
+
     delta = timedelta(hours=weather["timezone"]//60//60)
     city_name = weather["name"].capitalize()
-    icon = weather_icon
-    weather_description = weather['weather'][0]['description'].capitalize().replace(' ', "\u00A0") # "&nbsp;") # '⠀')
+    weather_description = weather['weather'][0]['description'].capitalize().replace(' ', "\u00A0")
     time_in_city = f'{datetime.now(timezone.utc)+delta}'.replace('-', '.')[:-13]
     weather_time = f'{datetime.utcfromtimestamp(weather["dt"])+delta}'.replace('-', '.')
     temp = int(weather['main']['temp'])
     feels_like = int(weather['main']['feels_like'])
     wind_speed = f"{weather['wind']['speed']:.1f}"
     wind_deg = weather['wind']['deg']
-    wind_deg_icon = {0: "⬆️", 45: "↗️", 90: "➡️", 135: "↘️", 180: "⬇️", 225: "↙️", 270: "⬅️", 315: "↖️"
-                     }[0 if (d := round(int(wind_deg)/45)*45) == 360 else d]
+    wind_deg_icon = de[0 if (d := round(int(wind_deg)/45)*45) == 360 else d]
     sunrise = f'{datetime.utcfromtimestamp(weather["sys"]["sunrise"])+delta}'.split(' ')[-1]
     sunset = f'{datetime.utcfromtimestamp(weather["sys"]["sunset"])+delta}'.split(' ')[-1]
     visibility = weather['visibility']
-    text = get_translate("weather", settings.lang)
-    return text.format(city_name, icon, weather_description, time_in_city, weather_time,
-                       temp, feels_like, wind_speed, wind_deg_icon, wind_deg, sunrise, sunset, visibility)
+
+    return get_translate("weather", settings.lang).format(city_name, weather_icon, weather_description,
+                                                          time_in_city, weather_time,
+                                                          temp, feels_like,
+                                                          wind_speed, wind_deg_icon,  wind_deg,
+                                                          sunrise, sunset, visibility)
 
 def get_translate(target: str, lang_iso_code: str):
     try:
