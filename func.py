@@ -269,7 +269,7 @@ def get_translate(target: str, lang_iso_code: str):
         return translation[target]["en"]
 
 def now_time(settings: UserSettings):
-    return datetime.now()+timedelta(hours=settings.timezone-config.hours_difference) # TODO ???
+    return datetime.now()+timedelta(hours=settings.timezone) # TODO ???
 
 def now_time_strftime(settings: UserSettings):
     return now_time(settings).strftime("%d.%m.%Y")
