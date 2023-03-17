@@ -322,7 +322,7 @@ def get_week_number(YY, MM, DD): # TODO добавить номер недели
     return datetime(YY, MM, DD).isocalendar()[1]
 
 def mycalendar(settings: UserSettings, data, chat_id) -> InlineKeyboardMarkup():
-    """Создаёт календарь и возвращает """
+    """Создаёт календарь на месяц и возвращает кнопки"""
     YY, MM = data
     markup = InlineKeyboardMarkup()
     #  December (12.2022)
@@ -333,7 +333,7 @@ def mycalendar(settings: UserSettings, data, chat_id) -> InlineKeyboardMarkup():
     markup.row(*[InlineKeyboardButton(day, callback_data="None") for day in week_day_list])
 
     # получаем из базы данных дни на которых есть событие
-    SqlResult = SQL(f'SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as date) FROM root WHERE user_id = {chat_id} AND date LIKE "%{MM}.{YY}" AND isdel = 0;') # SUBSTRING(date, 1, 2)
+    SqlResult = SQL(f'SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as date) FROM root WHERE user_id = {chat_id} AND date LIKE "%.{MM:0>2}.{YY}" AND isdel = 0;') # SUBSTRING(date, 1, 2)
     beupdate = [x[0] for x in SqlResult]
     # получаем сегодняшнее число
     today = now_time(settings).day
@@ -351,7 +351,8 @@ def mycalendar(settings: UserSettings, data, chat_id) -> InlineKeyboardMarkup():
     markup.row(*[InlineKeyboardButton(f"{day}", callback_data=f"{day}") for day in ('<<', '<', '⟳', '>', '>>')])
     return markup
 
-def generate_month_calendar(settings: UserSettings, chat_id, message_id, YY) -> InlineKeyboardMarkup():
+def generate_month_calendar(settings: UserSettings, chat_id, YY) -> InlineKeyboardMarkup():
+    """Создаёт календарь на год и возвращает кнопки"""
     SqlResult = SQL(f"""SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as date) FROM root
                        WHERE user_id = {chat_id} AND date LIKE "__.__.{YY}" AND isdel = 0;""")
     month_list = [x[0] for x in SqlResult] # Форматирование результата

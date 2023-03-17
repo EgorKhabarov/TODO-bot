@@ -357,7 +357,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         sleep(0.5)  # Задержка
         YY = int(call_data.split(' ')[-1])
         if 1980 <= YY <= 3000:
-            markup = generate_month_calendar(settings, chat_id, message_id, YY)
+            markup = generate_month_calendar(settings, chat_id, YY)
             bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
         else:
             bot.answer_callback_query(callback_query_id=call_id, text="🤔")
@@ -372,7 +372,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
     elif call_data == 'year now':
         try:
-            markup = generate_month_calendar(settings, chat_id, message_id, now_time(settings).year)
+            markup = generate_month_calendar(settings, chat_id, now_time(settings).year)
             bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
         except ApiTelegramException:
             callback_handler(settings, chat_id, message_id, message_text, '/calendar', call_id, message)
