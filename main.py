@@ -169,7 +169,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                               reply_markup=backmarkup, disable_web_page_preview=True)
 
         def add_event(message2):
-            if message2.text.lower()[1:len(BOT_USERNAME)+1] not in COMMAND_LIST: # TODO фикс
+            if message2.text.lower().split("@")[0] not in COMMAND_LIST:
                 if create_event(message2.chat.id, message_date, ToHTML(message2.text[:4050])):
                     create_message(settings, chat_id, message_date, message_id)
                     try:
@@ -265,7 +265,8 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
          for status1, status2 in status_list]
         markup.row(types.InlineKeyboardButton("🔙", callback_data="back"))
         text, status = SQL(f'SELECT text, status FROM root WHERE event_id="{event_id}" AND user_id = {chat_id} AND date = "{date}" AND isdel == 0;')[0]
-        bot.edit_message_text(f'{message_text.split(maxsplit=1)[0]}\n<b>{get_translate("select_status_to_event", settings.lang)}\n{event_id}.</b>{status}\n{text}',  # TODO перевод
+        bot.edit_message_text(f'{message_text.split(maxsplit=1)[0]}\n<b>{get_translate("select_status_to_event", settings.lang)}\n'
+                              f'{event_id}.</b>{status}\n{markdown(text, status, settings.sub_urls)}',
                               chat_id, message_id, reply_markup=markup, parse_mode='html', disable_web_page_preview=True)
         return
 
