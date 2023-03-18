@@ -21,7 +21,7 @@ COMMAND_LIST = (
     'dice', 'help', 'settings', 'today', 'sqlite', 'file', 'SQL', 'save_to_csv'
 )
 print(f"+{'-'*59}+")
-[print(f"| {k.rjust(27, ' ')} = {str(v).ljust(27, ' ')} |") for k, v in Me.to_dict().items()]
+[print(f"| {k: >27} = {v!s: <27} |") for k, v in Me.to_dict().items()]
 print(f"+{'-'*59}+")
 print('Запустился')
 
@@ -181,7 +181,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         bot.register_next_step_handler(message, add_event)
 
     if call_data == '/calendar':
-        bot.edit_message_text('Выберите дату', chat_id, message_id, reply_markup=mycalendar(  # TODO перевод
+        bot.edit_message_text(get_translate("choose_date", settings.lang), chat_id, message_id, reply_markup=mycalendar(
             settings, new_time_calendar(settings), chat_id), disable_web_page_preview=True)
 
     if call_data == 'back':
@@ -190,7 +190,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         if len(DATE.split('.')) == 3:
             try: create_message(settings, chat_id, DATE, message_id)
             except ApiTelegramException:
-                bot.edit_message_text('Выберите дату', chat_id, message_id,  # TODO перевод
+                bot.edit_message_text(get_translate("choose_date", settings.lang), chat_id, message_id,
                                       reply_markup=mycalendar(settings, [int(x) for x in DATE.split('.')[1:]][::-1], chat_id),
                                       disable_web_page_preview=True)
             else: return 0
@@ -265,7 +265,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
          for status1, status2 in status_list]
         markup.row(types.InlineKeyboardButton("🔙", callback_data="back"))
         text, status = SQL(f'SELECT text, status FROM root WHERE event_id="{event_id}" AND user_id = {chat_id} AND date = "{date}" AND isdel == 0;')[0]
-        bot.edit_message_text(f'{message_text.split(maxsplit=1)[0]}\n<b>Выберите статус для события\n{event_id}.</b>{status}\n{text}',  # TODO перевод
+        bot.edit_message_text(f'{message_text.split(maxsplit=1)[0]}\n<b>{get_translate("select_status_to_event", settings.lang)}\n{event_id}.</b>{status}\n{text}',  # TODO перевод
                               chat_id, message_id, reply_markup=markup, parse_mode='html', disable_web_page_preview=True)
         return
 
@@ -278,7 +278,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         try:
             create_message(settings, chat_id, msg_date, message_id)
         except ApiTelegramException:
-            bot.edit_message_text('Выберите дату', chat_id, message_id,  # TODO перевод
+            bot.edit_message_text(get_translate("choose_date", settings.lang), chat_id, message_id,
                                   reply_markup=mycalendar(settings, [int(x) for x in msg_date.split('.')[1:]][::-1], chat_id),
                                   disable_web_page_preview=True)
         return
@@ -312,13 +312,13 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                 SQL(f"""DELETE FROM root          WHERE user_id = {chat_id} AND date = '{date}' AND event_id = {event_id};""", commit=True)
         except Error as e:
             print(e)
-            bot.edit_message_text(f'{date}\nПроизошла ошибка :/', chat_id, message_id, # TODO Перевод
+            bot.edit_message_text(f'{date}\n{get_translate("error", settings.lang)}', chat_id, message_id,
                                   reply_markup=backmarkup, disable_web_page_preview=True)
             return
         try:
             create_message(settings, chat_id, date, message_id)
         except ApiTelegramException:
-            bot.edit_message_text('Выберите дату', chat_id, message_id,
+            bot.edit_message_text(get_translate("choose_date", settings.lang), chat_id, message_id,
                                   reply_markup=mycalendar(settings, date, chat_id), disable_web_page_preview=True)
         return
 
@@ -520,9 +520,9 @@ def get_edit_message(message: types.Message):
         try:
             bot.edit_message_text((f"""
 {date} {okonchanie(settings, date)} {event_id}
-<b>Вы точно хотите изменить тест события на: </b>
+<b>{get_translate("are_you_sure_edit", settings.lang)}</b>
 <i>{ToHTML(text)}</i>
-"""), chat_id, message_id, reply_markup=generate_buttons([{"🔙": "back", "✅": 'Edit Edit'}]), parse_mode='html', disable_web_page_preview=True)  # TODO перевод
+"""), chat_id, message_id, reply_markup=generate_buttons([{"🔙": "back", "✅": 'Edit Edit'}]), parse_mode='html', disable_web_page_preview=True)
         except Error as e:
             print(e)
             return

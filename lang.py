@@ -357,6 +357,10 @@ Reduce the number of characters or remove unnecessary events."""
         "ru": "Выберите событие для изменения статуса",
         "en": "Select an event to change status"
     },
+    "select_status_to_event": {
+        "ru": "Выберите статус для события",
+        "en": "Select a status for the event"
+    },
     "select_event_to_delete": {
         "ru": "Выберите событие для удаления",
         "en": "Select an event to delete"
@@ -364,6 +368,10 @@ Reduce the number of characters or remove unnecessary events."""
     "choose_event": {
         "ru": "Выберите событие",
         "en": "Choose an event"
+    },
+    "choose_date": {
+        "ru": "Выберите дату",
+        "en": "Select a date"
     },
     "status_list": {
         "ru": (
@@ -403,13 +411,13 @@ Reduce the number of characters or remove unnecessary events."""
         "ru": "<b>Чтобы посмотреть удалённые напишите /deleted</b>",
         "en": "<b>To see deleted write /deleted</b>"
     },
-    "": {
-        "ru": "",
-        "en": ""
+    "are_you_sure_edit": {
+        "ru": "Вы точно хотите изменить тест события на: ",
+        "en": "You want to change the event test to:"
     },
-    "": {
-        "ru": "",
-        "en": ""
+    "error": {
+        "ru": "Произошла ошибка :/",
+        "en": "An error has occurred :/"
     },
     "": {
         "ru": "",
