@@ -269,7 +269,7 @@ def get_translate(target: str, lang_iso_code: str):
         return translation[target]["en"]
 
 def now_time(settings: UserSettings):
-    return datetime.now()+timedelta(hours=settings.timezone) # TODO ???
+    return datetime.now()+timedelta(hours=settings.timezone)
 
 def now_time_strftime(settings: UserSettings):
     return now_time(settings).strftime("%d.%m.%Y")
@@ -435,6 +435,7 @@ def generate_text(settings: UserSettings, mode, SELECT, WHERE, start_id=0, end_i
 
 
 def markdown(text: str, status: str, suburl=False) -> str:
+    """Добавляем эффекты к событию по статусу"""
     def OrderList(_text: str, n=0) -> str: # Нумерует каждую строчку
         lst = _text.splitlines()
         width = len(str(len(lst))) # Получаем длину отступа чтобы не съезжало
@@ -455,11 +456,16 @@ def markdown(text: str, status: str, suburl=False) -> str:
         return f'<code>{_text}</code>'
 
     text = text.replace('\n\n', '\n⠀\n')
-    if suburl: text = SubUrls(text)
-    if status == '🧮': return OrderList(text)
-    elif status == '💻': return Code(text)
-    elif status == '🗒': return List(text)
-    elif status == '🪞': return Spoiler(text)
+    if suburl and status not in ('💻', ):
+        text = SubUrls(text)
+    if status == '🧮':
+        return OrderList(text)
+    elif status == '💻':
+        return Code(text)
+    elif status == '🗒':
+        return List(text)
+    elif status == '🪞':
+        return Spoiler(text)
     else: return text
 
 
@@ -485,7 +491,7 @@ def format_fill_message(SQLQuery, title="%d %wd %rd", text_iter="%n.%e.%s\n%scs%
     replace_dict, format_string = {}, ""
     for key, value in replace_dict.items():
         format_string = format_string.replace(key, str(value))
-    return format_string
+    return format_string # TODO шаблон
 
 
 class Cooldown:
@@ -537,5 +543,3 @@ def is_exceeded_limit(chat_id: int, date: str, limit: tuple[int, int] = (4000, 2
     user_limit = SQL(f"""SELECT IFNULL(SUM(LENGTH(text)), 0), IFNULL(COUNT(date), 0) FROM root WHERE user_id={chat_id} AND date='{date}' AND isdel=0;""")[0]
     res = (user_limit[0] + difference[0]) >= limit[0] or (user_limit[1] + difference[1]) >= limit[1]
     return res
-
-# fixme yt
