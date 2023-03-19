@@ -3,19 +3,20 @@
 
 
 # Commands:
-| Command          | Description en             |
-|:-----------------|:---------------------------|
-| /start           | Start                      |
-| /calendar        | Calendar                   |
-| /today           | Today's message            |
-| /weather {city}  | Weather                    |
-| /week_event_list | Weekly events              |
-| /dice            | Roll the dice (randomizer) |      
-| /save_to_csv     | Save my data in csv        |     
-| /help            | Help                       |                          
-| /settings        | Settings                   |
-| /search {query}  | Search                     |
-| #{query}         | Search                     |
+| Command          | Description en              |
+|:-----------------|:----------------------------|
+| /start           | Start                       |
+| /calendar        | Calendar                    |
+| /today           | Today's message             |
+| /weather {city}  | Weather                     |
+| /forecast {city} | Weather forecast for 5 days |
+| /week_event_list | Weekly events               |
+| /dice            | Roll the dice (randomizer)  |      
+| /save_to_csv     | Save my data in csv         |     
+| /help            | Help                        |                          
+| /settings        | Settings                    |
+| /search {query}  | Search                      |
+| #{query}         | Search                      |
 
 # Limits:
 ###### (_func.limits_)
@@ -59,7 +60,7 @@
 * [ ] Праздники на каждый день
 * [ ] Вставлять праздники за прошлые года
 * [ ] Убрать возможность пересылки обычных сообщений
-* [ ] Добавить погоду на 2, 3, 4, 5 дней (`/weather5 {city}`)
+* [X] Добавить погоду на 5 дней (`/forecast {city}`)
 * [ ] Добавить возможностью делиться результатом через поиск
 * [ ] Изменение user_status для админов, добавить статус -1 это в бане (игнор сообщений)
 * [ ] Добавить возможность конвертировать валюты через api

@@ -1,23 +1,26 @@
-from telebot.apihelper import ApiTelegramException
-from telebot import types
 from io import StringIO
 from time import sleep
-from func import *
-import telebot
-import ctypes
+
+from telebot.apihelper import ApiTelegramException
+from telebot.types import CallbackQuery, Message, InputFile
+from telebot import TeleBot
 import csv
 
+from func import * # InlineKeyboardMarkup, InlineKeyboardButton, re, config импортируются из func
 
-"""Для цветных логов"""
-if Windows := 0: (lambda k: k.SetConsoleMode(k.GetStdHandle(-11), 7))(ctypes.windll.kernel32)
 
-bot = telebot.TeleBot(config.bot_token)
+"""Для цветных логов (Выполнять только для Windows)"""
+if Windows := 0:
+    from ctypes import windll
+    (lambda k: k.SetConsoleMode(k.GetStdHandle(-11), 7))(windll.kernel32)
+
+bot = TeleBot(config.bot_token)
 Me = bot.get_me()
 BOT_ID = Me.id
 BOT_USERNAME = Me.username
 COMMAND_LIST = (
-    'calendar', 'start', 'deleted', 'month_event_list', 'version',
-    'week_event_list', 'clear_wastebasket', 'weather', 'search', 'bell',
+    'calendar', 'start', 'deleted', 'version', 'forecast',
+    'week_event_list', 'weather', 'search', 'bell',
     'dice', 'help', 'settings', 'today', 'sqlite', 'file', 'SQL', 'save_to_csv'
 )
 print(f"+{'-'*59}+")
@@ -43,7 +46,7 @@ def create_message(settings: UserSettings, chat_id, date: str, message_id: int =
     else:
         bot.send_message(chat_id, text, reply_markup=newmarkup, parse_mode='html', disable_web_page_preview=True)
 
-def command_handler(settings: UserSettings, chat_id: int, message_id: int, message_text: str, message: types.Message):
+def command_handler(settings: UserSettings, chat_id: int, message_id: int, message_text: str, message: Message):
     """
     Отвечает за реакцию бота на команды
     метод message.text.startswith("") используется для групп (в них сообщение приходит в формате /command{BOT_USERNAME})
@@ -53,19 +56,19 @@ def command_handler(settings: UserSettings, chat_id: int, message_id: int, messa
                          reply_markup=mycalendar(settings, new_time_calendar(settings), chat_id))
 
     if message.text.startswith('/start'):
-        markup = types.InlineKeyboardMarkup()
-        markup.row(types.InlineKeyboardButton("/calendar", callback_data="/calendar")) # TODO перевод
-        markup.row(types.InlineKeyboardButton("Добавить бота в группу", url=f'https://t.me/{BOT_USERNAME}?startgroup=AddGroup'))
-        markup.row(types.InlineKeyboardButton('Другой бот с разными играми', url='https://t.me/EgorGameBot'))
+        markup = InlineKeyboardMarkup()
+        markup.row(InlineKeyboardButton("/calendar", callback_data="/calendar"))
+        markup.row(InlineKeyboardButton(get_translate("add_bot_to_group", settings.lang), url=f'https://t.me/{BOT_USERNAME}?startgroup=AddGroup'))
+        markup.row(InlineKeyboardButton(get_translate("game_bot", settings.lang), url='https://t.me/EgorGameBot'))
         text = get_translate("start", settings.lang)
         bot.send_message(chat_id, text, reply_markup=markup, parse_mode='html')
 
     if message.text.startswith('/deleted'):
-        if list(limits.keys())[int(settings.user_status)] in ("premium", "admin"): # TODO Удаление событий старше 30
+        if list(limits.keys())[int(settings.user_status)] in ("premium", "admin"):
             text, newmarkup = deleted(settings, chat_id)
             bot.send_message(chat_id, text, reply_markup=newmarkup, parse_mode='html', disable_web_page_preview=True)
         else:
-            bot.send_message(chat_id, "Извините, вам эта команда не доступна", reply_markup=delmarkup) # TODO перевод
+            bot.send_message(chat_id, get_translate("deleted", settings.lang), reply_markup=delmarkup)
 
     if message.text.startswith('/week_event_list'):
         text, newmarkup = week_event_list(settings, chat_id)
@@ -76,14 +79,22 @@ def command_handler(settings: UserSettings, chat_id: int, message_id: int, messa
             nowcity = message.text.split(maxsplit=1)[-1]
         else:
             nowcity = UserSettings(chat_id).city
-        markup = types.InlineKeyboardMarkup()
-        markup.row(types.InlineKeyboardButton('Gismeteo', url='https://www.gismeteo.ru/'))
-        markup.row(types.InlineKeyboardButton("✖", callback_data="message_del"))
         try:
             weather = weather_in(settings, nowcity)
-            bot.send_message(chat_id, weather, parse_mode='html', reply_markup=markup)
-        except KeyError: # TODO Перевод
-            bot.send_message(chat_id, f'Ошибка. Несуществующее название города "{nowcity}"\nПопробуйте ещё раз /weather {"{"}город{"}"}')
+            bot.send_message(chat_id, weather, parse_mode='html', reply_markup=delmarkup)
+        except KeyError:
+            bot.send_message(chat_id, get_translate("weather_invalid_city_name", settings.lang))
+
+    if message.text.startswith('/forecast'):
+        if message.text not in ('/forecast', f'/forecast@{BOT_USERNAME}'):  # Проверяем есть ли аргументы
+            nowcity = message.text.split(maxsplit=1)[-1]
+        else:
+            nowcity = UserSettings(chat_id).city
+        try:
+            weather = forecast_in(settings, nowcity)
+            bot.send_message(chat_id, weather, parse_mode='html', reply_markup=delmarkup)
+        except KeyError:
+            bot.send_message(chat_id, get_translate("forecast_invalid_city_name", settings.lang))
 
     if message.text.startswith('/search'):
         query = ToHTML(message.text[len("/search "):]).replace("--", '').replace("\n", ' ')
@@ -111,7 +122,7 @@ def command_handler(settings: UserSettings, chat_id: int, message_id: int, messa
     if message.text.startswith('/sqlite') and is_admin_id(chat_id):
         try:
             DATE = now_time_strftime(settings)
-            markup = generate_buttons([{'Применить базу данных': 'set database'}]) # TODO перевод
+            markup = generate_buttons([{'Применить базу данных': 'set database'}])
             with open(config.database_path, 'rb') as file:
                 bot.send_document(chat_id, file, caption=f'{DATE}', reply_markup=markup)
         except ApiTelegramException:
@@ -144,20 +155,19 @@ def command_handler(settings: UserSettings, chat_id: int, message_id: int, messa
                 file_writer.writerows([['event_id', 'date', 'status', 'text']])
                 [file_writer.writerows([[str(event_id), date, str(status), NoHTML(text)]]) for event_id, date, status, text in res]
                 file.seek(0)
-                bot.send_document(chat_id, types.InputFile(file))
+                bot.send_document(chat_id, InputFile(file))
             else:
-                bot.send_message(chat_id, f'Нельзя так часто экспортировать данные\nПодождите ещё <b>{t // 60} минут</b>', # TODO перевод
-                                 parse_mode='html')
+                bot.send_message(chat_id, get_translate("export_csv", settings.lang).format(t=t//60), parse_mode='html')
         except ApiTelegramException as e:
             print(f'/save_to_csv "{e}"')
-            bot.send_message(chat_id, 'Возникла ошибка. Возможно файл слишком большой 🫤')
+            bot.send_message(chat_id, get_translate("file_is_too_big", settings.lang))
 
     if message.text.startswith('/version'):
         bot.reply_to(message,
                      f'Version {config.__version__}')
 
 
-def callback_handler(settings: UserSettings, chat_id: int, message_id: int, message_text: str, call_data: str, call_id: int, message: types.Message):
+def callback_handler(settings: UserSettings, chat_id: int, message_id: int, message_text: str, call_data: str, call_id: int, message: Message):
 
     if call_data == "event_add":
         bot.clear_step_handler_by_chat_id(chat_id)
@@ -208,7 +218,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         try:
             with open(config.database_path, 'rb') as file:
                 bot.send_document(chat_id, file, caption=f'{DATE}\nНа данный момент база выглядит так.', reply_markup=markup)
-        except telebot.apihelper.ApiTelegramException:
+        except ApiTelegramException:
             bot.send_message(chat_id, 'Отправить файл не получилось')
 
         file_info = bot.get_file(message.document.file_id)
@@ -234,7 +244,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         res = message_text.split('\n\n')[1:]
         if res[0].startswith("👀"):
             return 0
-        markup = types.InlineKeyboardMarkup()
+        markup = InlineKeyboardMarkup()
         date = message_text.split(maxsplit=1)[0]
         for i in res:
             event_id = i.split('.', maxsplit=2)[1]
@@ -243,13 +253,13 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                     event_text = NoHTML(SQL(f"""SELECT text FROM root WHERE event_id={event_id} AND user_id = {chat_id};""")[0][0])
                 except Error as e:
                     return print(f'Произошла ошибка в "Изменить сообщение": "{e}"')
-                markup.row(types.InlineKeyboardButton(f"{i}{callbackTab * 20}", switch_inline_query_current_chat=f"Edit message({event_id}, {date}, {message.id})\n{event_text}"))
+                markup.row(InlineKeyboardButton(f"{i}{callbackTab * 20}", switch_inline_query_current_chat=f"Edit message({event_id}, {date}, {message.id})\n{event_text}"))
             if call_data == "event_status":
-                markup.row(types.InlineKeyboardButton(f"{i}{callbackTab * 20}", callback_data=f"edit_page_status {event_id} {date}"))
+                markup.row(InlineKeyboardButton(f"{i}{callbackTab * 20}", callback_data=f"edit_page_status {event_id} {date}"))
             if call_data == 'event_del':
                 Btitle = i.replace('\n', ' ')[:41]
-                markup.row(types.InlineKeyboardButton(f"{Btitle}{callbackTab * 20}", callback_data=f"PRE DEL {date} {event_id}"))
-        markup.row(types.InlineKeyboardButton("🔙", callback_data="back"))
+                markup.row(InlineKeyboardButton(f"{Btitle}{callbackTab * 20}", callback_data=f"PRE DEL {date} {event_id}"))
+        markup.row(InlineKeyboardButton("🔙", callback_data="back"))
         if call_data == 'event_edit': text = f'{date}\n{get_translate("select_event_to_edit", settings.lang)}'
         elif call_data == "event_status": text = f'{date}\n{get_translate("select_event_to_change_status", settings.lang)}'
         elif call_data == 'event_del': text = f'{date}\n{get_translate("select_event_to_delete", settings.lang)}'
@@ -258,12 +268,12 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
     if call_data.startswith('edit_page_status'):
         _, event_id, date = call_data.split(' ')
-        markup = types.InlineKeyboardMarkup()
+        markup = InlineKeyboardMarkup()
         status_list = get_translate("status_list", settings.lang)
-        [markup.row(types.InlineKeyboardButton(f"{status1}{callbackTab * 20}", callback_data=f"set_status {status1.split(maxsplit=1)[0]} {event_id} {date}"),
-                    types.InlineKeyboardButton(f"{status2}{callbackTab * 20}", callback_data=f"set_status {status2.split(maxsplit=1)[0]} {event_id} {date}"))
+        [markup.row(InlineKeyboardButton(f"{status1}{callbackTab * 20}", callback_data=f"set_status {status1.split(maxsplit=1)[0]} {event_id} {date}"),
+                    InlineKeyboardButton(f"{status2}{callbackTab * 20}", callback_data=f"set_status {status2.split(maxsplit=1)[0]} {event_id} {date}"))
          for status1, status2 in status_list]
-        markup.row(types.InlineKeyboardButton("🔙", callback_data="back"))
+        markup.row(InlineKeyboardButton("🔙", callback_data="back"))
         text, status = SQL(f'SELECT text, status FROM root WHERE event_id="{event_id}" AND user_id = {chat_id} AND date = "{date}" AND isdel == 0;')[0]
         bot.edit_message_text(f'{message_text.split(maxsplit=1)[0]}\n<b>{get_translate("select_status_to_event", settings.lang)}\n'
                               f'{event_id}.</b>{status}\n{markdown(text, status, settings.sub_urls)}',
@@ -349,7 +359,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         try:
             bot.edit_message_text(text, chat_id, message_id,
                                   reply_markup=message.reply_markup, parse_mode='html', disable_web_page_preview=True)
-        except telebot.apihelper.ApiTelegramException as e:
+        except ApiTelegramException as e:
             print(f'get_page( ошибка "{e}"')
             bot.answer_callback_query(callback_query_id=call_id, text=get_translate("already_on_this_page", settings.lang))
         return 0
@@ -462,7 +472,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
 
 @bot.message_handler(commands=[*COMMAND_LIST])
-def get_calendar(message: types.Message):
+def get_calendar(message: Message):
     chat_id, message_id, message_text = message.chat.id, message.id, message.text
     settings = UserSettings(chat_id)
 
@@ -473,7 +483,7 @@ def get_calendar(message: types.Message):
     command_handler(settings, chat_id, message_id, message_text, message)
 
 @bot.callback_query_handler(func=lambda call: True)
-def callback_inline(call: types.CallbackQuery):
+def callback_inline(call: CallbackQuery):
     # =ot.answer_callback_query(callback_query_id=call.id, text="Предупреждение", show_alert=True)
     chat_id, message_id, call_data, message_text = call.message.chat.id, call.message.id, call.data, call.message.text
     #print(f'{call.data=} {chat_id=} {message_id=}')
@@ -486,7 +496,7 @@ def callback_inline(call: types.CallbackQuery):
     callback_handler(settings, chat_id, message_id, call.message.text, call.data, call.id, call.message)
 
 @bot.message_handler(func=lambda m: m.text.startswith('#'))
-def get_search_message(message: types.Message):
+def get_search_message(message: Message):
     query = ToHTML(message.text[1:]).replace("--", '').replace("\n", ' ')
     chat_id = message.chat.id
     settings = UserSettings(message.chat.id)
@@ -496,7 +506,7 @@ def get_search_message(message: types.Message):
     bot.send_message(chat_id, text, reply_markup=markup, parse_mode='html', disable_web_page_preview=True)
 
 @bot.message_handler(func=lambda m: m.text.startswith(f'@{BOT_USERNAME} Edit message(') and re.search(r"message\((\d+), (\d{1,2}\.\d{1,2}\.\d{4}), (\d+)\)", m.text))
-def get_edit_message(message: types.Message):
+def get_edit_message(message: Message):
     chat_id = message.chat.id
     edit_message_id = message.id
     settings = UserSettings(chat_id)
@@ -534,7 +544,7 @@ def get_edit_message(message: types.Message):
 
 
 @bot.message_handler(func=lambda m: m.reply_to_message and m.reply_to_message.text.startswith('⚙️') and m.from_user.id != BOT_ID)
-def get_search_message(message: types.Message):
+def get_search_message(message: Message):
     chat_id, message_id = message.chat.id, message.id
     settings = UserSettings(chat_id)
     callback_handler(settings, chat_id, message.reply_to_message.id, message.text, f'settings city {message.text[:25]}', 0, message.reply_to_message)

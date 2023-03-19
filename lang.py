@@ -293,6 +293,14 @@ Sunrise <b>{}</b>
 Sunset⠀<b>{}</b>
 Visibility <b>{}</b>m"""
     },
+    "weather_invalid_city_name": {
+        "ru": "Ошибка. Несуществующее название города.\nПопробуйте ещё раз /weather {город}",
+        "en": "Error. Invalid city name.\nTry again /weather {city}"
+    },
+    "forecast_invalid_city_name": {
+        "ru": "Ошибка. Несуществующее название города.\nПопробуйте ещё раз /forecast {город}",
+        "en": "Error. Invalid city name.\nTry again /forecast {city}"
+    },
     "basket": {
         "ru": "🗑 Корзина 🗑",
         "en": "🗑 Basket 🗑"
@@ -418,6 +426,26 @@ Reduce the number of characters or remove unnecessary events."""
     "error": {
         "ru": "Произошла ошибка :/",
         "en": "An error has occurred :/"
+    },
+    "file_is_too_big": {
+        "ru": "Возникла ошибка. Возможно файл слишком большой 🫤",
+        "en": "An error has occurred. Maybe the file is too big 🫤"
+    },
+    "export_csv": {
+        "ru": "Нельзя так часто экспортировать данные\nПодождите ещё <b>{t} минут</b>",
+        "en": "You can't export data that often\nPlease wait another <b>{t} minutes</b>"
+    },
+    "deleted": {
+        "ru": "Извините, вам эта команда не доступна",
+        "en": "Sorry, this command is not available to you"
+    },
+    "game_bot": {
+        "ru": "Другой бот с разными играми",
+        "en": "Another bot with different games"
+    },
+    "add_bot_to_group": {
+        "ru": "Добавить бота в группу",
+        "en": "Add a bot to a group"
     },
     "": {
         "ru": "",

@@ -2,18 +2,20 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from datetime import datetime, timedelta, timezone
 from calendar import monthcalendar
 from urllib.parse import urlparse
-from lang import translation
 from copy import deepcopy
-from sqlite3 import Error
-from requests import get # pip install requests
 from time import time
-import sqlite3 # pip3.10 install --user sqlite3
-import config
 import re
+
+from requests import get # pip install requests
+from sqlite3 import connect, Error # pip3.10 install --user sqlite3
+
+from lang import translation
+import config
+
 
 def SQL(Query: str, params: tuple = (), commit: bool = False):
     """Выполняет SQL запрос"""
-    with sqlite3.connect(config.database_path) as connection:
+    with connect(config.database_path) as connection:
         cursor = connection.cursor()
         cursor.execute(Query, params)
         if commit: connection.commit()
@@ -262,7 +264,42 @@ def weather_in(settings: UserSettings, city: str): # TODO защита от сп
                                                           wind_speed, wind_deg_icon,  wind_deg,
                                                           sunrise, sunset, visibility)
 
-def get_translate(target: str, lang_iso_code: str):
+@cache_decorator(3600)
+def forecast_in(settings: UserSettings, city: str):
+    print(f"forecast in {city}")
+    url = "http://api.openweathermap.org/data/2.5/forecast"
+    weather = get(url, params={'APPID': config.weather_api_key, 'q': city, 'units': 'metric', 'lang': settings.lang}).json()
+    dn = {"d": "☀", "n": "🌑"}
+    we = {"01": "", "02": "🌤", "03": "🌥", "04": "☁", "09": "🌨", "10": "🌧", "11": "⛈", "13": "❄", "50": "🌫"}
+    de = {0: "⬆️", 45: "↗️", 90: "➡️", 135: "↘️", 180: "⬇️", 225: "↙️", 270: "⬅️", 315: "↖️"}
+
+    citytimezone = timedelta(hours=weather['city']['timezone']//60//60)
+    sunrise = f"{datetime.utcfromtimestamp(weather['city']['sunrise'])+citytimezone}".split(' ')[-1]
+    sunset = f"{datetime.utcfromtimestamp(weather['city']['sunset'])+citytimezone}".split(' ')[-1]
+    result = f"{weather['city']['name']}\n☀ {sunrise}\n🌑 {sunset}"
+    for hour in weather["list"]:
+        weather_icon = hour['weather'][0]['icon']
+
+        try:
+            weather_icon = dn[weather_icon[-1]] + we[weather_icon[:2]]
+        except KeyError:
+            weather_icon = hour['weather'][0]['main']
+
+        weather_description = hour['weather'][0]['description'].capitalize().replace(' ', "\u00A0")
+        temp = hour['main']['temp']
+        # feels_like = int(hour['main']['feels_like'])
+        wind_speed = hour['wind']['speed']
+        wind_deg = hour['wind']['deg']
+        wind_deg_icon = de[0 if (d := round(int(wind_deg) / 45) * 45) == 360 else d]
+        city_time = hour['dt_txt'].replace('-', '.')[:-3]
+        # date = f"{datetime(*[int(x) for x in city_time.split()[0].split('.')]):%d.%m.%Y}"
+        date = ".".join(city_time.split()[0].split('.')[::-1])
+        if date not in result:
+            result += f"\n\n<b>{date}</b> {okonchanie(settings, date)}"
+        result += f"\n{city_time.split()[-1]} {weather_icon} <u>{weather_description}</u> <b>{temp:⠀>2.0f}°C. 💨{wind_speed:.0f}м/с {wind_deg_icon}</b>"
+    return result
+
+def get_translate(target: str, lang_iso_code: str) -> str:
     try:
         return translation[target][lang_iso_code]
     except KeyError:
@@ -514,10 +551,10 @@ class Cooldown:
         t1 = time()
         result = True, 0
         try:
-            if (localtime := (t1 - self.cooldown_dict[f'{key}'])) < self.cooldown_time_sec:
+            if (localtime := (t1 - self.cooldown_dict[str(key)])) < self.cooldown_time_sec:
                 result = False, int(self.cooldown_time_sec - int(localtime))
         except Exception as e:
-            print(f'Cooldown.check "{e}"')
+            print(f'Cooldown.check {e}')
         if update_dict or result[0]:
             self.cooldown_dict[f'{key}'] = t1
         return result
