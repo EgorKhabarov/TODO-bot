@@ -1,5 +1,5 @@
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, _is_leap
 from calendar import monthcalendar
 from urllib.parse import urlparse
 from copy import deepcopy
@@ -13,6 +13,7 @@ from lang import translation
 import config
 
 
+"""sql"""
 def SQL(Query: str, params: tuple = (), commit: bool = False):
     """Выполняет SQL запрос"""
     with connect(config.database_path) as connection:
@@ -21,57 +22,6 @@ def SQL(Query: str, params: tuple = (), commit: bool = False):
         if commit: connection.commit()
         result = cursor.fetchall()
     return result
-
-def create_tables() -> None:
-    """
-    Создание нужных таблиц
-    """
-    try:
-        SQL("""SELECT * FROM root LIMIT 1""")
-    except Error as e:
-        if str(e) == "no such table: root":
-            SQL("""
-                CREATE TABLE root (
-                    event_id  INTEGER,
-                    user_id   INT,
-                    date      TEXT,
-                    text      TEXT,
-                    isdel     INTEGER DEFAULT (0),
-                    status    TEXT    DEFAULT ⬜️
-                );""", commit=True)
-
-    try:
-        SQL("""SELECT * FROM settings LIMIT 1""")
-    except Error as e:
-        if str(e) == "no such table: settings":
-            SQL("""
-                CREATE TABLE settings (
-                    user_id           INT  NOT NULL UNIQUE ON CONFLICT ROLLBACK,
-                    lang              TEXT DEFAULT ru,
-                    sub_urls          INT  DEFAULT (1),
-                    city              TEXT DEFAULT Москва,
-                    timezone          INT  DEFAULT (3),
-                    direction         TEXT DEFAULT ⬇️,
-                    user_status       INT  DEFAULT (0),
-                    user_max_event_id INT  DEFAULT (1)
-                );""", commit=True)
-
-def create_event(user_id: int, date: str, text: str) -> bool:
-    try:
-        SQL(f"""
-            INSERT INTO root(event_id, user_id, date, text)
-            VALUES(
-              COALESCE((SELECT user_max_event_id FROM settings WHERE user_id = {user_id}), 1),
-              {user_id}, '{date}', '{text}'
-            );""", commit=True)
-        SQL(f"""
-            UPDATE settings
-            SET user_max_event_id = user_max_event_id + 1
-            WHERE user_id = {user_id};""", commit=True)
-        return True
-    except Error as e:
-        print(f"Произошла ошибка в функции create_event: '{e}'  arg: {user_id=}, {date=}, {text=}")
-        return False
 
 class UserSettings:
     def __init__(self, user_id: int):
@@ -107,6 +57,58 @@ class UserSettings:
                                    time_zone_dict,
                                    {"✖": "message_del"}])
         return self.lang, self.sub_urls, self.city, utz, self.direction, markup
+
+def create_tables() -> None:
+    """
+    Создание нужных таблиц
+    """
+    try:
+        SQL("""SELECT * FROM root LIMIT 1""")
+    except Error as e:
+        if str(e) == "no such table: root":
+            SQL("""
+                CREATE TABLE root (
+                    event_id  INTEGER,
+                    user_id   INT,
+                    date      TEXT,
+                    text      TEXT,
+                    isdel     INTEGER DEFAULT (0),
+                    status    TEXT    DEFAULT ⬜️
+                );""", commit=True)
+
+    try:
+        SQL("""SELECT * FROM settings LIMIT 1""")
+    except Error as e:
+        if str(e) == "no such table: settings":
+            SQL("""
+                CREATE TABLE settings (
+                    user_id           INT  NOT NULL UNIQUE ON CONFLICT ROLLBACK,
+                    lang              TEXT DEFAULT ru,
+                    sub_urls          INT  DEFAULT (1),
+                    city              TEXT DEFAULT Москва,
+                    timezone          INT  DEFAULT (3),
+                    direction         TEXT DEFAULT ⬇️,
+                    user_status       INT  DEFAULT (0),
+                    user_max_event_id INT  DEFAULT (1)
+                );""", commit=True)
+create_tables()
+
+def create_event(user_id: int, date: str, text: str) -> bool:
+    try:
+        SQL(f"""
+            INSERT INTO root(event_id, user_id, date, text)
+            VALUES(
+              COALESCE((SELECT user_max_event_id FROM settings WHERE user_id = {user_id}), 1),
+              {user_id}, '{date}', '{text}'
+            );""", commit=True)
+        SQL(f"""
+            UPDATE settings
+            SET user_max_event_id = user_max_event_id + 1
+            WHERE user_id = {user_id};""", commit=True)
+        return True
+    except Error as e:
+        print(f"Произошла ошибка в функции create_event: '{e}'  arg: {user_id=}, {date=}, {text=}")
+        return False
 
 def get_diapason(WHERE: str, reply_markup=InlineKeyboardMarkup(), MAXLEN=3500, MAXEVENTCOUNT=10) -> tuple[int, int, InlineKeyboardMarkup]:
     """
@@ -200,13 +202,52 @@ def check_bells(settings: UserSettings, chat_id): # TODO доделать check_
         return text
 
 
+"""time"""
+def now_time(settings: UserSettings):
+    return datetime.now()+timedelta(hours=settings.timezone)
+
+def now_time_strftime(settings: UserSettings):
+    return now_time(settings).strftime("%d.%m.%Y")
+
+def log_time_strftime(log_timezone: int = config.hours_difference):
+    return (datetime.now()+timedelta(hours=log_timezone)).strftime("%Y.%m.%d %H:%M:%S")
+
+def new_time_calendar(settings: UserSettings):
+    date = now_time(settings)
+    return [date.year, date.month]
+
+def year_info(settings: UserSettings, year):
+    result = ""
+    if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0):
+        result += get_translate("leap", settings.lang)
+    else:
+        result += get_translate("not_leap", settings.lang)
+    result += ' '
+    result += ("🐀", "🐂", "🐅", "🐇", "🐲", "🐍", "🐴", "🐐", "🐒", "🐓", "🐕", "🐖")[(year - 4) % 12]
+    return result
+
+def get_week_number(YY, MM, DD): # TODO добавить номер недели в календари
+    return datetime(YY, MM, DD).isocalendar()[1]
+
+def okonchanie(settings: UserSettings, date: str) -> str:
+    today, tomorrow, day_after_tomorrow, yesterday, day_before_yesterday, after, ago, Fday = get_translate("relative_date_list", settings.lang)
+    x = now_time(settings)
+    x = datetime(x.year, x.month, x.day)
+    y = datetime(*[int(x) for x in date.split('.')][::-1])
+    day_diff = (y - x).days
+    if day_diff == 0: day_diff = f'({today})'
+    elif day_diff == 1: day_diff = f'({tomorrow})'
+    elif day_diff == 2: day_diff = f'({day_after_tomorrow})'
+    elif day_diff == -1: day_diff = f'({yesterday})'
+    elif day_diff == -2: day_diff = f'({day_before_yesterday})'
+    elif day_diff > 2: day_diff = f'({after} {day_diff} {Fday(day_diff)})'
+    else: day_diff = f'({-day_diff} {Fday(day_diff)} {ago})'
+    week_days = get_translate("week_days_list_full", settings.lang)
+    month_list = get_translate("months_name2", settings.lang)
+    return f"<u><i>{y.day} {month_list[y.month-1]} {week_days[y.weekday()]}</i></u> {day_diff}"
 
 
-
-
-
-
-
+"""weather"""
 def cache_decorator(cache_time_sec: int = 32):
     """
     Кеширует значений погоды для города
@@ -299,64 +340,11 @@ def forecast_in(settings: UserSettings, city: str):
         result += f"\n{city_time.split()[-1]} {weather_icon} <u>{weather_description}</u> <b>{temp:⠀>2.0f}°C. 💨{wind_speed:.0f}м/с {wind_deg_icon}</b>"
     return result
 
-def get_translate(target: str, lang_iso_code: str) -> str:
-    try:
-        return translation[target][lang_iso_code]
-    except KeyError:
-        return translation[target]["en"]
 
-def now_time(settings: UserSettings):
-    return datetime.now()+timedelta(hours=settings.timezone)
-
-def now_time_strftime(settings: UserSettings):
-    return now_time(settings).strftime("%d.%m.%Y")
-
-def log_time_strftime(log_timezone: int = config.hours_difference):
-    return (datetime.now()+timedelta(hours=log_timezone)).strftime("%Y.%m.%d %H:%M:%S")
-
-def new_time_calendar(settings: UserSettings):
-    date = now_time(settings)
-    return [date.year, date.month]
-
+"""buttons"""
 def generate_buttons(buttons_data):
     keyboard = [[InlineKeyboardButton(text, callback_data=data) for text, data in row.items()] for row in buttons_data]
     return InlineKeyboardMarkup(keyboard)
-
-def ToHTML(text):
-    return text.replace("<", '&lt;').replace(">", '&gt;').replace("'", '&#39;').replace('"', '&quot;')
-
-def NoHTML(text):
-    return text.replace("&lt;", '<').replace("&gt;", '>').replace("&#39;", "'").replace('&quot;', '"')
-
-def okonchanie(settings: UserSettings, date: str) -> str:
-    today, tomorrow, day_after_tomorrow, yesterday, day_before_yesterday, after, ago, Fday = get_translate("relative_date_list", settings.lang)
-    x = now_time(settings)
-    x = datetime(x.year, x.month, x.day)
-    y = datetime(*[int(x) for x in date.split('.')][::-1])
-    day_diff = (y - x).days
-    if day_diff == 0: day_diff = f'({today})'
-    elif day_diff == 1: day_diff = f'({tomorrow})'
-    elif day_diff == 2: day_diff = f'({day_after_tomorrow})'
-    elif day_diff == -1: day_diff = f'({yesterday})'
-    elif day_diff == -2: day_diff = f'({day_before_yesterday})'
-    elif day_diff > 2: day_diff = f'({after} {day_diff} {Fday(day_diff)})'
-    else: day_diff = f'({-day_diff} {Fday(day_diff)} {ago})'
-    week_days = get_translate("week_days_list_full", settings.lang)
-    month_list = get_translate("months_name2", settings.lang)
-    return f"<u><i>{y.day} {month_list[y.month-1]} {week_days[y.weekday()]}</i></u> {day_diff}"
-
-def year_info(settings: UserSettings, year):
-    result = ""
-    if year % 400 == 0 or (year % 4 == 0 and year % 100 != 0):
-        result += get_translate("leap", settings.lang)
-    else:
-        result += get_translate("not_leap", settings.lang)
-    result += ', '
-    result += ("🐀", "🐂", "🐅", "🐇", "🐲", "🐍", "🐴", "🐐", "🐒", "🐓", "🐕", "🐖")[(year - 4) % 12]
-    return result
-
-def get_week_number(YY, MM, DD): # TODO добавить номер недели в календари
-    return datetime(YY, MM, DD).isocalendar()[1]
 
 def mycalendar(settings: UserSettings, data, chat_id) -> InlineKeyboardMarkup():
     """Создаёт календарь на месяц и возвращает кнопки"""
@@ -408,9 +396,95 @@ def generate_month_calendar(settings: UserSettings, chat_id, YY) -> InlineKeyboa
     markup = generate_buttons(markupL)
     return markup
 
-def is_admin_id(chat_id):
-    return chat_id in config.admin_id
+allmarkup = generate_buttons([
+    {"➕": "event_add", "📝": "event_edit", "🚩": "event_status", "🗑": "event_del"}, # "🔘": "menu"
+    {"🔙": "back", "<": "<<<", ">": ">>>", "✖": "message_del"}])
+# menumarkup = generate_buttons([{"🔙": "back", "ℹ️": "holidays", "👥": "share", "🗑": "event_del"}])
+minimarkup = generate_buttons([{"🔙": "back", "✖": "message_del"}])
+backmarkup = generate_buttons([{"🔙": "back"}])
+delmarkup = generate_buttons([{"✖": "message_del"}])
 
+
+"""Другое"""
+callbackTab = '⠀⠀⠀'
+
+def ToHTML(text):
+    return text.replace("<", '&lt;').replace(">", '&gt;').replace("'", '&#39;').replace('"', '&quot;')
+
+def NoHTML(text):
+    return text.replace("&lt;", '<').replace("&gt;", '>').replace("&#39;", "'").replace('&quot;', '"')
+
+def markdown(text: str, status: str, suburl=False) -> str:
+    """Добавляем эффекты к событию по статусу"""
+    def OrderList(_text: str, n=0) -> str: # Нумерует каждую строчку
+        lst = _text.splitlines()
+        width = len(str(len(lst))) # Получаем длину отступа чтобы не съезжало
+        # Заполняем с отступами числа + текст, а если двойной перенос строки то "⠀"
+        return "\n".join(("0️⃣" * (width-len(str(n := n+1)))) + "⃣".join(str(n)) + "⃣" + t if t not in ("", "⠀") else "⠀" for t in lst)
+
+    def List(_text: str): # Заменяет \n на :black_small_square: (эмодзи Telegram)
+        return "▪️" + _text.replace("\n", "\n▪️").replace("\n▪️⠀\n", "\n⠀\n")
+
+    def Spoiler(_text: str):
+        return f'<span class="tg-spoiler">{_text}</span>'
+
+    def SubUrls(_text: str):
+        la = lambda url: f'<a href="{url[0]}">{urlparse(url[0]).scheme}://{urlparse(url[0]).netloc}</a>'
+        return re.sub(r'(http?s?://\S+)', la, _text)
+
+    def Code(_text: str):
+        return f'<code>{_text}</code>'
+
+    text = text.replace('\n\n', '\n⠀\n')
+    if suburl and status not in ('💻', ):
+        text = SubUrls(text)
+    if status == '🧮':
+        return OrderList(text)
+    elif status == '💻':
+        return Code(text)
+    elif status == '🗒':
+        return List(text)
+    elif status == '🪞':
+        return Spoiler(text)
+    else: return text
+
+def get_translate(target: str, lang_iso_code: str) -> str:
+    try:
+        return translation[target][lang_iso_code]
+    except KeyError:
+        return translation[target]["en"]
+
+class Cooldown:
+    """
+    Возвращает True если прошло больше времени
+    MyCooldown = Cooldown(cooldown_time, {})
+    MyCooldown.check(chat_id)
+    """
+    def __init__(self, cooldown_time_sec: int, cooldown_dict: dict):
+        self.cooldown_time_sec = cooldown_time_sec
+        self.cooldown_dict = cooldown_dict
+
+    def check(self, key, update_dict=True):
+        """
+        :param key: Ключ по которому проверять словарь
+        :param update_dict: Отвечает за обновление словаря
+        Если True то после каждого обновления время будет обнуляться
+        :return: (bool, int(time_difference))
+        """
+        t1 = time()
+        result = True, 0
+        try:
+            if (localtime := (t1 - self.cooldown_dict[str(key)])) < self.cooldown_time_sec:
+                result = False, int(self.cooldown_time_sec - int(localtime))
+        except Exception as e:
+            print(f'Cooldown.check {e}')
+        if update_dict or result[0]:
+            self.cooldown_dict[f'{key}'] = t1
+        return result
+CSVCooldown = Cooldown(1800, {})
+
+
+"""Генерация сообщений"""
 def search(settings: UserSettings, chat_id, query, start_id=0, end_id=0) -> tuple[str, InlineKeyboardMarkup]:
     newmarkup = InlineKeyboardMarkup()
     if not re.match(r'\S', query):
@@ -451,7 +525,7 @@ def deleted(settings: UserSettings, chat_id, start_id=0, end_id=0) -> tuple[str,
       AND user_id = {chat_id} 
       AND julianday('now') - julianday(substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2)) > {MAXTIME};
     """, commit=True) # Удаляем события старше MAXTIME дня
-    return generate_text(settings, "basket", SELECT, WHERE, start_id, end_id) # TODO None
+    return generate_text(settings, "basket", SELECT, WHERE, start_id, end_id)
 
 def generate_text(settings: UserSettings, mode, SELECT, WHERE, start_id=0, end_id=0) -> tuple[str, InlineKeyboardMarkup]:
     newmarkup = InlineKeyboardMarkup()
@@ -469,43 +543,6 @@ def generate_text(settings: UserSettings, mode, SELECT, WHERE, start_id=0, end_i
         q = okonchanie(settings, DATE)
         text += f'\n\n<b>{DATE}.{EVENTID}.{STATUS}</b> <u>{q}</u> \n{TEXT}'
     return text[:4090], newmarkup
-
-
-def markdown(text: str, status: str, suburl=False) -> str:
-    """Добавляем эффекты к событию по статусу"""
-    def OrderList(_text: str, n=0) -> str: # Нумерует каждую строчку
-        lst = _text.splitlines()
-        width = len(str(len(lst))) # Получаем длину отступа чтобы не съезжало
-        # Заполняем с отступами числа + текст, а если двойной перенос строки то "⠀"
-        return "\n".join(("0️⃣" * (width-len(str(n := n+1)))) + "⃣".join(str(n)) + "⃣" + t if t not in ("", "⠀") else "⠀" for t in lst)
-
-    def List(_text: str): # Заменяет \n на :black_small_square: (эмодзи Telegram)
-        return "▪️" + _text.replace("\n", "\n▪️").replace("\n▪️⠀\n", "\n⠀\n")
-
-    def Spoiler(_text: str):
-        return f'<span class="tg-spoiler">{_text}</span>'
-
-    def SubUrls(_text: str):
-        la = lambda url: f'<a href="{url[0]}">{urlparse(url[0]).scheme}://{urlparse(url[0]).netloc}</a>'
-        return re.sub(r'(http?s?://\S+)', la, _text)
-
-    def Code(_text: str):
-        return f'<code>{_text}</code>'
-
-    text = text.replace('\n\n', '\n⠀\n')
-    if suburl and status not in ('💻', ):
-        text = SubUrls(text)
-    if status == '🧮':
-        return OrderList(text)
-    elif status == '💻':
-        return Code(text)
-    elif status == '🗒':
-        return List(text)
-    elif status == '🪞':
-        return Spoiler(text)
-    else: return text
-
-
 
 def format_fill_message(SQLQuery, title="%d %wd %rd", text_iter="%n.%e.%s\n%scs%t%sce\n", empty_translate_target="🕸🕷  🕸"):
     """
@@ -531,52 +568,18 @@ def format_fill_message(SQLQuery, title="%d %wd %rd", text_iter="%n.%e.%s\n%scs%
     return format_string # TODO шаблон
 
 
-class Cooldown:
-    """
-    Возвращает True если прошло больше времени
-    MyCooldown = Cooldown(cooldown_time, {})
-    MyCooldown.check(chat_id)
-    """
-    def __init__(self, cooldown_time_sec: int, cooldown_dict: dict):
-        self.cooldown_time_sec = cooldown_time_sec
-        self.cooldown_dict = cooldown_dict
-
-    def check(self, key, update_dict=True):
-        """
-        :param key: Ключ по которому проверять словарь
-        :param update_dict: Отвечает за обновление словаря
-        Если True то после каждого обновления время будет обнуляться
-        :return: (bool, int(time_difference))
-        """
-        t1 = time()
-        result = True, 0
-        try:
-            if (localtime := (t1 - self.cooldown_dict[str(key)])) < self.cooldown_time_sec:
-                result = False, int(self.cooldown_time_sec - int(localtime))
-        except Exception as e:
-            print(f'Cooldown.check {e}')
-        if update_dict or result[0]:
-            self.cooldown_dict[f'{key}'] = t1
-        return result
-
-create_tables()
-
-allmarkup = generate_buttons([
-    {"➕": "event_add", "📝": "event_edit", "🚩": "event_status", "🔘": "menu"}, # "🗑": "event_del"}, # ➖
-    {"🔙": "back", "<": "<<<", ">": ">>>", "✖": "message_del"}])
-menumarkup = generate_buttons([{"🔙": "back", "ℹ️": "holidays", "👥": "share", "🗑": "event_del"}])
-minimarkup = generate_buttons([{"🔙": "back", "✖": "message_del"}])
-backmarkup = generate_buttons([{"🔙": "back"}])
-delmarkup = generate_buttons([{"✖": "message_del"}])
-CSVCooldown = Cooldown(1800, {})
-callbackTab = '⠀⠀⠀'
+"""Проверки"""
 limits = {
     "normal": (4000, 20),
     "premium": (8000, 40),
     "admin": (999999, 999)
 }
+
 def is_exceeded_limit(chat_id: int, date: str, limit: tuple[int, int] = (4000, 20), difference: tuple[int, int] = (0, 0)) -> bool:
     """True если превышен лимит"""
     user_limit = SQL(f"""SELECT IFNULL(SUM(LENGTH(text)), 0), IFNULL(COUNT(date), 0) FROM root WHERE user_id={chat_id} AND date='{date}' AND isdel=0;""")[0]
     res = (user_limit[0] + difference[0]) >= limit[0] or (user_limit[1] + difference[1]) >= limit[1]
     return res
+
+def is_admin_id(chat_id):
+    return chat_id in config.admin_id
