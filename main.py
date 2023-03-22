@@ -39,7 +39,7 @@ def create_message(settings: UserSettings, chat_id, date: str, message_id: int =
             result_text += f'<b>{n + 1}.{event_id}.{status}</b>\n{text}\n\n'
     else:
         result_text = get_translate("nodata", settings.lang)
-    text = f"{date} {okonchanie(settings, date)}\n\n{result_text}"[:4090]
+    text = f"{date} {day_info(settings, date)}\n\n{result_text}"[:4090]
     if message_id:
         bot.edit_message_text(text, chat_id, message_id,
                               reply_markup=newmarkup, parse_mode='html', disable_web_page_preview=True)
@@ -306,7 +306,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             return
         predelmarkup = generate_buttons([{"🔙": "back", "🗑": f"{call_data[4:]}"}])
         end_text = get_translate("/deleted", settings.lang) if list(limits.keys())[int(settings.user_status)] in ("premium", "admin") else ""
-        bot.edit_message_text(f'<b>{date} {event_id}.</b>{status} <u>{okonchanie(settings, date)}</u>\n'
+        bot.edit_message_text(f'<b>{date} {event_id}.</b>{status} <u>{day_info(settings, date)}</u>\n'
                               f'<b>{get_translate("are_you_sure", settings.lang)}:</b>\n'
                               f'{text}\n\n'
                               f'{end_text}', chat_id, message_id,
@@ -353,7 +353,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             for n, (EVENTID, TEXT, STATUS) in enumerate(sql_res):
                 TEXT = markdown(TEXT, STATUS, settings.sub_urls)
                 result_text += f'<b>{n + 1}.{EVENTID}.{STATUS}</b>\n{TEXT}\n\n'
-            text = f"{date} {okonchanie(settings, date)}\n\n{result_text}"[:4090]
+            text = f"{date} {day_info(settings, date)}\n\n{result_text}"[:4090]
         else:
             text = message_text
         try:
@@ -404,36 +404,6 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         except ApiTelegramException:
             pass
         return 0
-
-    elif call_data == "menu":
-        bot.edit_message_reply_markup(chat_id, message_id,
-                                      reply_markup=menumarkup)
-
-    elif call_data == "share":
-        res_text = f"\n**{message_text.split(sep=' ', maxsplit=1)[0]}**\n\n"
-        res = message_text.split('\n\n')[1:]
-        if res[0].startswith("👀"):
-            return 0
-        res = [x.split("\n", maxsplit=1) for x in res]
-        for n, (data, text) in enumerate(res):
-            status = data.rsplit(sep='.', maxsplit=1)[-1]
-            res_text += f"**{n+1}.**{status}\n"
-            if status == "💻": res_text += f"{text}\n\n"
-            else: res_text += f"{text}\n\n"
-        markup = InlineKeyboardMarkup()\
-            .row(InlineKeyboardButton("🔙", callback_data="menu"),
-                 InlineKeyboardButton("👥", switch_inline_query=res_text[:-4]))
-        bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
-
-    elif call_data == "holidays": # TODO Праздники
-        date = message_text.split(sep=' ', maxsplit=1)[0]
-        msg_day, msg_month = [int(i) for i in date.split('.')[:2]]
-        text = message_text.split(sep='\n', maxsplit=1)[0]+"\n\n"
-        text += "Day of the day (International Day of the day)"
-        try:
-            bot.edit_message_text(text, chat_id, message_id, reply_markup=generate_buttons([{"🔙": "back"}]))
-        except ApiTelegramException:
-            pass
 
     elif call_data in ('<<<', '<<', '<', '⟳', '>', '>>', '>>>') or re.search(r"\A\d{2}\.\d{2}\.\d{4}\Z", call_data):
         if call_data in ('<<<', '>>>'):
@@ -530,7 +500,7 @@ def get_edit_message(message: Message):
     else:
         try:
             bot.edit_message_text((f"""
-{date} {okonchanie(settings, date)} {event_id}
+{date} {day_info(settings, date)} {event_id}
 <b>{get_translate("are_you_sure_edit", settings.lang)}</b>
 <i>{ToHTML(text)}</i>
 """), chat_id, message_id, reply_markup=generate_buttons([{"🔙": "back", "✅": 'Edit Edit'}]), parse_mode='html', disable_web_page_preview=True)

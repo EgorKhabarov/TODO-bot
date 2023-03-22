@@ -1,5 +1,5 @@
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-from datetime import datetime, timedelta, timezone, _is_leap
+from datetime import datetime, timedelta, timezone
 from calendar import monthcalendar
 from urllib.parse import urlparse
 from copy import deepcopy
@@ -194,7 +194,7 @@ def check_bells(settings: UserSettings, chat_id): # TODO доделать check_
         if status == '⏰':
             text = f'{alarm}\n<b>{event_id}.</b>🔕\n{text}'
         if status in ('🎉', '🎊'):
-            text = f'{holiday}\n<b>{event_id}.</b>{status} {okonchanie(settings, date)}\n{text}'
+            text = f'{holiday}\n<b>{event_id}.</b>{status} {day_info(settings, date)}\n{text}'
         try:
             SQL(f"UPDATE root SET status = '🔕' WHERE user_id = {chat_id} AND event_id = {event_id} AND date = '{date}' AND status = '⏰';", commit=True)
         except Error as e:
@@ -229,7 +229,7 @@ def year_info(settings: UserSettings, year):
 def get_week_number(YY, MM, DD): # TODO добавить номер недели в календари
     return datetime(YY, MM, DD).isocalendar()[1]
 
-def okonchanie(settings: UserSettings, date: str) -> str:
+def day_info(settings: UserSettings, date: str) -> str:
     today, tomorrow, day_after_tomorrow, yesterday, day_before_yesterday, after, ago, Fday = get_translate("relative_date_list", settings.lang)
     x = now_time(settings)
     x = datetime(x.year, x.month, x.day)
@@ -328,15 +328,13 @@ def forecast_in(settings: UserSettings, city: str):
 
         weather_description = hour['weather'][0]['description'].capitalize().replace(' ', "\u00A0")
         temp = hour['main']['temp']
-        # feels_like = int(hour['main']['feels_like'])
         wind_speed = hour['wind']['speed']
         wind_deg = hour['wind']['deg']
         wind_deg_icon = de[0 if (d := round(int(wind_deg) / 45) * 45) == 360 else d]
         city_time = hour['dt_txt'].replace('-', '.')[:-3]
-        # date = f"{datetime(*[int(x) for x in city_time.split()[0].split('.')]):%d.%m.%Y}"
         date = ".".join(city_time.split()[0].split('.')[::-1])
         if date not in result:
-            result += f"\n\n<b>{date}</b> {okonchanie(settings, date)}"
+            result += f"\n\n<b>{date}</b> {day_info(settings, date)}"
         result += f"\n{city_time.split()[-1]} {weather_icon} <u>{weather_description}</u> <b>{temp:⠀>2.0f}°C. 💨{wind_speed:.0f}м/с {wind_deg_icon}</b>"
     return result
 
@@ -503,7 +501,7 @@ def search(settings: UserSettings, chat_id, query, start_id=0, end_id=0) -> tupl
     for EVENTID, DATE, TEXT, STATUS in sql_res:
         counter += 1
         TEXT = markdown(TEXT, STATUS, settings.sub_urls)
-        text += f'<b>{DATE}</b>.<b>{EVENTID}.{STATUS}</b> <u>{okonchanie(settings, DATE)}</u>\n{TEXT}\n\n'
+        text += f'<b>{DATE}</b>.<b>{EVENTID}.{STATUS}</b> <u>{day_info(settings, DATE)}</u>\n{TEXT}\n\n'
     if not counter:
         text += get_translate("nothing_found", settings.lang)
     return text, newmarkup
@@ -540,7 +538,7 @@ def generate_text(settings: UserSettings, mode, SELECT, WHERE, start_id=0, end_i
             text += "\n\n" + get_translate("message_empty", settings.lang)
     for EVENTID, DATE, TEXT, STATUS in sql_res:
         TEXT = markdown(TEXT, STATUS, settings.sub_urls)
-        q = okonchanie(settings, DATE)
+        q = day_info(settings, DATE)
         text += f'\n\n<b>{DATE}.{EVENTID}.{STATUS}</b> <u>{q}</u> \n{TEXT}'
     return text[:4090], newmarkup
 
