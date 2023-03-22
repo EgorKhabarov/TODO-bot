@@ -32,7 +32,7 @@ class UserSettings:
         query = f"""SELECT lang, sub_urls, city, timezone, direction, user_status FROM settings WHERE user_id={self.user_id};"""
         try:
             return SQL(query)[0]
-        except (Error, IndexError) as e:
+        except (Error, IndexError):
             print("Добавляю нового пользователя")
             SQL(f"""INSERT INTO settings (user_id) VALUES ({self.user_id});""", commit=True)
         return SQL(query)[0]
@@ -164,7 +164,7 @@ GROUP BY temp_table.group_id;
                 InlineKeyboardButton(f' ', callback_data=f'None') for page in row]) for row in diapason_list[:8]]
             # Образаем до 8 строк кнопок чтобы не было ошибки
         return diapason[0][0], diapason[0][1], newmarkup
-    except Error as e:
+    except Error:
         #print(f'Произошла ошибка в функции get_diapason: "{e}"')
         return 0, 0, reply_markup
 

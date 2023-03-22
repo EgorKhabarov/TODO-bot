@@ -46,16 +46,16 @@ def create_message(settings: UserSettings, chat_id, date: str, message_id: int =
     else:
         bot.send_message(chat_id, text, reply_markup=newmarkup, parse_mode='html', disable_web_page_preview=True)
 
-def command_handler(settings: UserSettings, chat_id: int, message_id: int, message_text: str, message: Message):
+def command_handler(settings: UserSettings, chat_id: int, message_text: str, message: Message):
     """
     Отвечает за реакцию бота на команды
     метод message.text.startswith("") используется для групп (в них сообщение приходит в формате /command{BOT_USERNAME})
     """
-    if message.text.startswith('/calendar'):
+    if message_text.startswith('/calendar'):
         bot.send_message(chat_id, 'Выберите дату',
                          reply_markup=mycalendar(settings, new_time_calendar(settings), chat_id))
 
-    if message.text.startswith('/start'):
+    if message_text.startswith('/start'):
         markup = InlineKeyboardMarkup()
         markup.row(InlineKeyboardButton("/calendar", callback_data="/calendar"))
         markup.row(InlineKeyboardButton(get_translate("add_bot_to_group", settings.lang), url=f'https://t.me/{BOT_USERNAME}?startgroup=AddGroup'))
@@ -63,20 +63,20 @@ def command_handler(settings: UserSettings, chat_id: int, message_id: int, messa
         text = get_translate("start", settings.lang)
         bot.send_message(chat_id, text, reply_markup=markup, parse_mode='html')
 
-    if message.text.startswith('/deleted'):
+    if message_text.startswith('/deleted'):
         if list(limits.keys())[int(settings.user_status)] in ("premium", "admin"):
             text, newmarkup = deleted(settings, chat_id)
             bot.send_message(chat_id, text, reply_markup=newmarkup, parse_mode='html', disable_web_page_preview=True)
         else:
             bot.send_message(chat_id, get_translate("deleted", settings.lang), reply_markup=delmarkup)
 
-    if message.text.startswith('/week_event_list'):
+    if message_text.startswith('/week_event_list'):
         text, newmarkup = week_event_list(settings, chat_id)
         bot.send_message(chat_id, text, reply_markup=newmarkup, parse_mode='HTML', disable_web_page_preview=True)
 
-    if message.text.startswith('/weather'):
-        if message.text not in ('/weather', f'/weather@{BOT_USERNAME}'):  # Проверяем есть ли аргументы
-            nowcity = message.text.split(maxsplit=1)[-1]
+    if message_text.startswith('/weather'):
+        if message_text not in ('/weather', f'/weather@{BOT_USERNAME}'):  # Проверяем есть ли аргументы
+            nowcity = message_text.split(maxsplit=1)[-1]
         else:
             nowcity = UserSettings(chat_id).city
         try:
@@ -85,9 +85,9 @@ def command_handler(settings: UserSettings, chat_id: int, message_id: int, messa
         except KeyError:
             bot.send_message(chat_id, get_translate("weather_invalid_city_name", settings.lang))
 
-    if message.text.startswith('/forecast'):
-        if message.text not in ('/forecast', f'/forecast@{BOT_USERNAME}'):  # Проверяем есть ли аргументы
-            nowcity = message.text.split(maxsplit=1)[-1]
+    if message_text.startswith('/forecast'):
+        if message_text not in ('/forecast', f'/forecast@{BOT_USERNAME}'):  # Проверяем есть ли аргументы
+            nowcity = message_text.split(maxsplit=1)[-1]
         else:
             nowcity = UserSettings(chat_id).city
         try:
@@ -96,30 +96,30 @@ def command_handler(settings: UserSettings, chat_id: int, message_id: int, messa
         except KeyError:
             bot.send_message(chat_id, get_translate("forecast_invalid_city_name", settings.lang))
 
-    if message.text.startswith('/search'):
-        query = ToHTML(message.text[len("/search "):]).replace("--", '').replace("\n", ' ')
+    if message_text.startswith('/search'):
+        query = ToHTML(message_text[len("/search "):]).replace("--", '').replace("\n", ' ')
         text, markup = search(settings, chat_id, query)
         bot.send_message(chat_id, text, reply_markup=markup, parse_mode='html', disable_web_page_preview=True)
 
-    if message.text.startswith('/dice'):
+    if message_text.startswith('/dice'):
         value = bot.send_dice(chat_id).json['dice']['value']
         sleep(4)
-        bot.send_message(message.chat.id, value)
+        bot.send_message(chat_id, value)
 
-    if message.text.startswith('/help'):
+    if message_text.startswith('/help'):
         text = get_translate("help", settings.lang)
-        bot.send_message(message.chat.id, text, parse_mode='markdown', reply_markup=delmarkup)
+        bot.send_message(chat_id, text, parse_mode='markdown', reply_markup=delmarkup)
 
-    if message.text.startswith('/settings'):
+    if message_text.startswith('/settings'):
         settings_lang, sub_urls, city, timezone_, direction, markup = settings.get_settings_markup()
         text = get_translate("settings", settings.lang)
-        bot.send_message(message.chat.id, text.format(settings_lang, bool(sub_urls), city, timezone_, direction), parse_mode='html', reply_markup=markup, disable_web_page_preview=True)
+        bot.send_message(chat_id, text.format(settings_lang, bool(sub_urls), city, timezone_, direction), parse_mode='html', reply_markup=markup, disable_web_page_preview=True)
 
-    if message.text.startswith('/today'):
+    if message_text.startswith('/today'):
         create_message(settings, chat_id,
                        now_time_strftime(settings))
 
-    if message.text.startswith('/sqlite') and is_admin_id(chat_id):
+    if message_text.startswith('/sqlite') and is_admin_id(chat_id):
         try:
             DATE = now_time_strftime(settings)
             markup = generate_buttons([{'Применить базу данных': 'set database'}])
@@ -128,7 +128,7 @@ def command_handler(settings: UserSettings, chat_id: int, message_id: int, messa
         except ApiTelegramException:
             bot.send_message(chat_id, 'Отправить файл не получилось')
 
-    if message.text.startswith('/file') and is_admin_id(chat_id):
+    if message_text.startswith('/file') and is_admin_id(chat_id):
         DATE = now_time_strftime(settings)
         try:
             with open(__file__, 'rb') as file:
@@ -136,13 +136,13 @@ def command_handler(settings: UserSettings, chat_id: int, message_id: int, messa
         except ApiTelegramException:
             bot.send_message(chat_id, 'Отправить файл не получилось')
 
-    if message.text.startswith('/SQL ') and is_admin_id(chat_id): pass
+    if message_text.startswith('/SQL ') and is_admin_id(chat_id): pass
 
-    if message.text.startswith('/bell') and is_admin_id(chat_id):
+    if message_text.startswith('/bell') and is_admin_id(chat_id):
         text = check_bells(settings, chat_id)
         bot.send_message(chat_id, text, parse_mode='html', reply_markup=delmarkup, disable_web_page_preview=True)
 
-    if message.text.startswith('/save_to_csv'):
+    if message_text.startswith('/save_to_csv'):
         try:
             response, t = CSVCooldown.check(chat_id)
             if response:
@@ -162,9 +162,9 @@ def command_handler(settings: UserSettings, chat_id: int, message_id: int, messa
             print(f'/save_to_csv "{e}"')
             bot.send_message(chat_id, get_translate("file_is_too_big", settings.lang))
 
-    if message.text.startswith('/version'):
-        bot.reply_to(message,
-                     f'Version {config.__version__}')
+    if message_text.startswith('/version'):
+        bot.send_message(chat_id,
+                         f'Version {config.__version__}')
 
 
 def callback_handler(settings: UserSettings, chat_id: int, message_id: int, message_text: str, call_data: str, call_id: int, message: Message):
@@ -443,14 +443,14 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
 @bot.message_handler(commands=[*COMMAND_LIST])
 def get_calendar(message: Message):
-    chat_id, message_id, message_text = message.chat.id, message.id, message.text
+    chat_id, message_text = message.chat.id, message.text
     settings = UserSettings(chat_id)
 
     # print(f'{chat_id=} {message_id=}')
     log_chat_id = f"\033[21m{chat_id}\033[0m" if settings.user_status == 0 else (f"\033[21m\033[32m{chat_id}\033[0m" if settings.user_status == 1 else f"\033[21m\033[34m{chat_id}\033[0m")
     print(f'{log_time_strftime()} {log_chat_id.ljust(15)} send    {message_text.replace(f"{chr(92)}n", f"{chr(92)}{chr(92)}n")}') # {chr(92)} = \ (escape sequences)
 
-    command_handler(settings, chat_id, message_id, message_text, message)
+    command_handler(settings, chat_id, message_text, message)
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call: CallbackQuery):
