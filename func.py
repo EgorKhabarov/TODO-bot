@@ -356,7 +356,8 @@ def mycalendar(settings: UserSettings, data, chat_id) -> InlineKeyboardMarkup():
     markup.row(*[InlineKeyboardButton(day, callback_data="None") for day in week_day_list])
 
     # получаем из базы данных дни на которых есть событие
-    SqlResult = SQL(f'SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as date) FROM root WHERE user_id = {chat_id} AND date LIKE "%.{MM:0>2}.{YY}" AND isdel = 0;') # SUBSTRING(date, 1, 2)
+    SqlResult = SQL(f'SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as date) FROM root '
+                    f'WHERE user_id = {chat_id} AND date LIKE "%.{MM:0>2}.{YY}" AND isdel = 0;') # SUBSTRING(date, 1, 2)
     beupdate = [x[0] for x in SqlResult]
     # получаем сегодняшнее число
     today = now_time(settings).day
@@ -376,8 +377,8 @@ def mycalendar(settings: UserSettings, data, chat_id) -> InlineKeyboardMarkup():
 
 def generate_month_calendar(settings: UserSettings, chat_id, YY) -> InlineKeyboardMarkup():
     """Создаёт календарь на год и возвращает кнопки"""
-    SqlResult = SQL(f"""SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as date) FROM root
-                       WHERE user_id = {chat_id} AND date LIKE "__.__.{YY}" AND isdel = 0;""")
+    SqlResult = SQL(f'SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as date) FROM root'
+                    f'WHERE user_id = {chat_id} AND date LIKE "__.__.{YY}" AND isdel = 0;')
     month_list = [x[0] for x in SqlResult] # Форматирование результата
     nowMonth = now_time(settings).month
     isNowMonth = lambda numM: numM == nowMonth
@@ -401,6 +402,7 @@ allmarkup = generate_buttons([
 minimarkup = generate_buttons([{"🔙": "back", "✖": "message_del"}])
 backmarkup = generate_buttons([{"🔙": "back"}])
 delmarkup = generate_buttons([{"✖": "message_del"}])
+databasemarkup = generate_buttons([{'Применить базу данных': 'set database'}])
 
 
 """Другое"""
@@ -427,7 +429,7 @@ def markdown(text: str, status: str, suburl=False) -> str:
         return f'<span class="tg-spoiler">{_text}</span>'
 
     def SubUrls(_text: str):
-        la = lambda url: f'<a href="{url[0]}">{urlparse(url[0]).scheme}://{urlparse(url[0]).netloc}</a>'
+        la = lambda url: f'<a href="{url[0]}">{urlparse(url[0]).netloc}</a>'
         return re.sub(r'(http?s?://\S+)', la, _text)
 
     def Code(_text: str):

@@ -122,9 +122,8 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
     if message_text.startswith('/sqlite') and is_admin_id(chat_id):
         try:
             DATE = now_time_strftime(settings)
-            markup = generate_buttons([{'Применить базу данных': 'set database'}])
             with open(config.database_path, 'rb') as file:
-                bot.send_document(chat_id, file, caption=f'{DATE}', reply_markup=markup)
+                bot.send_document(chat_id, file, caption=f'{DATE}', reply_markup=databasemarkup)
         except ApiTelegramException:
             bot.send_message(chat_id, 'Отправить файл не получилось')
 
@@ -146,8 +145,8 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
         try:
             response, t = CSVCooldown.check(chat_id)
             if response:
-                res = SQL(f"""SELECT event_id, date, status, text FROM root
-                                  WHERE user_id="{chat_id}" AND isdel=0;""")
+                res = SQL(f'SELECT event_id, date, status, text FROM root'
+                          f'WHERE user_id="{chat_id}" AND isdel=0;')
                 file = StringIO()
                 date = now_time_strftime(settings)
                 file.name = f'ToDoList {message.from_user.username} ({date}).csv'
@@ -214,10 +213,9 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
     if call_data == "set database":
         DATE = now_time_strftime(settings)
-        markup = generate_buttons([{'Применить базу данных': 'set database'}])
         try:
             with open(config.database_path, 'rb') as file:
-                bot.send_document(chat_id, file, caption=f'{DATE}\nНа данный момент база выглядит так.', reply_markup=markup)
+                bot.send_document(chat_id, file, caption=f'{DATE}\nНа данный момент база выглядит так.', reply_markup=databasemarkup)
         except ApiTelegramException:
             bot.send_message(chat_id, 'Отправить файл не получилось')
 
@@ -250,7 +248,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             event_id = i.split('.', maxsplit=2)[1]
             if call_data == 'event_edit':
                 try:
-                    event_text = NoHTML(SQL(f"""SELECT text FROM root WHERE event_id={event_id} AND user_id = {chat_id};""")[0][0])
+                    event_text = NoHTML(SQL(f"SELECT text FROM root WHERE event_id={event_id} AND user_id = {chat_id};")[0][0])
                 except Error as e:
                     return print(f'Произошла ошибка в "Изменить сообщение": "{e}"')
                 markup.row(InlineKeyboardButton(f"{i}{callbackTab * 20}", switch_inline_query_current_chat=f"Edit message({event_id}, {date}, {message.id})\n{event_text}"))
