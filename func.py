@@ -335,7 +335,7 @@ def forecast_in(settings: UserSettings, city: str):
         date = ".".join(city_time.split()[0].split('.')[::-1])
         if date not in result:
             result += f"\n\n<b>{date}</b> {day_info(settings, date)}"
-        result += f"\n{city_time.split()[-1]} {weather_icon} <b>{temp:⠀>2.0f}°C <u>{weather_description}</u>. 💨{wind_speed:.0f}м/с {wind_deg_icon}</b>"
+        result += f"\n{city_time.split()[-1]} {weather_icon} <b>{temp:⠀>2.0f}°C</b> <u>{weather_description}</u>. 💨<b>{wind_speed:.0f}м/с {wind_deg_icon}</b>"
     return result
 
 
