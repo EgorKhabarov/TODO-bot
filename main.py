@@ -1,10 +1,10 @@
 from io import StringIO
 from time import sleep
-
-from telebot.apihelper import ApiTelegramException
-from telebot.types import CallbackQuery, Message, InputFile
-from telebot import TeleBot
 import csv
+
+from telebot import TeleBot
+from telebot.types import CallbackQuery, Message, InputFile
+from telebot.apihelper import ApiTelegramException
 
 from func import * # InlineKeyboardMarkup, InlineKeyboardButton, re, config импортируются из func
 
@@ -482,7 +482,7 @@ def get_edit_message(message: Message):
     event_id = int(re.findall(r"\((\d+)", res)[0])
     date = re.findall(r" (\d{1,2}\.\d{1,2}\.\d{4}),", res)[0]
     message_id = int(re.findall(r", (\d+)\)", res)[0])
-    text = message.text.split('\n', maxsplit=1)[-1]
+    text = message.text.split('\n', maxsplit=1)[-1].strip("\n") # ВАЖНО!
     markup = InlineKeyboardMarkup()
     markup.row(InlineKeyboardButton(f"{event_id} {text[:20]}{callbackTab * 20}",
                                     switch_inline_query_current_chat=f"{message.text.split(maxsplit=1)[-1]}"))
