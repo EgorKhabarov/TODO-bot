@@ -177,13 +177,17 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
         def add_event(message2):
             if message2.text.lower().split("@")[0] not in COMMAND_LIST:
-                if create_event(message2.chat.id, message_date, ToHTML(message2.text[:4050])):
-                    create_message(settings, chat_id, message_date, message_id)
-                    try:
-                        bot.delete_message(message2.chat.id, message2.message_id)
-                    except ApiTelegramException:
-                        bot.reply_to(message, get_translate("get_admin_rules", settings.lang), reply_markup=delmarkup)
-                else: pass
+                if len(message2.text) <= 3800:
+                    if create_event(message2.chat.id, message_date, ToHTML(message2.text)):
+                        create_message(settings, chat_id, message_date, message_id)
+                        try:
+                            bot.delete_message(message2.chat.id, message2.message_id)
+                        except ApiTelegramException:
+                            bot.reply_to(message, get_translate("get_admin_rules", settings.lang), reply_markup=delmarkup)
+                    else:
+                        pass # TODO возникла ошибка
+                else:
+                    pass # TODO событие слишком большое
 
         bot.register_next_step_handler(message, add_event)
 
@@ -293,9 +297,9 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
     if call_data.startswith('PRE DEL '):
         date, event_id = call_data.split(maxsplit=4)[2:]
         try:
-            text, status = SQL(f"""SELECT text, status FROM root WHERE isdel = 0
-                                   AND user_id = {chat_id} AND date = '{date}'
-                                   AND event_id = {event_id};""")[0]
+            text, status = SQL(f"SELECT text, status FROM root "
+                               f"WHERE isdel = 0 AND user_id = {chat_id} "
+                               f"AND date = '{date}' AND event_id = {event_id};")[0]
         except Error as e:
             print(f'Ошибка SQL в PRE DEL : "{e}"')
             callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
@@ -304,7 +308,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         end_text = get_translate("/deleted", settings.lang) if list(limits.keys())[int(settings.user_status)] in ("premium", "admin") else ""
         bot.edit_message_text(f'<b>{date} {event_id}.</b>{status} <u>{day_info(settings, date)}</u>\n'
                               f'<b>{get_translate("are_you_sure", settings.lang)}:</b>\n'
-                              f'{text}\n\n'
+                              f'{text[:3800]}\n\n'
                               f'{end_text}', chat_id, message_id,
                               reply_markup=predelmarkup, disable_web_page_preview=True, parse_mode='html')
         return
