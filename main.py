@@ -166,7 +166,6 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
 
 
 def callback_handler(settings: UserSettings, chat_id: int, message_id: int, message_text: str, call_data: str, call_id: int, message: Message):
-
     if call_data == "event_add":
         bot.clear_step_handler_by_chat_id(chat_id)
         message_date = message_text.split(maxsplit=1)[0]
