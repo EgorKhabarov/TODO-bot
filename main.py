@@ -145,8 +145,7 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
         try:
             response, t = CSVCooldown.check(chat_id)
             if response:
-                res = SQL(f'SELECT event_id, date, status, text FROM root'
-                          f'WHERE user_id="{chat_id}" AND isdel=0;')
+                res = SQL(f'SELECT event_id, date, status, text FROM root WHERE user_id={chat_id} AND isdel=0;')
                 file = StringIO()
                 date = now_time_strftime(settings)
                 file.name = f'ToDoList {message.from_user.username} ({date}).csv'
