@@ -349,7 +349,7 @@ Reduce the number of characters or remove unnecessary events."""
     },
     "message_is_too_long": {
         "ru": "Сообщение слишком большое",
-        "en": "Message is too big"
+        "en": "Message is too long"
     },
     "send_event_text": {
         "ru": "Отправьте текст события",
