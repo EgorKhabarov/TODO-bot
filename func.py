@@ -544,7 +544,22 @@ class MyMessage:
                 first_message = first_message[::-1]
             self._event_list = first_message
 
-        self.fill_markup(data)
+            diapason_list = []
+            for n, d in enumerate(data):  # Заполняем данные из диапазонов в список
+                if int(f'{n}'[-1]) in (0, 5):  # Разделяем диапазоны в строчки по 5
+                    diapason_list.append([])
+                diapason_list[-1].append((n + 1, d[0]))  # Номер страницы, начальное id, конечное id
+
+            if len(diapason_list[0]) != 1:  # Если страниц больше одной
+                for i in range(5 - len(diapason_list[-1])):  # Заполняем пустые кнопки в последнем ряду до 5
+                    diapason_list[-1].append((0, 0))
+
+                [self.reply_markup.row(*[
+                    InlineKeyboardButton(f'{numpage}', callback_data=f'|{vals}') if vals else
+                    InlineKeyboardButton(f' ', callback_data=f'None') for numpage, vals in row]) for row in
+                 diapason_list[:8]]
+                # Образаем до 8 строк кнопок чтобы не было ошибки
+
         return self
 
     def get_events(self, WHERE: str, values: list | tuple):
@@ -613,22 +628,6 @@ class MyMessage:
 
         self.text = format_string+ending
         return self
-
-    def fill_markup(self, data):
-        diapason_list = []
-        for n, d in enumerate(data):  # Заполняем данные из диапазонов в список
-            if int(f'{n}'[-1]) in (0, 5):  # Разделяем диапазоны в строчки по 5
-                diapason_list.append([])
-            diapason_list[-1].append((n + 1, d[0]))  # Номер страницы, начальное id, конечное id
-
-        if len(diapason_list[0]) != 1:  # Если страниц больше одной
-            for i in range(5 - len(diapason_list[-1])):  # Заполняем пустые кнопки в последнем ряду до 5
-                diapason_list[-1].append((0, 0))
-
-            [self.reply_markup.row(*[
-                InlineKeyboardButton(f'{numpage}', callback_data=f'|{vals}') if vals else
-                InlineKeyboardButton(f' ', callback_data=f'None') for numpage, vals in row]) for row in diapason_list[:8]]
-            # Образаем до 8 строк кнопок чтобы не было ошибки
 
     def send(self, chat_id: int) -> None:
         ...
