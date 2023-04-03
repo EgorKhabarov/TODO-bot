@@ -402,15 +402,15 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             pass
         return 0
 
-    elif call_data.startswith('!'):
+    elif call_data.startswith('!birthday'):
         date = message_text.split(maxsplit=1)[0]
-        generated = MyMessage(settings=settings, date=date)
-        generated.get_events(WHERE=f'isdel = 0 AND user_id = {chat_id} AND status IN ("🎉", "🎊")',
-                             values=call_data[1:].split(","))
+        generated = MyMessage(settings=settings, date=date, reply_markup=backmarkup)
+        generated.get_data(WHERE=f'isdel = 0 AND user_id = {chat_id} AND status IN ("🎉", "🎊")',
+                           direction={"⬇️": "DESC", "⬆️": "ASC"}[settings.direction])
         generated.format(title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n",
                          args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
                          if_empty=get_translate("nothing_found", settings.lang))
-        generated.edit(chat_id=chat_id, message_id=message_id, only_text=backmarkup)
+        generated.edit(chat_id=chat_id, message_id=message_id)
 
     elif call_data in ('<<<', '<<', '<', '⟳', '>', '>>', '>>>') or re.search(r"\A\d{2}\.\d{2}\.\d{4}\Z", call_data):
         if call_data in ('<<<', '>>>'):
