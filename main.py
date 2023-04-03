@@ -445,7 +445,7 @@ def message_handler(message: Message):
     command_handler(settings, chat_id, message_text, message)
 
 @bot.callback_query_handler(func=lambda call: True)
-def callback_handler(call: CallbackQuery):
+def callback_query_handler(call: CallbackQuery):
     chat_id, message_id, call_data, message_text = call.message.chat.id, call.message.id, call.data, call.message.text
     settings = UserSettings(chat_id)
     main_log(settings=settings, chat_id=chat_id, text=call_data, action="pressed")
