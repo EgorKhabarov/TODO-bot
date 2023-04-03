@@ -100,7 +100,8 @@ translation = {
 Write /calendar or click on the button below"""
     },
     "help": {
-        "ru": """Обозначения
+        "ru": """
+<b>Обозначения</b>
 | перед каждым событием есть пометка например 1.34.✅
 | из этого
 | 1 это порядковый номер события в конкретном сообщении
@@ -110,13 +111,13 @@ Write /calendar or click on the button below"""
 | (по нему можно помечать события и искать поиском
 | (# или /search) и ставить уведомления (⏰)(!не стабильно!))
 
-КНОПКИ
+<b>КНОПКИ</b>
 | Календарь
-| <  Убавить 1 месяц
-| >  Добавить 1 месяц
+| &lt;  Убавить 1 месяц
+| &gt;  Добавить 1 месяц
 | ⟳ Поставить текущую дату
-| << Убавить 1 год
-| >> Добавить 1 год
+| &lt;&lt; Убавить 1 год
+| &gt;&gt; Добавить 1 год
 |
 | Основное окно
 | ➕ Добавить событие
@@ -124,11 +125,11 @@ Write /calendar or click on the button below"""
 | 🗑 Удалить событие
 | 🚩 Изменить статус
 | 🔙 Вернуться назад
-|  < Убавить 1 день
-|  > Добавить 1 день
+|  &lt; Убавить 1 день
+|  &gt; Добавить 1 день
 | ✖️ Удалить сообщение бота
 
-СТАТУСЫ
+<b>СТАТУСЫ</b>
 | ⬜️ Без статуса
 | 🟥 Важно
 | 🟧 Важно но не так
@@ -152,13 +153,13 @@ Write /calendar or click on the button below"""
 | ⏱ В процессе
 | ⏰ Включить уведомление
 
-Поиск
+<b>Поиск</b>
 Искать можно по дате по тексту (Регистр важен!), событиям, дате и id события
 Например если нужно искать события только за Август то можно написать #.09.
 8 января #08.09
 Все события с статусом дней рождения #🎉""",
         "en": """
-*Notation*
+<b>Notation</b>
 | before each event there is a note for example 1.34.✅
 | from this
 | 1 is the sequence number of the event in a particular message
@@ -168,13 +169,13 @@ Write /calendar or click on the button below"""
 | (on it you can mark events and search by search
 | (# or /search) and set notifications (⏰)(!not stable!))
 
-*BUTTONS*
+<b>BUTTONS</b>
 | Calendar
-| < Subtract 1 month
-| > Add 1 month
+| &lt; Subtract 1 month
+| &gt; Add 1 month
 | ⟳ Put current date
-| << Subtract 1 year
-| >> Add 1 year
+| &lt;&lt; Subtract 1 year
+| &gt;&gt; Add 1 year
 |
 | Main window
 | ➕ Add event
@@ -182,11 +183,11 @@ Write /calendar or click on the button below"""
 | 🗑 Delete event
 | 🚩 Change status
 | 🔙 Go back
-| < Subtract 1 day
-| > Add 1 day
+|  &lt; Subtract 1 day
+|  &gt; Add 1 day
 | ✖️ Delete bot message
 
-*STATUSES*
+<b>STATUSES</b>
 | ⬜️ No Status
 | 🟥 Important
 | 🟧 Important but not so
@@ -210,7 +211,7 @@ Write /calendar or click on the button below"""
 | ⏱ In progress
 | ⏰ Enable notification
 
-*Search*
+<b>Search</b>
 You can search by date in the text (Case is important!), events, date and event id
 For example, if you need to search for events only for August, then you can write #.09.
 January 8 #08.09

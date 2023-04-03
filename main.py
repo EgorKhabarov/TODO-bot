@@ -18,13 +18,17 @@ bot = TeleBot(config.bot_token)
 Me = bot.get_me()
 BOT_ID = Me.id
 BOT_USERNAME = Me.username
-COMMANDS = (
-    'calendar', 'start', 'deleted', 'version', 'forecast',
-    'week_event_list', 'weather', 'search', 'bell', 'dice',
-    'help', 'settings', 'today', 'sqlite', 'file', 'SQL', 'save_to_csv'
-)
-print(f"+{'-'*59}+\n"+''.join(f'| {k: >27} = {v!s: <27} |\n' for k, v in Me.to_dict().items())+f"+{'-'*59}+")
-print('Запустился')
+COMMANDS = ('calendar', 'start', 'deleted', 'version', 'forecast', 'week_event_list',
+            'weather', 'search', 'bell', 'dice', 'help', 'settings', 'today', 'sqlite',
+            'file', 'SQL', 'save_to_csv')
+def check(key, val):
+    """Подсветит не правильные настройки красным цветом"""
+    keylist = {"can_join_groups": "True", "can_read_all_group_messages": "True", "supports_inline_queries": "False"}
+    indent = ' ' * 22
+    return (f"{val!s:<5}" if keylist[key] == str(val) else f"\033[31m{val!s:<5}\033[0m{indent}"
+            ) if key in keylist else f"{val}" # \033[32m{}\033[0m{indent}
+
+print(f"+{'-'*59}+\n"+''.join(f'| {k: >27} = {check(k, v): <27} |\n' for k, v in Me.to_dict().items())+f"+{'-'*59}+")
 
 bot.disable_web_page_preview = True
 bot.parse_mode = "html"
@@ -32,7 +36,7 @@ bot.parse_mode = "html"
 def send(self, chat_id: int) -> None:
     bot.send_message(chat_id=chat_id, text=self.text, reply_markup=self.reply_markup)
 
-def edit(self, *, chat_id: int, message_id: int, only_markup: bool = False, only_text: InlineKeyboardMarkup = None):
+def edit(self, *, chat_id: int, message_id: int, only_markup: bool = False, only_text: InlineKeyboardMarkup = None) -> None:
     if only_markup:
         bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=self.reply_markup)
     else:
@@ -105,8 +109,7 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
         bot.send_message(chat_id=chat_id, text=value)
 
     elif message_text.startswith('/help'):
-        bot.send_message(chat_id=chat_id, text=get_translate("help", settings.lang),
-                         parse_mode='markdown', reply_markup=delmarkup)
+        bot.send_message(chat_id=chat_id, text=get_translate("help", settings.lang), reply_markup=delmarkup)
 
     elif message_text.startswith('/settings'):
         settings_lang, sub_urls, city, timezone_, direction, markup = settings.get_settings_markup()
@@ -398,6 +401,16 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         except ApiTelegramException:
             pass
         return 0
+
+    elif call_data.startswith('!'):
+        date = message_text.split(maxsplit=1)[0]
+        generated = MyMessage(settings=settings, date=date)
+        generated.get_events(WHERE=f'isdel = 0 AND user_id = {chat_id} AND status IN ("🎉", "🎊")',
+                             values=call_data[1:].split(","))
+        generated.format(title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n",
+                         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
+                         if_empty=get_translate("nothing_found", settings.lang))
+        generated.edit(chat_id=chat_id, message_id=message_id, only_text=backmarkup)
 
     elif call_data in ('<<<', '<<', '<', '⟳', '>', '>>', '>>>') or re.search(r"\A\d{2}\.\d{2}\.\d{4}\Z", call_data):
         if call_data in ('<<<', '>>>'):

@@ -338,7 +338,8 @@ def forecast_in(settings: UserSettings, city: str):
         city_time = hour['dt_txt'].replace('-', '.')[:-3]
         date = ".".join(city_time.split()[0].split('.')[::-1])
         if date not in result:
-            result += f"\n\n<b>{date}</b> {day_info(settings, date)}"
+            day = day_info(settings, date)
+            result += f"\n\n<b>{date}</b> <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})"
         result += f"\n{city_time.split()[-1]} {weather_icon}<b>{temp:⠀>2.0f}°C 💨{wind_speed:.0f}м/с {wind_deg_icon}</b> <u>{weather_description}</u>."
     return result
 
@@ -628,7 +629,13 @@ class MyMessage:
         self.text = format_string+ending
         return self
 
-def search(settings: UserSettings, chat_id: int, query: str, id_list: list | tuple = tuple()):
+    def send(self, chat_id: int) -> None:
+        ...
+
+    def edit(self, *, chat_id: int, message_id: int, only_markup: bool = False, only_text: InlineKeyboardMarkup = None) -> None:
+        ...
+
+def search(settings: UserSettings, chat_id: int, query: str, id_list: list | tuple = tuple()) -> MyMessage:
     if not re.match(r'\S', query):
         text = get_translate("request_empty", settings.lang)
         return text, delmarkup
@@ -648,7 +655,7 @@ def search(settings: UserSettings, chat_id: int, query: str, id_list: list | tup
 
     return generated
 
-def week_event_list(settings: UserSettings, chat_id, id_list: list | tuple = tuple()):
+def week_event_list(settings: UserSettings, chat_id, id_list: list | tuple = tuple()) -> MyMessage:
     WHERE = f"""(user_id = {chat_id} AND isdel = 0)
                 AND (substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2) 
                 BETWEEN DATE('now') AND DATE('now', '+7 day'))"""
@@ -662,7 +669,7 @@ def week_event_list(settings: UserSettings, chat_id, id_list: list | tuple = tup
                      if_empty=get_translate("nothing_found", settings.lang))
     return generated
 
-def deleted(settings: UserSettings, chat_id, id_list: list | tuple = tuple()):
+def deleted(settings: UserSettings, chat_id, id_list: list | tuple = tuple()) -> MyMessage:
     WHERE = f"""user_id = {chat_id} AND isdel != 0"""
     # Удаляем события старше MAXTIME дня
     SQL(f"""DELETE FROM root WHERE isdel != 0 AND user_id = {chat_id} AND julianday('now') - 
@@ -678,7 +685,7 @@ def deleted(settings: UserSettings, chat_id, id_list: list | tuple = tuple()):
                      if_empty=get_translate("message_empty", settings.lang))
     return generated
 
-def today_message(settings: UserSettings, chat_id, date: str, id_list: list | tuple = tuple()):
+def today_message(settings: UserSettings, chat_id, date: str, id_list: list | tuple = tuple()) -> MyMessage:
     WHERE = f"user_id = {chat_id} AND isdel = 0 AND date = '{date}'"
     generated = MyMessage(settings, date=date, reply_markup=allmarkup)
     if id_list:
@@ -688,6 +695,14 @@ def today_message(settings: UserSettings, chat_id, date: str, id_list: list | tu
     generated.format(title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n",
                      args="<b>{numd}.{event_id}.</b>{status}\n{markdown_text}\n",
                      if_empty=get_translate("nodata", settings.lang))
+
+    # Добавить дополнительную кнопку для дней в которых есть праздники
+    birthday = SQL(f'SELECT DISTINCT date, event_id FROM root '
+                   f'WHERE date LIKE "{date[:-5]}.____" AND isdel = 0 AND '
+                   f'user_id = {chat_id} AND status IN ("🎉", "🎊")')
+    daylist = [x[0] for x in birthday if x[0] != date]
+    if daylist:
+        generated.reply_markup.row(InlineKeyboardButton("🎉", callback_data=f"!{','.join(str(x[1]) for x in birthday)}"))
     return generated
 
 """Проверки"""
