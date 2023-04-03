@@ -415,7 +415,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
     elif call_data.startswith('!birthday'):
         date = message_text.split(maxsplit=1)[0]
         generated = MyMessage(settings=settings, date=date, reply_markup=backmarkup)
-        generated.get_data(WHERE=f'isdel = 0 AND user_id = {chat_id} AND status IN ("🎉", "🎊")',
+        generated.get_data(WHERE=f'date LIKE "{date[:-5]}.____" AND isdel = 0 AND user_id = {chat_id} AND status IN ("🎉", "🎊")',
                            direction={"⬇️": "DESC", "⬆️": "ASC"}[settings.direction],
                            prefix="!")
         generated.format(title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n",
@@ -426,7 +426,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
     elif call_data.startswith("!"):
         date = message_text.split(maxsplit=1)[0]
         generated = MyMessage(settings=settings, date=date, reply_markup=backmarkup)
-        generated.get_events(WHERE=f'isdel = 0 AND user_id = {chat_id} AND status IN ("🎉", "🎊")',
+        generated.get_events(WHERE=f'date LIKE "{date[:-5]}.____" AND isdel = 0 AND user_id = {chat_id} AND status IN ("🎉", "🎊")',
                              values=call_data[1:].split(","))
         generated.format(title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n",
                          args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
