@@ -179,7 +179,7 @@ GROUP BY temp_table.group_id;
     return data
 
 def check_bells(settings: UserSettings, chat_id): # TODO доделать check_bells
-    date = now_time_strftime(settings)
+    date = now_time_strftime(settings.timezone)
     res = SQL(f"""SELECT event_id, user_id, text, status FROM root
                WHERE ((date = '{date}' AND status = '⏰')
                OR (substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2) 
@@ -200,25 +200,25 @@ def check_bells(settings: UserSettings, chat_id): # TODO доделать check_
 
 
 """time"""
-def now_time(settings: UserSettings):
-    return datetime.now()+timedelta(hours=settings.timezone)
+def now_time(user_timezone: int):
+    return datetime.now()+timedelta(hours=user_timezone)
 
-def now_time_strftime(settings: UserSettings):
-    return now_time(settings).strftime("%d.%m.%Y")
+def now_time_strftime(user_timezone: int):
+    return now_time(user_timezone).strftime("%d.%m.%Y")
 
 def log_time_strftime(log_timezone: int = config.hours_difference):
-    return (datetime.now()+timedelta(hours=log_timezone)).strftime("%Y.%m.%d %H:%M:%S")
+    return (now_time(log_timezone)).strftime("%Y.%m.%d %H:%M:%S")
 
-def new_time_calendar(settings: UserSettings):
-    date = now_time(settings)
+def new_time_calendar(user_timezone: int):
+    date = now_time(user_timezone)
     return [date.year, date.month]
 
-def year_info(settings: UserSettings, year):
+def year_info(year: int, lang: str):
     result = ""
     if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0):
-        result += get_translate("leap", settings.lang)
+        result += get_translate("leap", lang)
     else:
-        result += get_translate("not_leap", settings.lang)
+        result += get_translate("not_leap", lang)
     result += ' '
     result += ("🐀", "🐂", "🐅", "🐇", "🐲", "🐍", "🐴", "🐐", "🐒", "🐓", "🐕", "🐖")[(year - 4) % 12]
     return result
@@ -227,9 +227,9 @@ def get_week_number(YY, MM, DD): # TODO добавить номер недели
     return datetime(YY, MM, DD).isocalendar()[1]
 
 class day_info:
-    def __init__(self, settings, date):
+    def __init__(self, settings: UserSettings, date):
         today, tomorrow, day_after_tomorrow, yesterday, day_before_yesterday, after, ago, Fday = get_translate("relative_date_list", settings.lang)
-        x = now_time(settings)
+        x = now_time(settings.timezone)
         x = datetime(x.year, x.month, x.day)
         y = datetime(*[int(x) for x in date.split('.')][::-1])
 
@@ -345,19 +345,19 @@ def forecast_in(settings: UserSettings, city: str):
 
 
 """buttons"""
-def generate_buttons(buttons_data):
+def generate_buttons(buttons_data: list[dict]) -> InlineKeyboardMarkup:
     keyboard = [[InlineKeyboardButton(text, callback_data=data) for text, data in row.items()] for row in buttons_data]
     return InlineKeyboardMarkup(keyboard)
 
-def mycalendar(settings: UserSettings, YY_MM, chat_id) -> InlineKeyboardMarkup():
+def mycalendar(user_timezone: int, lang: str, YY_MM: list | tuple, chat_id) -> InlineKeyboardMarkup():
     """Создаёт календарь на месяц и возвращает кнопки"""
     YY, MM = YY_MM
     markup = InlineKeyboardMarkup()
     #  December (12.2022)
     # Пн Вт Ср Чт Пт Сб Вс
-    markup.row(InlineKeyboardButton(f"{get_translate('months_name', settings.lang)[MM-1]} ({MM}.{YY}) ({year_info(settings, YY)})",
+    markup.row(InlineKeyboardButton(f"{get_translate('months_name', lang)[MM-1]} ({MM}.{YY}) ({year_info(YY, lang)})",
                                     callback_data=f"generate_month_calendar {YY}"))
-    week_day_list = get_translate("week_days_list", settings.lang)
+    week_day_list = get_translate("week_days_list", lang)
     markup.row(*[InlineKeyboardButton(day, callback_data="None") for day in week_day_list])
 
     # получаем из базы данных дни на которых есть событие
@@ -371,7 +371,7 @@ def mycalendar(settings: UserSettings, YY_MM, chat_id) -> InlineKeyboardMarkup()
     birthdaylist = [x[0] for x in birthday]
 
     # получаем сегодняшнее число
-    today = now_time(settings).day
+    today = now_time(user_timezone).day
     # получаем список дней
     for weekcalendar in monthcalendar(YY, MM):
         weekbuttons = []
@@ -387,15 +387,15 @@ def mycalendar(settings: UserSettings, YY_MM, chat_id) -> InlineKeyboardMarkup()
     markup.row(*[InlineKeyboardButton(f"{day}", callback_data=f"{day}") for day in ('<<', '<', '⟳', '>', '>>')])
     return markup
 
-def generate_month_calendar(settings: UserSettings, chat_id, YY) -> InlineKeyboardMarkup():
+def generate_month_calendar(user_timezone: int, lang: str, chat_id, YY) -> InlineKeyboardMarkup():
     """Создаёт календарь на год и возвращает кнопки"""
     SqlResult = SQL(f'SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as date) FROM root '
                     f'WHERE user_id = {chat_id} AND date LIKE "__.__.{YY}" AND isdel = 0;')
     month_list = [x[0] for x in SqlResult] # Форматирование результата
-    nowMonth = now_time(settings).month
+    nowMonth = now_time(user_timezone).month
     isNowMonth = lambda numM: numM == nowMonth
 
-    months = get_translate("months_list", settings.lang)
+    months = get_translate("months_list", lang)
 
     result = []
     for row in months:
@@ -407,12 +407,11 @@ def generate_month_calendar(settings: UserSettings, chat_id, YY) -> InlineKeyboa
             result[-1][f'{tag_today}{nameM}{tag_event}{tag_birthday}'] = f'generate_calendar {YY} {numm}'
 
     markupL = [
-        {f"{YY} ({year_info(settings, YY)})": "None"},
+        {f"{YY} ({year_info(YY, lang)})": "None"},
         *result,
         {"<<": f"generate_month_calendar {YY-1}", "⟳": "year now", ">>": f"generate_month_calendar {YY+1}"}
     ]
-    markup = generate_buttons(markupL)
-    return markup
+    return generate_buttons(markupL)
 
 allmarkup = generate_buttons([
     {"➕": "event_add", "📝": "event_edit", "🚩": "event_status", "🗑": "event_del"}, # "🔘": "menu"
@@ -426,10 +425,10 @@ databasemarkup = generate_buttons([{'Применить базу данных': 
 """Другое"""
 callbackTab = '⠀⠀⠀'
 
-def ToHTML(text):
+def ToHTML(text: str) -> str:
     return text.replace("<", '&lt;').replace(">", '&gt;').replace("'", '&#39;').replace('"', '&quot;')
 
-def NoHTML(text):
+def NoHTML(text: str) -> str:
     return text.replace("&lt;", '<').replace("&gt;", '>').replace("&#39;", "'").replace('&quot;', '"')
 
 def markdown(text: str, status: str, suburl=False) -> str:
@@ -501,9 +500,9 @@ class Cooldown:
         return result
 CSVCooldown = Cooldown(1800, {})
 
-def main_log(settings: UserSettings, chat_id: int, text: str, action: str):
-    log_chat_id = (f"\033[21m{chat_id}\033[0m" if settings.user_status == 0
-                   else (f"\033[21m\033[32m{chat_id}\033[0m" if settings.user_status == 1
+def main_log(user_status: int, chat_id: int, text: str, action: str) -> None:
+    log_chat_id = (f"\033[21m{chat_id}\033[0m" if user_status == 0
+                   else (f"\033[21m\033[32m{chat_id}\033[0m" if user_status == 1
                          else f"\033[21m\033[34m{chat_id}\033[0m"))
     print(f'{log_time_strftime()} {log_chat_id.ljust(15)} {action} {text.replace(f"{chr(92)}n", f"{chr(92)}{chr(92)}n")}')  # {chr(92)} = \ (escape sequences)
 
@@ -525,14 +524,16 @@ class Event:
 class MyMessage:
     def __init__(self, settings: UserSettings, date: str = "now", event_list: tuple | list[Event, ...] = tuple(), reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup()):
         if date == "now":
-            date = now_time_strftime(settings)
+            date = now_time_strftime(settings.timezone)
         self._event_list = event_list
         self._date = date
         self._settings = settings
         self.text = ""
         self.reply_markup = deepcopy(reply_markup)
 
-    def get_data(self, *, column_to_limit: str = "text", column_to_order: str = "event_id", WHERE: str, table: str = "root", MAXLEN: int = 2500, MAXEVENTCOUNT: int = 10, direction: Literal["ASC", "DESC"] = "DESC"):
+    def get_data(self, *, column_to_limit: str = "text", column_to_order: str = "event_id",
+                 WHERE: str, table: str = "root", MAXLEN: int = 2500, MAXEVENTCOUNT: int = 10,
+                 direction: Literal["ASC", "DESC"] = "DESC", prefix: str = "|"):
         data = get_values(column_to_limit, column_to_order, WHERE, table, MAXLEN, MAXEVENTCOUNT, direction)
         if data:
             if table == "root":
@@ -555,7 +556,7 @@ class MyMessage:
                     diapason_list[-1].append((0, 0))
 
                 [self.reply_markup.row(*[
-                    InlineKeyboardButton(f'{numpage}', callback_data=f'|{vals}') if vals else
+                    InlineKeyboardButton(f'{numpage}', callback_data=f'{prefix}{vals}') if vals else
                     InlineKeyboardButton(f' ', callback_data=f'None') for numpage, vals in row]) for row in
                  diapason_list[:8]]
                 # Образаем до 8 строк кнопок чтобы не было ошибки
@@ -637,8 +638,10 @@ class MyMessage:
 
 def search(settings: UserSettings, chat_id: int, query: str, id_list: list | tuple = tuple()) -> MyMessage:
     if not re.match(r'\S', query):
-        text = get_translate("request_empty", settings.lang)
-        return text, delmarkup
+        generated = MyMessage(settings, reply_markup=delmarkup)
+        generated.format(title=f'{get_translate("search", settings.lang)} {query}:\n',
+                         if_empty=get_translate("request_empty", settings.lang))
+        return generated
 
     querylst = query.replace('\n', ' ').split()
     splitquery = " OR ".join(f"date LIKE '%{x}%' OR text LIKE '%{x}%'OR status LIKE '%{x}%' OR event_id LIKE '%{x}%'" for x in querylst)

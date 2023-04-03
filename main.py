@@ -55,7 +55,8 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
     """
     if message_text.startswith('/calendar'):
         bot.send_message(chat_id, 'Выберите дату',
-                         reply_markup=mycalendar(settings, new_time_calendar(settings), chat_id))
+                         reply_markup=mycalendar(settings.timezone, settings.lang,
+                                                 new_time_calendar(settings.timezone), chat_id))
 
     elif message_text.startswith('/start'):
         markup = InlineKeyboardMarkup()
@@ -109,7 +110,8 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
         bot.send_message(chat_id=chat_id, text=value)
 
     elif message_text.startswith('/help'):
-        bot.send_message(chat_id=chat_id, text=get_translate("help", settings.lang), reply_markup=delmarkup)
+        bot.send_message(chat_id=chat_id, text=get_translate("help", settings.lang),
+                         reply_markup=delmarkup)
 
     elif message_text.startswith('/settings'):
         settings_lang, sub_urls, city, timezone_, direction, markup = settings.get_settings_markup()
@@ -117,20 +119,22 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
         bot.send_message(chat_id=chat_id, text=text, reply_markup=markup)
 
     elif message_text.startswith('/today'):
-        generated = today_message(settings=settings, chat_id=chat_id, date=now_time_strftime(settings))
+        generated = today_message(settings=settings, chat_id=chat_id, date=now_time_strftime(settings.timezone))
         generated.send(chat_id=chat_id)
 
     elif message_text.startswith('/sqlite') and is_admin_id(chat_id):
         try:
             with open(config.database_path, 'rb') as file:
-                bot.send_document(chat_id=chat_id, document=file, caption=f'{now_time_strftime(settings)}', reply_markup=databasemarkup)
+                bot.send_document(chat_id=chat_id, document=file,
+                                  caption=f'{now_time_strftime(settings.timezone)}', reply_markup=databasemarkup)
         except ApiTelegramException:
             bot.send_message(chat_id=chat_id, text='Отправить файл не получилось')
 
     elif message_text.startswith('/file') and is_admin_id(chat_id):
         try:
             with open(__file__, 'rb') as file:
-                bot.send_document(chat_id=chat_id, document=file, caption=f'{now_time_strftime(settings)}\nФайл_бота.py')
+                bot.send_document(chat_id=chat_id, document=file,
+                                  caption=f'{now_time_strftime(settings.timezone)}\nФайл_бота.py')
         except ApiTelegramException:
             bot.send_message(chat_id=chat_id, text='Отправить файл не получилось')
 
@@ -146,7 +150,7 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
             if response:
                 res = SQL(f'SELECT event_id, date, status, text FROM root WHERE user_id={chat_id} AND isdel=0;')
                 file = StringIO()
-                date = now_time_strftime(settings)
+                date = now_time_strftime(settings.timezone)
                 file.name = f'ToDoList {message.from_user.username} ({date}).csv'
                 file_writer = csv.writer(file)
                 file_writer.writerows([['event_id', 'date', 'status', 'text']])
@@ -191,8 +195,9 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         bot.register_next_step_handler(message, add_event)
 
     elif call_data == '/calendar':
-        bot.edit_message_text(get_translate("choose_date", settings.lang), chat_id, message_id, reply_markup=mycalendar(
-            settings, new_time_calendar(settings), chat_id))
+        bot.edit_message_text(get_translate("choose_date", settings.lang), chat_id, message_id,
+                              reply_markup=mycalendar(settings.timezone, settings.lang,
+                                                      new_time_calendar(settings.timezone), chat_id))
 
     elif call_data == 'back':
         bot.clear_step_handler_by_chat_id(chat_id)
@@ -203,7 +208,8 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                 generated.edit(chat_id=chat_id, message_id=message_id)
             except ApiTelegramException:
                 bot.edit_message_text(get_translate("choose_date", settings.lang), chat_id, message_id,
-                                      reply_markup=mycalendar(settings, [int(x) for x in DATE.split('.')[1:]][::-1], chat_id))
+                                      reply_markup=mycalendar(settings.timezone, settings.lang,
+                                                              [int(x) for x in DATE.split('.')[1:]][::-1], chat_id))
             else: return 0
 
     elif call_data == "message_del":
@@ -214,7 +220,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             bot.reply_to(message, get_translate("get_admin_rules", settings.lang), reply_markup=delmarkup)
 
     elif call_data == "set database":
-        DATE = now_time_strftime(settings)
+        DATE = now_time_strftime(settings.timezone)
         try:
             with open(config.database_path, 'rb') as file:
                 bot.send_document(chat_id, file, caption=f'{DATE}\nНа данный момент база выглядит так.', reply_markup=databasemarkup)
@@ -292,7 +298,8 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             generated.edit(chat_id=chat_id, message_id=message_id)
         except ApiTelegramException:
             bot.edit_message_text(get_translate("choose_date", settings.lang), chat_id, message_id,
-                                  reply_markup=mycalendar(settings, [int(x) for x in msg_date.split('.')[1:]][::-1], chat_id))
+                                  reply_markup=mycalendar(settings.timezone, settings.lang,
+                                                          [int(x) for x in msg_date.split('.')[1:]][::-1], chat_id))
         return
 
     elif call_data.startswith('PRE DEL '):
@@ -333,7 +340,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             generated.edit(chat_id=chat_id, message_id=message_id)
         except ApiTelegramException:
             bot.edit_message_text(get_translate("choose_date", settings.lang), chat_id, message_id,
-                                  reply_markup=mycalendar(settings, date, chat_id))
+                                  reply_markup=mycalendar(settings.timezone, settings.lang, date, chat_id))
         return
 
     elif call_data.startswith('|'):
@@ -366,7 +373,8 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         YY = int(call_data.split(' ')[-1])
         if 1980 <= YY <= 3000:
             bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id,
-                                          reply_markup=generate_month_calendar(settings, chat_id, YY))
+                                          reply_markup=generate_month_calendar(settings.timezone, settings.lang,
+                                                                               chat_id, YY))
         else:
             bot.answer_callback_query(callback_query_id=call_id, text="🤔")
         return 0
@@ -375,12 +383,14 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         sleep(0.5)  # Задержка
         date = [int(i) for i in call_data.split()[1:]]
         bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id,
-                                      reply_markup=mycalendar(settings=settings, YY_MM=date, chat_id=chat_id))
+                                      reply_markup=mycalendar(settings.timezone, settings.lang,
+                                                              YY_MM=date, chat_id=chat_id))
         return 0
 
     elif call_data == 'year now':
         try:
-            markup = generate_month_calendar(settings, chat_id, now_time(settings).year)
+            markup = generate_month_calendar(settings.timezone, settings.lang,
+                                             chat_id, now_time(settings.timezone).year)
             bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
         except ApiTelegramException:
             callback_handler(settings, chat_id, message_id, message_text, '/calendar', call_id, message)
@@ -406,11 +416,26 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         date = message_text.split(maxsplit=1)[0]
         generated = MyMessage(settings=settings, date=date, reply_markup=backmarkup)
         generated.get_data(WHERE=f'isdel = 0 AND user_id = {chat_id} AND status IN ("🎉", "🎊")',
-                           direction={"⬇️": "DESC", "⬆️": "ASC"}[settings.direction])
+                           direction={"⬇️": "DESC", "⬆️": "ASC"}[settings.direction],
+                           prefix="!")
         generated.format(title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n",
                          args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
                          if_empty=get_translate("nothing_found", settings.lang))
         generated.edit(chat_id=chat_id, message_id=message_id)
+
+    elif call_data.startswith("!"):
+        date = message_text.split(maxsplit=1)[0]
+        generated = MyMessage(settings=settings, date=date, reply_markup=backmarkup)
+        generated.get_events(WHERE=f'isdel = 0 AND user_id = {chat_id} AND status IN ("🎉", "🎊")',
+                             values=call_data[1:].split(","))
+        generated.format(title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n",
+                         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
+                         if_empty=get_translate("nothing_found", settings.lang))
+        try:
+            generated.edit(chat_id=chat_id, message_id=message_id, only_text=message.reply_markup)
+        except ApiTelegramException as e:
+            print(f'| ошибка "{e}"')
+            bot.answer_callback_query(callback_query_id=call_id, text=get_translate("already_on_this_page", settings.lang))
 
     elif call_data in ('<<<', '<<', '<', '⟳', '>', '>>', '>>>') or re.search(r"\A\d{2}\.\d{2}\.\d{4}\Z", call_data):
         if call_data in ('<<<', '>>>'):
@@ -433,14 +458,16 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             if call_data == '>': mydatatime = [mydatatime[0] + 1, 1]  if mydatatime[1] == 12 else [mydatatime[0], mydatatime[1] + 1]
             if call_data == '<<': mydatatime[0] -= 1
             if call_data == '>>': mydatatime[0] += 1
-            if call_data == '⟳': mydatatime = new_time_calendar(settings)
+            if call_data == '⟳': mydatatime = new_time_calendar(settings.timezone)
             sleep(0.5)  # Задержка
             if 1980 <= mydatatime[0] <= 3000:
                 try:
                     bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id,
-                                                  reply_markup=mycalendar(settings=settings, YY_MM=mydatatime, chat_id=chat_id))
+                                                  reply_markup=mycalendar(user_timezone=settings.timezone,
+                                                                          lang=settings.lang,
+                                                                          YY_MM=mydatatime, chat_id=chat_id))
                 except ApiTelegramException: # Если нажата кнопка ⟳, но сообщение не изменено
-                    generated = today_message(settings=settings, chat_id=chat_id, date=now_time_strftime(settings))
+                    generated = today_message(settings=settings, chat_id=chat_id, date=now_time_strftime(settings.timezone))
                     generated.edit(chat_id=chat_id, message_id=message_id)
             else:
                 bot.answer_callback_query(callback_query_id=call_id, text="🤔")
@@ -454,14 +481,14 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 def message_handler(message: Message):
     chat_id, message_text = message.chat.id, message.text
     settings = UserSettings(chat_id)
-    main_log(settings=settings, chat_id=chat_id, text=message_text, action="send   ")
+    main_log(user_status=settings.user_status, chat_id=chat_id, text=message_text, action="send   ")
     command_handler(settings, chat_id, message_text, message)
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query_handler(call: CallbackQuery):
     chat_id, message_id, call_data, message_text = call.message.chat.id, call.message.id, call.data, call.message.text
     settings = UserSettings(chat_id)
-    main_log(settings=settings, chat_id=chat_id, text=call_data, action="pressed")
+    main_log(user_status=settings.user_status, chat_id=chat_id, text=call_data, action="pressed")
     if call.data == 'None':
         return 0
     callback_handler(settings, chat_id, message_id, call.message.text, call.data, call.id, call.message)
@@ -471,7 +498,7 @@ def get_search_message(message: Message):
     query = ToHTML(message.text[1:].replace("--", '').replace("\n", ' '))
     chat_id = message.chat.id
     settings = UserSettings(user_id=chat_id)
-    main_log(settings=settings, chat_id=chat_id, text=message.text, action="search ")
+    main_log(user_status=settings.user_status, chat_id=chat_id, text=message.text, action="search ")
     generated = search(settings=settings, chat_id=chat_id, query=query)
     generated.send(chat_id=chat_id)
 
