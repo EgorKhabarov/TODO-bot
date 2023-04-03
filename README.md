@@ -1,8 +1,9 @@
 # Bot for organizing events by dates
 #### Allows you to store, add, edit and delete notes by date
 
+---
 
-# Commands:
+# [Commands](https://github.com/EgorKhabarov/TODO-telegram-bot/blob/master/lang.py#L453)
 | Command          | Description en              |
 |:-----------------|:----------------------------|
 | /start           | Start                       |
@@ -18,8 +19,9 @@
 | /search {query}  | Search                      |
 | #{query}         | Search                      |
 
-# Limits:
-(_func.limits_)
+---
+
+# [Limits](https://github.com/EgorKhabarov/TODO-telegram-bot/blob/master/func.py#L712)
 
 | user_status | price | maximum characters/day | maximum events/day |
 |:------------|:------|:-----------------------|:-------------------|
@@ -27,10 +29,11 @@
 | premium     | 🤷    | 8000                   | 40                 |
 | admin       | 🤷    | 999999                 | 999                |
 
-# DataBase
-* ### root  
-(_func.create_tables()_)
+---
 
+# [DataBase](https://github.com/EgorKhabarov/TODO-telegram-bot/blob/master/func.py#L89)
+
+* ### [root](https://github.com/EgorKhabarov/TODO-telegram-bot/blob/master/func.py#L97)
 | name     | data type | default value |
 |:---------|:----------|:--------------|
 | event_id | INT       | _NULL_        |
@@ -40,9 +43,7 @@
 | isdel    | INT       | 0             |
 | status   | TEXT      | ⬜️            |
 
-* ### settings
-(_func.create_tables()_)
-
+* ### [settings](https://github.com/EgorKhabarov/TODO-telegram-bot/blob/master/func.py#L111)
 | name              | data type | default value |
 |:------------------|:----------|:--------------|
 | user_id           | INT       | _NULL_        |
@@ -54,14 +55,13 @@
 | user_status       | INT       | 0             |
 | user_max_event_id | INT       | 1             |
 
-
-
+---
 
 # #TODO
 * [ ] Прокомментировать код.
 * [ ] Возможность удалить из корзины.
 * [ ] Изменение user_status для админов, добавить статус -1 это в бане (игнор сообщений).<br>+ Изменение списка команд для пользователя в зависимости от user_status
-* [ ] В поиск добавить шаблоны<br>`#date=dd.mm.yyyy` or `#date=dd.mm` or `#date=mm.yyyy` or `#date=dd..yyyy`<br>`#day=00`<br>`#month=0`<br>`#year=0000`<br>`#status=⬜️`<br>`#id=0`<br>Например `#date=1.2023 status=🎧` для поиска всех событий со статусом музыки за январь 2023 года.<br>Добавить поддержку спецсимволов sql LIKE (%, _ и.т.д.).<br><u><b>Жёсткий поиск</b></u> `#!query` <u><b>только то, что в поиске без вариаций</b></u>
+* [ ] В поиск добавить шаблоны<br>`#date=dd.mm.yyyy` or `#date=dd.mm` or `#date=mm.yyyy` or `#date=dd..yyyy`<br>`#day=00`<br>`#month=0`<br>`#year=0000`<br>`#status=⬜️`<br>`#id=0`<br>Например `#date=1.2023 status=🎧` для поиска всех событий со статусом музыки за январь 2023 года.<br>Добавить поддержку спецсимволов sql LIKE (%, _ и.т.д.).<br>Поиск <b><u>И</u></b> `#!query` только то, что в поиске без вариаций.
 * [ ] Добавить возможность конвертировать валюты через api.
 * [ ] Команда `/account`. Количество сообщений.<br>Как в гитхабе, график наличия событий цветными смайлами `⬜️(0) 🟩(1,3) 🟨(4,6) 🟧(7,9) 🟥(>=10)`
 
