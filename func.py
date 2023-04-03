@@ -365,7 +365,7 @@ def mycalendar(settings: UserSettings, YY_MM, chat_id) -> InlineKeyboardMarkup()
     beupdate = [x[0] for x in SqlResult]
 
     birthday = SQL(f'SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as date) FROM root '
-                   f'WHERE date LIKE "__.{MM:0>2}.{YY}" AND isdel = 0 AND '
+                   f'WHERE date LIKE "__.{MM:0>2}.____" AND isdel = 0 AND '
                    f'user_id = {chat_id} AND status IN ("🎉", "🎊")')
     birthdaylist = [x[0] for x in birthday]
 
@@ -402,7 +402,7 @@ def generate_month_calendar(settings: UserSettings, chat_id, YY) -> InlineKeyboa
         for nameM, numm in row:
             tag_today = "#" if isNowMonth(numm) else ""
             tag_event = "*" if numm in month_list else ""
-            tag_birthday = '!' if SQL(f'SELECT status FROM root WHERE date LIKE "__.{numm:0>2}.{YY}" AND isdel = 0 AND user_id = {chat_id} AND status IN ("🎉", "🎊") LIMIT 1') else ''
+            tag_birthday = '!' if SQL(f'SELECT status FROM root WHERE date LIKE "__.{numm:0>2}.____" AND isdel = 0 AND user_id = {chat_id} AND status IN ("🎉", "🎊") LIMIT 1') else ''
             result[-1][f'{tag_today}{nameM}{tag_event}{tag_birthday}'] = f'generate_calendar {YY} {numm}'
 
     markupL = [
