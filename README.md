@@ -1,6 +1,13 @@
-# Bot for organizing events by dates
-#### Allows you to store, add, edit and delete notes by date
+# Bot for organizing events by dates.
+Storing, adding, editing and deleting notes by date.
+You can tag a note with an emoji.
+Convenient search by emoji statuses and dates.
+Birthdays and holidays are marked on the calendar (you need to set an emoji status).
 
+Хранение, добавление, редактирование и удаление заметки по дате.
+Можно пометить заметку эмодзи.
+Удобный поиск по эмодзи статусам и датам.
+Дни рождения и праздники помечаются на календаре (нужно поставить эмодзи статус).
 ---
 
 # [Commands](https://github.com/EgorKhabarov/TODO-telegram-bot/blob/master/lang.py#L453)
@@ -70,6 +77,8 @@
 * [ ] Когда добавляешь событие пусть если фото или файл прикреплено к сообщению то бот к тексту добавляет ссылку на файл, а текст берёт из `message.caption`.
 * [ ] Когда удаляешь файл, то пусть все привязки к нему удаляются.
 
+* [ ] Полноценные уведомления.
+
 
 ### #Already done
 * [X] Добавить погоду на 5 дней `/forecast {city}`
@@ -83,6 +92,7 @@
 * <s>Добавить возможностью делиться результатом через поиск</s>
 * <s>Праздники на каждый день</s>
 
+---
 
 ```
 git clone https://github.com/EgorKhabarov/TODO-telegram-bot.git
