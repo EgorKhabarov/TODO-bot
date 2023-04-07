@@ -2,8 +2,7 @@
 Storing, adding, editing and deleting notes by date.
 You can tag a note with an emoji.
 Convenient search by emoji statuses and dates.
-Birthdays and holidays are marked on the calendar (you need to set an emoji status).
-
+Birthdays and holidays are marked on the calendar (you need to set an emoji status).<br><br>
 Хранение, добавление, редактирование и удаление заметки по дате.
 Можно пометить заметку эмодзи.
 Удобный поиск по эмодзи статусам и датам.
