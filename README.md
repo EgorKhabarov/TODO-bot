@@ -33,7 +33,7 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 |:------------|:------|:-----------------------|:-------------------|
 | normal      | 0     | 4000                   | 20                 |
 | premium     | 🤷    | 8000                   | 40                 |
-| admin       | 🤷    | 999999                 | 999                |
+| admin       | -     | ∞                      | ∞                  |
 
 ---
 
