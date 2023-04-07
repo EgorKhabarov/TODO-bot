@@ -148,6 +148,7 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
         try:
             response, t = CSVCooldown.check(chat_id)
             if response:
+                bot.send_chat_action(chat_id=message.chat.id, action='upload_document')
                 res = SQL(f'SELECT event_id, date, status, text FROM root WHERE user_id={chat_id} AND isdel=0;')
                 file = StringIO()
                 date = now_time_strftime(settings.timezone)
