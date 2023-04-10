@@ -450,7 +450,7 @@ Reduce the number of characters or remove unnecessary events."""
         "ru": "Добавить бота в группу",
         "en": "Add a bot to a group"
     },
-    "defaultcommandlist": {
+    "0_command_list": {
         "ru": [
             BotCommand("start",           "Старт"),
             BotCommand("calendar",        "Календарь"),
@@ -474,7 +474,7 @@ Reduce the number of characters or remove unnecessary events."""
             BotCommand("help",            "Help"),
             BotCommand("settings",        "Settings")]
     },
-    "premiumcommandlist": {
+    "1_command_list": {
         "ru": [
             BotCommand("start",           "Старт"),
             BotCommand("calendar",        "Календарь"),
@@ -499,6 +499,34 @@ Reduce the number of characters or remove unnecessary events."""
             BotCommand("save_to_csv",     "Save my data in csv"),
             BotCommand("help",            "Help"),
             BotCommand("settings",        "Settings")]
+    },
+    "2_command_list": {
+        "ru": [
+            BotCommand("start", "Старт"),
+            BotCommand("calendar", "Календарь"),
+            BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
+            BotCommand("weather", "{city} Погода"),
+            BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
+            BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
+            BotCommand("deleted", "Корзина"),
+            BotCommand("dice", "Кинуть кубик"),
+            BotCommand("save_to_csv", "Сохранить мои данные в csv"),
+            BotCommand("help", "Помощь"),
+            BotCommand("settings", "Настройки"),
+            BotCommand("setuserstatus", "{id} {status} Изменить статус пользователя")],
+        "en": [
+            BotCommand("start", "Start"),
+            BotCommand("calendar", "Calendar"),
+            BotCommand("today", "Today's message"),
+            BotCommand("weather", "{city} Weather"),
+            BotCommand("forecast", "{city} Weather forecast for 5 days"),
+            BotCommand("week_event_list", "Weekly events"),
+            BotCommand("deleted", "Trash bin"),
+            BotCommand("dice", "Roll the dice (randomizer)"),
+            BotCommand("save_to_csv", "Save my data in csv"),
+            BotCommand("help", "Help"),
+            BotCommand("settings", "Settings"),
+            BotCommand("setuserstatus", "{id} {status} Change user status")]
     },
     "": {
         "ru": "",

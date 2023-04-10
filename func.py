@@ -3,7 +3,7 @@ from sqlite3 import connect, Error # pip3.10 install --user sqlite3
 from calendar import monthcalendar
 from urllib.parse import urlparse
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Any
 from copy import deepcopy
 from time import time
 import re
@@ -191,7 +191,7 @@ def check_bells(settings: UserSettings, chat_id): # TODO доделать check_
         if status == '⏰':
             text = f'{alarm}\n<b>{event_id}.</b>🔕\n{text}'
         if status in ('🎉', '🎊'):
-            text = f'{holiday}\n<b>{event_id}.</b>{status} {day_info(settings, date)}\n{text}'
+            text = f'{holiday}\n<b>{event_id}.</b>{status} {DayInfo(settings, date)}\n{text}'
         try:
             SQL(f"UPDATE root SET status = '🔕' WHERE user_id = {chat_id} AND event_id = {event_id} AND date = '{date}' AND status = '⏰';", commit=True)
         except Error as e:
@@ -226,7 +226,7 @@ def year_info(year: int, lang: str):
 def get_week_number(YY, MM, DD): # TODO добавить номер недели в календари
     return datetime(YY, MM, DD).isocalendar()[1]
 
-class day_info:
+class DayInfo:
     def __init__(self, settings: UserSettings, date):
         today, tomorrow, day_after_tomorrow, yesterday, day_before_yesterday, after, ago, Fday = get_translate("relative_date_list", settings.lang)
         x = now_time(settings.timezone)
@@ -338,7 +338,7 @@ def forecast_in(settings: UserSettings, city: str):
         city_time = hour['dt_txt'].replace('-', '.')[:-3]
         date = ".".join(city_time.split()[0].split('.')[::-1])
         if date not in result:
-            day = day_info(settings, date)
+            day = DayInfo(settings, date)
             result += f"\n\n<b>{date}</b> <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})"
         result += f"\n{city_time.split()[-1]} {weather_icon}<b>{temp:⠀>2.0f}°C 💨{wind_speed:.0f}м/с {wind_deg_icon}</b> <u>{weather_description}</u>."
     return result
@@ -465,7 +465,7 @@ def markdown(text: str, status: str, suburl=False) -> str:
         return Spoiler(text)
     else: return text
 
-def get_translate(target: str, lang_iso_code: str) -> str:
+def get_translate(target: str, lang_iso_code: str) -> Any:
     try:
         return translation[target][lang_iso_code]
     except KeyError:
@@ -600,7 +600,7 @@ class MyMessage:
         :param if_empty: Если результат запроса пустой
         :return:         message.text
         """
-        day = day_info(self._settings, self._date)
+        day = DayInfo(self._settings, self._date)
 
         format_string = title.format(
             date=day.date,
@@ -612,7 +612,7 @@ class MyMessage:
             format_string += if_empty
         else:
             for n, event in enumerate(self._event_list):
-                day = day_info(self._settings, event.date)
+                day = DayInfo(self._settings, event.date)
                 format_string += args.format(
                     date=day.date,
                     strdate=day.str_date,
@@ -722,4 +722,4 @@ def is_exceeded_limit(chat_id: int, date: str, limit: tuple[int, int] = (4000, 2
     return res
 
 def is_admin_id(chat_id):
-    return chat_id in config.admin_id
+    return (chat_id in config.admin_id) or (int(SQL(f"SELECT user_status FROM settings WHERE user_id={chat_id};")[0][0]) == 2)
