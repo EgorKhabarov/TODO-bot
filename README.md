@@ -10,6 +10,9 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 
 ---
 
+<details>
+<summary>Commands</summary>
+
 # [Commands](/lang.py#L453)
 | Command          | Description                 |
 |:-----------------|:----------------------------|
@@ -26,7 +29,10 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 | /search {query}  | Search                      |
 | #{query}         | Search                      |
 
----
+</details>
+
+<details>
+<summary>Limits</summary>
 
 # [Limits](/func.py#L712&L716)
 
@@ -36,7 +42,10 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 | premium     | 🤷    | 8000                   | 40                 |
 | admin       | -     | ∞                      | ∞                  |
 
----
+</details>
+
+<details>
+<summary>DataBase</summary>
 
 # [DataBase](/func.py#L89&L121)
 
@@ -62,7 +71,7 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 | user_status       | INT       | 0             |
 | user_max_event_id | INT       | 1             |
 
----
+</details>
 
 # #TODO
 * [ ] Прокомментировать код.
