@@ -68,7 +68,7 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 * [ ] Группы для статусов событий
 * [ ] Возможность удалить из корзины.
 * [ ] Изменение user_status для админов, добавить статус -1 это в бане (игнор сообщений).<br>
- + Изменение списка команд для пользователя в зависимости от user_status
+  + Изменение списка команд для пользователя в зависимости от user_status
 * [ ] В поиск добавить шаблоны<br>
  `#date=dd.mm.yyyy` or `#date=dd.mm` or `#date=mm.yyyy` or `#date=dd..yyyy`<br>
  `#day=00`<br>
