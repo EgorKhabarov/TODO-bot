@@ -9,7 +9,7 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 Дни рождения и праздники помечаются на календаре (нужно поставить эмодзи статус).
 ---
 
-# [Commands](https://github.com/EgorKhabarov/TODO-telegram-bot/blob/master/lang.py#L453)
+# [Commands](/blob/master/lang.py#L453)
 | Command          | Description en              |
 |:-----------------|:----------------------------|
 | /start           | Start                       |
@@ -27,7 +27,7 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 
 ---
 
-# [Limits](https://github.com/EgorKhabarov/TODO-telegram-bot/blob/master/func.py#L712)
+# [Limits](/blob/master/func.py#L712)
 
 | user_status | price | maximum characters/day | maximum events/day |
 |:------------|:------|:-----------------------|:-------------------|
@@ -37,9 +37,9 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 
 ---
 
-# [DataBase](https://github.com/EgorKhabarov/TODO-telegram-bot/blob/master/func.py#L89)
+# [DataBase](/blob/master/func.py#L89)
 
-* ### [root](https://github.com/EgorKhabarov/TODO-telegram-bot/blob/master/func.py#L97)
+* ### [root](/blob/master/func.py#L97)
 | name     | data type | default value |
 |:---------|:----------|:--------------|
 | event_id | INT       | _NULL_        |
@@ -49,7 +49,7 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 | isdel    | INT       | 0             |
 | status   | TEXT      | ⬜️            |
 
-* ### [settings](https://github.com/EgorKhabarov/TODO-telegram-bot/blob/master/func.py#L111)
+* ### [settings](/blob/master/func.py#L111)
 | name              | data type | default value |
 |:------------------|:----------|:--------------|
 | user_id           | INT       | _NULL_        |
