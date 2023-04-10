@@ -94,13 +94,13 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 * [ ] Полноценные уведомления.
 
 
-### #Already done
+# #Already done
 * [X] Добавить погоду на 5 дней `/forecast {city}`
 * [X] SQL ORM с диапазонами.
 * [X] Генерация сообщений по шаблону `"{template}"`.
 
 
-### #Removed from TODO
+# #Removed from TODO
 * <s>_Убрать возможность пересылки обычных сообщений_</s>
 * <s>Вставлять праздники за прошлые года</s>
 * <s>Добавить возможностью делиться результатом через поиск</s>
