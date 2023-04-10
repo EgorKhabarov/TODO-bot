@@ -11,7 +11,7 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 ---
 
 # [Commands](/lang.py#L453)
-| Command          | Description en              |
+| Command          | Description                 |
 |:-----------------|:----------------------------|
 | /start           | Start                       |
 | /calendar        | Calendar                    |
@@ -28,7 +28,7 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 
 ---
 
-# [Limits](/func.py#L712)
+# [Limits](/func.py#L712&L716)
 
 | user_status | price | maximum characters/day | maximum events/day |
 |:------------|:------|:-----------------------|:-------------------|
@@ -38,9 +38,9 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 
 ---
 
-# [DataBase](/func.py#L89)
+# [DataBase](/func.py#L89&L121)
 
-* ### [root](/func.py#L97)
+* ### [root](/func.py#L97&L105)
 | name     | data type | default value |
 |:---------|:----------|:--------------|
 | event_id | INT       | _NULL_        |
@@ -50,7 +50,7 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 | isdel    | INT       | 0             |
 | status   | TEXT      | ⬜️            |
 
-* ### [settings](/func.py#L111)
+* ### [settings](/func.py#L111&L121)
 | name              | data type | default value |
 |:------------------|:----------|:--------------|
 | user_id           | INT       | _NULL_        |
