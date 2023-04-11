@@ -15,26 +15,18 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 Кнопка `⟳` возвращает календарь на текущую дату если он находится на другой, иначе она заходит на один этап ниже по меню и в итоге откроет сообщение с текущей датой.<br>
 При нажатии самой верхней кнопки с названием месяца и информацией о годе можно открыть список месяцев.
 
-<picture>
- <source media="(prefers-color-scheme: dark)"  srcset="images/calendar_dark.png">
- <source media="(prefers-color-scheme: light)" srcset="images/calendar_light.png">
- <img alt="calendar.png"                          src="images/calendar_default.png">
-</picture>
+<img alt="calendar.png" src="images/calendar.png">
 
 В календаре существуют несколько обозначений.
 
-| Знак | Значение                                                                                                               |
-|:----:|:-----------------------------------------------------------------------------------------------------------------------|
-| `#`  | Сегодняшний номер дня (показывается в любых месяцах)                                                                   |
-| `*`  | В этот день есть события                                                                                               |
-| `!`  | В этот день или в этот<br>день другого года есть<br>событие с статусом или<br>день рождения `🎉` или <br>праздник `🎊` |
+| Знак | Значение                                                                                                                                                                                                                                    |
+|:----:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `#`  | Сегодняшний номер дня (показывается в любых месяцах)                                                                                                                                                                                        |
+| `*`  | В этот день есть события                                                                                                                                                                                                                    |
+| `!`  | В этот день или в этот<br>день другого года есть<br>событие с статусом или<br>день рождения `🎉` или <br>праздник `🎊`<br/> <details><summary>Подробнее</summary>Это помогает не забыть, что в этот день у кого то день рождения.</details> |
 
 
-<picture>
- <source media="(prefers-color-scheme: dark)"  srcset="images/calendar_elements_dark.png">
- <source media="(prefers-color-scheme: light)" srcset="images/calendar_elements_light.png">
- <img alt="calendar.png"                          src="images/calendar_elements_default.png">
-</picture>
+<img alt="calendar.png" src="images/calendar_elements.png">
 
 При нажатии на кнопку в календаре с датой открывается сегодняшняя дата.
 
@@ -49,12 +41,17 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 |   `✖`   | Удалить это сообщение от бота |
 
 
-<picture>
- <source media="(prefers-color-scheme: dark)"  srcset="images/date_dark.png">
- <source media="(prefers-color-scheme: light)" srcset="images/date_light.png">
- <img alt="calendar.png"                          src="images/date_default.png">
-</picture>
+<img alt="calendar.png" src="images/date.png">
 
+В боте существуют лимиты для разных групп пользователей.
+
+# [Limits](/func.py#L712&L716)
+
+| user_status | price | maximum characters/day | maximum events/day |
+|:------------|:------|:-----------------------|:-------------------|
+| default     | 0     | 4000                   | 20                 |
+| premium     | 🤷    | 8000                   | 40                 |
+| admin       | -     | ∞                      | ∞                  |
 
 <details>
 <summary>Commands</summary>
@@ -74,19 +71,6 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 | /settings        | Settings                    |
 | /search {query}  | Search                      |
 | #{query}         | Search                      |
-
-</details>
-
-<details>
-<summary>Limits</summary>
-
-# [Limits](/func.py#L712&L716)
-
-| user_status | price | maximum characters/day | maximum events/day |
-|:------------|:------|:-----------------------|:-------------------|
-| normal      | 0     | 4000                   | 20                 |
-| premium     | 🤷    | 8000                   | 40                 |
-| admin       | -     | ∞                      | ∞                  |
 
 </details>
 
