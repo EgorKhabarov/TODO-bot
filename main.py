@@ -56,7 +56,8 @@ def set_command(settings: UserSettings, chat_id: int, user_status: int | str = 0
     lang = settings.lang # SQL(f"SELECT lang FROM settings WHERE user_id={chat_id};")[0][0]
     try:
         return bot.set_my_commands(commands=get_translate(target, lang), scope=BotCommandScopeChat(chat_id=chat_id))
-    except (ApiTelegramException, KeyError):
+    except (ApiTelegramException, KeyError) as e:
+        print(f'Ошибка set_command: "{e}"')
         return False
 
 def command_handler(settings: UserSettings, chat_id: int, message_text: str, message: Message):
@@ -158,7 +159,7 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
 
     elif message_text.startswith('/save_to_csv'):
         try:
-            response, t = CSVCooldown.check(chat_id)
+            response, t = CSVCooldown.check(key=chat_id)
             if response:
                 bot.send_chat_action(chat_id=message.chat.id, action='upload_document')
                 res = SQL(f'SELECT event_id, date, status, text FROM root WHERE user_id={chat_id} AND isdel=0;')
@@ -177,8 +178,8 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
             bot.send_message(chat_id=chat_id, text=get_translate("file_is_too_big", settings.lang))
 
     elif message_text.startswith('/version'):
-        bot.send_message(chat_id,
-                         f'Version {config.__version__}')
+        bot.send_message(chat_id=chat_id,
+                         text=f'Version {config.__version__}')
 
     elif message_text.startswith('/setuserstatus') and is_admin_id(chat_id):
         if len(message_text.split(" ")) == 3:
@@ -209,7 +210,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         if is_exceeded_limit(chat_id, message_date, list(limits.values())[int(settings.user_status)], (1, 1)):
             bot.answer_callback_query(callback_query_id=call_id, text=get_translate("exceeded_limit", settings.lang), show_alert=True)
             return 0
-        bot.edit_message_text(f'{ToHTML(message_text)}\n\n0.0.⬜️\n{get_translate("send_event_text", settings.lang)}',
+        bot.edit_message_text(f'{ToHTML(message_text)}\n\n0.0.⬜\n{get_translate("send_event_text", settings.lang)}',
                               chat_id, message_id, reply_markup=backmarkup)
 
         def add_event(message2):

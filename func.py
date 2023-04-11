@@ -660,7 +660,7 @@ def search(settings: UserSettings, chat_id: int, query: str, id_list: list | tup
 
 def week_event_list(settings: UserSettings, chat_id, id_list: list | tuple = tuple()) -> MyMessage:
     WHERE = f"""(user_id = {chat_id} AND isdel = 0)
-                AND (substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2) 
+                AND (SUBSTR(date, 7, 4) || '-' || SUBSTR(date, 4, 2) || '-' || SUBSTR(date, 1, 2) 
                 BETWEEN DATE('now') AND DATE('now', '+7 day'))"""
     generated = MyMessage(settings, reply_markup=delmarkup)
     if id_list:
@@ -676,7 +676,7 @@ def deleted(settings: UserSettings, chat_id, id_list: list | tuple = tuple()) ->
     WHERE = f"""user_id = {chat_id} AND isdel != 0"""
     # Удаляем события старше MAXTIME дня
     SQL(f"""DELETE FROM root WHERE isdel != 0 AND user_id = {chat_id} AND julianday('now') - 
-    julianday(substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2)) > {7};""", commit=True)
+    julianday(SUBSTR(date, 7, 4) || '-' || SUBSTR(date, 4, 2) || '-' || SUBSTR(date, 1, 2)) > {7};""", commit=True)
 
     generated = MyMessage(settings, reply_markup=delmarkup)
     if id_list:
