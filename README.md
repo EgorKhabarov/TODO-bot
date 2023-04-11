@@ -16,9 +16,9 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 При нажатии самой верхней кнопки с названием месяца и информацией о годе можно открыть список месяцев.
 
 <picture>
- <img alt="calendar.png"                          src="images/calendar_default.png">
  <source media="(prefers-color-scheme: dark)"  srcset="images/calendar_dark.png">
  <source media="(prefers-color-scheme: light)" srcset="images/calendar_light.png">
+ <img alt="calendar.png"                          src="images/calendar_default.png">
 </picture>
 
 В календаре существуют несколько обозначений.
@@ -31,9 +31,9 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 
 
 <picture>
- <img alt="calendar.png"                          src="images/calendar_elements_default.png">
  <source media="(prefers-color-scheme: dark)"  srcset="images/calendar_elements_dark.png">
  <source media="(prefers-color-scheme: light)" srcset="images/calendar_elements_light.png">
+ <img alt="calendar.png"                          src="images/calendar_elements_default.png">
 </picture>
 
 При нажатии на кнопку в календаре с датой открывается сегодняшняя дата.
@@ -50,9 +50,9 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 
 
 <picture>
- <img alt="calendar.png"                          src="images/date_default.png">
  <source media="(prefers-color-scheme: dark)"  srcset="images/date_dark.png">
  <source media="(prefers-color-scheme: light)" srcset="images/date_light.png">
+ <img alt="calendar.png"                          src="images/date_default.png">
 </picture>
 
 
