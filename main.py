@@ -255,7 +255,6 @@ def callback_handler(settings: UserSettings,
                 bot.edit_message_text(get_translate("choose_date", settings.lang), chat_id, message_id,
                                       reply_markup=mycalendar(settings.timezone, settings.lang,
                                                               [int(x) for x in DATE.split('.')[1:]][::-1], chat_id))
-            else: return 0
 
     elif call_data == "message_del":
         bot.clear_step_handler_by_chat_id(chat_id)
@@ -278,7 +277,6 @@ def callback_handler(settings: UserSettings,
         with open(f"{message.document.file_name}", "wb") as new_file:
             new_file.write(downloaded_file)
         bot.reply_to(message, 'Файл записан')
-        return 0
 
     elif call_data == 'Edit Edit':
         text = ToHTML(message_text.split('\n', maxsplit=2)[-1])
@@ -330,7 +328,6 @@ def callback_handler(settings: UserSettings,
         bot.edit_message_text(f'{message_text.split(maxsplit=1)[0]}\n<b>{get_translate("select_status_to_event", settings.lang)}\n'
                               f'{event_id}.</b>{status}\n{markdown(text, status, settings.sub_urls)}',
                               chat_id, message_id, reply_markup=markup)
-        return
 
     elif call_data.startswith('set_status'):
         'set_status 🗺 247 03.02.2023'
@@ -345,7 +342,6 @@ def callback_handler(settings: UserSettings,
             bot.edit_message_text(get_translate("choose_date", settings.lang), chat_id, message_id,
                                   reply_markup=mycalendar(settings.timezone, settings.lang,
                                                           [int(x) for x in msg_date.split('.')[1:]][::-1], chat_id))
-        return
 
     elif call_data.startswith('PRE DEL '):
         date, event_id = call_data.split(maxsplit=4)[2:]
@@ -365,7 +361,6 @@ def callback_handler(settings: UserSettings,
                               f'{text[:3800]}\n\n'
                               f'{end_text}', chat_id, message_id,
                               reply_markup=predelmarkup)
-        return
 
     elif call_data.startswith('DEL '):
         # call_data="DEL 00.00.0000 000 text"
@@ -386,7 +381,6 @@ def callback_handler(settings: UserSettings,
         except ApiTelegramException:
             bot.edit_message_text(get_translate("choose_date", settings.lang), chat_id, message_id,
                                   reply_markup=mycalendar(settings.timezone, settings.lang, date, chat_id))
-        return
 
     elif call_data.startswith('|'):
         id_list = call_data[1:].split(",") # [int(e) for e in call_data[1:].split(",")] # [int(e) for e in re.findall(r"(\d+)", call_data[1:])]
@@ -411,7 +405,6 @@ def callback_handler(settings: UserSettings,
         except ApiTelegramException as e:
             print(f'| ошибка "{e}"')
             bot.answer_callback_query(callback_query_id=call_id, text=get_translate("already_on_this_page", settings.lang))
-        return 0
 
     elif call_data.startswith('generate_month_calendar '):
         sleep(0.5)  # Задержка
@@ -422,7 +415,6 @@ def callback_handler(settings: UserSettings,
                                                                                chat_id, YY))
         else:
             bot.answer_callback_query(callback_query_id=call_id, text="🤔")
-        return 0
 
     elif call_data.startswith('generate_calendar '):
         sleep(0.5)  # Задержка
@@ -430,7 +422,6 @@ def callback_handler(settings: UserSettings,
         bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id,
                                       reply_markup=mycalendar(settings.timezone, settings.lang,
                                                               YY_MM=date, chat_id=chat_id))
-        return 0
 
     elif call_data == 'year now':
         try:
@@ -439,7 +430,6 @@ def callback_handler(settings: UserSettings,
             bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
         except ApiTelegramException:
             callback_handler(settings, chat_id, message_id, message_text, '/calendar', call_id, message)
-        return 0
 
     elif call_data.startswith('settings'):
         par_name, par_val = call_data.split(' ', maxsplit=2)[1:]
@@ -457,7 +447,6 @@ def callback_handler(settings: UserSettings,
                                   parse_mode='html', reply_markup=markup)
         except ApiTelegramException:
             pass
-        return 0
 
     elif call_data.startswith('!birthday'):
         date = message_text.split(maxsplit=1)[0]
