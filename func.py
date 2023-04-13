@@ -16,7 +16,7 @@ import config
 
 
 """sql"""
-def SQL(Query: str, params: tuple = (), commit: bool = False):
+def SQL(Query: str, params: tuple = (), commit: bool = False) -> list[tuple[int | str | bytes, ...], ...]:
     """
     Выполняет SQL запрос
     Пробовал через with, но оно не закрывало файл
@@ -139,12 +139,19 @@ def create_event(user_id: int, date: str, text: str) -> bool:
         print(f"Произошла ошибка в функции create_event: '{e}'  arg: {user_id=}, {date=}, {text=}")
         return False
 
-def get_values(column_to_limit: str, column_to_order: str, WHERE: str, table: str, MAXLEN: int = 3500, MAXEVENTCOUNT: int = 10, direction: Literal["ASC", "DESC"] = "DESC"):
+def get_values(column_to_limit: str,
+               column_to_order: str,
+               WHERE: str,
+               table: str,
+               MAXLEN: int = 3500,
+               MAXEVENTCOUNT: int = 10,
+               direction: Literal["ASC", "DESC"] = "DESC"
+               ) -> list[tuple[int | str | bytes, ...], ...]:
     """
-    :param table:           Название таблицы
     :param column_to_limit: Столбец для ограничения
     :param column_to_order: Столбец для сортировки (например id)
     :param WHERE:           Условие выбора строк из таблицы
+    :param table:           Название таблицы
     :param MAXLEN:          Максимальная длинна символов в одном диапазоне
     :param MAXEVENTCOUNT:   Максимальное количество строк в диапазоне
     :param direction:       Направление сбора строк ("ASC" or "DESC")
@@ -200,20 +207,20 @@ def check_bells(settings: UserSettings, chat_id): # TODO доделать check_
 
 
 """time"""
-def now_time(user_timezone: int):
+def now_time(user_timezone: int) -> datetime:
     return datetime.now()+timedelta(hours=user_timezone)
 
-def now_time_strftime(user_timezone: int):
+def now_time_strftime(user_timezone: int) -> str:
     return now_time(user_timezone).strftime("%d.%m.%Y")
 
-def log_time_strftime(log_timezone: int = config.hours_difference):
+def log_time_strftime(log_timezone: int = config.hours_difference) -> str:
     return (now_time(log_timezone)).strftime("%Y.%m.%d %H:%M:%S")
 
-def new_time_calendar(user_timezone: int):
+def new_time_calendar(user_timezone: int) -> tuple[int, int]:
     date = now_time(user_timezone)
-    return [date.year, date.month]
+    return date.year, date.month
 
-def year_info(year: int, lang: str):
+def year_info(year: int, lang: str) -> str:
     result = ""
     if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0):
         result += get_translate("leap", lang)
@@ -223,7 +230,7 @@ def year_info(year: int, lang: str):
     result += ("🐀", "🐂", "🐅", "🐇", "🐲", "🐍", "🐴", "🐐", "🐒", "🐓", "🐕", "🐖")[(year - 4) % 12]
     return result
 
-def get_week_number(YY, MM, DD): # TODO добавить номер недели в календари
+def get_week_number(YY, MM, DD) -> int: # TODO добавить номер недели в календари
     return datetime(YY, MM, DD).isocalendar()[1]
 
 class DayInfo:
@@ -272,7 +279,7 @@ def cache_decorator(cache_time_sec: int = 32):
     return decorator
 
 @cache_decorator(60)
-def weather_in(settings: UserSettings, city: str): # TODO защита от спам атак
+def weather_in(settings: UserSettings, city: str) -> str: # TODO защита от спам атак
     """
     Возвращает текущую погоду по городу city
     """
@@ -310,7 +317,7 @@ def weather_in(settings: UserSettings, city: str): # TODO защита от сп
                                                           sunrise, sunset, visibility)
 
 @cache_decorator(3600)
-def forecast_in(settings: UserSettings, city: str):
+def forecast_in(settings: UserSettings, city: str) -> str:
     print(f"forecast in {city}")
     url = "http://api.openweathermap.org/data/2.5/forecast"
     weather = get(url, params={'APPID': config.weather_api_key, 'q': city, 'units': 'metric', 'lang': settings.lang}).json()
@@ -431,7 +438,7 @@ def ToHTML(text: str) -> str:
 def NoHTML(text: str) -> str:
     return text.replace("&lt;", '<').replace("&gt;", '>').replace("&#39;", "'").replace('&quot;', '"')
 
-def markdown(text: str, status: str, suburl=False) -> str:
+def markdown(text: str, status: str, suburl: bool | int = False) -> str:
     """Добавляем эффекты к событию по статусу"""
     def OrderList(_text: str, n=0) -> str: # Нумерует каждую строчку
         lst = _text.splitlines()
@@ -721,5 +728,5 @@ def is_exceeded_limit(chat_id: int, date: str, limit: tuple[int, int] = (4000, 2
     res = (user_limit[0] + difference[0]) >= limit[0] or (user_limit[1] + difference[1]) >= limit[1]
     return res
 
-def is_admin_id(chat_id):
+def is_admin_id(chat_id) -> bool:
     return (chat_id in config.admin_id) or (int(SQL(f"SELECT user_status FROM settings WHERE user_id={chat_id};")[0][0]) == 2)

@@ -24,7 +24,7 @@ BOT_USERNAME = Me.username
 COMMANDS = ('calendar', 'start', 'deleted', 'version', 'forecast', 'week_event_list',
             'weather', 'search', 'bell', 'dice', 'help', 'settings', 'today', 'sqlite',
             'file', 'SQL', 'save_to_csv', 'setuserstatus')
-def check(key, val):
+def check(key, val) -> str:
     """Подсветит не правильные настройки красным цветом"""
     keylist = {"can_join_groups": "True", "can_read_all_group_messages": "True", "supports_inline_queries": "False"}
     indent = ' ' * 22
@@ -60,7 +60,10 @@ def set_command(settings: UserSettings, chat_id: int, user_status: int | str = 0
         print(f'Ошибка set_command: "{e}"')
         return False
 
-def command_handler(settings: UserSettings, chat_id: int, message_text: str, message: Message):
+def command_handler(settings: UserSettings,
+                    chat_id: int,
+                    message_text: str,
+                    message: Message) -> None:
     """
     Отвечает за реакцию бота на команды
     метод message.text.startswith("") используется для групп (в них сообщение приходит в формате /command{BOT_USERNAME})
@@ -203,7 +206,13 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
 
         bot.reply_to(message=message, text=text)
 
-def callback_handler(settings: UserSettings, chat_id: int, message_id: int, message_text: str, call_data: str, call_id: int, message: Message):
+def callback_handler(settings: UserSettings,
+                     chat_id: int,
+                     message_id: int,
+                     message_text: str,
+                     call_data: str,
+                     call_id: int,
+                     message: Message):
     if call_data == "event_add":
         bot.clear_step_handler_by_chat_id(chat_id)
         message_date = message_text.split(maxsplit=1)[0]
