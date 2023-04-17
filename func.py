@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
+from calendar import monthcalendar, isleap
 from sqlite3 import connect, Error # pip3.10 install --user sqlite3
-from calendar import monthcalendar
 from urllib.parse import urlparse
 from dataclasses import dataclass
 from typing import Literal, Any
@@ -222,7 +222,7 @@ def new_time_calendar(user_timezone: int) -> tuple[int, int]:
 
 def year_info(year: int, lang: str) -> str:
     result = ""
-    if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0):
+    if isleap(year): # year % 4 == 0 and (year % 100 != 0 or year % 400 == 0):
         result += get_translate("leap", lang)
     else:
         result += get_translate("not_leap", lang)

@@ -586,4 +586,5 @@ def get_search_message(message: Message):
     except ApiTelegramException:
         bot.reply_to(message, get_translate("get_admin_rules", settings.lang), reply_markup=delmarkup)
 
-bot.infinity_polling()
+if __name__ == "__main__":
+    bot.infinity_polling()
