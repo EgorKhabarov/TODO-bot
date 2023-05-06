@@ -3,11 +3,15 @@ from telebot.types import BotCommand
 def end(lang: str):
     def closure_ru(num_diff: int):
         num_diff = str(num_diff)
-        if num_diff[-2:] in ('11', '12', '13', '14'): return 'дней'
-        if num_diff[-1] == '0': return 'дней'
-        if num_diff[-1] == '1': return 'день'
-        if num_diff[-1] in ('2', '3', '4'): return 'дня'
-        if num_diff[-1] in ('5', '6', '7', '8', '9'): return 'дней'
+        if num_diff[-2:] in ('11', '12', '13', '14') \
+                or num_diff[-1] == '0' \
+                or num_diff[-1] in ('5', '6', '7', '8', '9'):
+            return 'дней'
+        elif num_diff[-1] in ('2', '3', '4'):
+            return 'дня'
+        elif num_diff[-1] == '1':
+            return 'день'
+
 
     def closure_en(num_diff: int):
         return "day" if num_diff == 1 else "days"
@@ -152,12 +156,17 @@ Write /calendar or click on the button below"""
 | ❓ Вопрос
 | ⏱ В процессе
 | ⏰ Включить уведомление
+| 📆 Повторение каждый год
+| 🗞 Повторение каждую неделю
 
 <b>Поиск</b>
 Искать можно по дате по тексту (Регистр важен!), событиям, дате и id события
 Например если нужно искать события только за Август то можно написать #.09.
 8 января #08.09
-Все события с статусом дней рождения #🎉""",
+Все события с статусом дней рождения #🎉
+
+Получить id /id
+""",
         "en": """
 <b>Notation</b>
 | before each event there is a note for example 1.34.✅
@@ -210,12 +219,16 @@ Write /calendar or click on the button below"""
 | ❓ Question
 | ⏱ In progress
 | ⏰ Enable notification
+| 📆 Repeat every year
+| 🗞 Repeat every week
 
 <b>Search</b>
 You can search by date in the text (Case is important!), events, date and event id
 For example, if you need to search for events only for August, then you can write #.09.
 January 8 #08.09
 All events with birthday status #🎉
+
+Get id /id
 """
     },
     "settings": {
@@ -398,7 +411,9 @@ Reduce the number of characters or remove unnecessary events."""
             ('🗺 Путешествия                        ', '💻 Код                                '),
             ('🎧 Музыка                             ', '🪞 Скрыто                              '),
             ('⏱ В процессе                         ', '🛒 План покупок                       '),
-            ('⏰ Включить уведомление (не работает) ', '❓ Вопрос                             ')),
+            ('⏰ Включить уведомление (не работает) ', '❓ Вопрос                             '),
+            ('📆 Повторение каждый год              ', '🗞 Повторение каждую неделю           ')
+        ),
         "en": (
             ('⬜️ No Status                          ', '📋 Plan                                '),
             ('✅ Done                               ', '🗒 List (puts ▪️)                       '),
@@ -412,7 +427,9 @@ Reduce the number of characters or remove unnecessary events."""
             ('🗺 Travel                             ', '💻 Code                                '),
             ('🎧 Music                              ', '🪞 Hidden                               '),
             ('⏱ In Progress                        ', '🛒 Shopping Plan                       '),
-            ('⏰ Enable notification (not working)  ', '❓ Question                            ')),
+            ('⏰ Enable notification (not working)  ', '❓ Question                            '),
+            ('📆 Repeat every year                  ', '🗞 Repeat every week                   ')
+        ),
     },
     "are_you_sure": {
         "ru": "Вы уверены что хотите удалить",
@@ -528,9 +545,21 @@ Reduce the number of characters or remove unnecessary events."""
             BotCommand("settings",        "Settings"),
             BotCommand("setuserstatus",   "{id} {status} Change user status")]
     },
-    "": {
-        "ru": "",
-        "en": ""
+    "deldate": {
+        "ru": lambda x: f"<b>{x} " + end("ru")(x) + " до удаления</b>",
+        "en": lambda x: f"<b>{x} " + end("en")(x) + " before delete</b>"
+    },
+    "delete_permanently": {
+        "ru": "Удалить навсегда",
+        "en": "Delete permanently"
+    },
+    "trash_bin": {
+        "ru": "В корзину",
+        "en": "To trash bin"
+    },
+    "recover": {
+        "ru": "Восстановить",
+        "en": "Recover"
     },
     "": {
         "ru": "",
@@ -543,5 +572,5 @@ Reduce the number of characters or remove unnecessary events."""
     "": {
         "ru": "",
         "en": ""
-    }
+    },
 }
