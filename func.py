@@ -461,13 +461,13 @@ def markdown(text: str, status: str, suburl: bool | int = False) -> str:
 
     def SubUrls(_text: str):
         la = lambda url: f'<a href="{url[0]}">{urlparse(url[0]).netloc}</a>'
-        return re.sub(r'(http?s?://\S+)', la, _text)
+        return re.sub(r'(http?s?://[^\"\' ]+)', la, _text) # r'(http?s?://\S+)'
 
     def Code(_text: str):
         return f'<code>{_text}</code>'
 
     text = text.replace('\n\n', '\n⠀\n')
-    if suburl and status not in ('💻', ):
+    if (suburl and status not in ('💻', '❌🔗')) or status == "🔗":
         text = SubUrls(text)
     if status == '🧮':
         return OrderList(text)

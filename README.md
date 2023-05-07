@@ -44,7 +44,7 @@ When you click on the button in the calendar with the date, today's date opens.
 
 <img alt="calendar.png" src="images/date.png" style="border-radius: 16px;">
 
-# [Limits](/func.py#L712&L716)
+# [Limits](/func.py#L771&L775)
 
 The bot has limits for different user groups.
 
@@ -54,7 +54,7 @@ The bot has limits for different user groups.
 | premium     | 🤷    | 8000                   | 40                 |
 | admin       | -     | ∞                      | ∞                  |
 
-# [Поиск](/func.py#L639&L659)
+# [Поиск](/func.py#L684&L704)
 
 The bot has a search by events. You can search with `#query` or `/search query` commands.
 This search tries to find all matches.<br>
@@ -81,7 +81,7 @@ For example `#date=1.2023 status=🎧 youtube.com` to search for all events with
 <details>
 <summary>Commands</summary>
 
-# [Commands](/lang.py#L453)
+# [Commands](/lang.py#L472)
 | Command          | Description                 |
 |:-----------------|:----------------------------|
 | /start           | Start                       |
@@ -102,9 +102,9 @@ For example `#date=1.2023 status=🎧 youtube.com` to search for all events with
 <details>
 <summary>DataBase</summary>
 
-# [DataBase](/func.py#L89&L121)
+# [DataBase](/func.py#L93&L125)
 
-* ### [root](/func.py#L97&L105)
+* ### [root](/func.py#L102&L109)
 | name     | data type | default value |
 |:---------|:----------|:--------------|
 | event_id | INT       | _NULL_        |
@@ -114,7 +114,7 @@ For example `#date=1.2023 status=🎧 youtube.com` to search for all events with
 | isdel    | INT       | 0             |
 | status   | TEXT      | ⬜️            |
 
-* ### [settings](/func.py#L111&L121)
+* ### [settings](/func.py#L115&L125)
 | name              | data type | default value |
 |:------------------|:----------|:--------------|
 | user_id           | INT       | _NULL_        |
@@ -133,7 +133,7 @@ For example `#date=1.2023 status=🎧 youtube.com` to search for all events with
 * [ ] When trying to create files, immediately update the initial set of commands for all users
 * [ ] If there are no events for a specific day now, but there were earlier, and they remained in the old message, then process the error and update the message.<br>Instead of parsing from the message, make a database query
 * [ ] Comment and clean up the code.
-* [ ] Groups for event statuses `⭐️`
+* [ ] Groups for event statuses.
 * [ ] Sort in week_event_list by date
 * [ ] Ability to search by the date of the selected event
 * [ ] Add templates to search<br>
