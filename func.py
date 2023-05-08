@@ -464,7 +464,7 @@ def markdown(text: str, status: str, suburl: bool | int = False) -> str:
 
     def SubUrls(_text: str):
         la = lambda url: f'<a href="{url[0]}">{urlparse(url[0]).netloc}</a>'
-        return re.sub(r'(http?s?://[^\"\' ]+)', la, _text) # r'(http?s?://\S+)'
+        return re.sub(r'(http?s?://[^\"\'\n ]+)', la, _text) # r'(http?s?://\S+)'
 
     def Code(_text: str):
         return f'<code>{_text}</code>'
