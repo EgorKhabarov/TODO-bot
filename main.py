@@ -200,8 +200,7 @@ def command_handler(settings: UserSettings,
                 bot.send_chat_action(chat_id=message.chat.id, action='upload_document')
                 res = SQL(f'SELECT event_id, date, status, text FROM root WHERE user_id={chat_id} AND isdel=0;')
                 file = StringIO()
-                date = now_time_strftime(settings.timezone)
-                file.name = f'ToDoList {message.from_user.username} ({date}).csv'
+                file.name = f'ToDoList {message.from_user.username} ({now_time_strftime(settings.timezone)}).csv'
                 file_writer = csv.writer(file)
                 file_writer.writerows([['event_id', 'date', 'status', 'text']])
                 [file_writer.writerows([[str(event_id), date, str(status), NoHTML(text)]]) for event_id, date, status, text in res]
@@ -323,14 +322,14 @@ def callback_handler(settings: UserSettings,
 
     elif call_data == 'Edit Edit':
         text = ToHTML(message_text.split('\n', maxsplit=2)[-1])
-        date, *_, event_id = message_text.split("\n", maxsplit=1)[0].split(" ")
+        msg_date, *_, event_id = message_text.split("\n", maxsplit=1)[0].split(" ")
         try:
             SQL(f"UPDATE root SET text = '{text}' "
-                f"WHERE user_id={chat_id} AND event_id={event_id} AND date='{date}';", commit=True)
+                f"WHERE user_id={chat_id} AND event_id={event_id} AND date='{msg_date}';", commit=True)
         except Error as e:
             print(e)
         else:
-            generated = today_message(settings=settings, chat_id=chat_id, date=date)
+            generated = today_message(settings=settings, chat_id=chat_id, date=msg_date)
             generated.edit(chat_id=chat_id, message_id=message_id)
 
     elif call_data in ('event_edit', 'event_status', 'event_del', "event_del bin", "event_recover bin"):
@@ -374,21 +373,21 @@ def callback_handler(settings: UserSettings,
         bot.edit_message_text(text, chat_id, message_id, reply_markup=markup)
 
     elif call_data.startswith("recover"):
-        date, event_id = call_data.split(maxsplit=2)[1:]
+        event_date, event_id = call_data.split(maxsplit=2)[1:]
         SQL(f"UPDATE root SET isdel = 0 "
-            f"WHERE user_id = {chat_id} AND date = '{date}' AND event_id = {event_id};", commit=True)
+            f"WHERE user_id = {chat_id} AND date = '{event_date}' AND event_id = {event_id};", commit=True)
         callback_handler(settings, chat_id, message_id, message_text, "back bin", call_id, message)
 
     elif call_data.startswith('edit_page_status'):
-        _, event_id, date = call_data.split(' ')
+        _, event_id, event_date = call_data.split(' ')
         markup = InlineKeyboardMarkup()
         status_list = get_translate("status_list", settings.lang)
-        [markup.row(InlineKeyboardButton(f"{status1}{callbackTab * 20}", callback_data=f"set_status {status1.split(maxsplit=1)[0]} {event_id} {date}"),
-                    InlineKeyboardButton(f"{status2}{callbackTab * 20}", callback_data=f"set_status {status2.split(maxsplit=1)[0]} {event_id} {date}"))
+        [markup.row(InlineKeyboardButton(f"{status1}{callbackTab * 20}", callback_data=f"set_status {status1.split(maxsplit=1)[0]} {event_id} {event_date}"),
+                    InlineKeyboardButton(f"{status2}{callbackTab * 20}", callback_data=f"set_status {status2.split(maxsplit=1)[0]} {event_id} {event_date}"))
          for status1, status2 in status_list]
         markup.row(InlineKeyboardButton("🔙", callback_data="back"))
         text, status = SQL(f'SELECT text, status FROM root '
-                           f'WHERE event_id="{event_id}" AND user_id = {chat_id} AND date = "{date}" AND isdel == 0;')[0]
+                           f'WHERE event_id="{event_id}" AND user_id = {chat_id} AND date = "{event_date}" AND isdel == 0;')[0]
         bot.edit_message_text(f'{message_text.split(maxsplit=1)[0]}\n<b>{get_translate("select_status_to_event", settings.lang)}\n'
                               f'{event_id}.</b>{status}\n{markdown(text, status, settings.sub_urls)}',
                               chat_id, message_id, reply_markup=markup)
@@ -400,11 +399,11 @@ def callback_handler(settings: UserSettings,
         callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
 
     elif call_data.startswith('PRE DEL '):
-        date, event_id, back_to_bin = call_data.split()[2:]
+        event_date, event_id, back_to_bin = call_data.split()[2:]
         try:
             text, status = SQL(f"SELECT text, status FROM root "
                                f"WHERE isdel {'==' if back_to_bin != 'bin' else '!='} 0 AND user_id = {chat_id} "
-                               f"AND date = '{date}' AND event_id = {event_id};")[0]
+                               f"AND date = '{event_date}' AND event_id = {event_id};")[0]
         except Error as e:
             print(f'Ошибка SQL в PRE DEL : "{e}"')
             callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
@@ -414,24 +413,25 @@ def callback_handler(settings: UserSettings,
             predelmarkup.row(InlineKeyboardButton("🗑 "+get_translate("trash_bin", settings.lang), callback_data=f"{call_data[4:]} to_bin"))
 
         end_text = get_translate("/deleted", settings.lang) if list(limits.keys())[int(settings.user_status)] in ("premium", "admin") else ""
-        day = DayInfo(settings, date)
-        bot.edit_message_text(f'<b>{date}.{event_id}.</b>{status} <u><i>{day.str_date}  {day.week_date}</i> {day.relatively_date}</u>\n'
+        day = DayInfo(settings, event_date)
+        bot.edit_message_text(f'<b>{event_date}.{event_id}.</b>{status} <u><i>{day.str_date}  {day.week_date}</i> {day.relatively_date}</u>\n'
                               f'<b>{get_translate("are_you_sure", settings.lang)}:</b>\n'
                               f'{text[:3800]}\n\n'
                               f'{end_text}', chat_id, message_id,
                               reply_markup=predelmarkup)
 
     elif call_data.startswith('DEL '):
-        date, event_id, where, mode = call_data.split(maxsplit=4)[1:]
+        event_date, event_id, where, mode = call_data.split(maxsplit=4)[1:]
         try:
             if list(limits.keys())[int(settings.user_status)] in ("premium", "admin") and mode == "to_bin":
                 SQL(f"UPDATE root SET isdel = '{now_time_strftime(settings.timezone)}' "
-                    f"WHERE user_id = {chat_id} AND date = '{date}' AND event_id = {event_id};", commit=True)
+                    f"WHERE user_id = {chat_id} AND date = '{event_date}' AND event_id = {event_id};", commit=True)
             else:
-                SQL(f"DELETE FROM root          WHERE user_id = {chat_id} AND date = '{date}' AND event_id = {event_id};", commit=True)
+                SQL(f"DELETE FROM root "
+                    f"WHERE user_id = {chat_id} AND date = '{event_date}' AND event_id = {event_id};", commit=True)
         except Error as e:
             print(e)
-            bot.edit_message_text(f'{date}\n{get_translate("error", settings.lang)}', chat_id, message_id,
+            bot.edit_message_text(f'{event_date}\n{get_translate("error", settings.lang)}', chat_id, message_id,
                                   reply_markup=backmarkup)
             return
         callback_handler(settings, chat_id, message_id, message_text, "back" if where != "bin" else "back bin", call_id, message)
@@ -453,11 +453,11 @@ def callback_handler(settings: UserSettings,
                 generated.edit(chat_id=chat_id, message_id=message_id, only_text=message.reply_markup)
 
             elif (res := re_date.match(message_text)) is not None:
-                date, result_text = res[0], ''
-                generated = today_message(settings=settings, chat_id=chat_id, date=date, id_list=id_list)
+                msg_date, result_text = res[0], ''
+                generated = today_message(settings=settings, chat_id=chat_id, date=msg_date, id_list=id_list)
                 generated.edit(chat_id=chat_id, message_id=message_id, only_text=message.reply_markup)
         except ApiTelegramException as e:
-            # print(f'| ошибка "{e}"')
+            print(f'| ошибка "{e}"')
             bot.answer_callback_query(callback_query_id=call_id, text=get_translate("already_on_this_page", settings.lang))
 
     elif call_data.startswith('generate_month_calendar '):
@@ -501,13 +501,13 @@ def callback_handler(settings: UserSettings,
             pass
 
     elif call_data.startswith('!birthday'):
-        date = message_text.split(maxsplit=1)[0]
-        generated = MyMessage(settings=settings, date=date, reply_markup=backmarkup)
+        msg_date = message_text.split(maxsplit=1)[0]
+        generated = MyMessage(settings=settings, date=msg_date, reply_markup=backmarkup)
         generated.get_data(WHERE=f"""
         isdel = 0 AND user_id = {chat_id} AND 
-        ((date LIKE '{date[:-5]}.____' AND status IN ('🎉', '🎊', '📆')) OR
+        ((date LIKE '{msg_date[:-5]}.____' AND status IN ('🎉', '🎊', '📆')) OR
         (strftime('%w', {sqlite_format_date('date')}) = 
-        CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT) AND status IN ('🗞')))
+        CAST(strftime('%w', '{sqlite_format_date2(msg_date)}') as TEXT) AND status IN ('🗞')))
         """,
                            direction={"⬇️": "DESC", "⬆️": "ASC"}[settings.direction],
                            prefix="!")
@@ -517,9 +517,9 @@ def callback_handler(settings: UserSettings,
         generated.edit(chat_id=chat_id, message_id=message_id)
 
     elif call_data.startswith("!"):
-        date = message_text.split(maxsplit=1)[0]
-        generated = MyMessage(settings=settings, date=date, reply_markup=backmarkup)
-        generated.get_events(WHERE=f'date LIKE "{date[:-5]}.____" AND isdel = 0 AND user_id = {chat_id} AND status IN ("🎉", "🎊")',
+        msg_date = message_text.split(maxsplit=1)[0]
+        generated = MyMessage(settings=settings, date=msg_date, reply_markup=backmarkup)
+        generated.get_events(WHERE=f'date LIKE "{msg_date[:-5]}.____" AND isdel = 0 AND user_id = {chat_id} AND status IN ("🎉", "🎊")',
                              values=call_data[1:].split(","))
         generated.format(title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n",
                          args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
@@ -538,8 +538,8 @@ def callback_handler(settings: UserSettings,
         if 1980 < new_date.year < 3000:
             if call_data == '<<<': new_date -= timedelta(days=1)
             if call_data == '>>>': new_date += timedelta(days=1)
-            date = '.'.join(f'{new_date}'.split(maxsplit=1)[0].split('-')[::-1])
-            generated = today_message(settings=settings, chat_id=chat_id, date=date)
+            new_date = '.'.join(f'{new_date}'.split(maxsplit=1)[0].split('-')[::-1])
+            generated = today_message(settings=settings, chat_id=chat_id, date=new_date)
             generated.edit(chat_id=chat_id, message_id=message_id)
         else:
             bot.answer_callback_query(callback_query_id=call_id, text="🤔")
@@ -616,7 +616,7 @@ def get_edit_message(message: Message):
     settings = UserSettings(chat_id)
     res = re_edit_message.search(message.text)[0]
     event_id = int(re.findall(r"\((\d+)", res)[0])
-    date = re.findall(r" (\d{1,2}\.\d{1,2}\.\d{4}),", res)[0]
+    msg_date = re.findall(r" (\d{1,2}\.\d{1,2}\.\d{4}),", res)[0]
     message_id = int(re.findall(r", (\d+)\)", res)[0])
     text = message.text.split('\n', maxsplit=1)[-1].strip("\n") # ВАЖНО!
     markup = InlineKeyboardMarkup()
@@ -624,8 +624,8 @@ def get_edit_message(message: Message):
                                     switch_inline_query_current_chat=f"{message.text.split(maxsplit=1)[-1]}"))
     markup.row(InlineKeyboardButton("✖", callback_data="message_del"))
     tag_len_max = len(text) > 3800
-    tag_limit_exceeded = is_exceeded_limit(chat_id, date, list(limits.values())[int(settings.user_status)], (len(text), 0))
-    tag_len_less = len(text) < len(SQL(f'SELECT text FROM root WHERE event_id="{event_id}" AND user_id = {chat_id} AND date = "{date}" AND isdel == 0;')[0][0])
+    tag_limit_exceeded = is_exceeded_limit(chat_id, msg_date, list(limits.values())[int(settings.user_status)], (len(text), 0))
+    tag_len_less = len(text) < len(SQL(f'SELECT text FROM root WHERE event_id="{event_id}" AND user_id = {chat_id} AND date = "{msg_date}" AND isdel == 0;')[0][0])
 
     if tag_len_max:
         bot.reply_to(message, get_translate("message_is_too_long", settings.lang), reply_markup=markup)
@@ -633,9 +633,9 @@ def get_edit_message(message: Message):
         bot.reply_to(message, get_translate("exceeded_limit", settings.lang), reply_markup=markup)
     else:
         try:
-            day = DayInfo(settings, date)
+            day = DayInfo(settings, msg_date)
             bot.edit_message_text((f"""
-{date} <u><i>{day.str_date}  {day.week_date}</i> {day.relatively_date}</u> {event_id}
+{msg_date} <u><i>{day.str_date}  {day.week_date}</i> {day.relatively_date}</u> {event_id}
 <b>{get_translate("are_you_sure_edit", settings.lang)}</b>
 <i>{ToHTML(text)}</i>
 """), chat_id, message_id, reply_markup=generate_buttons([{"🔙": "back", "✅": 'Edit Edit'}]))

@@ -403,8 +403,8 @@ def generate_buttons(buttons_data: list[dict]) -> InlineKeyboardMarkup:
     """
     Генерация клавиатуры из списка словарей
     """
-    keyboard = [[InlineKeyboardButton(text, callback_data=data) for text, data in row.items()] for row in buttons_data]
-    return InlineKeyboardMarkup(keyboard)
+    keyboard = [[InlineKeyboardButton(text=text, callback_data=data) for text, data in row.items()] for row in buttons_data]
+    return InlineKeyboardMarkup(keyboard=keyboard)
 
 def mycalendar(chat_id, user_timezone: int, lang: str, YY_MM: list | tuple = None) -> InlineKeyboardMarkup():
     """
