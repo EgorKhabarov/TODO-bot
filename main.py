@@ -3,7 +3,10 @@ from time import sleep
 import csv
 
 from telebot import TeleBot
-from telebot.types import CallbackQuery, Message, InputFile, BotCommandScopeChat, BotCommandScopeDefault
+from telebot.types import CallbackQuery, Message, InputFile
+from telebot.types import BotCommandScopeChat    # Команды для определённого чата
+from telebot.types import BotCommandScopeDefault # Дефолтные команды для всех остальных
+from telebot.types import InputMediaDocument     # Команда /files шлёт все файлы бота в одном сообщении
 from telebot.apihelper import ApiTelegramException
 
 from func import * # InlineKeyboardMarkup, InlineKeyboardButton, re, config импортируются из func
@@ -24,7 +27,7 @@ BOT_ID = Me.id
 BOT_USERNAME = Me.username
 COMMANDS = ('calendar', 'start', 'deleted', 'version', 'forecast', 'week_event_list',
             'weather', 'search', 'bell', 'dice', 'help', 'settings', 'today', 'sqlite',
-            'file', 'SQL', 'save_to_csv', 'setuserstatus', 'id')
+            'files', 'SQL', 'save_to_csv', 'setuserstatus', 'id')
 def check(key, val) -> str:
     """Подсветит не правильные настройки красным цветом"""
     keylist = {"can_join_groups": "True", "can_read_all_group_messages": "True", "supports_inline_queries": "False"}
@@ -53,13 +56,18 @@ MyMessage.send = send
 MyMessage.edit = edit
 
 def set_commands(settings: UserSettings, chat_id: int, user_status: int | str = 0) -> bool:
+    """
+    Ставит список команд для пользователя chat_id
+    """
     target = f"{user_status}_command_list"
-    lang = settings.lang # SQL(f"SELECT lang FROM settings WHERE user_id={chat_id};")[0][0]
+    lang = settings.lang
     try:
         return bot.set_my_commands(commands=get_translate(target, lang), scope=BotCommandScopeChat(chat_id=chat_id))
     except (ApiTelegramException, KeyError) as e:
         print(f'Ошибка set_commands: "{e}"')
         return False
+
+# Ставим дефолтные команды для всех пользователей при запуске бота
 bot.set_my_commands(commands=get_translate("0_command_list", "ru"), scope=BotCommandScopeDefault())
 
 def command_handler(settings: UserSettings,
@@ -68,7 +76,7 @@ def command_handler(settings: UserSettings,
                     message: Message) -> None:
     """
     Отвечает за реакцию бота на команды
-    метод message.text.startswith("") используется для групп (в них сообщение приходит в формате /command{BOT_USERNAME})
+    Метод message.text.startswith("") используется для групп (в них сообщение приходит в формате /command{BOT_USERNAME})
     """
     if message_text.startswith('/calendar'):
         bot.send_message(chat_id, 'Выберите дату',
@@ -148,20 +156,42 @@ def command_handler(settings: UserSettings,
         except ApiTelegramException:
             bot.send_message(chat_id=chat_id, text='Отправить файл не получилось')
 
-    elif message_text.startswith('/file') and is_admin_id(chat_id):
+    elif message_text.startswith('/files') and is_admin_id(chat_id):
         try:
-            with open(__file__, 'rb') as file:
-                bot.send_document(chat_id=chat_id, document=file,
-                                  caption=f'{now_time_strftime(settings.timezone)}\nФайл_бота.py')
+            with open(__file__,       'rb') as main_file,\
+                    open("func.py",   'rb') as func_file,\
+                    open("config.py", 'rb') as config_file,\
+                    open("lang.py",   'rb') as lang_file, \
+                    open(config.database_path, 'rb') as db_file:
+                bot.send_media_group(chat_id=chat_id,
+                                     media=[
+                                         InputMediaDocument(main_file,   caption=f'Основной файл'),
+                                         InputMediaDocument(func_file,   caption=f'Файл с функциями'),
+                                         InputMediaDocument(config_file, caption=f'Файл настроек'),
+                                         InputMediaDocument(lang_file,   caption=f'Языковой файл'),
+                                         InputMediaDocument(db_file,     caption=f'База данных\n\n'
+                                                                                 f'Версия от {config.__version__}')
+                                     ])
         except ApiTelegramException:
             bot.send_message(chat_id=chat_id, text='Отправить файл не получилось')
 
-    elif message_text.startswith('/SQL ') and is_admin_id(chat_id): pass
+    elif message_text.startswith('/SQL ') and is_admin_id(chat_id) and message.chat.type == "private":
+        # TODO Выполнение запроса от админа к базе данных и красивый вывод результатов
+        # query = message_text[5:].strip()
+        # try:
+        #     res = SQL(query, commit=message_text.endswith("\ncommit=True"))
+        #     # Возможно сделать вывод в виде таблицы
+        #     # Если ширина или высоты больше чем сообщение, то вывод в .txt файле
+        #     res = str_table(res)
+        # except Error as e:
+        #     res = f'Ошибка: "{e}"'
+        #
+        res = "Not added yet 🫤"
+        bot.reply_to(message, text=res)
 
-    elif message_text.startswith('/bell') and is_admin_id(chat_id): # TODO
-        return
-        bot.send_message(chat_id=chat_id,
-                         text=check_bells(settings, chat_id), reply_markup=delmarkup)
+    elif message_text.startswith('/bell') and is_admin_id(chat_id): # TODO уведомления
+        # bot.send_message(chat_id=chat_id, text=check_bells(settings, chat_id), reply_markup=delmarkup)
+        bot.send_message(chat_id=chat_id, text="Not added yet 🫤")
 
     elif message_text.startswith('/save_to_csv'):
         try:
@@ -221,6 +251,9 @@ def callback_handler(settings: UserSettings,
                      call_data: str,
                      call_id: int,
                      message: Message):
+    """
+    Отвечает за реакцию бота на нажатия на кнопку
+    """
     if call_data == "event_add":
         bot.clear_step_handler_by_chat_id(chat_id)
         message_date = message_text.split(maxsplit=1)[0]
@@ -306,7 +339,7 @@ def callback_handler(settings: UserSettings,
         if res[0].startswith("👀") or res[0].startswith("🕸"):
             return 0
         markup = InlineKeyboardMarkup()
-        date = message_text.split(maxsplit=1)[0]
+        msg_date = message_text.split(maxsplit=1)[0]
         for i in res:
             event_id = i.split('.', maxsplit=2)[1]
             if call_data == 'event_edit':
@@ -315,29 +348,29 @@ def callback_handler(settings: UserSettings,
                                             f"WHERE event_id={event_id} AND user_id={chat_id};")[0][0])
                 except Error as e:
                     return print(f'Произошла ошибка в "Изменить сообщение": "{e}"')
-                markup.row(InlineKeyboardButton(f"{i}{callbackTab * 20}", switch_inline_query_current_chat=f"Edit message({event_id}, {date}, {message.id})\n{event_text}"))
+                markup.row(InlineKeyboardButton(f"{i}{callbackTab * 20}", switch_inline_query_current_chat=f"Edit message({event_id}, {msg_date}, {message.id})\n{event_text}"))
             if call_data == "event_status":
-                markup.row(InlineKeyboardButton(f"{i}{callbackTab * 20}", callback_data=f"edit_page_status {event_id} {date}"))
+                markup.row(InlineKeyboardButton(f"{i}{callbackTab * 20}", callback_data=f"edit_page_status {event_id} {msg_date}"))
             if call_data == "event_del":
                 Btitle = i.replace('\n', ' ')[:41]
-                markup.row(InlineKeyboardButton(f"{Btitle}{callbackTab * 20}", callback_data=f"PRE DEL {date} {event_id} _"))
+                markup.row(InlineKeyboardButton(f"{Btitle}{callbackTab * 20}", callback_data=f"PRE DEL {msg_date} {event_id} _"))
             elif call_data == "event_del bin":
-                date = i[:10]
+                event_date = i[:10]
                 event_id = i.split('.', maxsplit=4)[-2]
-                Btitle = date + " " + event_id + " " + i.split('\n')[-1]
-                markup.row(InlineKeyboardButton(f"{Btitle}{callbackTab * 20}", callback_data=f"DEL {date} {event_id} bin delete")) # PRE -delete
+                Btitle = event_date + " " + event_id + " " + i.split('\n')[-1]
+                markup.row(InlineKeyboardButton(f"{Btitle}{callbackTab * 20}", callback_data=f"DEL {event_date} {event_id} bin delete")) # PRE -delete
             elif call_data == "event_recover bin":
-                date = i[:10]
+                event_date = i[:10]
                 event_id = i.split('.', maxsplit=4)[-2]
-                Btitle = date + " " + event_id + " " + i.split('\n')[-1]
-                markup.row(InlineKeyboardButton(f"{Btitle}{callbackTab * 20}", callback_data=f"recover {date} {event_id}"))
+                Btitle = event_date + " " + event_id + " " + i.split('\n')[-1]
+                markup.row(InlineKeyboardButton(f"{Btitle}{callbackTab * 20}", callback_data=f"recover {event_date} {event_id}"))
 
         markup.row(InlineKeyboardButton("🔙", callback_data="back" if not call_data.endswith("bin") else "back bin"))
 
-        if call_data == 'event_edit': text = f'{date}\n{get_translate("select_event_to_edit", settings.lang)}'
-        elif call_data == "event_status": text = f'{date}\n{get_translate("select_event_to_change_status", settings.lang)}'
-        elif call_data == 'event_del': text = f'{date}\n{get_translate("select_event_to_delete", settings.lang)}'
-        else: text = f'{date}\n{get_translate("choose_event", settings.lang)}'
+        if call_data == 'event_edit': text = f'{msg_date}\n{get_translate("select_event_to_edit", settings.lang)}'
+        elif call_data == "event_status": text = f'{msg_date}\n{get_translate("select_event_to_change_status", settings.lang)}'
+        elif call_data == 'event_del': text = f'{msg_date}\n{get_translate("select_event_to_delete", settings.lang)}'
+        else: text = f'{msg_date}\n{get_translate("choose_event", settings.lang)}'
         bot.edit_message_text(text, chat_id, message_id, reply_markup=markup)
 
     elif call_data.startswith("recover"):
@@ -512,13 +545,10 @@ def callback_handler(settings: UserSettings,
             bot.answer_callback_query(callback_query_id=call_id, text="🤔")
 
     elif call_data in ('<<', '<', '⟳', '>', '>>'):
-        mydatatime = [int(i) for i in
-                      message.json["reply_markup"]['inline_keyboard'][0][0]["text"].split()[-3][1:-1].split('.')[::-1]]
+        mydatatime = [int(i) for i in message.json["reply_markup"]['inline_keyboard'][0][0]["text"].split()[-3][1:-1].split('.')[::-1]]
         # получаем [2023, 4] [year, month]
-        if call_data == '<': mydatatime = [mydatatime[0] - 1, 12] if mydatatime[1] == 1 else [mydatatime[0],
-                                                                                              mydatatime[1] - 1]
-        if call_data == '>': mydatatime = [mydatatime[0] + 1, 1] if mydatatime[1] == 12 else [mydatatime[0],
-                                                                                              mydatatime[1] + 1]
+        if call_data == '<': mydatatime = [mydatatime[0] - 1, 12] if mydatatime[1] == 1 else [mydatatime[0], mydatatime[1] - 1]
+        if call_data == '>': mydatatime = [mydatatime[0] + 1, 1] if mydatatime[1] == 12 else [mydatatime[0], mydatatime[1] + 1]
         if call_data == '<<': mydatatime[0] -= 1
         if call_data == '>>': mydatatime[0] += 1
         if call_data == '⟳': mydatatime = new_time_calendar(settings.timezone)
@@ -544,6 +574,9 @@ def callback_handler(settings: UserSettings,
 
 @bot.message_handler(commands=[*COMMANDS])
 def message_handler(message: Message):
+    """
+    Ловит команды от пользователей
+    """
     chat_id, message_text = message.chat.id, message.text
     settings = UserSettings(chat_id)
     main_log(user_status=settings.user_status, chat_id=chat_id, text=message_text, action="send   ")
@@ -551,6 +584,9 @@ def message_handler(message: Message):
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query_handler(call: CallbackQuery):
+    """
+    Ловит нажатия на кнопки
+    """
     chat_id, message_id, call_data, message_text = call.message.chat.id, call.message.id, call.data, call.message.text
     settings = UserSettings(chat_id)
     main_log(user_status=settings.user_status, chat_id=chat_id, text=call_data, action="pressed")
@@ -560,6 +596,9 @@ def callback_query_handler(call: CallbackQuery):
 
 @bot.message_handler(func=lambda m: m.text.startswith('#'))
 def get_search_message(message: Message):
+    """
+    Ловит сообщения поиска
+    """
     query = ToHTML(message.text[1:].replace("--", '').replace("\n", ' '))
     chat_id = message.chat.id
     settings = UserSettings(user_id=chat_id)
@@ -569,6 +608,9 @@ def get_search_message(message: Message):
 
 @bot.message_handler(func=lambda m: m.text.startswith(f'@{BOT_USERNAME} Edit message(') and re_edit_message.search(m.text))
 def get_edit_message(message: Message):
+    """
+    Ловит сообщения для изменения событий
+    """
     chat_id = message.chat.id
     edit_message_id = message.id
     settings = UserSettings(chat_id)
@@ -607,6 +649,10 @@ def get_edit_message(message: Message):
 
 @bot.message_handler(func=lambda m: m.reply_to_message and m.reply_to_message.text.startswith('⚙️') and m.from_user.id != BOT_ID)
 def get_search_message(message: Message):
+    """
+    Ловит сообщения ответ на сообщение бота с настройками
+    Изменение города пользователя
+    """
     chat_id, message_id = message.chat.id, message.id
     settings = UserSettings(chat_id)
     callback_handler(settings, chat_id, message.reply_to_message.id, message.text, f'settings city {message.text[:25]}', 0, message.reply_to_message)
