@@ -3,7 +3,7 @@ from time import sleep
 import csv
 
 from telebot import TeleBot
-from telebot.types import CallbackQuery, Message, InputFile, BotCommandScopeChat
+from telebot.types import CallbackQuery, Message, InputFile, BotCommandScopeChat, BotCommandScopeDefault
 from telebot.apihelper import ApiTelegramException
 
 from func import * # InlineKeyboardMarkup, InlineKeyboardButton, re, config импортируются из func
@@ -60,6 +60,7 @@ def set_commands(settings: UserSettings, chat_id: int, user_status: int | str = 
     except (ApiTelegramException, KeyError) as e:
         print(f'Ошибка set_commands: "{e}"')
         return False
+bot.set_my_commands(commands=get_translate("0_command_list", "ru"), scope=BotCommandScopeDefault())
 
 def command_handler(settings: UserSettings,
                     chat_id: int,
@@ -353,7 +354,8 @@ def callback_handler(settings: UserSettings,
                     InlineKeyboardButton(f"{status2}{callbackTab * 20}", callback_data=f"set_status {status2.split(maxsplit=1)[0]} {event_id} {date}"))
          for status1, status2 in status_list]
         markup.row(InlineKeyboardButton("🔙", callback_data="back"))
-        text, status = SQL(f'SELECT text, status FROM root WHERE event_id="{event_id}" AND user_id = {chat_id} AND date = "{date}" AND isdel == 0;')[0]
+        text, status = SQL(f'SELECT text, status FROM root '
+                           f'WHERE event_id="{event_id}" AND user_id = {chat_id} AND date = "{date}" AND isdel == 0;')[0]
         bot.edit_message_text(f'{message_text.split(maxsplit=1)[0]}\n<b>{get_translate("select_status_to_event", settings.lang)}\n'
                               f'{event_id}.</b>{status}\n{markdown(text, status, settings.sub_urls)}',
                               chat_id, message_id, reply_markup=markup)

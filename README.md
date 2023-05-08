@@ -134,7 +134,6 @@ For example `#date=1.2023 status=🎧 youtube.com` to search for all events with
 * [ ] If there are no events for a specific day now, but there were earlier, and they remained in the old message, then process the error and update the message.<br>Instead of parsing from the message, make a database query
 * [ ] Comment and clean up the code.
 * [ ] Groups for event statuses.
-* [ ] Sort in week_event_list by date
 * [ ] Ability to search by the date of the selected event
 * [ ] Add templates to search<br>
   `#date=dd.mm.yyyy` or `#date=dd.mm` or `#date=mm.yyyy` or `#date=dd..yyyy`<br>
@@ -159,6 +158,7 @@ For example `#date=1.2023 status=🎧 youtube.com` to search for all events with
 
 
 # Already done
+* [X] Sort in week_event_list by date
 * [X] Schedule statuses. Repeat every week and year. Similar to birthday status.
 * [X] Ability to remove from cart.
 * [X] Ability to restore an event from the trash.

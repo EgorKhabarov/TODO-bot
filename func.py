@@ -16,9 +16,10 @@ import config
 
 
 """sql"""
-sqlite_format_date = lambda column, sep="": f"SUBSTR({sep}{column}{sep}, 7, 4) || '-' || " \
-                                            f"SUBSTR({sep}{column}{sep}, 4, 2) || '-' || " \
-                                            f"SUBSTR({sep}{column}{sep}, 1, 2)"
+sqlite_format_date = lambda column, quotes="", sep="-": f"SUBSTR({quotes}{column}{quotes}, 7, 4) || '{sep}' || " \
+                                                       f"SUBSTR({quotes}{column}{quotes}, 4, 2) || '{sep}' || " \
+                                                       f"SUBSTR({quotes}{column}{quotes}, 1, 2)"
+"""SUBSTR({column}, 7, 4) || '{sep}' || SUBSTR({column}, 4, 2) || '{sep}' || SUBSTR({column}, 1, 2)"""
 sqlite_format_date2 = lambda column: "-".join(column.split(".")[::-1])
 def SQL(Query: str, params: tuple = (), commit: bool = False) -> list[tuple[int | str | bytes, ...], ...]:
     """
@@ -145,6 +146,7 @@ def create_event(user_id: int, date: str, text: str) -> bool:
 
 def get_values(column_to_limit: str,
                column_to_order: str,
+               column_to_return: str,
                WHERE: str,
                table: str,
                MAXLEN: int = 3500,
@@ -154,6 +156,7 @@ def get_values(column_to_limit: str,
     """
     :param column_to_limit: Столбец для ограничения
     :param column_to_order: Столбец для сортировки (например id)
+    :param column_to_return: Столбец для return (например id)
     :param WHERE:           Условие выбора строк из таблицы
     :param table:           Название таблицы
     :param MAXLEN:          Максимальная длинна символов в одном диапазоне
@@ -163,7 +166,7 @@ def get_values(column_to_limit: str,
     column = "end_id" if direction == "DESC" else "start_id"
     Query = f"""
 WITH numbered_table AS (
-  SELECT ROW_NUMBER() OVER (ORDER BY {column_to_order} {direction}) AS row_num, {column_to_order} AS order_column, LENGTH({column_to_limit}) as len
+  SELECT ROW_NUMBER() OVER (ORDER BY {column_to_order} {direction}) AS row_num, {column_to_return} AS order_column, LENGTH({column_to_limit}) as len
   FROM {table}
   WHERE {WHERE}
 ),
@@ -557,19 +560,20 @@ class MyMessage:
     def get_data(self,
                  *,
                  column_to_limit: str = "text",
-                 column_to_order: str = "event_id",
+                 column_to_order: str = sqlite_format_date('date'),
+                 column_to_return: str = "event_id",
                  WHERE: str,
                  table: str = "root",
                  MAXLEN: int = 2500,
                  MAXEVENTCOUNT: int = 10,
                  direction: Literal["ASC", "DESC"] = "DESC",
                  prefix: str = "|"):
-        data = get_values(column_to_limit, column_to_order, WHERE, table, MAXLEN, MAXEVENTCOUNT, direction)
+        data = get_values(column_to_limit, column_to_order, column_to_return, WHERE, table, MAXLEN, MAXEVENTCOUNT, direction)
         if data:
             if table == "root":
-                first_message = [Event(*event) for event in SQL(f'SELECT date, event_id, status, text, isdel FROM root WHERE ({WHERE}) AND event_id IN ({data[0][0]});')]
+                first_message = [Event(*event) for event in SQL(f'SELECT date, event_id, status, text, isdel FROM root WHERE ({WHERE}) AND event_id IN ({data[0][0]}) ORDER BY {column_to_order} {direction};')]
             else:
-                first_message = [Event(text=event[0]) for event in SQL(f'SELECT {column_to_limit} FROM {table} WHERE ({WHERE}) AND {column_to_order} IN ({data[0][0]});')]
+                first_message = [Event(text=event[0]) for event in SQL(f'SELECT {column_to_limit} FROM {table} WHERE ({WHERE}) AND {column_to_order} IN ({data[0][0]}) ORDER BY {column_to_order} {direction};')]
 
             if self._settings.direction != "⬆️":
                 first_message = first_message[::-1]
@@ -704,9 +708,22 @@ def search(settings: UserSettings, chat_id: int, query: str, id_list: list | tup
     return generated
 
 def week_event_list(settings: UserSettings, chat_id, id_list: list | tuple = tuple()) -> MyMessage:
-    WHERE = f"""(user_id = {chat_id} AND isdel = 0)
-                AND (SUBSTR(date, 7, 4) || '-' || SUBSTR(date, 4, 2) || '-' || SUBSTR(date, 1, 2) 
-                BETWEEN DATE('now') AND DATE('now', '+7 day'))"""
+    WHERE = f"""
+(user_id = {chat_id} AND isdel = 0) AND (
+    (
+        {sqlite_format_date('date')} BETWEEN DATE('now') AND DATE('now', '+7 day')
+    ) 
+    OR 
+    (
+        (
+            strftime('%m-%d', {sqlite_format_date('date')}) BETWEEN strftime('%m-%d', 'now') AND strftime('%m-%d', 'now', '+7 day')
+        ) 
+        AND status IN ('🎉', '🎊', '📆')
+    )
+    OR
+    status IN ('🗞')
+)
+"""
     generated = MyMessage(settings, reply_markup=delmarkup)
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
