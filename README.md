@@ -129,7 +129,6 @@ For example `#date=1.2023 status=🎧 youtube.com` to search for all events with
 </details>
 
 # #TODO
-* [ ] Ability to view _recurring events_ in the `/week_event_list` command.
 * [ ] When trying to create files, immediately update the initial set of commands for all users
 * [ ] If there are no events for a specific day now, but there were earlier, and they remained in the old message, then process the error and update the message.<br>Instead of parsing from the message, make a database query
 * [ ] Comment and clean up the code.
@@ -158,6 +157,7 @@ For example `#date=1.2023 status=🎧 youtube.com` to search for all events with
 
 
 # Already done
+* [X] Ability to view _recurring events_ in the `/week_event_list` command.
 * [X] Sort in week_event_list by date
 * [X] Schedule statuses. Repeat every week and year. Similar to birthday status.
 * [X] Ability to remove from cart.
