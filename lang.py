@@ -77,9 +77,9 @@ translation = {
 🗑   Удалить событие
 🔙   Вернуться назад
 ✖   Удалить это сообщение
-#... or /search... - Поиск
-/event_list - Cписок событий на 7 дней
-/weather {"город"} - Погода
+#... or /search... Поиск
+/week_event_list Cписок событий на 7 дней
+/weather {"город"} Погода
 🚩 - поставить статус
 
 <b>Подробнее /help</b>
@@ -94,9 +94,9 @@ translation = {
 🗑   Delete event
 🔙   Go back
 ✖   Delete this message
-#... or /search... - Search
-/event_list - List of events for 7 days
-/weather {"city"} - Weather
+#... or /search... Search
+/week_event_list List of events for 7 days
+/weather {"city"} Weather
 🚩 - set status
 
 <b>More /help</b>
