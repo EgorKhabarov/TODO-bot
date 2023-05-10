@@ -128,7 +128,8 @@ def create_tables() -> None:
                     timezone          INT  DEFAULT (3),
                     direction         TEXT DEFAULT ⬇️,
                     user_status       INT  DEFAULT (0),
-                    user_max_event_id INT  DEFAULT (1)
+                    user_max_event_id INT  DEFAULT (1),
+                    add_event_date    INT  DEFAULT (0) 
                 );""", commit=True)
 create_tables()
 
@@ -149,7 +150,7 @@ def create_event(user_id: int, date: str, text: str) -> bool:
             WHERE user_id = {user_id};""", commit=True)
         return True
     except Error as e:
-        print(f"Произошла ошибка в функции create_event: '{e}'  arg: {user_id=}, {date=}, {text=}")
+        print(f"[func.py -> create_event] Error \"{e}\"  arg: {user_id=}, {date=}, {text=}")
         return False
 
 def get_values(column_to_limit: str,
@@ -219,7 +220,7 @@ def check_bells(settings: UserSettings, chat_id): # TODO доделать check_
         try:
             SQL(f"UPDATE root SET status = '🔕' WHERE user_id = {chat_id} AND event_id = {event_id} AND date = '{date}' AND status = '⏰';", commit=True)
         except Error as e:
-            print(f"Произошла ошибка в функции check_bells: '{e}'")
+            print(f"[func.py -> check_bells] Error \"{e}\"")
         return text
 
 
@@ -406,7 +407,7 @@ def generate_buttons(buttons_data: list[dict]) -> InlineKeyboardMarkup:
     keyboard = [[InlineKeyboardButton(text=text, callback_data=data) for text, data in row.items()] for row in buttons_data]
     return InlineKeyboardMarkup(keyboard=keyboard)
 
-def mycalendar(chat_id, user_timezone: int, lang: str, YY_MM: list | tuple = None) -> InlineKeyboardMarkup():
+def mycalendar(chat_id, user_timezone: int, lang: str, YY_MM: list | tuple[int, int] = None) -> InlineKeyboardMarkup():
     """
     Создаёт календарь на месяц и возвращает inline клавиатуру
     """
@@ -418,7 +419,7 @@ def mycalendar(chat_id, user_timezone: int, lang: str, YY_MM: list | tuple = Non
     #  December (12.2022)
     # Пн Вт Ср Чт Пт Сб Вс
     markup.row(InlineKeyboardButton(f"{get_translate('months_name', lang)[MM-1]} ({MM}.{YY}) ({year_info(YY, lang)})",
-                                    callback_data=f"generate_month_calendar {YY}"))
+                                    callback_data=f"generate month calendar {YY}"))
     week_day_list = get_translate("week_days_list", lang)
     markup.row(*[InlineKeyboardButton(day, callback_data="None") for day in week_day_list])
 
@@ -472,12 +473,12 @@ def generate_month_calendar(user_timezone: int, lang: str, chat_id, YY) -> Inlin
             tag_birthday = '!' if SQL(f'SELECT status FROM root '
                                       f'WHERE date LIKE "__.{numm:0>2}.____" AND isdel = 0 AND '
                                       f'user_id = {chat_id} AND status IN ("🎉", "🎊") LIMIT 1') else ''
-            result[-1][f'{tag_today}{nameM}{tag_event}{tag_birthday}'] = f'generate_calendar {YY} {numm}'
+            result[-1][f'{tag_today}{nameM}{tag_event}{tag_birthday}'] = f'generate calendar {YY} {numm}'
 
     markupL = [
         {f"{YY} ({year_info(YY, lang)})": "None"},
         *result,
-        {"<<": f"generate_month_calendar {YY-1}", "⟳": "year now", ">>": f"generate_month_calendar {YY+1}"}
+        {"<<": f"generate month calendar {YY-1}", "⟳": "year now", ">>": f"generate month calendar {YY+1}"}
     ]
     return generate_buttons(markupL)
 
@@ -492,6 +493,7 @@ databasemarkup = generate_buttons([{'Применить базу данных': 
 
 """Другое"""
 callbackTab = '⠀⠀⠀'
+backslash_n = "\n"
 
 def ToHTML(text: str) -> str:
     return text.replace("<", '&lt;').replace(">", '&gt;').replace("'", '&#39;').replace('"', '&quot;')
@@ -503,11 +505,12 @@ def markdown(text: str, status: str, suburl: bool | int = False) -> str:
     """
     Добавляем эффекты к событию по статусу
     """
-    def OrderList(_text: str, n=0) -> str: # Нумерует каждую строчку
+    def OrderList(_text: str, num=0) -> str: # Нумерует каждую строчку
         lst = _text.splitlines()
         width = len(str(len(lst))) # Получаем длину отступа чтобы не съезжало
         # Заполняем с отступами числа + текст, а если двойной перенос строки то "⠀"
-        return "\n".join(("0️⃣" * (width-len(str(n := n+1)))) + "⃣".join(str(n)) + "⃣" + t if t not in ("", "⠀") else "⠀" for t in lst)
+        return "\n".join(("0️⃣" * (width-len(str(num := num+1)))) + "⃣".join(str(num)) + "⃣" +
+                         line if line not in ("", "⠀") else "⠀" for line in lst)
 
     def List(_text: str): # Заменяет \n на :black_small_square: (эмодзи Telegram)
         return "▪️" + _text.replace("\n", "\n▪️").replace("\n▪️⠀\n", "\n⠀\n")
@@ -567,7 +570,7 @@ class Cooldown:
             if (localtime := (t1 - self.cooldown_dict[str(key)])) < self.cooldown_time_sec:
                 result = False, int(self.cooldown_time_sec - int(localtime))
         except Exception as e:
-            print(f'Cooldown.check {e}')
+            print(f"[func.py -> Cooldown.check] Exception \"{e}\"")
         if update_dict or result[0]:
             self.cooldown_dict[f'{key}'] = t1
         return result
@@ -650,22 +653,23 @@ class MyMessage:
                     WHERE ({WHERE}) AND {column_to_order} IN ({data[0][0]}) 
                     ORDER BY {column_to_order} {direction};""")]
 
-            if self._settings.direction != "⬆️":
+            if self._settings.direction == "⬆️":
                 first_message = first_message[::-1]
             self._event_list = first_message
 
+            count_columns = 5
             diapason_list = []
-            for n, d in enumerate(data):  # Заполняем данные из диапазонов в список
-                if int(f'{n}'[-1]) in (0, 5):  # Разделяем диапазоны в строчки по 5
+            for num, d in enumerate(data):  # Заполняем данные из диапазонов в список
+                if int(f'{num}'[-1]) in (0, count_columns):  # Разделяем диапазоны в строчки по 5
                     diapason_list.append([])
-                diapason_list[-1].append((n + 1, d[0]))  # Номер страницы, начальное id, конечное id
+                diapason_list[-1].append((num + 1, d[0]))  # Номер страницы, id
 
             if len(diapason_list[0]) != 1:  # Если страниц больше одной
-                for i in range(5 - len(diapason_list[-1])):  # Заполняем пустые кнопки в последнем ряду до 5
+                for i in range(count_columns - len(diapason_list[-1])):  # Заполняем пустые кнопки в последнем ряду до 5
                     diapason_list[-1].append((0, 0))
 
                 [self.reply_markup.row(*[
-                    InlineKeyboardButton(f'{numpage}', callback_data=f'{prefix}{vals}') if vals else
+                    InlineKeyboardButton(f'{numpage}', callback_data=f'{prefix}{numpage}|{vals}') if vals else
                     InlineKeyboardButton(f' ', callback_data=f'None') for numpage, vals in row])
                  for row in diapason_list[:8]] # Обрезаем до 8 строк кнопок чтобы не было слишком много строк кнопок
         return self
@@ -675,12 +679,15 @@ class MyMessage:
         Возвращает события входящие в values с условием WHERE
         """
         try:
-            res = [Event(*event) for event in SQL(f"SELECT date, event_id, status, text, isdel FROM root WHERE {WHERE} AND event_id IN ({', '.join(values)});")]
+            direction = {"⬇️": "DESC", "⬆️": "ASC"}[self._settings.direction]
+            res = [Event(*event) for event in SQL(f"SELECT date, event_id, status, text, isdel FROM root "
+                                                  f"WHERE {WHERE} AND event_id IN ({', '.join(values)})"
+                                                  f"ORDER BY {sqlite_format_date('date')} {direction};")]
         except Error as e:
-            print(f'Ошибка в get_text_in_diapason: {e}')
+            print(f"[func.py -> MyMessage.get_events] Error \"{e}\"")
             self._event_list = []
         else:
-            if self._settings.direction == "⬆️":
+            if self._settings.direction != "⬆️":
                 self._event_list = res
             else:
                 self._event_list = res[::-1]
@@ -730,15 +737,15 @@ class MyMessage:
         if not self._event_list:
             format_string += if_empty
         else:
-            for n, event in enumerate(self._event_list):
+            for num, event in enumerate(self._event_list):
                 day = DayInfo(self._settings, event.date)
                 format_string += args.format(
                     date=day.date,
                     strdate=day.str_date,
                     weekday=day.week_date,
                     reldate=day.relatively_date,
-                    numd=f"{n + 1}",
-                    nums=f"{n + 1}️⃣",  # создание смайлика с цифрой
+                    numd=f"{num + 1}",
+                    nums=f"{num + 1}️⃣",  # создание смайлика с цифрой
                     event_id=f"{event.event_id}",
                     status=event.status,
                     markdown_text=markdown(event.text, event.status, self._settings.sub_urls),
@@ -762,7 +769,11 @@ class MyMessage:
              only_text: InlineKeyboardMarkup = None) -> None:
         ...
 
-def search(settings: UserSettings, chat_id: int, query: str, id_list: list | tuple = tuple()) -> MyMessage:
+def search(settings: UserSettings,
+           chat_id: int,
+           query: str,
+           id_list: list | tuple = tuple(),
+           page: int | str = 1) -> MyMessage:
     """
     Сокращение для вызова сообщения поиска
     """
@@ -774,20 +785,24 @@ def search(settings: UserSettings, chat_id: int, query: str, id_list: list | tup
 
     querylst = query.replace('\n', ' ').split()
     splitquery = " OR ".join(f"date LIKE '%{x}%' OR text LIKE '%{x}%'OR status LIKE '%{x}%' OR event_id LIKE '%{x}%'" for x in querylst)
-    WHERE = f"""(user_id = {chat_id} AND isdel == 0) AND ({splitquery})"""
+    WHERE = f"(user_id = {chat_id} AND isdel == 0) AND ({splitquery})"
 
     generated = MyMessage(settings, reply_markup=delmarkup)
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
         generated.get_data(WHERE=WHERE, direction={"⬇️": "DESC", "⬆️": "ASC"}[settings.direction])
-    generated.format(title=f'{get_translate("search", settings.lang)} {query}:\n',
+    generated.format(title=f'{get_translate("search", settings.lang)} {query}:\n'
+                           f'{"<b>"+get_translate("page", settings.lang)+f" {page}</b>{backslash_n}" if int(page) > 1 else ""}',
                      args="<b>{numd}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
                      if_empty=get_translate("nothing_found", settings.lang))
 
     return generated
 
-def week_event_list(settings: UserSettings, chat_id, id_list: list | tuple = tuple()) -> MyMessage:
+def week_event_list(settings: UserSettings,
+                    chat_id: int,
+                    id_list: list | tuple = tuple(),
+                    page: int | str = 1) -> MyMessage:
     """
     Сокращение для вызова сообщения с событиями в ближайшие 7 дней
     """
@@ -812,12 +827,16 @@ def week_event_list(settings: UserSettings, chat_id, id_list: list | tuple = tup
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
         generated.get_data(WHERE=WHERE, direction="ASC")
-    generated.format(title=f'{get_translate("week_events", settings.lang)}\n',
+    generated.format(title=f'{get_translate("week_events", settings.lang)}\n'
+                           f'{"<b>"+get_translate("page", settings.lang)+f" {page}</b>{backslash_n}" if int(page) > 1 else ""}',
                      args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
                      if_empty=get_translate("nothing_found", settings.lang))
     return generated
 
-def deleted(settings: UserSettings, chat_id, id_list: list | tuple = tuple()) -> MyMessage:
+def deleted(settings: UserSettings,
+            chat_id: int,
+            id_list: list | tuple = tuple(),
+            page: int | str = 1) -> MyMessage:
     """
     Сокращение для вызова сообщения с корзиной
     """
@@ -835,12 +854,17 @@ def deleted(settings: UserSettings, chat_id, id_list: list | tuple = tuple()) ->
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
         generated.get_data(WHERE=WHERE, direction={"⬇️": "DESC", "⬆️": "ASC"}[settings.direction])
-    generated.format(title=f'{get_translate("basket", settings.lang)}\n',
+    generated.format(title=f'{get_translate("basket", settings.lang)}\n'
+                           f'{"<b>"+get_translate("page", settings.lang)+f" {page}</b>{backslash_n}" if int(page) > 1 else ""}',
                      args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({days_before_delete})\n{markdown_text}\n",
                      if_empty=get_translate("message_empty", settings.lang))
     return generated
 
-def today_message(settings: UserSettings, chat_id, date: str, id_list: list | tuple = tuple()) -> MyMessage:
+def today_message(settings: UserSettings,
+                  chat_id: int,
+                  date: str,
+                  id_list: list | tuple = tuple(),
+                  page: int | str = 1) -> MyMessage:
     """
     Сокращение для вызова сообщения с сегодняшним днём
     """
@@ -850,7 +874,8 @@ def today_message(settings: UserSettings, chat_id, date: str, id_list: list | tu
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
         generated.get_data(WHERE=WHERE, direction={"⬇️": "DESC", "⬆️": "ASC"}[settings.direction])
-    generated.format(title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n",
+    generated.format(title='{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n'
+                           f'{"<b>"+get_translate("page", settings.lang)+f" {page}</b>{backslash_n}" if int(page) > 1 else ""}',
                      args="<b>{numd}.{event_id}.</b>{status}\n{markdown_text}\n",
                      if_empty=get_translate("nodata", settings.lang))
 

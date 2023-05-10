@@ -563,9 +563,9 @@ Reduce the number of characters or remove unnecessary events."""
         "ru": "Восстановить",
         "en": "Recover"
     },
-    "": {
-        "ru": "",
-        "en": ""
+    "page": {
+        "ru": "Страница",
+        "en": "Page"
     },
     "": {
         "ru": "",
