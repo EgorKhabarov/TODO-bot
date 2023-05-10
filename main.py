@@ -347,11 +347,12 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
         if len(events_list) == 1: # Если событие одно
             event_id = events_list[0].split('.', maxsplit=2)[1]
+            if call_data.endswith('bin'): # TODO изменить парсинг переменных
+                event_id = events_list[0].split('.', maxsplit=4)[-2]
             try:
                 SQL(f"""SELECT text FROM root 
                         WHERE event_id={event_id} AND user_id={chat_id}
-                        AND isdel{'' if call_data.endswith('bin') else '!'}=0
-                        ;""")[0][0]
+                        {'AND isdel!=0' if call_data.endswith('bin') else ''};""")[0][0]
             except IndexError:
                 return
             if call_data == "event_status":
@@ -719,7 +720,9 @@ def get_search_message(message: Message):
     except ApiTelegramException:
         bot.reply_to(message, get_translate("get_admin_rules", settings.lang), reply_markup=delmarkup)
 
-@bot.message_handler(func=lambda msg: SQL(f"SELECT add_event_date FROM settings WHERE user_id={msg.chat.id};")[0][0])
+add_event_func = lambda msg: add_event_date[0][0] \
+    if (add_event_date := SQL(f"SELECT add_event_date FROM settings WHERE user_id={msg.chat.id};")) else 0
+@bot.message_handler(func=add_event_func)
 def add_event(message: Message):
     """
     Ловит сообщение если пользователь хочет добавить событие
