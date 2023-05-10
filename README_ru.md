@@ -182,3 +182,6 @@
 ```
 git clone https://github.com/EgorKhabarov/TODO-telegram-bot .
 ```
+```
+pip install -r requirements.txt
+```
