@@ -1,3 +1,4 @@
+from sys import platform
 from io import StringIO
 from time import sleep
 import csv
@@ -13,7 +14,7 @@ from func import * # InlineKeyboardMarkup, InlineKeyboardButton, re, config им
 
 
 """Для цветных логов (Выполнять только для Windows)"""
-if Windows := 0:
+if platform == "win32": # Windows := 0:
     from ctypes import windll
     (lambda k: k.SetConsoleMode(k.GetStdHandle(-11), 7))(windll.kernel32)
 
