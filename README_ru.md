@@ -180,5 +180,5 @@
 ---
 
 ```
-git clone https://github.com/EgorKhabarov/TODO-telegram-bot.git
+git clone https://github.com/EgorKhabarov/TODO-telegram-bot .
 ```

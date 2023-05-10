@@ -180,5 +180,5 @@ For example `#date=1.2023 status=🎧 youtube.com` to search for all events with
 ---
 
 ```
-git clone https://github.com/EgorKhabarov/TODO-telegram-bot.git
+git clone https://github.com/EgorKhabarov/TODO-telegram-bot .
 ```
