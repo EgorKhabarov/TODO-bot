@@ -54,7 +54,7 @@ The bot has limits for different user groups.
 | premium     | 🤷    | 8000                   | 40                 |
 | admin       | -     | ∞                      | ∞                  |
 
-# [Поиск](/func.py#L684&L704)
+# [Search](/func.py#L684&L704)
 
 The bot has a search by events. You can search with `#query` or `/search query` commands.
 This search tries to find all matches.<br>
