@@ -525,7 +525,7 @@ def markdown(text: str, status: str, suburl: bool | int = False) -> str:
     def Code(_text: str):
         return f'<code>{_text}</code>'
 
-    text = text.replace('\n\n', '\n⠀\n')
+    text = text.replace('\n\n', '\n⠀\n⠀')
     if (suburl and status not in ('💻', '❌🔗')) or status == "🔗":
         text = SubUrls(text)
     if status == '🧮':
