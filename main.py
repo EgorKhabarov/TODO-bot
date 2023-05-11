@@ -354,7 +354,8 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                 SQL(f"""SELECT text FROM root 
                         WHERE event_id={event_id} AND user_id={chat_id}
                         {'AND isdel!=0' if call_data.endswith('bin') else ''};""")[0][0]
-            except IndexError:
+            except IndexError: # Если этого события уже нет
+                callback_handler(settings, chat_id, message_id, message_text, "update", call_id, message)
                 return
             if call_data == "event_status":
                 callback_handler(settings, chat_id, message_id, message_text, f"edit_page_status {event_id} {msg_date}", call_id, message)
@@ -415,7 +416,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                 markup.row(InlineKeyboardButton(f"{button_title}{callbackTab * 20}", callback_data=f"recover {event_date} {event_id}"))
 
         if not markup.to_dict()["inline_keyboard"]:
-            callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
+            callback_handler(settings, chat_id, message_id, message_text, "update", call_id, message)
             return
         markup.row(InlineKeyboardButton("🔙", callback_data="back" if not call_data.endswith("bin") else "back bin"))
 
@@ -512,8 +513,8 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                 generated = deleted(settings=settings, chat_id=chat_id, id_list=id_list, page=page)
                 generated.edit(chat_id=chat_id, message_id=message_id, only_text=message.reply_markup)
 
-            elif (events_list := re_date.match(message_text)) is not None:
-                msg_date, result_text = events_list[0], ''
+            elif re_date.match(message_text) is not None:
+                msg_date = re_date.match(message_text)[0]
                 generated = today_message(settings=settings, chat_id=chat_id, date=msg_date, id_list=id_list, page=page)
                 generated.edit(chat_id=chat_id, message_id=message_id, only_text=message.reply_markup)
 
@@ -630,6 +631,25 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
     elif re_call_data_date.search(call_data):
         generated = today_message(settings=settings, chat_id=chat_id, date=call_data)
         generated.edit(chat_id=chat_id, message_id=message_id)
+
+    elif call_data == "update":
+        if message_text.startswith('🔍 '):  # Поиск
+            query = ToHTML(message_text.split('\n', maxsplit=1)[0].split(maxsplit=2)[-1][:-1])
+            generated = search(settings=settings, chat_id=chat_id, query=query)
+            generated.edit(chat_id=chat_id, message_id=message_id, only_text=message.reply_markup)
+
+        elif message_text.startswith('📆'):  # Если /week_event_list
+            generated = week_event_list(settings=settings, chat_id=chat_id)
+            generated.edit(chat_id=chat_id, message_id=message_id, only_text=message.reply_markup)
+
+        elif message_text.startswith('🗑'):  # Корзина
+            generated = deleted(settings=settings, chat_id=chat_id)
+            generated.edit(chat_id=chat_id, message_id=message_id, only_text=message.reply_markup)
+
+        elif re_date.match(message_text) is not None:
+            msg_date = re_date.match(message_text)[0]
+            generated = today_message(settings=settings, chat_id=chat_id, date=msg_date)
+            generated.edit(chat_id=chat_id, message_id=message_id, only_text=message.reply_markup)
 
 
 @bot.message_handler(commands=[*COMMANDS])
