@@ -113,7 +113,7 @@ Write /calendar or click on the button below"""
 | (она общая но каждому доступны только его события)
 | ✅ это статус события
 | (по нему можно помечать события и искать поиском
-| (# или /search) и ставить уведомления (⏰)(!не стабильно!))
+| (# или /search) и ставить уведомления 🔔)
 
 <b>КНОПКИ</b>
 | Календарь
@@ -155,7 +155,7 @@ Write /calendar or click on the button below"""
 | 🪞 Скрыто
 | ❓ Вопрос
 | ⏱ В процессе
-| ⏰ Включить уведомление
+| 🔔 Включить уведомление
 | 📆 Повторение каждый год
 | 🗞 Повторение каждую неделю
 
@@ -176,7 +176,7 @@ Write /calendar or click on the button below"""
 | (it is general but only its events are available to everyone)
 | ✅ this is the status of the event
 | (on it you can mark events and search by search
-| (# or /search) and set notifications (⏰)(!not stable!))
+| (# or /search) and set notifications 🔔)
 
 <b>BUTTONS</b>
 | Calendar
@@ -218,7 +218,7 @@ Write /calendar or click on the button below"""
 | 🪞 Hidden
 | ❓ Question
 | ⏱ In progress
-| ⏰ Enable notification
+| 🔔 Enable notification
 | 📆 Repeat every year
 | 🗞 Repeat every week
 
@@ -249,6 +249,9 @@ Get id /id
 [<u>Порядок событий в сообщении</u>]
 <b>{}</b> <i>(⬇️ по умолчанию)</i>
 
+[<u>Уведомления</u>]
+<b>{}</b> <i>(🔕 по умолчанию)</i>
+
 *(<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">https://www.youtube.com</a> <i>вместо полной ссылки</i>)
 **<i>Ответьте на это сообщение с названием города</i>""",
         "en": """⚙️ Settings ⚙️
@@ -267,6 +270,9 @@ Get id /id
 
 [<u>Order of events in a message</u>]
 <b>{}</b> <i>(⬇️ by default)</i>
+
+[<u>Notifications</u>]
+<b>{}</b> <i>(🔕 by default)</i>
 
 *(<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">https://www.youtube.com</a> <i>instead of full link</i>)
 **<i>Reply to this message with a city name</i>"""
@@ -351,9 +357,9 @@ Visibility <b>{}</b>m"""
             end("en")
         )
     },
-    "alarm": {
-        "ru": ("Будильник", "Скоро праздник!"),
-        "en": ("Alarm", "Holiday coming soon!")
+    "reminder": {
+        "ru": "Напоминание",
+        "en": "Reminder"
     },
     "exceeded_limit": {
         "ru": """Вы превысили дневной лимит.
@@ -411,7 +417,7 @@ Reduce the number of characters or remove unnecessary events."""
             ('🗺 Путешествия                        ', '💻 Код                                '),
             ('🎧 Музыка                             ', '🪞 Скрыто                              '),
             ('⏱ В процессе                         ', '🛒 План покупок                       '),
-            ('⏰ Включить уведомление (не работает) ', '❓ Вопрос                             '),
+            ('🔔 Включить уведомление               ', '❓ Вопрос                             '),
             ('🔗 Ссылка                             ', '❌🔗 Без сокращения ссылок           '),
             ('📆 Повторение каждый год              ', '🗞 Повторение каждую неделю           ')
         ),
@@ -428,7 +434,7 @@ Reduce the number of characters or remove unnecessary events."""
             ('🗺 Travel                             ', '💻 Code                                '),
             ('🎧 Music                              ', '🪞 Hidden                               '),
             ('⏱ In Progress                        ', '🛒 Shopping Plan                       '),
-            ('⏰ Enable notification (not working)  ', '❓ Question                            '),
+            ('🔔 Enable notification                ', '❓ Question                            '),
             ('🔗 Link                               ', '❌🔗 No link shortening               '),
             ('📆 Repeat every year                  ', '🗞 Repeat every week                   ')
         ),

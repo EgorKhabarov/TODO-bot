@@ -5,25 +5,29 @@ from urllib.parse import urlparse
 from dataclasses import dataclass
 from typing import Literal, Any
 from copy import deepcopy
+from io import StringIO
 from time import time
 import re
 
 from requests import get # pip install requests
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telebot.apihelper import ApiTelegramException
 
 from lang import translation
 import config
 
 
 """sql"""
-sqlite_format_date = lambda column, quotes="", sep="-": f"SUBSTR({quotes}{column}{quotes}, 7, 4) || '{sep}' || " \
-                                                       f"SUBSTR({quotes}{column}{quotes}, 4, 2) || '{sep}' || " \
-                                                       f"SUBSTR({quotes}{column}{quotes}, 1, 2)"
+sqlite_format_date = lambda column, quotes="", sep="-": f"""
+    SUBSTR({quotes}{column}{quotes}, 7, 4) || \'{sep}\' || 
+    SUBSTR({quotes}{column}{quotes}, 4, 2) || \'{sep}\' || 
+    SUBSTR({quotes}{column}{quotes}, 1, 2)"""
 """SUBSTR({column}, 7, 4) || '{sep}' || SUBSTR({column}, 4, 2) || '{sep}' || SUBSTR({column}, 1, 2)"""
 sqlite_format_date2 = lambda date: "-".join(date.split(".")[::-1])
 """\"12.34.5678\" -> \"5678-34-12\""""
 
-def SQL(query: str, params: tuple = (), commit: bool = False) -> list[tuple[int | str | bytes, ...], ...]:
+def SQL(query: str, params: tuple = (), commit: bool = False,
+        column_names: bool = False) -> list[tuple[int | str | bytes, ...], ...]:
     """
     Выполняет SQL запрос
     Пробовал через with, но оно не закрывало файл
@@ -31,6 +35,7 @@ def SQL(query: str, params: tuple = (), commit: bool = False) -> list[tuple[int 
     :param query: Запрос
     :param params: Параметры запроса (необязательно)
     :param commit: Нужно ли сохранить изменения? (необязательно, по умолчанию False)
+    :param column_names: Названия столбцов вставить в результат
     :return: Результат запроса
     """
     connection = connect(config.database_path)
@@ -39,6 +44,9 @@ def SQL(query: str, params: tuple = (), commit: bool = False) -> list[tuple[int 
         cursor.execute(query, params)
         if commit: connection.commit()
         result = cursor.fetchall()
+        if column_names:
+            description = [column[0] for column in cursor.description]
+            result = [description] + result
     finally:
         connection.close()
     return result
@@ -61,13 +69,14 @@ class UserSettings:
     """
     def __init__(self, user_id: int):
         self.user_id = user_id
-        self.lang, self.sub_urls, self.city, self.timezone, self.direction, self.user_status = self.get_user_settings()
+        self.lang, self.sub_urls, self.city, self.timezone, \
+            self.direction, self.user_status, self.notifications = self._get_user_settings()
 
-    def get_user_settings(self):
+    def _get_user_settings(self):
         """
         Возвращает список из настроек для пользователя self.user_id
         """
-        query = f"""SELECT lang, sub_urls, city, timezone, direction, user_status 
+        query = f"""SELECT lang, sub_urls, city, timezone, direction, user_status, notifications
                     FROM settings WHERE user_id={self.user_id};"""
         try:
             return SQL(query)[0]
@@ -76,13 +85,14 @@ class UserSettings:
             SQL(f"INSERT INTO settings (user_id) VALUES ({self.user_id});", commit=True)
         return SQL(query)[0]
 
-    def get_settings_markup(self):
+    def get_settings_markup(self): # TODO Настраивать время будильника
         """
         Ставит настройки для пользователя chat_id
         """
         not_lang = "ru" if self.lang == "en" else "en"
         not_sub_urls = 1 if self.sub_urls == 0 else 0
         not_direction = "⬇️" if self.direction == "⬆️" else "⬆️"
+        not_notifications_ = ("🔕", 8) if self.notifications == -1 else ("🔔", -1)
 
         utz = self.timezone
         time_zone_dict = {}
@@ -92,17 +102,21 @@ class UserSettings:
 
         markup = generate_buttons([{f"🗣 {self.lang}": f"settings lang {not_lang}",
                                     f"🔗 {bool(self.sub_urls)}": f"settings sub_urls {not_sub_urls}",
-                                    f"↕️": f"settings direction {not_direction}"},
+                                    f"{not_direction}": f"settings direction {not_direction}",
+                                    f"{not_notifications_[0]}": f"settings notifications {not_notifications_[1]}"},
                                    time_zone_dict,
                                    {"✖": "message_del"}])
-        return self.lang, self.sub_urls, self.city, utz, self.direction, markup
+        return self.lang, self.sub_urls, self.city, utz, self.direction, not_notifications_[0], markup
 
 def create_tables() -> None:
     """
     Создание нужных таблиц
+    # ALTER TABLE table ADD COLUMN new_column TEXT
     """
     try:
-        SQL("""SELECT * FROM root LIMIT 1""")
+        SQL("""
+            SELECT event_id, user_id, date, text, isdel, status
+            FROM root LIMIT 1;""")
     except Error as e:
         if str(e) == "no such table: root":
             SQL("""
@@ -114,9 +128,15 @@ def create_tables() -> None:
                     isdel     INTEGER DEFAULT (0),
                     status    TEXT    DEFAULT ⬜️
                 );""", commit=True)
+        else:
+            quit(f"{e}")
 
     try:
-        SQL("""SELECT * FROM settings LIMIT 1""")
+        SQL("""
+            SELECT
+            user_id, lang, sub_urls, city, timezone, direction, 
+            user_status, notifications, user_max_event_id, add_event_date
+            FROM settings LIMIT 1;""")
     except Error as e:
         if str(e) == "no such table: settings":
             SQL("""
@@ -128,9 +148,12 @@ def create_tables() -> None:
                     timezone          INT  DEFAULT (3),
                     direction         TEXT DEFAULT ⬇️,
                     user_status       INT  DEFAULT (0),
+                    notifications     INT  DEFAULT (-1),
                     user_max_event_id INT  DEFAULT (1),
-                    add_event_date    INT  DEFAULT (0) 
+                    add_event_date    INT  DEFAULT (0)
                 );""", commit=True)
+        else:
+            quit(f"{e}")
 create_tables()
 
 def create_event(user_id: int, date: str, text: str) -> bool:
@@ -203,26 +226,6 @@ GROUP BY temp_table.group_id;
     data = SQL(query)
     return data
 
-def check_bells(settings: UserSettings, chat_id): # TODO доделать check_bells
-    date = now_time_strftime(settings.timezone)
-    res = SQL(f"""SELECT event_id, user_id, text, status FROM root
-               WHERE ((date = '{date}' AND status = '⏰')
-               OR (substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2) 
-                   BETWEEN DATE('now') AND DATE('now', '+7 day') AND (status = '🎉' OR status = '🎊'))) 
-               AND isdel = 0 AND user_id = {chat_id}""")
-    alarm, holiday = get_translate("alarm", settings.lang)
-    for event in res:
-        event_id, user_id, text, status = event
-        if status == '⏰':
-            text = f'{alarm}\n<b>{event_id}.</b>🔕\n{text}'
-        if status in ('🎉', '🎊'):
-            text = f'{holiday}\n<b>{event_id}.</b>{status} {DayInfo(settings, date)}\n{text}'
-        try:
-            SQL(f"UPDATE root SET status = '🔕' WHERE user_id = {chat_id} AND event_id = {event_id} AND date = '{date}' AND status = '⏰';", commit=True)
-        except Error as e:
-            print(f"[func.py -> check_bells] Error \"{e}\"")
-        return text
-
 
 """time"""
 def now_time(user_timezone: int) -> datetime:
@@ -271,6 +274,15 @@ def get_week_number(YY, MM, DD) -> int: # TODO добавить номер не�
     """
     return datetime(YY, MM, DD).isocalendar()[1]
 
+def execution_time(func):
+    def wrapper(*args, **kwargs):
+        start = time()
+        result = func(*args, **kwargs)
+        end = time()
+        print(f" \t({end - start:.3f})")
+        return result
+    return wrapper
+
 class DayInfo:
     """
     Информация о дне
@@ -304,10 +316,32 @@ class DayInfo:
 
 
 """weather"""
-def time_cache(cache_time_sec: int = 32):
+# TODO добавить персональные api ключи для запрашивания погоды
+#  Сделать декоратор для проверки api ключа у пользователя
+#  и в зависимости от наличия ключа ставить разные лимиты на запросы
+def no_spam(requests_count: int = 3, time_sec: int = 60):
+    """
+    Возвращает текст ошибки, если пользователи вызывали функцию чаще чем 3 раза в 60 секунд.
+    """
+    def decorator(func):
+        cache = []
+
+        def wrapper(*args, **kwargs):
+            now = time()
+            cache[:] = [call for call in cache if now - call < time_sec]
+            if len(cache) >= requests_count:
+                wait_time = time_sec - int(now - cache[0])
+                return (f"Погоду запрашивали слишком часто...\n"
+                        f"Подождите ещё {wait_time} секунд")
+            cache.append(now)
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+def time_cache(cache_time_sec: int = 60):
     """
     Кеширует значение функции подобно functools.cache, но держит значение не больше cache_time_sec.
-    Не даёт запрашивать результат функции с одним и тем же аргументом чаще чем в cache_time_sec секунды.
+    Не даёт запрашивать новый результат функции с одним и тем же аргументом чаще чем в cache_time_sec секунды.
     """
     def decorator(func):
         cache = {}
@@ -323,12 +357,13 @@ def time_cache(cache_time_sec: int = 32):
 
     return decorator
 
-@time_cache(60)
-def weather_in(settings: UserSettings, city: str) -> str: # TODO защита от спам атак
+@no_spam(4, 60)
+@time_cache(300)
+def weather_in(settings: UserSettings, city: str) -> str:
     """
     Возвращает текущую погоду по городу city
     """
-    print(f"weather in {city}")
+    print(f"\nweather in {city:<67}", end="")
     url = 'http://api.openweathermap.org/data/2.5/weather'
     weather = get(url, params={'APPID': config.weather_api_key, 'q': city, 'units': 'metric', 'lang': settings.lang}).json()
     weather_icon = weather['weather'][0]['icon']
@@ -361,12 +396,13 @@ def weather_in(settings: UserSettings, city: str) -> str: # TODO защита о
                                                           wind_speed, wind_deg_icon,  wind_deg,
                                                           sunrise, sunset, visibility)
 
+@no_spam(4, 60)
 @time_cache(3600)
 def forecast_in(settings: UserSettings, city: str) -> str:
     """
     Прогноз погоды на 5 дней для города city
     """
-    print(f"forecast in {city}")
+    print(f"\nforecast in {city:<67}", end="")
     url = "http://api.openweathermap.org/data/2.5/forecast"
     weather = get(url, params={'APPID': config.weather_api_key, 'q': city, 'units': 'metric', 'lang': settings.lang}).json()
     dn = {"d": "☀", "n": "🌑"}
@@ -404,10 +440,12 @@ def generate_buttons(buttons_data: list[dict]) -> InlineKeyboardMarkup:
     """
     Генерация клавиатуры из списка словарей
     """
-    keyboard = [[InlineKeyboardButton(text=text, callback_data=data) for text, data in row.items()] for row in buttons_data]
+    keyboard = [[InlineKeyboardButton(text=text, callback_data=data)
+                 for text, data in row.items()]
+                for row in buttons_data]
     return InlineKeyboardMarkup(keyboard=keyboard)
 
-def mycalendar(chat_id, user_timezone: int, lang: str, YY_MM: list | tuple[int, int] = None) -> InlineKeyboardMarkup():
+def mycalendar(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list | tuple[int, int] = None) -> InlineKeyboardMarkup():
     """
     Создаёт календарь на месяц и возвращает inline клавиатуру
     """
@@ -424,13 +462,15 @@ def mycalendar(chat_id, user_timezone: int, lang: str, YY_MM: list | tuple[int, 
     markup.row(*[InlineKeyboardButton(day, callback_data="None") for day in week_day_list])
 
     # получаем из базы данных дни на которых есть событие
-    SqlResult = SQL(f'SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as date) FROM root '
-                    f'WHERE user_id = {chat_id} AND date LIKE "%.{MM:0>2}.{YY}" AND isdel = 0;')
+    SqlResult = SQL(f"""
+        SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as date) FROM root
+        WHERE user_id={chat_id} AND isdel=0 AND date LIKE \"%.{MM:0>2}.{YY}\";""")
     beupdate = [x[0] for x in SqlResult]
 
-    birthday = SQL(f'SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as date) FROM root '
-                   f'WHERE date LIKE "__.{MM:0>2}.____" AND isdel = 0 AND '
-                   f'user_id = {chat_id} AND status IN ("🎉", "🎊")')
+    birthday = SQL(f"""
+        SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as date) FROM root
+        WHERE user_id={chat_id} AND isdel=0 AND 
+        status IN (\"🎉\", \"🎊\", \"📆\") AND date LIKE \"__.{MM:0>2}.____\";""")
     birthdaylist = [x[0] for x in birthday]
 
     # получаем сегодняшнее число
@@ -456,9 +496,16 @@ def generate_month_calendar(user_timezone: int, lang: str, chat_id, YY) -> Inlin
     """
     Создаёт календарь из месяцев на определённый год и возвращает inline клавиатуру
     """
-    SqlResult = SQL(f'SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as date) FROM root '
-                    f'WHERE user_id={chat_id} AND date LIKE "__.__.{YY}" AND isdel=0;')
-    month_list = [x[0] for x in SqlResult] # Форматирование результата
+    month_list = [x[0] for x in SQL(f"""
+        SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as date) FROM root
+        WHERE user_id={chat_id} AND date LIKE "__.__.{YY}" AND isdel=0;
+    """)] # Форматирование результата
+
+    recurring_list = [x[0] for x in SQL(f"""
+        SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as date) FROM root
+        WHERE user_id={chat_id} AND status IN ("🎉", "🎊", "📆") AND isdel=0;
+    """)] # Форматирование результата
+
     nowMonth = now_time(user_timezone).month
     isNowMonth = lambda numM: numM == nowMonth
 
@@ -470,10 +517,8 @@ def generate_month_calendar(user_timezone: int, lang: str, chat_id, YY) -> Inlin
         for nameM, numm in row:
             tag_today = "#" if isNowMonth(numm) else ""
             tag_event = "*" if numm in month_list else ""
-            tag_birthday = '!' if SQL(f'SELECT status FROM root '
-                                      f'WHERE date LIKE "__.{numm:0>2}.____" AND isdel = 0 AND '
-                                      f'user_id = {chat_id} AND status IN ("🎉", "🎊") LIMIT 1') else ''
-            result[-1][f'{tag_today}{nameM}{tag_event}{tag_birthday}'] = f'generate calendar {YY} {numm}'
+            tag_birthday = "!" if numm in recurring_list else ""
+            result[-1][f"{tag_today}{nameM}{tag_event}{tag_birthday}"] = f"generate calendar {YY} {numm}"
 
     markupL = [
         {f"{YY} ({year_info(YY, lang)})": "None"},
@@ -538,7 +583,8 @@ def markdown(text: str, status: str, suburl: bool | int = False) -> str:
         return List(text)
     elif status == '🪞':
         return Spoiler(text)
-    else: return text
+    else:
+        return text
 
 def get_translate(target: str, lang_iso_code: str) -> Any:
     """
@@ -585,7 +631,8 @@ def main_log(user_status: int, chat_id: int, action: str, text: str) -> None:
         log_chat_id = f"\033[21m\033[32m{chat_id}\033[0m"
     else: # user_status == 0:
         log_chat_id = f"\033[21m{chat_id}\033[0m"
-    print(f"{log_time_strftime()} {log_chat_id:<15} {action} " + text.replace(f"\n", f"\\n"))
+    log_text = f"{log_time_strftime()} {log_chat_id:<15} {action} " + text.replace(f"\n", f"\\n")
+    print(f"{log_text:<90}", end="")
 
 
 """Генерация сообщений"""
@@ -615,7 +662,7 @@ class MyMessage:
                  reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup()):
         if date == "now":
             date = now_time_strftime(settings.timezone)
-        self._event_list = event_list
+        self.event_list = event_list
         self._date = date
         self._settings = settings
         self.text = ""
@@ -647,17 +694,17 @@ class MyMessage:
             if table == "root":
                 first_message = [Event(*event) for event in SQL(f"""
                     SELECT date, event_id, status, text, isdel FROM root 
-                    WHERE ({WHERE}) AND event_id IN ({data[0][0]}) 
+                    WHERE event_id IN ({data[0][0]}) AND ({WHERE})
                     ORDER BY {column_to_order} {direction};""")]
             else:
                 first_message = [Event(text=event[0]) for event in SQL(f"""
-                    SELECT {column_to_limit} FROM {table} 
-                    WHERE ({WHERE}) AND {column_to_order} IN ({data[0][0]}) 
+                    SELECT {column_to_limit} FROM {table}
+                    WHERE {column_to_order} IN ({data[0][0]}) AND ({WHERE})
                     ORDER BY {column_to_order} {direction};""")]
 
             if self._settings.direction == "⬆️":
                 first_message = first_message[::-1]
-            self._event_list = first_message
+            self.event_list = first_message
 
             count_columns = 5
             diapason_list = []
@@ -682,17 +729,18 @@ class MyMessage:
         """
         try:
             direction = {"⬇️": "DESC", "⬆️": "ASC"}[self._settings.direction]
-            res = [Event(*event) for event in SQL(f"SELECT date, event_id, status, text, isdel FROM root "
-                                                  f"WHERE {WHERE} AND event_id IN ({', '.join(values)})"
-                                                  f"ORDER BY {sqlite_format_date('date')} {direction};")]
+            res = [Event(*event) for event in SQL(f"""
+                SELECT date, event_id, status, text, isdel FROM root
+                WHERE event_id IN ({', '.join(values)}) AND ({WHERE})
+                ORDER BY {sqlite_format_date('date')} {direction};""")]
         except Error as e:
             print(f"[func.py -> MyMessage.get_events] Error \"{e}\"")
-            self._event_list = []
+            self.event_list = []
         else:
             if self._settings.direction != "⬆️":
-                self._event_list = res
+                self.event_list = res
             else:
-                self._event_list = res[::-1]
+                self.event_list = res[::-1]
         return self
 
     def format(self,
@@ -736,10 +784,10 @@ class MyMessage:
             weekday=day.week_date,
             reldate=day.relatively_date) + "\n"
 
-        if not self._event_list:
+        if not self.event_list:
             format_string += if_empty
         else:
-            for num, event in enumerate(self._event_list):
+            for num, event in enumerate(self.event_list):
                 day = DayInfo(self._settings, event.date)
                 format_string += args.format(
                     date=day.date,
@@ -768,7 +816,13 @@ class MyMessage:
              chat_id: int,
              message_id: int,
              only_markup: bool = False,
-             only_text: InlineKeyboardMarkup = None) -> None:
+             markup: InlineKeyboardMarkup = None) -> None:
+        """
+        :param chat_id: chat_id
+        :param message_id: message_id
+        :param only_markup: обновить только клавиатуру self.reply_markup
+        :param markup: обновить текст self.text и клавиатура markup
+        """
         ...
 
 def search(settings: UserSettings,
@@ -777,13 +831,29 @@ def search(settings: UserSettings,
            id_list: list | tuple = tuple(),
            page: int | str = 1) -> MyMessage:
     """
-    Сокращение для вызова сообщения поиска
+    :param settings: settings
+    :param chat_id: chat_id
+    :param query: поисковый запрос
+    :param id_list: Список из event_id
+    :param page: Номер страницы
+
+    Вызвать сообщение с поиском:
+        search(settings=settings, chat_id=chat_id, query=query)
+    Изменить страницу:
+        search(settings=settings, chat_id=chat_id, query=query, id_list=id_list, page=page)
+    TODO шаблоны для поиска
     """
     if not re.match(r'\S', query):
         generated = MyMessage(settings, reply_markup=delmarkup)
         generated.format(title=f'{get_translate("search", settings.lang)} {query}:\n',
                          if_empty=get_translate("request_empty", settings.lang))
         return generated
+
+    re_day = re.compile(r"[#\b ]day=(\d{1,2})[\b]?")
+    re_month = re.compile(r"[#\b ]month=(\d{1,2})[\b]?")
+    re_year = re.compile(r"[#\b ]year=(\d{4})[\b]?")
+    re_id = re.compile(r"[#\b ]id=(\d{,6})[\b]?")
+    re_status = re.compile(r"[#\b ]status=(\S+)[\b]?")
 
     querylst = query.replace('\n', ' ').split()
     splitquery = " OR ".join(f"date LIKE '%{x}%' OR text LIKE '%{x}%'OR status LIKE '%{x}%' OR event_id LIKE '%{x}%'" for x in querylst)
@@ -806,10 +876,18 @@ def week_event_list(settings: UserSettings,
                     id_list: list | tuple = tuple(),
                     page: int | str = 1) -> MyMessage:
     """
-    Сокращение для вызова сообщения с событиями в ближайшие 7 дней
+    :param settings: settings
+    :param chat_id: chat_id
+    :param id_list: Список из event_id
+    :param page: Номер страницы
+
+    Вызвать сообщение с событиями в эту неделю:
+        week_event_list(settings=settings, chat_id=chat_id)
+    Изменить страницу:
+        week_event_list(settings=settings, chat_id=chat_id, id_list=id_list, page=page)
     """
     WHERE = f"""
-    (user_id = {chat_id} AND isdel = 0) AND (
+    (user_id={chat_id} AND isdel=0) AND (
         (
             {sqlite_format_date('date')} BETWEEN DATE('now') AND DATE('now', '+7 day')
         ) 
@@ -840,11 +918,19 @@ def deleted(settings: UserSettings,
             id_list: list | tuple = tuple(),
             page: int | str = 1) -> MyMessage:
     """
-    Сокращение для вызова сообщения с корзиной
+    :param settings: settings
+    :param chat_id: chat_id
+    :param id_list: Список из event_id
+    :param page: Номер страницы
+
+    Вызвать сообщение с корзиной:
+        deleted(settings=settings, chat_id=chat_id)
+    Изменить страницу:
+        deleted(settings=settings, chat_id=chat_id, id_list=id_list, page=page)
     """
-    WHERE = f"""user_id={chat_id} AND isdel != 0"""
+    WHERE = f"""user_id={chat_id} AND isdel!=0"""
     # Удаляем события старше 30 дней
-    SQL(f"""DELETE FROM root WHERE isdel != 0 AND 
+    SQL(f"""DELETE FROM root WHERE isdel!=0 AND 
     (julianday('now') - julianday({sqlite_format_date("isdel")}) > 30);""", commit=True)
 
 
@@ -868,9 +954,18 @@ def today_message(settings: UserSettings,
                   id_list: list | tuple = tuple(),
                   page: int | str = 1) -> MyMessage:
     """
-    Сокращение для вызова сообщения с сегодняшним днём
+    :param settings: settings
+    :param chat_id: chat_id
+    :param date: дата у сообщения
+    :param id_list: Список из event_id
+    :param page: Номер страницы
+
+    Вызвать сообщение с сегодняшним днём:
+        today_message(settings=settings, chat_id=chat_id, date=now_time_strftime(settings.timezone))
+    Изменить страницу:
+        today_message(settings=settings, chat_id=chat_id, date=date, id_list=id_list, page=page)
     """
-    WHERE = f"user_id = {chat_id} AND isdel = 0 AND date = '{date}'"
+    WHERE = f"user_id={chat_id} AND isdel=0 AND date='{date}'"
     generated = MyMessage(settings, date=date, reply_markup=allmarkup)
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
@@ -882,15 +977,140 @@ def today_message(settings: UserSettings,
                      if_empty=get_translate("nodata", settings.lang))
 
     # Добавить дополнительную кнопку для дней в которых есть праздники
-    birthday = SQL(f"""SELECT DISTINCT date FROM root 
-    WHERE isdel = 0 AND user_id = {chat_id} AND 
-    ((date LIKE '{date[:-5]}.____' AND status IN ('🎉', '🎊', '📆')) OR
-    (strftime('%w', {sqlite_format_date('date')}) = CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT) 
-    AND status IN ('🗞')))
+    birthday = SQL(f"""
+    SELECT DISTINCT date FROM root 
+    WHERE isdel=0 AND user_id={chat_id} AND 
+    (
+        (
+            status IN ('🎉', '🎊', '📆') AND
+            date LIKE '{date[:-5]}.____'
+        )
+        OR
+        (
+            status IN ('🗞') AND
+            strftime('%w', {sqlite_format_date('date')}) = CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT)
+        )
+    );
     """)
     daylist = [x[0] for x in birthday if x[0] != date]
     if daylist:
-        generated.reply_markup.row(InlineKeyboardButton("📅", callback_data=f"!birthday"))
+        generated.reply_markup.row(InlineKeyboardButton("📅", callback_data=f"recurring"))
+    return generated
+
+def notifications(user_id_list: list | tuple[int | str, ...] = None,
+                  id_list: list | tuple = tuple(),
+                  page: int | str = 1,
+                  message_id: int = -1,
+                  markup: InlineKeyboardMarkup = None,
+                  from_command: bool = False) -> None:
+    """
+    :param user_id_list: user_id_list
+    :param id_list: Список из event_id
+    :param page: Номер страницы
+    :param message_id: message_id сообщения для изменения
+    :param markup: markup для изменения сообщения
+    :param from_command: Если True то сообщение присылается в любом случае
+
+    Вызвать сообщение с будильником для всех:
+        notifications()
+    Вызвать сообщение для одного человека:
+        notifications(user_id=[chat_id])
+    Изменить страницу сообщения:
+        notifications(user_id=[chat_id],
+                      id_list=id_list,
+                      page=page,
+                      message_id=message_id,
+                      markup=message.reply_markup)
+    """
+    user_id_list = user_id_list if user_id_list else [user_id[0] for user_id in SQL(
+        f"SELECT user_id FROM settings WHERE notifications!=-1;")]
+    for user_id in user_id_list:
+        user_id = int(user_id)
+        settings = UserSettings(user_id)
+
+        WHERE = f"""
+            (
+                (
+                    status IN ('🔔', '🔕') 
+                    AND date='{now_time_strftime(settings.timezone)}'
+                ) 
+                OR 
+                (
+                    status IN ('🎉', '🎊', '📆')
+                    AND {sqlite_format_date("date")} IN (
+                        DATE('now'), 
+                        DATE('now', '+1 day'),
+                        DATE('now', '+2 day'), 
+                        DATE('now', '+3 day'), 
+                        DATE('now', '+7 day')
+                    )
+                )
+            )
+            AND isdel=0
+        """
+
+        generated = MyMessage(settings, reply_markup=delmarkup)
+        if id_list:
+            generated.get_events(WHERE=WHERE, values=id_list)
+        else:
+            generated.get_data(WHERE=WHERE, direction={"⬇️": "DESC", "⬆️": "ASC"}[settings.direction])
+        if len(generated.event_list) or from_command:
+            generated.format(title=(f'🔔 {get_translate("reminder", settings.lang)} 🔔\n'
+                                    f'{"<b>" + get_translate("page", settings.lang) + f" {page}</b>{backslash_n}" if int(page) > 1 else ""}'),
+                             args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
+                             if_empty=get_translate("message_empty", settings.lang))
+            print(f"[func.py -> notifications]")
+            try:
+                if id_list:
+                    generated.edit(chat_id=user_id, message_id=message_id, markup=markup)
+                else:
+                    generated.send(chat_id=user_id)
+                if not from_command:
+                    SQL(f"UPDATE root SET status='🔕' WHERE {WHERE} AND status='🔔';", commit=True)
+            except ApiTelegramException:
+                pass
+
+def recurring(settings: UserSettings,
+              date: str,
+              chat_id: int,
+              id_list: list | tuple = tuple(),
+              page: int | str = 1):
+    """
+    :param settings: settings
+    :param date: дата у сообщения
+    :param chat_id: chat_id
+    :param id_list: Список из event_id
+    :param page: Номер страницы
+
+    Вызвать сообщение с повторяющимися событиями:
+        recurring(settings=settings, date=date, chat_id=chat_id)
+    Изменить страницу:
+        recurring(settings=settings, date=date, chat_id=chat_id, id_list=id_list, page=page)
+    """
+    WHERE = f"""
+        isdel=0 AND user_id={chat_id} 
+        AND 
+        (
+            (
+                status IN ('🎉', '🎊', '📆')
+                AND date LIKE '{date[:-5]}.____'
+            )
+            OR
+            (
+                status IN ('🗞') AND
+                strftime('%w', {sqlite_format_date('date')}) = CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT)
+            )
+        )
+    """
+    generated = MyMessage(settings=settings, date=date, reply_markup=backmarkup)
+    if id_list:
+        generated.get_events(WHERE=WHERE, values=id_list)
+    else:
+        generated.get_data(WHERE=WHERE, direction={"⬇️": "DESC", "⬆️": "ASC"}[settings.direction], prefix="|!")
+    generated.format(title='{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n'
+                           f'{"<b>"+get_translate("page", settings.lang)+f" {page}</b>{backslash_n}" if int(page) > 1 else ""}',
+                     args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
+                     if_empty=get_translate("nothing_found", settings.lang))
     return generated
 
 def parse(chat_id, message_text, call_data):
@@ -926,3 +1146,42 @@ def is_admin_id(chat_id) -> bool:
     """
     # or (int(SQL(f"SELECT user_status FROM settings WHERE user_id={chat_id};")[0][0]) == 2)
     return chat_id in config.admin_id
+
+def write_table_to_str(file: StringIO, query: str, commit: bool = False, align: Literal["<", ">", "^"] = "<") -> None:
+    """
+    Наполнит файл file строковым представлением таблицы результата SQL(query)
+    """
+    table = [list(column) for column in SQL(query, commit=commit, column_names=True)]
+
+    # Матрица максимальных длин и высот каждого столбца и строки
+    w = [[max(len(line) for line in str(column).splitlines()) for column in row] for row in table]
+
+    # Вычисляем максимальную ширину и высоту каждого столбца и строки
+    widths = [max(column) for column in zip(*w)]
+
+
+    sep = "+" + "".join(("-" * (i + 2)) + "+" for i in widths)  # Разделитель строк
+    template = "|" + "".join(f" {{:{align}{_}}} |" for _ in widths)
+
+    for n, row in enumerate(table):
+        file.write(sep + "\n")
+        indices = [i for i, column in enumerate(row) if len(str(column).split("\n")) > 1]
+
+        if indices:
+            first_line = row[:]
+            for x in indices:
+                first_line[x] = row[x].splitlines()[0]
+            file.write(template.format(*first_line) + "\n")
+
+            indents = [len(str(column).splitlines()) for column in row]
+            max_lines = max(indents)
+            for ml in range(1, max_lines):  # проходим по максимум новых строчек
+                new_line = ["" for _ in indents]
+                for i in indices: # получаем индексы многострочных ячеек
+                    new_line[i] = str(row[i]).splitlines()[ml]
+                file.write(template.format(*new_line) + ("\n" if ml < max_lines-1 else ""))
+
+        else:
+            file.write(template.format(*row))
+        file.write("\n")
+    file.write(sep)
