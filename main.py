@@ -789,10 +789,7 @@ def add_event(message: Message):
 
 
 def schedule_loop():
-    [(
-        print(hour, chat_id_list.split(",")),
-        schedule.every().day.at(f"{hour:0>2}:00").do(notifications, user_id_list=chat_id_list.split(","))
-      )
+    [schedule.every().day.at(f"{hour:0>2}:00").do(notifications, user_id_list=chat_id_list.split(","))
      for hour, chat_id_list in SQL(f"""
         SELECT DISTINCT (notifications - timezone), GROUP_CONCAT(user_id, ',')
         FROM settings 
