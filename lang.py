@@ -250,7 +250,7 @@ Get id /id
 <b>{}</b> <i>(⬇️ по умолчанию)</i>
 
 [<u>Уведомления</u>]
-<b>{}</b> <i>(🔕 по умолчанию)</i>
+<b>{} {}</b> <i>(🔕 по умолчанию)</i>
 
 *(<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">https://www.youtube.com</a> <i>вместо полной ссылки</i>)
 **<i>Ответьте на это сообщение с названием города</i>""",
@@ -272,7 +272,7 @@ Get id /id
 <b>{}</b> <i>(⬇️ by default)</i>
 
 [<u>Notifications</u>]
-<b>{}</b> <i>(🔕 by default)</i>
+<b>{} {}</b> <i>(🔕 by default)</i>
 
 *(<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">https://www.youtube.com</a> <i>instead of full link</i>)
 **<i>Reply to this message with a city name</i>"""

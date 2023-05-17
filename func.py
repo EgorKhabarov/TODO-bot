@@ -85,28 +85,44 @@ class UserSettings:
             SQL(f"INSERT INTO settings (user_id) VALUES ({self.user_id});", commit=True)
         return SQL(query)[0]
 
-    def get_settings_markup(self): # TODO Настраивать время будильника
+    def get_settings(self) -> tuple[str, InlineKeyboardMarkup]:
         """
         Ставит настройки для пользователя chat_id
         """
         not_lang = "ru" if self.lang == "en" else "en"
         not_sub_urls = 1 if self.sub_urls == 0 else 0
         not_direction = "⬇️" if self.direction == "⬆️" else "⬆️"
-        not_notifications_ = ("🔕", 8) if self.notifications == -1 else ("🔔", -1)
+        not_notifications_ = ("🔔", 8, "🔕") if self.notifications == -1 else ("🔕", -1, "🔔")
 
         utz = self.timezone
+        str_utz = f"""{utz} {"🌍" if -2 < int(utz) < 5 else ("🌏" if 4 < int(utz) < 12 else "🌎")}"""
+
         time_zone_dict = {}
         time_zone_dict.__setitem__(*('‹‹‹', f'settings timezone {utz - 1}') if utz > -11 else ('   ', 'None'))
-        time_zone_dict[f'{utz}'] = 'settings timezone 3'
+        time_zone_dict[str_utz] = 'settings timezone 3'
         time_zone_dict.__setitem__(*('›››', f'settings timezone {utz + 1}') if utz < 11 else ('   ', 'None'))
+
+        notifications_time = {}
+        if not_notifications_[2] == "🔔":
+            notifications_time.__setitem__(*('‹‹‹', f'settings notifications {self.notifications - 1}') if self.notifications > 0 else ('   ', 'None'))
+            notifications_time[f"{self.notifications}:00 ⏰"] = 'settings notifications 8'
+            notifications_time.__setitem__(*('›››', f'settings notifications {self.notifications + 1}') if self.notifications < 24 else ('   ', 'None'))
 
         markup = generate_buttons([{f"🗣 {self.lang}": f"settings lang {not_lang}",
                                     f"🔗 {bool(self.sub_urls)}": f"settings sub_urls {not_sub_urls}",
                                     f"{not_direction}": f"settings direction {not_direction}",
                                     f"{not_notifications_[0]}": f"settings notifications {not_notifications_[1]}"},
                                    time_zone_dict,
+                                   notifications_time,
                                    {"✖": "message_del"}])
-        return self.lang, self.sub_urls, self.city, utz, self.direction, not_notifications_[0], markup
+        return get_translate("settings", self.lang).format(
+            self.lang,
+            bool(self.sub_urls),
+            self.city,
+            str_utz,
+            self.direction,
+            not_notifications_[2],
+            f"{self.notifications}:00" if not_notifications_[2] == "🔔" else ""), markup
 
 def create_tables() -> None:
     """

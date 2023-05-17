@@ -166,9 +166,7 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
                          reply_markup=delmarkup)
 
     elif message_text.startswith("/settings"):
-        settings_lang, sub_urls, city, timezone_, direction, notifications_, markup = settings.get_settings_markup()
-        text = get_translate("settings", settings.lang).format(
-            settings_lang, bool(sub_urls), city, timezone_, direction, notifications_)
+        text, markup = settings.get_settings()
         bot.send_message(chat_id=chat_id, text=text, reply_markup=markup)
 
     elif message_text.startswith("/today"):
@@ -582,15 +580,13 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             SQL(f"UPDATE settings SET {par_name}='{par_val}' WHERE user_id={chat_id};", commit=True)
         else:
             SQL(f"UPDATE settings SET {par_name}={par_val} WHERE user_id={chat_id};", commit=True)
+        rearrange_job()
 
         settings = UserSettings(chat_id)
         set_commands(settings, chat_id, settings.user_status)
-        settings_lang, sub_urls, city, timezone_, direction, notifications_, markup = settings.get_settings_markup()
-        text = get_translate("settings", settings.lang).format(
-            settings_lang, bool(sub_urls), city, timezone_, direction, notifications_)
+        text, markup = settings.get_settings()
         try:
-            bot.edit_message_text(text,
-                                  chat_id, message_id, reply_markup=markup)
+            bot.edit_message_text(text, chat_id, message_id, reply_markup=markup)
         except ApiTelegramException:
             pass
 
@@ -787,15 +783,17 @@ def add_event(message: Message):
         bot.reply_to(message, get_translate("error", settings.lang), reply_markup=delmarkup)
         clear_state(chat_id)
 
+job_list = []
+def rearrange_job(): # TODO Один цикл для уведомлений
+    global job_list
+    job_list = [schedule.every().day.at(f"{hour:0>2}:00").do(notifications, user_id_list=chat_id_list.split(","))
+                for hour, chat_id_list in SQL(f"""
+SELECT DISTINCT (notifications - timezone), GROUP_CONCAT(user_id, ',')
+FROM settings 
+WHERE notifications!=-1
+GROUP BY notifications - timezone;""")]
 
 def schedule_loop():
-    [schedule.every().day.at(f"{hour:0>2}:00").do(notifications, user_id_list=chat_id_list.split(","))
-     for hour, chat_id_list in SQL(f"""
-        SELECT DISTINCT (notifications - timezone), GROUP_CONCAT(user_id, ',')
-        FROM settings 
-        WHERE notifications!=-1
-        GROUP BY notifications - timezone;""")]
-
     # link = "link"
     # headers = {
     #     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -808,5 +806,6 @@ def schedule_loop():
 
 if __name__ == "__main__":
     if config.notifications:
+        rearrange_job()
         Thread(target=schedule_loop, daemon=True).start()
     bot.infinity_polling()
