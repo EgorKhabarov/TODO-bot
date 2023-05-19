@@ -394,7 +394,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                 event_id = event.split('.', maxsplit=2)[-2]
 
             try: # Проверяем существование события
-                SQL(f"""
+                event_text = SQL(f"""
                     SELECT text FROM root 
                     WHERE event_id={event_id} AND user_id={chat_id}
                     AND isdel{"!" if call_data.endswith("bin") else ""}=0;""")[0][0]
@@ -402,14 +402,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                 continue
 
             if call_data == "event_edit":
-                try:
-                    # Получаем текст события и убираем html экранирование
-                    event_text = NoHTML(
-                        SQL(f"SELECT text FROM root WHERE event_id={event_id} AND user_id={chat_id};")[0][0]
-                    )
-                except Error as e:
-                    print(f"[main.py -> callback_handler -> \"event_edit\"] Error \"{e}\"")
-                    return
+                event_text = NoHTML(event_text)
                 markup.row(
                     InlineKeyboardButton(text=f"{event}{callbackTab * 20}",
                                          switch_inline_query_current_chat=f"Edit message({event_id}, {msg_date}, "
@@ -481,7 +474,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             text, status = SQL(f"""
                 SELECT text, status FROM root
                 WHERE user_id={chat_id} AND event_id={event_id} AND date='{event_date}' AND
-                isdel{'!' if back_to_bin == 'bin' else ''}0;""")[0]
+                isdel{'!' if back_to_bin == 'bin' else ''}=0;""")[0]
         except IndexError as e:
             print(f"[main.py -> callback_handler -> \"before del\"] IndexError \"{e}\"")
             bot.answer_callback_query(callback_query_id=call_id, text=get_translate("error", settings.lang))

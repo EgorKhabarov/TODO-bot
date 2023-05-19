@@ -244,9 +244,9 @@ GROUP BY temp_table.group_id;
 
 
 """time"""
-def now_time(user_timezone: int) -> datetime:
+def now_time(user_timezone: int = 0) -> datetime:
     """
-    Возвращает datetime с настоящим временем с учётом часовых поясов
+    Возвращает datetime.now() с учётом часового пояса пользователя
     """
     return datetime.now()+timedelta(hours=user_timezone)
 
@@ -1043,7 +1043,7 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
             SELECT GROUP_CONCAT(user_id, ',') AS user_id_list
             FROM settings
             WHERE notifications!=-1
-            AND ((notifications - timezone + 24) % 24)={now_time(config.hours_difference).hour}
+            AND ((notifications - timezone + 24) % 24)={now_time().hour}
         ;""") if user[0] for user_id in user[0].split(",")] # [('id1,id2,id3',)] -> []
 
     for user_id in user_id_list:
@@ -1139,13 +1139,6 @@ def recurring(settings: UserSettings,
                      args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
                      if_empty=get_translate("nothing_found", settings.lang))
     return generated
-
-def parse(chat_id, message_text, call_data):
-    res = message_text.split('\n\n')[1:]
-    if res[0].startswith("👀") or res[0].startswith("🕸"):
-        return 0
-    markup = InlineKeyboardMarkup()
-    date = message_text.split(maxsplit=1)[0]
 
 """Проверки"""
 limits = {
