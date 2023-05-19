@@ -37,7 +37,7 @@ def check(key, val) -> str:
             f"\033[31m{val!s:<5}\033[0m{indent}"
             ) if key in keylist else f"{val}"
 
-print(f"+{'-'*59}+\n"+''.join(f'| {k: >27} = {check(k, v): <27} |\n' for k, v in Me.to_dict().items())+f"+{'-'*59}+")
+logging.info(f"+{'-'*59}+\n"+''.join(f'| {k: >27} = {check(k, v): <27} |\n' for k, v in Me.to_dict().items())+f"+{'-'*59}+")
 
 bot.disable_web_page_preview = True
 bot.parse_mode = "html"
@@ -92,7 +92,7 @@ def set_commands(settings: UserSettings, chat_id: int, user_status: int | str = 
     try:
         return bot.set_my_commands(commands=get_translate(target, lang), scope=BotCommandScopeChat(chat_id=chat_id))
     except (ApiTelegramException, KeyError) as e:
-        print(f"[main.py -> set_commands -> \"|\"] (ApiTelegramException, KeyError) \"{e}\"")
+        logging.info(f"[main.py -> set_commands -> \"|\"] (ApiTelegramException, KeyError) \"{e}\"")
         return False
 
 # Ставим дефолтные команды для всех пользователей при запуске бота
@@ -235,7 +235,7 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
             try:
                 bot.send_document(chat_id=chat_id, document=InputFile(file))
             except ApiTelegramException as e:
-                print(f"[main.py -> command_handler -> \"/save_to_csv\"] ApiTelegramException \"{e}\"")
+                logging.info(f"[main.py -> command_handler -> \"/save_to_csv\"] ApiTelegramException \"{e}\"")
                 bot.send_message(chat_id=chat_id, text=get_translate("file_is_too_big", settings.lang))
         else:
             bot.send_message(chat_id=chat_id, text=get_translate("export_csv", settings.lang).format(t=t // 60))
@@ -348,7 +348,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                 WHERE user_id={chat_id} AND event_id={event_id}
                 AND date='{msg_date}';""", commit=True)
         except Error as e:
-            print(f"[main.py -> callback_handler -> \"confirm change\"] Error \"{e}\"")
+            logging.info(f"[main.py -> callback_handler -> \"confirm change\"] Error \"{e}\"")
             bot.answer_callback_query(callback_query_id=call_id, text=get_translate("error", settings.lang))
         today_message(settings=settings, chat_id=chat_id, date=msg_date).edit(chat_id=chat_id, message_id=message_id)
 
@@ -476,7 +476,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                 WHERE user_id={chat_id} AND event_id={event_id} AND date='{event_date}' AND
                 isdel{'!' if back_to_bin == 'bin' else ''}=0;""")[0]
         except IndexError as e:
-            print(f"[main.py -> callback_handler -> \"before del\"] IndexError \"{e}\"")
+            logging.info(f"[main.py -> callback_handler -> \"before del\"] IndexError \"{e}\"")
             bot.answer_callback_query(callback_query_id=call_id, text=get_translate("error", settings.lang))
             callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
             return
@@ -507,7 +507,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                     DELETE FROM root 
                     WHERE user_id={chat_id} AND date='{event_date}' AND event_id={event_id};""", commit=True)
         except Error as e:
-            print(f"[main.py -> callback_handler -> \"del\"] Error \"{e}\"")
+            logging.info(f"[main.py -> callback_handler -> \"del\"] Error \"{e}\"")
             bot.answer_callback_query(callback_query_id=call_id, text=get_translate("error", settings.lang))
         callback_handler(settings, chat_id, message_id, message_text, "back" if where != "bin" else "back bin", call_id, message)
 
@@ -540,7 +540,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                 notifications(user_id_list=[chat_id], id_list=id_list, page=page, message_id=message_id, markup=message.reply_markup)
 
         except ApiTelegramException as e:
-            print(f"[main.py -> callback_handler -> \"|\"] ApiTelegramException \"{e}\"")
+            logging.info(f"[main.py -> callback_handler -> \"|\"] ApiTelegramException \"{e}\"")
             bot.answer_callback_query(callback_query_id=call_id, text=get_translate("already_on_this_page", settings.lang))
 
     elif call_data.startswith('generate month calendar '):
@@ -654,7 +654,7 @@ def message_handler(message: Message):
     """
     chat_id, message_text = message.chat.id, message.text
     settings = UserSettings(chat_id)
-    main_log(user_status=settings.user_status, chat_id=chat_id, text=message_text, action="send   ")
+    main_log(user_status=settings.user_status, chat_id=chat_id, text=message_text, action="send")
     command_handler(settings, chat_id, message_text, message)
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -689,9 +689,9 @@ def get_edit_message(message: Message):
     """
     Ловит сообщения для изменения событий
     """
-    chat_id = message.chat.id
-    edit_message_id = message.id
+    chat_id, edit_message_id = message.chat.id, message.id
     settings = UserSettings(chat_id)
+    main_log(user_status=settings.user_status, chat_id=chat_id, text='edit event text', action="send")
     res = re_edit_message.search(message.text)[0]
     event_id = int(re.findall(r"\((\d+)", res)[0])
     msg_date = re.findall(r" (\d{1,2}\.\d{1,2}\.\d{4}),", res)[0]
@@ -721,7 +721,7 @@ def get_edit_message(message: Message):
 <i>{ToHTML(text)}</i>
 """), chat_id, message_id, reply_markup=generate_buttons([{"🔙": "back", "✅": 'confirm change'}]))
         except ApiTelegramException as e:
-            print(f"[main.py -> get_edit_message] ApiTelegramException \"{e}\"")
+            logging.info(f"[main.py -> get_edit_message] ApiTelegramException \"{e}\"")
             return
     try:
         bot.delete_message(chat_id, edit_message_id)
@@ -730,13 +730,14 @@ def get_edit_message(message: Message):
 
 @bot.message_handler(func=lambda m: m.reply_to_message and m.reply_to_message.text.startswith('⚙️') and m.from_user.id != BOT_ID)
 @execution_time
-def get_search_message(message: Message):
+def get_edit_city_message(message: Message):
     """
     Ловит сообщения ответ на сообщение бота с настройками
     Изменение города пользователя
     """
     chat_id, message_id = message.chat.id, message.id
     settings = UserSettings(chat_id)
+    main_log(user_status=settings.user_status, chat_id=chat_id, text='edit city', action="send")
     callback_handler(settings, chat_id, message.reply_to_message.id, message.text, f'settings city {message.text[:25]}', 0, message.reply_to_message)
     try:
         bot.delete_message(chat_id, message_id)
@@ -752,8 +753,10 @@ def add_event(message: Message):
     Ловит сообщение если пользователь хочет добавить событие
     """
     chat_id, message_id, message_text = message.chat.id, message.message_id, message.text
-    msg_date = SQL(f"SELECT add_event_date FROM settings WHERE user_id={chat_id};")[0][0].split(",")[0]
     settings = UserSettings(chat_id)
+    main_log(user_status=settings.user_status, chat_id=chat_id, text='add event', action="send")
+
+    msg_date = SQL(f"SELECT add_event_date FROM settings WHERE user_id={chat_id};")[0][0].split(",")[0]
 
     # Если сообщение команда то проигнорировать
     if message_text.lower().split("@")[0][1:] in COMMANDS:

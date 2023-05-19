@@ -16,6 +16,13 @@ from telebot.apihelper import ApiTelegramException
 from lang import translation
 import config
 
+class logging:
+    @staticmethod
+    def info(*values: object, sep: str | None = " ", end: str | None = "\n"):
+        print(*values, sep=sep, end=end)
+        with open(r"bot.log", "a", encoding="utf-8") as file:
+            print(*[str(val).replace("\033[0m", "").replace("\033[21m", "").replace("\033[32m", "").replace("\033[34m", "")
+                    for val in values], sep=sep, end=end, file=file)
 
 """sql"""
 sqlite_format_date = lambda column, quotes="", sep="-": f"""
@@ -81,7 +88,7 @@ class UserSettings:
         try:
             return SQL(query)[0]
         except (Error, IndexError):
-            print("Добавляю нового пользователя")
+            logging.info("Добавляю нового пользователя")
             SQL(f"INSERT INTO settings (user_id) VALUES ({self.user_id});", commit=True)
         return SQL(query)[0]
 
@@ -104,9 +111,13 @@ class UserSettings:
 
         notifications_time = {}
         if not_notifications_[2] == "🔔":
-            notifications_time.__setitem__(*('‹‹‹', f'settings notifications {self.notifications - 1}') if self.notifications > 0 else ('   ', 'None'))
+            notifications_time.__setitem__(
+                *('‹‹‹', f'settings notifications {self.notifications - 1}') if self.notifications > 0
+                else ('‹‹‹', f'settings notifications {23}'))
             notifications_time[f"{self.notifications}:00 ⏰"] = 'settings notifications 8'
-            notifications_time.__setitem__(*('›››', f'settings notifications {self.notifications + 1}') if self.notifications < 24 else ('   ', 'None'))
+            notifications_time.__setitem__(
+                *('›››', f'settings notifications {self.notifications + 1}') if self.notifications < 23
+                else ('›››', f'settings notifications {0}'))
 
         markup = generate_buttons([{f"🗣 {self.lang}": f"settings lang {not_lang}",
                                     f"🔗 {bool(self.sub_urls)}": f"settings sub_urls {not_sub_urls}",
@@ -189,7 +200,7 @@ def create_event(user_id: int, date: str, text: str) -> bool:
             WHERE user_id = {user_id};""", commit=True)
         return True
     except Error as e:
-        print(f"[func.py -> create_event] Error \"{e}\"  arg: {user_id=}, {date=}, {text=}")
+        logging.info(f"[func.py -> create_event] Error \"{e}\"  arg: {user_id=}, {date=}, {text=}")
         return False
 
 def get_values(column_to_limit: str,
@@ -295,7 +306,7 @@ def execution_time(func):
         start = time()
         result = func(*args, **kwargs)
         end = time()
-        print(f" \t({end - start:.3f})")
+        logging.info(f" \t({end - start:.3f})")
         return result
     return wrapper
 
@@ -379,7 +390,7 @@ def weather_in(settings: UserSettings, city: str) -> str:
     """
     Возвращает текущую погоду по городу city
     """
-    print(f"\nweather in {city:<67}", end="")
+    logging.info(f"\nweather in {city:<67}", end="")
     url = 'http://api.openweathermap.org/data/2.5/weather'
     weather = get(url, params={'APPID': config.weather_api_key, 'q': city, 'units': 'metric', 'lang': settings.lang}).json()
     weather_icon = weather['weather'][0]['icon']
@@ -418,7 +429,7 @@ def forecast_in(settings: UserSettings, city: str) -> str:
     """
     Прогноз погоды на 5 дней для города city
     """
-    print(f"\nforecast in {city:<67}", end="")
+    logging.info(f"\nforecast in {city:<67}", end="")
     url = "http://api.openweathermap.org/data/2.5/forecast"
     weather = get(url, params={'APPID': config.weather_api_key, 'q': city, 'units': 'metric', 'lang': settings.lang}).json()
     dn = {"d": "☀", "n": "🌑"}
@@ -634,7 +645,7 @@ class Cooldown:
             if (localtime := (t1 - self.cooldown_dict[str(key)])) < self.cooldown_time_sec:
                 result = False, int(self.cooldown_time_sec - int(localtime))
         except Exception as e:
-            print(f"[func.py -> Cooldown.check] Exception \"{e}\"")
+            logging.info(f"[func.py -> Cooldown.check] Exception \"{e}\"")
         if update_dict or result[0]:
             self.cooldown_dict[f'{key}'] = t1
         return result
@@ -647,8 +658,8 @@ def main_log(user_status: int, chat_id: int, action: str, text: str) -> None:
         log_chat_id = f"\033[21m\033[32m{chat_id}\033[0m"
     else: # user_status == 0:
         log_chat_id = f"\033[21m{chat_id}\033[0m"
-    log_text = f"{log_time_strftime()} {log_chat_id:<15} {action} " + text.replace(f"\n", f"\\n")
-    print(f"{log_text:<90}", end="")
+    log_text = f"[{log_time_strftime()}][{log_chat_id:<15}] {action:<7} " + text.replace(f"\n", f"\\n")
+    logging.info(f"{log_text:<90}", end="")
 
 
 """Генерация сообщений"""
@@ -750,7 +761,7 @@ class MyMessage:
                 WHERE event_id IN ({', '.join(values)}) AND ({WHERE})
                 ORDER BY {sqlite_format_date('date')} {direction};""")]
         except Error as e:
-            print(f"[func.py -> MyMessage.get_events] Error \"{e}\"")
+            logging.info(f"[func.py -> MyMessage.get_events] Error \"{e}\"")
             self.event_list = []
         else:
             if self._settings.direction != "⬆️":
@@ -1086,7 +1097,9 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
                                         f'{"<b>" + get_translate("page", settings.lang) + f" {page}</b>{backslash_n}" if int(page) > 1 else ""}'),
                                  args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
                                  if_empty=get_translate("message_empty", settings.lang))
-                print(f"[func.py -> notifications]")
+
+                logging.info(f"\n[func.py -> notifications] -> {user_id} -> ", end="")
+
                 try:
                     if id_list:
                         generated.edit(chat_id=user_id, message_id=message_id, markup=markup)
@@ -1094,8 +1107,9 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
                         generated.send(chat_id=user_id)
                     if not from_command:
                         SQL(f"UPDATE root SET status='🔕' WHERE {WHERE} AND status='🔔';", commit=True)
+                    logging.info(f"{'Ok':<32}", end="")
                 except ApiTelegramException:
-                    pass
+                    logging.info(f"{'Error':<32}", end="")
 
 def recurring(settings: UserSettings,
               date: str,
