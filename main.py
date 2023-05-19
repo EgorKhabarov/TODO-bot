@@ -8,7 +8,6 @@ from telebot.types import CallbackQuery, Message, InputFile
 from telebot.types import BotCommandScopeChat    # Команды для определённого чата
 from telebot.types import BotCommandScopeDefault # Дефолтные команды для всех остальных
 from telebot.types import InputMediaDocument     # Команда /files шлёт все файлы бота в одном сообщении
-import schedule # pip install schedule
 
 from func import * # InlineKeyboardMarkup, InlineKeyboardButton, re, config импортируются из func
 
@@ -580,7 +579,6 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             SQL(f"UPDATE settings SET {par_name}='{par_val}' WHERE user_id={chat_id};", commit=True)
         else:
             SQL(f"UPDATE settings SET {par_name}={par_val} WHERE user_id={chat_id};", commit=True)
-        rearrange_job()
 
         settings = UserSettings(chat_id)
         set_commands(settings, chat_id, settings.user_status)
@@ -783,15 +781,6 @@ def add_event(message: Message):
         bot.reply_to(message, get_translate("error", settings.lang), reply_markup=delmarkup)
         clear_state(chat_id)
 
-job_list = []
-def rearrange_job(): # TODO Один цикл для уведомлений
-    global job_list
-    job_list = [schedule.every().day.at(f"{hour:0>2}:00").do(notifications, user_id_list=chat_id_list.split(","))
-                for hour, chat_id_list in SQL(f"""
-SELECT DISTINCT (notifications - timezone), GROUP_CONCAT(user_id, ',')
-FROM settings 
-WHERE notifications!=-1
-GROUP BY notifications - timezone;""")]
 
 def schedule_loop():
     # link = "link"
@@ -799,13 +788,15 @@ def schedule_loop():
     #     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
     #                   "Chrome/113.0.0.0 Safari/537.36 Edg/113.0.1774.42"
     # }
-    # schedule.every(30).minutes.do(lambda: print(log_time_strftime(), link, get(link, headers=headers).status_code))
     while True:
-        schedule.run_pending()
+        while_time = now_time(config.hours_difference)
+        if while_time.minute == 0:
+            notifications()
+        # if while_time.minute in (0, 30):
+        #     print(log_time_strftime(), link, get(link, headers=headers).status_code)
         sleep(60)
 
 if __name__ == "__main__":
     if config.notifications:
-        rearrange_job()
         Thread(target=schedule_loop, daemon=True).start()
     bot.infinity_polling()

@@ -1038,53 +1038,64 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
                       message_id=message_id,
                       markup=message.reply_markup)
     """
-    user_id_list = user_id_list if user_id_list else [user_id[0] for user_id in SQL(
-        f"SELECT user_id FROM settings WHERE notifications!=-1;")]
+    if not user_id_list:
+        user_id_list = [user_id for user in SQL(f"""
+            SELECT GROUP_CONCAT(user_id, ',') AS user_id_list
+            FROM settings
+            WHERE notifications!=-1
+            AND ((notifications - timezone + 24) % 24)={now_time(config.hours_difference).hour}
+        ;""") if user[0] for user_id in user[0].split(",")] # [('id1,id2,id3',)] -> []
+
     for user_id in user_id_list:
         user_id = int(user_id)
         settings = UserSettings(user_id)
 
-        WHERE = f"""
-            (
+        if settings.notifications or from_command:
+            WHERE = f"""
                 (
-                    status IN ('🔔', '🔕') 
-                    AND date='{now_time_strftime(settings.timezone)}'
-                ) 
-                OR 
-                (
-                    status IN ('🎉', '🎊', '📆')
-                    AND {sqlite_format_date("date")} IN (
-                        DATE('now'), 
-                        DATE('now', '+1 day'),
-                        DATE('now', '+2 day'), 
-                        DATE('now', '+3 day'), 
-                        DATE('now', '+7 day')
+                    (
+                        status IN ('🔔', '🔕') 
+                        AND date='{now_time_strftime(settings.timezone)}'
+                    ) 
+                    OR 
+                    (
+                        status IN ('🎉', '🎊', '📆')
+                        AND {sqlite_format_date("date")} IN (
+                            DATE('now'), 
+                            DATE('now', '+1 day'),
+                            DATE('now', '+2 day'), 
+                            DATE('now', '+3 day'), 
+                            DATE('now', '+7 day')
+                        )
                     )
                 )
-            )
-            AND isdel=0
-        """
+                AND isdel=0
+            """
 
-        generated = MyMessage(settings, reply_markup=delmarkup)
-        if id_list:
-            generated.get_events(WHERE=WHERE, values=id_list)
-        else:
-            generated.get_data(WHERE=WHERE, direction={"⬇️": "DESC", "⬆️": "ASC"}[settings.direction])
-        if len(generated.event_list) or from_command:
-            generated.format(title=(f'🔔 {get_translate("reminder", settings.lang)} 🔔\n'
-                                    f'{"<b>" + get_translate("page", settings.lang) + f" {page}</b>{backslash_n}" if int(page) > 1 else ""}'),
-                             args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
-                             if_empty=get_translate("message_empty", settings.lang))
-            print(f"[func.py -> notifications]")
-            try:
-                if id_list:
-                    generated.edit(chat_id=user_id, message_id=message_id, markup=markup)
-                else:
-                    generated.send(chat_id=user_id)
-                if not from_command:
-                    SQL(f"UPDATE root SET status='🔕' WHERE {WHERE} AND status='🔔';", commit=True)
-            except ApiTelegramException:
-                pass
+            generated = MyMessage(settings, reply_markup=delmarkup)
+            if id_list:
+                generated.get_events(WHERE=WHERE, values=id_list)
+            else:
+                generated.get_data(WHERE=WHERE, direction={"⬇️": "DESC", "⬆️": "ASC"}[settings.direction])
+
+            if len(generated.event_list) or from_command:
+                # Если в generated.event_list есть события
+                # или
+                # Если уведомления вызывали командой (сообщение на команду приходит даже если оно пустое)
+                generated.format(title=(f'🔔 {get_translate("reminder", settings.lang)} 🔔\n'
+                                        f'{"<b>" + get_translate("page", settings.lang) + f" {page}</b>{backslash_n}" if int(page) > 1 else ""}'),
+                                 args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
+                                 if_empty=get_translate("message_empty", settings.lang))
+                print(f"[func.py -> notifications]")
+                try:
+                    if id_list:
+                        generated.edit(chat_id=user_id, message_id=message_id, markup=markup)
+                    else:
+                        generated.send(chat_id=user_id)
+                    if not from_command:
+                        SQL(f"UPDATE root SET status='🔕' WHERE {WHERE} AND status='🔔';", commit=True)
+                except ApiTelegramException:
+                    pass
 
 def recurring(settings: UserSettings,
               date: str,
@@ -1167,7 +1178,7 @@ def write_table_to_str(file: StringIO, query: str, commit: bool = False, align: 
     """
     Наполнит файл file строковым представлением таблицы результата SQL(query)
     """
-    table = [list(column) for column in SQL(query, commit=commit, column_names=True)]
+    table = [list(str(column) for column in row) for row in SQL(query, commit=commit, column_names=True)]
 
     # Матрица максимальных длин и высот каждого столбца и строки
     w = [[max(len(line) for line in str(column).splitlines()) for column in row] for row in table]
