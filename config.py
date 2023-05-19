@@ -5,7 +5,7 @@ bot_token = "https://t.me/BotFather"
 weather_api_key = "https://home.openweathermap.org/users/sign_in"
 notifications = True
 
-__version__ = "17.05.2023"
+__version__ = "19.05.2023"
 __autor__ = "EgorKhabarov"
 
 """
