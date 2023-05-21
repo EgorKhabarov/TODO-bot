@@ -20,7 +20,7 @@ class logging:
     @staticmethod
     def info(*values: object, sep: str | None = " ", end: str | None = "\n"):
         print(*values, sep=sep, end=end)
-        with open(r"bot.log", "a", encoding="utf-8") as file:
+        with open(config.log_file, "a", encoding="utf-8") as file:
             print(*[str(val).replace("\033[0m", "").replace("\033[21m", "").replace("\033[32m", "").replace("\033[34m", "")
                     for val in values], sep=sep, end=end, file=file)
 
@@ -227,25 +227,54 @@ def get_values(column_to_limit: str,
     column = "end_id" if direction == "DESC" else "start_id"
     query = f"""
 WITH numbered_table AS (
-  SELECT ROW_NUMBER() OVER (ORDER BY {column_to_order} {direction}) AS row_num, {column_to_return} AS order_column, LENGTH({column_to_limit}) as len
+  SELECT 
+      ROW_NUMBER() OVER (ORDER BY {column_to_order} {direction}) AS row_num, 
+      {column_to_return} AS order_column, 
+      LENGTH({column_to_limit}) as len
   FROM {table}
   WHERE {WHERE}
 ),
 temp_table AS (
-  SELECT numbered_table.row_num, numbered_table.order_column, numbered_table.len,
-    numbered_table.order_column AS {column}, numbered_table.len AS sum_len,
-    1 AS group_id, 1 AS event_count
-  FROM numbered_table WHERE numbered_table.row_num = 1
+  SELECT
+      numbered_table.row_num,
+      numbered_table.order_column,
+      numbered_table.len,
+      numbered_table.order_column AS {column},
+      numbered_table.len AS sum_len,
+      1 AS group_id,
+      1 AS event_count
+  FROM numbered_table 
+  WHERE numbered_table.row_num = 1
   UNION ALL
   SELECT
-    numbered_table.row_num, numbered_table.order_column, numbered_table.len,
-    CASE WHEN temp_table.sum_len + numbered_table.len <= {MAXLEN} AND temp_table.event_count < {MAXEVENTCOUNT} THEN temp_table.{column}                     ELSE numbered_table.order_column END AS {column},
-    CASE WHEN temp_table.sum_len + numbered_table.len <= {MAXLEN} AND temp_table.event_count < {MAXEVENTCOUNT} THEN temp_table.sum_len + numbered_table.len ELSE numbered_table.len          END AS sum_len,
-    CASE WHEN temp_table.sum_len + numbered_table.len <= {MAXLEN} AND temp_table.event_count < {MAXEVENTCOUNT} THEN temp_table.group_id                     ELSE temp_table.group_id + 1     END AS group_id,
-    CASE WHEN temp_table.sum_len + numbered_table.len <= {MAXLEN} AND temp_table.event_count < {MAXEVENTCOUNT} THEN temp_table.event_count + 1              ELSE 1                           END AS event_count
+      numbered_table.row_num,
+      numbered_table.order_column,
+      numbered_table.len,
+    CASE 
+        WHEN temp_table.sum_len + numbered_table.len <= {MAXLEN} AND temp_table.event_count < {MAXEVENTCOUNT} 
+        THEN temp_table.{column}                     
+        ELSE numbered_table.order_column 
+    END AS {column},
+    CASE 
+        WHEN temp_table.sum_len + numbered_table.len <= {MAXLEN} AND temp_table.event_count < {MAXEVENTCOUNT} 
+        THEN temp_table.sum_len + numbered_table.len 
+        ELSE numbered_table.len          
+    END AS sum_len,
+    CASE 
+        WHEN temp_table.sum_len + numbered_table.len <= {MAXLEN} AND temp_table.event_count < {MAXEVENTCOUNT} 
+        THEN temp_table.group_id                     
+        ELSE temp_table.group_id + 1     
+    END AS group_id,
+    CASE 
+        WHEN temp_table.sum_len + numbered_table.len <= {MAXLEN} AND temp_table.event_count < {MAXEVENTCOUNT} 
+        THEN temp_table.event_count + 1              
+        ELSE 1                           
+    END AS event_count
   FROM numbered_table JOIN temp_table ON numbered_table.row_num = temp_table.row_num + 1
 )
-SELECT GROUP_CONCAT(COALESCE(numbered_table.order_column, ''), ',') AS ids -- , SUM(numbered_table.len) AS sum_len
+SELECT 
+    GROUP_CONCAT(COALESCE(numbered_table.order_column, ''), ',') AS ids
+    -- , SUM(numbered_table.len) AS sum_len
 FROM numbered_table
 JOIN temp_table ON numbered_table.row_num = temp_table.row_num
 GROUP BY temp_table.group_id;
@@ -1110,6 +1139,9 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
                     logging.info(f"{'Ok':<32}", end="")
                 except ApiTelegramException:
                     logging.info(f"{'Error':<32}", end="")
+
+                if not from_command:
+                    logging.info("\n")
 
 def recurring(settings: UserSettings,
               date: str,

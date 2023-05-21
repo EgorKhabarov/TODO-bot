@@ -1,3 +1,4 @@
+from requests.exceptions import MissingSchema, ConnectionError
 from threading import Thread
 from sys import platform
 from time import sleep
@@ -779,17 +780,19 @@ def add_event(message: Message):
 
 
 def schedule_loop():
-    # link = "link"
-    # headers = {
-    #     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-    #                   "Chrome/113.0.0.0 Safari/537.36 Edg/113.0.1774.42"
-    # }
     while True:
         while_time = now_time(config.hours_difference)
         if while_time.minute == 0:
             notifications()
-        # if while_time.minute in (0, 30):
-        #     print(log_time_strftime(), link, get(link, headers=headers).status_code)
+        if while_time.minute in (0, 30):
+            logging.info(f"[{log_time_strftime()}] {config.link} ", end="")
+            try:
+                logging.info(f"{get(config.link, headers=config.headers).status_code}")
+            except MissingSchema as e:
+                logging.info(f"{e}")
+            except ConnectionError:
+                logging.info(f"{404}")
+
         sleep(60)
 
 if __name__ == "__main__":
