@@ -31,7 +31,7 @@ sqlite_format_date = lambda column, quotes="", sep="-": f"""
     SUBSTR({quotes}{column}{quotes}, 1, 2)"""
 """SUBSTR({column}, 7, 4) || '{sep}' || SUBSTR({column}, 4, 2) || '{sep}' || SUBSTR({column}, 1, 2)"""
 sqlite_format_date2 = lambda date: "-".join(date.split(".")[::-1])
-"""\"12.34.5678\" -> \"5678-34-12\""""
+""" "12.34.5678" -> "5678-34-12" """
 
 def SQL(query: str, params: tuple = (), commit: bool = False,
         column_names: bool = False) -> list[tuple[int | str | bytes, ...], ...]:
@@ -200,7 +200,7 @@ def create_event(user_id: int, date: str, text: str) -> bool:
             WHERE user_id = {user_id};""", commit=True)
         return True
     except Error as e:
-        logging.info(f"[func.py -> create_event] Error \"{e}\"  arg: {user_id=}, {date=}, {text=}")
+        logging.info(f'[func.py -> create_event] Error "{e}"  arg: {user_id=}, {date=}, {text=}')
         return False
 
 def get_values(column_to_limit: str,
@@ -233,6 +233,7 @@ WITH numbered_table AS (
       LENGTH({column_to_limit}) as len
   FROM {table}
   WHERE {WHERE}
+  LIMIT 400
 ),
 temp_table AS (
   SELECT
@@ -520,13 +521,13 @@ def mycalendar(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list | 
     # получаем из базы данных дни на которых есть событие
     SqlResult = SQL(f"""
         SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as date) FROM root
-        WHERE user_id={chat_id} AND isdel=0 AND date LIKE \"%.{MM:0>2}.{YY}\";""")
+        WHERE user_id={chat_id} AND isdel=0 AND date LIKE "%.{MM:0>2}.{YY}";""")
     beupdate = [x[0] for x in SqlResult]
 
     birthday = SQL(f"""
         SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as date) FROM root
         WHERE user_id={chat_id} AND isdel=0 AND 
-        status IN (\"🎉\", \"🎊\", \"📆\") AND date LIKE \"__.{MM:0>2}.____\";""")
+        status IN ("🎉", "🎊", "📆") AND date LIKE "__.{MM:0>2}.____";""")
     birthdaylist = [x[0] for x in birthday]
 
     # получаем сегодняшнее число
@@ -674,7 +675,7 @@ class Cooldown:
             if (localtime := (t1 - self.cooldown_dict[str(key)])) < self.cooldown_time_sec:
                 result = False, int(self.cooldown_time_sec - int(localtime))
         except Exception as e:
-            logging.info(f"[func.py -> Cooldown.check] Exception \"{e}\"")
+            logging.info(f'[func.py -> Cooldown.check] Exception "{e}"')
         if update_dict or result[0]:
             self.cooldown_dict[f'{key}'] = t1
         return result
@@ -790,7 +791,7 @@ class MyMessage:
                 WHERE event_id IN ({', '.join(values)}) AND ({WHERE})
                 ORDER BY {sqlite_format_date('date')} {direction};""")]
         except Error as e:
-            logging.info(f"[func.py -> MyMessage.get_events] Error \"{e}\"")
+            logging.info(f'[func.py -> MyMessage.get_events] Error "{e}"')
             self.event_list = []
         else:
             if self._settings.direction != "⬆️":

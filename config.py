@@ -11,7 +11,7 @@ headers = {
                   "Chrome/113.0.0.0 Safari/537.36 Edg/113.0.1774.42"
 }
 
-__version__ = "21.05.2023"
+__version__ = "22.05.2023"
 __autor__ = "EgorKhabarov"
 
 """
