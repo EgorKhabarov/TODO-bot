@@ -63,27 +63,37 @@ class UserSettings:
     Настройки для пользователя
 
     Параметры:
-    .user_id     ID пользователя
-    .lang        Язык
-    .sub_urls    Сокращать ли ссылки
-    .city        Город
-    .timezone    Часовой пояс
-    .direction   Направление вывода
-    .user_status Обычный, Премиум, Админ (0, 1, 2)
+    .user_id            ID пользователя
+    .lang               Язык
+    .sub_urls           Сокращать ли ссылки
+    .city               Город
+    .timezone           Часовой пояс
+    .direction          Направление вывода
+    .user_status        Обычный, Премиум, Админ (0, 1, 2)
+    .notifications      on or off
+    .notifications_time 08:00  08:00;09:30
 
     Функции
     .get_user_settings()
     """
     def __init__(self, user_id: int):
         self.user_id = user_id
-        self.lang, self.sub_urls, self.city, self.timezone, \
-            self.direction, self.user_status, self.notifications = self._get_user_settings()
+        (
+            self.lang,
+            self.sub_urls,
+            self.city,
+            self.timezone,
+            self.direction,
+            self.user_status,
+            self.notifications,
+            self.notifications_time,
+        ) = self._get_user_settings()
 
     def _get_user_settings(self):
         """
         Возвращает список из настроек для пользователя self.user_id
         """
-        query = f"""SELECT lang, sub_urls, city, timezone, direction, user_status, notifications
+        query = f"""SELECT lang, sub_urls, city, timezone, direction, user_status, notifications, notifications_time
                     FROM settings WHERE user_id={self.user_id};"""
         try:
             return SQL(query)[0]
@@ -99,7 +109,8 @@ class UserSettings:
         not_lang = "ru" if self.lang == "en" else "en"
         not_sub_urls = 1 if self.sub_urls == 0 else 0
         not_direction = "⬇️" if self.direction == "⬆️" else "⬆️"
-        not_notifications_ = ("🔔", 8, "🔕") if self.notifications == -1 else ("🔕", -1, "🔔")
+        not_notifications_ = ("🔔", "on") if self.notifications == "off" else ("🔕", "off")
+        n_hours, n_minutes = [int(i) for i in self.notifications_time.split(":")]
 
         utz = self.timezone
         str_utz = f"""{utz} {"🌍" if -2 < int(utz) < 5 else ("🌏" if 4 < int(utz) < 12 else "🌎")}"""
@@ -110,14 +121,12 @@ class UserSettings:
         time_zone_dict.__setitem__(*('›››', f'settings timezone {utz + 1}') if utz < 11 else ('   ', 'None'))
 
         notifications_time = {}
-        if not_notifications_[2] == "🔔":
-            notifications_time.__setitem__(
-                *('‹‹‹', f'settings notifications {self.notifications - 1}') if self.notifications > 0
-                else ('‹‹‹', f'settings notifications {23}'))
-            notifications_time[f"{self.notifications}:00 ⏰"] = 'settings notifications 8'
-            notifications_time.__setitem__(
-                *('›››', f'settings notifications {self.notifications + 1}') if self.notifications < 23
-                else ('›››', f'settings notifications {0}'))
+        if not_notifications_[0] == "🔕":
+            notifications_time['‹‹‹'] = f"settings notifications_time " + (f"{n_hours-1:0>2}:{n_minutes:0>2}" if n_hours > 0 else f"23:{n_minutes:0>2}")
+            notifications_time['<'] = f"settings notifications_time " + (f"{n_hours:0>2}:{n_minutes-10:0>2}" if n_minutes > 0 else f"{n_hours-1:0>2}:50")
+            notifications_time[f"{n_hours:0>2}:{n_minutes:0>2} ⏰"] = "settings notifications_time 08:00"
+            notifications_time['>'] = f"settings notifications_time " + (f"{n_hours:0>2}:{n_minutes+10:0>2}" if n_minutes < 50 else f"{n_hours+1:0>2}:00")
+            notifications_time['›››'] = f"settings notifications_time " + (f"{n_hours+1:0>2}:{n_minutes:0>2}" if n_hours < 23 else f"00:{n_minutes:0>2}")
 
         markup = generate_buttons([{f"🗣 {self.lang}": f"settings lang {not_lang}",
                                     f"🔗 {bool(self.sub_urls)}": f"settings sub_urls {not_sub_urls}",
@@ -132,8 +141,9 @@ class UserSettings:
             self.city,
             str_utz,
             self.direction,
-            not_notifications_[2],
-            f"{self.notifications}:00" if not_notifications_[2] == "🔔" else ""), markup
+            "🔕" if self.notifications == "off" else "🔔",
+            f"{n_hours:0>2}:{n_minutes:0>2}" if self.notifications == "on" else ""
+        ), markup
 
 def create_tables() -> None:
     """
@@ -162,22 +172,23 @@ def create_tables() -> None:
         SQL("""
             SELECT
             user_id, lang, sub_urls, city, timezone, direction, 
-            user_status, notifications, user_max_event_id, add_event_date
+            user_status, notifications, notifications_time, user_max_event_id, add_event_date
             FROM settings LIMIT 1;""")
     except Error as e:
         if str(e) == "no such table: settings":
             SQL("""
                 CREATE TABLE settings (
-                    user_id           INT  NOT NULL UNIQUE ON CONFLICT ROLLBACK,
-                    lang              TEXT DEFAULT ru,
-                    sub_urls          INT  DEFAULT (1),
-                    city              TEXT DEFAULT Москва,
-                    timezone          INT  DEFAULT (3),
-                    direction         TEXT DEFAULT ⬇️,
-                    user_status       INT  DEFAULT (0),
-                    notifications     INT  DEFAULT (-1),
-                    user_max_event_id INT  DEFAULT (1),
-                    add_event_date    INT  DEFAULT (0)
+                    user_id            INT  NOT NULL UNIQUE ON CONFLICT ROLLBACK,
+                    lang               TEXT DEFAULT ru,
+                    sub_urls           INT  DEFAULT (1),
+                    city               TEXT DEFAULT Москва,
+                    timezone           INT  DEFAULT (3),
+                    direction          TEXT DEFAULT ⬇️,
+                    user_status        INT  DEFAULT (0),
+                    notifications      TEXT DEFAULT off,
+                    notifications_time TEXT DEFAULT "08:00",
+                    user_max_event_id  INT  DEFAULT (1),
+                    add_event_date     INT  DEFAULT (0)
                 );""", commit=True)
         else:
             quit(f"{e}")
@@ -1080,18 +1091,19 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
                       markup=message.reply_markup)
     """
     if not user_id_list:
-        user_id_list = [user_id for user in SQL(f"""
+        n_time = now_time()
+        user_id_list = [int(user_id) for user in SQL(f"""
             SELECT GROUP_CONCAT(user_id, ',') AS user_id_list
             FROM settings
-            WHERE notifications!=-1
-            AND ((notifications - timezone + 24) % 24)={now_time().hour}
-        ;""") if user[0] for user_id in user[0].split(",")] # [('id1,id2,id3',)] -> []
+            WHERE notifications='on'
+            AND ((CAST(SUBSTR(notifications_time, 1, 2) AS INT) - timezone + 24) % 24)={n_time.hour}
+            AND CAST(SUBSTR(notifications_time, 4, 2) AS INT)={n_time.minute}
+        ;""") if user[0] for user_id in user[0].split(",")] # [('id1,id2,id3',)] -> [id1, id2, id3]
 
     for user_id in user_id_list:
-        user_id = int(user_id)
         settings = UserSettings(user_id)
 
-        if settings.notifications or from_command:
+        if settings.notifications == "on" or from_command:
             WHERE = f"""
                 (
                     (

@@ -782,7 +782,7 @@ def add_event(message: Message):
 def schedule_loop():
     while True:
         while_time = now_time(config.hours_difference)
-        if while_time.minute == 0:
+        if str(while_time.minute).endswith("0"): # 0, 10, 20, 30, 40, 50
             notifications()
         if while_time.minute in (0, 30):
             logging.info(f"[{log_time_strftime()}] {config.link} ", end="")
@@ -791,7 +791,7 @@ def schedule_loop():
             except MissingSchema as e:
                 logging.info(f"{e}")
             except ConnectionError:
-                logging.info(f"{404}")
+                logging.info("404")
 
         sleep(60)
 
