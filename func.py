@@ -70,7 +70,7 @@ class UserSettings:
     .timezone           Часовой пояс
     .direction          Направление вывода
     .user_status        Обычный, Премиум, Админ (0, 1, 2)
-    .notifications      on or off
+    .notifications      1 or 0
     .notifications_time 08:00  08:00;09:30
 
     Функции
@@ -109,7 +109,7 @@ class UserSettings:
         not_lang = "ru" if self.lang == "en" else "en"
         not_sub_urls = 1 if self.sub_urls == 0 else 0
         not_direction = "⬇️" if self.direction == "⬆️" else "⬆️"
-        not_notifications_ = ("🔔", "on") if self.notifications == "off" else ("🔕", "off")
+        not_notifications_ = ("🔕", 0) if self.notifications else ("🔔", 1)
         n_hours, n_minutes = [int(i) for i in self.notifications_time.split(":")]
 
         utz = self.timezone
@@ -141,8 +141,8 @@ class UserSettings:
             self.city,
             str_utz,
             self.direction,
-            "🔕" if self.notifications == "off" else "🔔",
-            f"{n_hours:0>2}:{n_minutes:0>2}" if self.notifications == "on" else ""
+            "🔔" if self.notifications else "🔕",
+            f"{n_hours:0>2}:{n_minutes:0>2}" if self.notifications else ""
         ), markup
 
 def create_tables() -> None:
@@ -185,7 +185,7 @@ def create_tables() -> None:
                     timezone           INT  DEFAULT (3),
                     direction          TEXT DEFAULT ⬇️,
                     user_status        INT  DEFAULT (0),
-                    notifications      TEXT DEFAULT off,
+                    notifications      INT DEFAULT (0),
                     notifications_time TEXT DEFAULT "08:00",
                     user_max_event_id  INT  DEFAULT (1),
                     add_event_date     INT  DEFAULT (0)
@@ -1095,7 +1095,7 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
         user_id_list = [int(user_id) for user in SQL(f"""
             SELECT GROUP_CONCAT(user_id, ',') AS user_id_list
             FROM settings
-            WHERE notifications='on'
+            WHERE notifications=1
             AND ((CAST(SUBSTR(notifications_time, 1, 2) AS INT) - timezone + 24) % 24)={n_time.hour}
             AND CAST(SUBSTR(notifications_time, 4, 2) AS INT)={n_time.minute}
         ;""") if user[0] for user_id in user[0].split(",")] # [('id1,id2,id3',)] -> [id1, id2, id3]
@@ -1103,7 +1103,7 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
     for user_id in user_id_list:
         settings = UserSettings(user_id)
 
-        if settings.notifications == "on" or from_command:
+        if settings.notifications or from_command:
             WHERE = f"""
                 (
                     (
