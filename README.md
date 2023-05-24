@@ -130,7 +130,6 @@ For example `#date=1.2023 status=🎧 youtube.com` to search for all events with
 
 # #TODO
 * [ ] Comment and clean up the code.
-* [ ] Groups for event statuses.
 * [ ] Ability to search by the date of the selected event
 * [ ] Add templates to search<br>
   `#date=dd.mm.yyyy` or `#date=dd.mm` or `#date=mm.yyyy` or `#date=dd..yyyy`<br>
@@ -155,6 +154,7 @@ For example `#date=1.2023 status=🎧 youtube.com` to search for all events with
 
 
 # Already done
+* [X] Groups for event statuses.
 * [X] Instead of parsing from the message, make a database query
 * [X] Ability to view _recurring events_ in the `/week_event_list` command.
 * [X] Sort in week_event_list by date

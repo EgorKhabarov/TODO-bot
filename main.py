@@ -443,31 +443,108 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             AND date='{event_date}';""", commit=True)
         callback_handler(settings, chat_id, message_id, message_text, "back bin", call_id, message)
 
-    elif call_data.startswith('edit_page_status'):
-        msg_date = message_text[:10]
-        _, event_id, event_date = call_data.split(' ')
-        markup = InlineKeyboardMarkup()
-        [markup.row(InlineKeyboardButton(f"{status1}{callbackTab * 20}", callback_data=f"set_status {status1.split(maxsplit=1)[0]} {event_id} {event_date}"),
-                    InlineKeyboardButton(f"{status2}{callbackTab * 20}", callback_data=f"set_status {status2.split(maxsplit=1)[0]} {event_id} {event_date}"))
-         for status1, status2 in get_translate("status_list", settings.lang)]
-        markup.row(InlineKeyboardButton("🔙", callback_data="back"))
-        text, status = SQL(f"""
-            SELECT text, status FROM root
-            WHERE user_id={chat_id} AND event_id="{event_id}"
-            AND isdel=0 AND date="{event_date}";""")[0]
-        bot.edit_message_text(f'{msg_date}\n'
+    elif call_data.startswith("edit_page_status") or call_data.startswith("status page "):
+        if call_data.startswith("edit_page_status"):
+            event_id, event_date = call_data.split(' ')[1:]
+        else:
+            args = message_text.split("\n", maxsplit=3)
+            event_date, event_id = args[0], args[2].split(".", maxsplit=4)[3]
+
+        try: # Если события нет, то обновляем сообщение
+            text, status = SQL(f"""
+                SELECT text, status FROM root
+                WHERE user_id={chat_id} AND event_id="{event_id}"
+                AND isdel=0 AND date="{event_date}";""")[0]
+        except IndexError:  # Если этого события уже нет
+            callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
+            return
+
+        if call_data.startswith("edit_page_status"):
+            sl = status.split(",")
+            sl.extend([""]*(5-len(sl)))
+            markup = generate_buttons([
+                *[{f"{title}{callbackTab * 20}": (
+                    f"{data}" if data else f"set_status {title.split(maxsplit=1)[0]} {event_id} {event_date}")}
+                  for title, data in get_translate("status_list", settings.lang).items()],
+                {f"{i}" if i else " "*n:
+                 f"del_status {i} {event_id} {event_date}" if i else "None"
+                 for n, i in enumerate(sl)} if status != "⬜️" else {},
+                {"🔙": "back"}
+            ])
+        else:
+            markup = generate_buttons([
+                *[{f"{row}{callbackTab * 20}": f"set_status {row.split(maxsplit=1)[0]} {event_id} {event_date}"
+                   for row in status_column} if len(status_column) > 1 else {
+                    f"{status_column[0]}{callbackTab * 20}": f"set_status {status_column[0].split(maxsplit=1)[0]} {event_id} {event_date}"
+                }
+                  for status_column in get_translate(call_data, settings.lang)],
+                {"🔙": f"edit_page_status {event_id} {event_date}"}
+            ])
+
+        bot.edit_message_text(f'{event_date}\n'
                               f'<b>{get_translate("select_status_to_event", settings.lang)}\n'
-                              f'{msg_date}.{event_id}.{status}</b>\n'
+                              f'{event_date}.{event_id}.{status}</b>\n'
                               f'{markdown(text, status, settings.sub_urls)}',
                               chat_id, message_id, reply_markup=markup)
 
     elif call_data.startswith('set_status'):
-        _, status, event_id, event_date = call_data.split()
+        _, new_status, event_id, event_date = call_data.split()
+        try: # Если события нет, то обновляем сообщение
+            text, old_status = SQL(f"""
+                SELECT text, status FROM root
+                WHERE user_id={chat_id} AND event_id="{event_id}"
+                AND isdel=0 AND date="{event_date}";""")[0]
+        except IndexError:
+            callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
+            return
+
+        if new_status in old_status:
+            bot.answer_callback_query(callback_query_id=call_id, show_alert=True, text=get_translate("status_already_posted", settings.lang))
+        elif len(old_status.split(",")) > 4 and new_status != "⬜️":
+            bot.answer_callback_query(callback_query_id=call_id, show_alert=True, text=get_translate("more_5_statuses", settings.lang))
+        elif ("🔗" in old_status or "💻" in old_status) and new_status in ("🔗", "💻"): # Убираем конфликтующие статусы
+            bot.answer_callback_query(callback_query_id=call_id, show_alert=True, text=get_translate("conflict_statuses", settings.lang) + f" 🔗, 💻")
+        elif ("🪞" in old_status or "💻" in old_status) and new_status in ("🪞", "💻"):
+            bot.answer_callback_query(callback_query_id=call_id, show_alert=True, text=get_translate("conflict_statuses", settings.lang) + f" 🪞, 💻")
+        elif ("🔗" in old_status or "❌🔗" in old_status) and new_status in ("🔗", "❌🔗"):
+            bot.answer_callback_query(callback_query_id=call_id, show_alert=True, text=get_translate("conflict_statuses", settings.lang) + f" 🔗, ❌🔗")
+        else:
+            if old_status == "⬜️":
+                res_status = new_status
+            elif new_status == "⬜️":
+                res_status = "⬜️"
+            else:
+                res_status = f"{old_status},{new_status}"
+            SQL(f"""
+                UPDATE root SET status='{res_status}' 
+                WHERE user_id={chat_id} AND event_id={event_id} 
+                AND date='{event_date}';""", commit=True)
+        callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
+
+    elif call_data.startswith('del_status'):
+        _, del_status, event_id, event_date = call_data.split()
+        try: # Если события нет, то обновляем сообщение
+            text, old_status = SQL(f"""
+                SELECT text, status FROM root
+                WHERE user_id={chat_id} AND event_id="{event_id}"
+                AND isdel=0 AND date="{event_date}";""")[0]
+        except IndexError:
+            callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
+            return
+        if del_status == "⬜️":
+            return
+        res_status = old_status.replace(f",{del_status}", "").replace(f"{del_status},", "").replace(f"{del_status}", "")
+        if not res_status:
+            res_status = "⬜️"
         SQL(f"""
-            UPDATE root SET status='{status}' 
+            UPDATE root SET status='{res_status}' 
             WHERE user_id={chat_id} AND event_id={event_id} 
             AND date='{event_date}';""", commit=True)
-        callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
+
+        if res_status == "⬜️":
+            callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
+        else:
+            callback_handler(settings, chat_id, message_id, message_text, f"edit_page_status {event_id} {event_date}", call_id, message)
 
     elif call_data.startswith('before del '):
         event_date, event_id, back_to_bin = call_data.split()[2:]
@@ -628,23 +705,26 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         generated.edit(chat_id=chat_id, message_id=message_id)
 
     elif call_data == "update":
-        if message_text.startswith('🔍 '):  # Поиск
-            query = ToHTML(message_text.split('\n', maxsplit=1)[0].split(maxsplit=2)[-1][:-1])
-            generated = search(settings=settings, chat_id=chat_id, query=query)
-            generated.edit(chat_id=chat_id, message_id=message_id, markup=message.reply_markup)
+        try:
+            if message_text.startswith('🔍 '):  # Поиск
+                query = ToHTML(message_text.split('\n', maxsplit=1)[0].split(maxsplit=2)[-1][:-1])
+                generated = search(settings=settings, chat_id=chat_id, query=query)
+                generated.edit(chat_id=chat_id, message_id=message_id, markup=message.reply_markup)
 
-        elif message_text.startswith('📆'):  # Если /week_event_list
-            generated = week_event_list(settings=settings, chat_id=chat_id)
-            generated.edit(chat_id=chat_id, message_id=message_id, markup=message.reply_markup)
+            elif message_text.startswith('📆'):  # Если /week_event_list
+                generated = week_event_list(settings=settings, chat_id=chat_id)
+                generated.edit(chat_id=chat_id, message_id=message_id, markup=message.reply_markup)
 
-        elif message_text.startswith('🗑'):  # Корзина
-            generated = deleted(settings=settings, chat_id=chat_id)
-            generated.edit(chat_id=chat_id, message_id=message_id, markup=message.reply_markup)
+            elif message_text.startswith('🗑'):  # Корзина
+                generated = deleted(settings=settings, chat_id=chat_id)
+                generated.edit(chat_id=chat_id, message_id=message_id, markup=message.reply_markup)
 
-        elif re_date.match(message_text) is not None:
-            msg_date = re_date.match(message_text)[0]
-            generated = today_message(settings=settings, chat_id=chat_id, date=msg_date)
-            generated.edit(chat_id=chat_id, message_id=message_id, markup=message.reply_markup)
+            elif re_date.match(message_text) is not None:
+                msg_date = re_date.match(message_text)[0]
+                generated = today_message(settings=settings, chat_id=chat_id, date=msg_date)
+                generated.edit(chat_id=chat_id, message_id=message_id, markup=message.reply_markup)
+        except ApiTelegramException:
+            pass
 
 
 @bot.message_handler(commands=[*COMMANDS])

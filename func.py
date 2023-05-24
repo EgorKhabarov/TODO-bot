@@ -596,9 +596,8 @@ def generate_month_calendar(user_timezone: int, lang: str, chat_id, YY) -> Inlin
     return generate_buttons(markupL)
 
 allmarkup = generate_buttons([
-    {"➕": "event_add", "📝": "event_edit", "🚩": "event_status", "🗑": "event_del"}, # "🔘": "menu"
-    {"🔙": "back", "<": "<<<", ">": ">>>", "✖": "message_del"}])
-minimarkup = generate_buttons([{"🔙": "back", "✖": "message_del"}])
+    {"➕": "event_add", "📝": "event_edit", "🚩": "event_status", "🗑": "event_del"},
+    {"🔙": "back", "<": "<<<", ">": ">>>", "🔄": "update"}]) # "✖": "message_del"
 backmarkup = generate_buttons([{"🔙": "back"}])
 delmarkup = generate_buttons([{"✖": "message_del"}])
 databasemarkup = generate_buttons([{'Применить базу данных': 'set database'}])
@@ -641,18 +640,18 @@ def markdown(text: str, status: str, suburl: bool | int = False) -> str:
     # Сокращаем несколько подряд переносов строки
     text = re.sub(r'\n(\n*)\n', '\n⠀\n', text)
 
-    if (suburl and status not in ('💻', '❌🔗')) or status == "🔗":
+    if (suburl and ('💻' not in status or '❌🔗' not in status)) or "🔗" in status:
         text = SubUrls(text)
-    if status == '🧮':
-        return OrderList(text)
-    elif status == '💻':
-        return Code(text)
-    elif status == '🗒':
-        return List(text)
-    elif status == '🪞':
-        return Spoiler(text)
-    else:
-        return text
+    if '🧮' in status:
+        text = OrderList(text)
+    if '💻' in status:
+        text = Code(text)
+    if '🗒' in status:
+        text = List(text)
+    if '🪞' in status:
+        text = Spoiler(text)
+
+    return text
 
 def get_translate(target: str, lang_iso_code: str) -> Any:
     """
@@ -1218,7 +1217,7 @@ def is_exceeded_limit(chat_id: int,
     res = (user_limit[0] + difference[0]) >= limit[0] or (user_limit[1] + difference[1]) >= limit[1]
     return res
 
-def is_admin_id(chat_id) -> bool:
+def is_admin_id(chat_id: int) -> bool:
     """
     Проверка на админа
     Админом могут быть только люди, чьи id записаны в config.admin_id
@@ -1226,11 +1225,16 @@ def is_admin_id(chat_id) -> bool:
     # or (int(SQL(f"SELECT user_status FROM settings WHERE user_id={chat_id};")[0][0]) == 2)
     return chat_id in config.admin_id
 
-def write_table_to_str(file: StringIO, query: str, commit: bool = False, align: Literal["<", ">", "^"] = "<") -> None:
+def write_table_to_str(file: StringIO,
+                       table: list[tuple[str], ...] = None,
+                       query: str = None,
+                       commit: bool = False,
+                       align: tuple[Literal["<", ">", "^"], ...] = "<") -> None:
     """
     Наполнит файл file строковым представлением таблицы результата SQL(query)
     """
-    table = [list(str(column) for column in row) for row in SQL(query, commit=commit, column_names=True)]
+    table = [list(str(column) for column in row) for row in (SQL(query, commit=commit, column_names=True)
+                                                             if not table else table)]
 
     # Матрица максимальных длин и высот каждого столбца и строки
     w = [[max(len(line) for line in str(column).splitlines()) for column in row] for row in table]
