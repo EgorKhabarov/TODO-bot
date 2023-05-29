@@ -287,8 +287,7 @@ SyntaxError
         if len(message_text.split(" ")) == 2:
             user_id = int(message_text.removeprefix("/idinfo "))
             chat = bot.get_chat(user_id)
-            bot.reply_to(message=message,
-                         text=f"""
+            text = f"""
 type: <code>{chat.type}</code>
 title: <code>{chat.title}</code>
 username: <code>{chat.username}</code>
@@ -296,23 +295,34 @@ first_name: <code>{chat.first_name}</code>
 last_name: <code>{chat.last_name}</code>
 id: <code>{chat.id}</code>
 
-settings.lang: {settings.lang}
-settings.timezone: {settings.timezone}
-settings.city: {settings.city}
-settings.notifications: {settings.notifications}
-settings.notifications_time: {settings.notifications_time}
-settings.direction: {settings.direction}
-settings.sub_urls: {settings.sub_urls}
+lang: {settings.lang}
+timezone: {settings.timezone}
+city: {settings.city}
+notifications: {settings.notifications}
+notifications_time: {settings.notifications_time}
+direction: {settings.direction}
+sub_urls: {settings.sub_urls}
 
 command: <code>/idinfo {chat.id}</code>
 promote: <code>/setuserstatus {chat.id} </code>
 delete: <code>/deleteuser {chat.id}</code>
-""")
+"""
         else:
-            try:
-                command_handler(settings, chat_id, "/SQL SELECT user_id as id FROM settings;", message)
-            except ApiTelegramException:
-                pass
+            text = """
+SyntaxError
+/setuserstatus {id} {status}
+
+| 0 | default
+| 1 | premium
+| 2 | admin
+"""
+        bot.reply_to(message=message, text=text)
+
+    elif message_text.startswith("/idinfo") and is_admin_id(chat_id) and message.chat.type == "private":
+        try:
+            command_handler(settings, chat_id, "/SQL SELECT user_id as id FROM settings;", message)
+        except ApiTelegramException:
+            pass
 
     elif message_text.startswith("/id"):
         bot.reply_to(message=message,
