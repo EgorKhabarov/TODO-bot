@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from calendar import monthcalendar, isleap
+from textwrap import wrap as textwrap
 from sqlite3 import connect, Error # pip3.10 install --user sqlite3
 from urllib.parse import urlparse
 from dataclasses import dataclass
@@ -33,7 +34,9 @@ sqlite_format_date = lambda column, quotes="", sep="-": f"""
 sqlite_format_date2 = lambda date: "-".join(date.split(".")[::-1])
 """ "12.34.5678" -> "5678-34-12" """
 
-def SQL(query: str, params: tuple = (), commit: bool = False,
+def SQL(query: str,
+        params: tuple = (),
+        commit: bool = False,
         column_names: bool = False) -> list[tuple[int | str | bytes, ...], ...]:
     """
     Выполняет SQL запрос
@@ -55,6 +58,7 @@ def SQL(query: str, params: tuple = (), commit: bool = False,
             description = [column[0] for column in cursor.description]
             result = [description] + result
     finally:
+        # cursor.close()
         connection.close()
     return result
 
@@ -98,7 +102,7 @@ class UserSettings:
         try:
             return SQL(query)[0]
         except (Error, IndexError):
-            logging.info("Добавляю нового пользователя")
+            logging.info(f"Добавляю нового пользователя ({self.user_id})")
             SQL(f"INSERT INTO settings (user_id) VALUES ({self.user_id});", commit=True)
         return SQL(query)[0]
 
@@ -415,7 +419,7 @@ def time_cache(cache_time_sec: int = 60):
         cache = {}
 
         def wrapper(settings: UserSettings, city: str):
-            key = f"{city}"
+            key = f"{city} {settings.lang}"
             now = time()
             if key not in cache or now - cache[key][1] > cache_time_sec:
                 cache[key] = (func(settings, city), now)
@@ -531,28 +535,43 @@ def mycalendar(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list | 
 
     # получаем из базы данных дни на которых есть событие
     SqlResult = SQL(f"""
-        SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as date) FROM root
-        WHERE user_id={chat_id} AND isdel=0 AND date LIKE "%.{MM:0>2}.{YY}";""")
+        SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as INT) FROM root
+        WHERE user_id={chat_id} AND isdel=0 AND date LIKE "__.{MM:0>2}.{YY}";""")
     beupdate = [x[0] for x in SqlResult]
 
-    birthday = SQL(f"""
-        SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as date) FROM root
-        WHERE user_id={chat_id} AND isdel=0 AND 
-        status IN ("🎉", "🎊", "📆") AND date LIKE "__.{MM:0>2}.____";""")
-    birthdaylist = [x[0] for x in birthday]
+    birthday = [x[0] for x in SQL(f"""
+        SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as INT) FROM root
+        WHERE user_id={chat_id} AND isdel=0
+        AND
+        (
+            (
+                (
+                    status LIKE "%🎉%" OR status LIKE "%🎊%" OR status LIKE "%📆%"
+                )
+                AND
+                SUBSTR(date, 5, 2)="{MM:0>2}"
+            )
+            OR
+            status LIKE "%📅%"
+        );
+    """)]
+    birthday2 = [6 if x[0] == -1 else x[0] for x in SQL(f"""
+        SELECT DISTINCT CAST(strftime('%w', {sqlite_format_date('date')})-1 as INT) FROM root
+        WHERE user_id={chat_id} AND isdel=0 AND status LIKE "%🗞%";
+    """)]
 
     # получаем сегодняшнее число
     today = now_time(user_timezone).day
     # получаем список дней
     for weekcalendar in monthcalendar(YY, MM):
         weekbuttons = []
-        for day in weekcalendar:
+        for wd, day in enumerate(weekcalendar):
             if day == 0:
                 weekbuttons.append(InlineKeyboardButton("  ", callback_data="None"))
             else:
                 tag_today = '#' if day == today else ''
                 tag_event = '*' if day in beupdate else ''
-                tag_birthday = '!' if day in birthdaylist else ''
+                tag_birthday = '!' if (day in birthday or wd in birthday2) else ''
                 weekbuttons.append(InlineKeyboardButton(f"{tag_today}{day}{tag_event}{tag_birthday}",
                                                         callback_data=f"{f'0{day}' if len(str(day)) == 1 else day}."
                                                                       f"{f'0{MM}' if len(str(MM)) == 1 else MM}.{YY}"))
@@ -565,13 +584,22 @@ def generate_month_calendar(user_timezone: int, lang: str, chat_id, YY) -> Inlin
     Создаёт календарь из месяцев на определённый год и возвращает inline клавиатуру
     """
     month_list = [x[0] for x in SQL(f"""
-        SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as date) FROM root
+        SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM root
         WHERE user_id={chat_id} AND date LIKE "__.__.{YY}" AND isdel=0;
     """)] # Форматирование результата
 
     recurring_list = [x[0] for x in SQL(f"""
-        SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as date) FROM root
-        WHERE user_id={chat_id} AND status IN ("🎉", "🎊", "📆") AND isdel=0;
+        SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM root
+        WHERE user_id={chat_id} AND isdel=0
+        AND
+        (
+            status LIKE "%🎉%" OR status LIKE "%🎊%" OR status LIKE "%📆%"
+        );
+    """)] # Форматирование результата
+
+    every_month = [x[0] for x in SQL(f"""
+        SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM root
+        WHERE user_id={chat_id} AND isdel=0 AND status LIKE "%📅%";
     """)] # Форматирование результата
 
     nowMonth = now_time(user_timezone).month
@@ -585,7 +613,7 @@ def generate_month_calendar(user_timezone: int, lang: str, chat_id, YY) -> Inlin
         for nameM, numm in row:
             tag_today = "#" if isNowMonth(numm) else ""
             tag_event = "*" if numm in month_list else ""
-            tag_birthday = "!" if numm in recurring_list else ""
+            tag_birthday = "!" if (numm in recurring_list or every_month) else ""
             result[-1][f"{tag_today}{nameM}{tag_event}{tag_birthday}"] = f"generate calendar {YY} {numm}"
 
     markupL = [
@@ -923,7 +951,7 @@ def search(settings: UserSettings,
     re_status = re.compile(r"[#\b ]status=(\S+)[\b]?")
 
     querylst = query.replace('\n', ' ').split()
-    splitquery = " OR ".join(f"date LIKE '%{x}%' OR text LIKE '%{x}%'OR status LIKE '%{x}%' OR event_id LIKE '%{x}%'" for x in querylst)
+    splitquery = " OR ".join(f"date LIKE '%{x}%' OR text LIKE '%{x}%' OR status LIKE '%{x}%' OR event_id LIKE '%{x}%'" for x in querylst)
     WHERE = f"(user_id = {chat_id} AND isdel == 0) AND ({splitquery})"
 
     generated = MyMessage(settings, reply_markup=delmarkup)
@@ -956,19 +984,34 @@ def week_event_list(settings: UserSettings,
     WHERE = f"""
     (user_id={chat_id} AND isdel=0) AND (
         (
-            {sqlite_format_date('date')} BETWEEN DATE('now') AND DATE('now', '+7 day')
+            {sqlite_format_date('date')}
+            BETWEEN DATE('now', '{settings.timezone:+} hours')
+                AND DATE('now', '+7 day', '{settings.timezone:+} hours')
         ) 
         OR 
-        (
+        ( -- Каждый год
             (
-                strftime('%m-%d', {sqlite_format_date('date')}) BETWEEN strftime('%m-%d', 'now') AND strftime('%m-%d', 'now', '+7 day')
-            ) 
-            AND status IN ('🎉', '🎊', '📆')
+                status LIKE "%🎉%" OR status LIKE "%🎊%" OR status LIKE "%📆%"
+            )
+            AND
+            (
+                strftime('%m-%d', {sqlite_format_date('date')})
+                BETWEEN strftime('%m-%d', 'now', '{settings.timezone:+} hours')
+                    AND strftime('%m-%d', 'now', '+7 day', '{settings.timezone:+} hours')
+            )
         )
         OR
-        status IN ('🗞')
+        ( -- Каждый месяц
+            status LIKE "%📅%"
+            AND SUBSTR(date, 1, 2) 
+            BETWEEN strftime('%m-%d', 'now', '{settings.timezone:+} hours')
+                AND strftime('%m-%d', 'now', '+7 day', '{settings.timezone:+} hours')
+        )
+        OR status LIKE "%🗞%" -- Каждую неделю
+        OR status LIKE "%📬%" -- Каждый день
     )
     """
+
     generated = MyMessage(settings, reply_markup=delmarkup)
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
@@ -1044,22 +1087,35 @@ def today_message(settings: UserSettings,
                      if_empty=get_translate("nodata", settings.lang))
 
     # Добавить дополнительную кнопку для дней в которых есть праздники
-    birthday = SQL(f"""
-    SELECT DISTINCT date FROM root 
-    WHERE isdel=0 AND user_id={chat_id} AND 
-    (
+    daylist = [x[0] for x in SQL(f"""
+        SELECT DISTINCT date FROM root 
+        WHERE isdel=0 AND user_id={chat_id} 
+        AND 
         (
-            status IN ('🎉', '🎊', '📆') AND
-            date LIKE '{date[:-5]}.____'
-        )
-        OR
-        (
-            status IN ('🗞') AND
-            strftime('%w', {sqlite_format_date('date')}) = CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT)
-        )
-    );
-    """)
-    daylist = [x[0] for x in birthday if x[0] != date]
+            ( -- Каждый год
+                (
+                    status LIKE "%🎉%" OR status LIKE "%🎊%" OR status LIKE "%📆%"
+                )
+                AND date LIKE '{date[:-5]}.____'
+            )
+            OR
+            ( -- Каждый месяц
+                status LIKE "%📅%"
+                AND date LIKE '{date[:2]}.__.____'
+            )
+            OR
+            ( -- Каждую неделю
+                status LIKE "%🗞%"
+                AND
+                strftime('%w', {sqlite_format_date('date')}) = 
+                CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT)
+            )
+            OR
+            ( -- Каждый день
+                status LIKE "%📬%"
+            )
+        );
+    """) if x[0] != date]
     if daylist:
         generated.reply_markup.row(InlineKeyboardButton("📅", callback_data=f"recurring"))
     return generated
@@ -1103,22 +1159,42 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
         settings = UserSettings(user_id)
 
         if settings.notifications or from_command:
+            _now = datetime.now()
+            dates = [_now+timedelta(days=day, hours=settings.timezone) for day in (0, 1, 2, 3, 7)]
+            strdates = [date.strftime("%d.%m.%Y") for date in dates]
+            weekdays = ["0" if (w := date.weekday()) == 6 else str(w+1) for date in dates[1:]]
+            del _now, dates
+
             WHERE = f"""
                 (
-                    (
-                        status IN ('🔔', '🔕') 
-                        AND date='{now_time_strftime(settings.timezone)}'
+                    ( -- На сегодняшние даты
+                        (
+                            status LIKE "%🔔%" OR status LIKE "%🔕%"
+                        )
+                        AND date='{strdates[0]}'
                     ) 
                     OR 
-                    (
-                        status IN ('🎉', '🎊', '📆')
-                        AND {sqlite_format_date("date")} IN (
-                            DATE('now'), 
-                            DATE('now', '+1 day'),
-                            DATE('now', '+2 day'), 
-                            DATE('now', '+3 day'), 
-                            DATE('now', '+7 day')
+                    ( -- Каждый год
+                        (
+                            status LIKE "%🎉%" OR status LIKE "%🎊%" OR status LIKE "%📆%"
                         )
+                        AND SUBSTR(date, 1, 2) || '.' || SUBSTR(date, 4, 2) IN ({", ".join(date[:5] for date in strdates)})
+                    )
+                    OR
+                    ( -- Каждый месяц
+                        status LIKE "%📅%"
+                        AND SUBSTR(date, 1, 2) IN ({", ".join(date[:2] for date in strdates)})
+                    )
+                    OR
+                    ( -- Каждую неделю
+                        status LIKE "%🗞%"
+                        AND
+                        strftime('%w', {sqlite_format_date('date')}) IN ({", ".join(f"'{w}'" for w in weekdays)})
+                        
+                    )
+                    OR
+                    ( -- Каждый день
+                        status LIKE "%📬%"
                     )
                 )
                 AND isdel=0
@@ -1147,7 +1223,12 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
                     else:
                         generated.send(chat_id=user_id)
                     if not from_command:
-                        SQL(f"UPDATE root SET status='🔕' WHERE {WHERE} AND status='🔔';", commit=True)
+                        SQL(f"""
+                            UPDATE root 
+                            SET status=REPLACE(status, '🔔', '🔕')
+                            WHERE status LIKE '%🔔%'
+                            AND date='{now_time_strftime(settings.timezone)}';
+                            """, commit=True)
                     logging.info(f"{'Ok':<32}", end="")
                 except ApiTelegramException:
                     logging.info(f"{'Error':<32}", end="")
@@ -1176,18 +1257,36 @@ def recurring(settings: UserSettings,
         isdel=0 AND user_id={chat_id} 
         AND 
         (
-            (
-                status IN ('🎉', '🎊', '📆')
+            ( -- Каждый год
+                (
+                    status LIKE "%🎉%"
+                     OR
+                     status LIKE "%🎊%"
+                     OR
+                     status LIKE "%📆%"
+                )
                 AND date LIKE '{date[:-5]}.____'
             )
             OR
-            (
-                status IN ('🗞') AND
-                strftime('%w', {sqlite_format_date('date')}) = CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT)
+            ( -- Каждый месяц
+                status LIKE "%📅%"
+                AND date LIKE '{date[:2]}.__.____'
+            )
+            OR
+            ( -- Каждую неделю
+                status LIKE "%🗞%"
+                AND strftime('%w', {sqlite_format_date('date')}) =
+                CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT)
+            )
+            OR
+            ( -- Каждый день
+                status LIKE "%📬%"
             )
         )
     """
-    generated = MyMessage(settings=settings, date=date, reply_markup=backmarkup)
+    generated = MyMessage(settings=settings,
+                          date=date,
+                          reply_markup=generate_buttons([{"🔙": "back", "↖️": "open event"}]))
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
@@ -1226,42 +1325,69 @@ def is_admin_id(chat_id: int) -> bool:
     return chat_id in config.admin_id
 
 def write_table_to_str(file: StringIO,
-                       table: list[tuple[str], ...] = None,
+                       table: list[tuple[str, ...], ...] = None,
                        query: str = None,
                        commit: bool = False,
-                       align: tuple[Literal["<", ">", "^"], ...] = "<") -> None:
+                       align: tuple[Literal["<", ">", "^"]] = "<") -> None:
     """
     Наполнит файл file строковым представлением таблицы результата SQL(query)
     """
     table = [list(str(column) for column in row) for row in (SQL(query, commit=commit, column_names=True)
                                                              if not table else table)]
 
+    # Обрезаем длинные строки до 315 символов (уменьшается размер файла)
+    table = [
+        [
+            "\n".join(
+                textwrap(column,
+                         width=126,
+                         replace_whitespace=False,
+                         drop_whitespace=True) or " "
+            )
+            for column in row
+        ]
+        for row in table
+    ]
+
     # Матрица максимальных длин и высот каждого столбца и строки
-    w = [[max(len(line) for line in str(column).splitlines()) for column in row] for row in table]
+    w = [
+        [
+            max(len(line) for line in str(column).splitlines())
+            for column in row
+        ]
+        for row in table
+    ]
 
     # Вычисляем максимальную ширину и высоту каждого столбца и строки
     widths = [max(column) for column in zip(*w)]
-
 
     sep = "+" + "".join(("-" * (i + 2)) + "+" for i in widths)  # Разделитель строк
     template = "|" + "".join(f" {{:{align}{_}}} |" for _ in widths)
 
     for n, row in enumerate(table):
         file.write(sep + "\n")
-        indices = [i for i, column in enumerate(row) if len(str(column).split("\n")) > 1]
+
+        # Индексы столбцов в которых несколько строк
+        indices = [i for i, column in enumerate(row) if len(str(column).splitlines()) > 1]
 
         if indices:
+            # Получаем первую текстовую строку строки таблицы
             first_line = row[:]
             for x in indices:
                 first_line[x] = row[x].splitlines()[0]
             file.write(template.format(*first_line) + "\n")
 
+            # Количество строк в каждом столбце
             indents = [len(str(column).splitlines()) for column in row]
+
             max_lines = max(indents)
             for ml in range(1, max_lines):  # проходим по максимум новых строчек
                 new_line = ["" for _ in indents]
                 for i in indices: # получаем индексы многострочных ячеек
-                    new_line[i] = str(row[i]).splitlines()[ml]
+                    try:
+                        new_line[i] = str(row[i]).splitlines()[ml]
+                    except IndexError:
+                        pass
                 file.write(template.format(*new_line) + ("\n" if ml < max_lines-1 else ""))
 
         else:

@@ -12,9 +12,9 @@ def end(lang: str):
         elif num_diff[-1] == '1':
             return 'день'
 
-
     def closure_en(num_diff: int):
         return "day" if num_diff == 1 else "days"
+
     if lang == "ru":
         return closure_ru
     else:
@@ -584,7 +584,9 @@ Reduce the number of characters or remove unnecessary events."""
             BotCommand("save_to_csv",     "Сохранить мои данные в csv"),
             BotCommand("help",            "Помощь"),
             BotCommand("settings",        "Настройки"),
-            BotCommand("setuserstatus",   "{id} {status} Изменить статус пользователя")],
+            BotCommand("setuserstatus",   "{id} {status} Изменить статус пользователя"),
+            BotCommand("deleteuser",      "{id} Удалить пользователя"),
+            BotCommand("commands",        "Список команд")],
         "en": [
             BotCommand("start",           "Start"),
             BotCommand("calendar",        "Calendar"),
@@ -597,11 +599,13 @@ Reduce the number of characters or remove unnecessary events."""
             BotCommand("save_to_csv",     "Save my data in csv"),
             BotCommand("help",            "Help"),
             BotCommand("settings",        "Settings"),
-            BotCommand("setuserstatus",   "{id} {status} Change user status")]
+            BotCommand("setuserstatus",   "{id} {status} Change user status"),
+            BotCommand("deleteuser",      "{id} Delete user"),
+            BotCommand("commands",        "Command list")]
     },
     "deldate": {
-        "ru": lambda x: f"<b>{x} " + end("ru")(x) + " до удаления</b>",
-        "en": lambda x: f"<b>{x} " + end("en")(x) + " before delete</b>"
+        "ru": lambda x: f"<b>{x} {end('ru')(x)} до удаления</b>",
+        "en": lambda x: f"<b>{x} {end('en')(x)} before delete</b>"
     },
     "delete_permanently": {
         "ru": "Удалить навсегда",
@@ -619,9 +623,9 @@ Reduce the number of characters or remove unnecessary events."""
         "ru": "Страница",
         "en": "Page"
     },
-    "": {
-        "ru": "",
-        "en": ""
+    "no_events_to_interact": {
+        "ru": "Нет событий для взаимодействия",
+        "en": "No events to interact"
     },
     "": {
         "ru": "",
