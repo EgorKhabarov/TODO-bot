@@ -549,7 +549,7 @@ def mycalendar(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list | 
                     status LIKE "%🎉%" OR status LIKE "%🎊%" OR status LIKE "%📆%"
                 )
                 AND
-                SUBSTR(date, 5, 2)="{MM:0>2}"
+                SUBSTR(date, 4, 2)="{MM:0>2}"
             )
             OR
             status LIKE "%📅%"
