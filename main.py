@@ -341,7 +341,7 @@ SyntaxError
                 else:
                     text = "Пользователь успешно удалён"
             else:
-                text = "Это id админа"
+                text = f"Это id админа\n<code>/setuserstatus {user_id} 0</code>"
         else:
             text = "SyntaxError\n/deleteuser {id}"
 

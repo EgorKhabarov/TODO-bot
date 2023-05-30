@@ -1,3 +1,6 @@
+import os
+
+os.chdir(".")
 database_path = "database.sqlite3"
 admin_id = (1563866138, )
 hours_difference = 4  # Разница времени для логов (на хостинге другой часовой пояс)
