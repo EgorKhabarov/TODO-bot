@@ -73,6 +73,7 @@ class UserSettings:
     .city               Город
     .timezone           Часовой пояс
     .direction          Направление вывода
+    .direction_sql      Направление вывода на языке sql
     .user_status        Обычный, Премиум, Админ (0, 1, 2)
     .notifications      1 or 0
     .notifications_time 08:00  08:00;09:30
@@ -92,6 +93,7 @@ class UserSettings:
             self.notifications,
             self.notifications_time,
         ) = self._get_user_settings()
+        self.direction_sql = {"⬇️": "DESC", "⬆️": "ASC"}[self.direction]
 
     def _get_user_settings(self):
         """
@@ -641,7 +643,7 @@ def ToHTML(text: str) -> str:
 def NoHTML(text: str) -> str:
     return text.replace("&lt;", '<').replace("&gt;", '>').replace("&#39;", "'").replace('&quot;', '"')
 
-def markdown(text: str, status: str, suburl: bool | int = False) -> str:
+def markdown(text: str, statuses: str, sub_url: bool | int = False) -> str:
     """
     Добавляем эффекты к событию по статусу
     """
@@ -668,16 +670,14 @@ def markdown(text: str, status: str, suburl: bool | int = False) -> str:
     # Сокращаем несколько подряд переносов строки
     text = re.sub(r'\n(\n*)\n', '\n⠀\n', text)
 
-    if (suburl and ('💻' not in status or '❌🔗' not in status)) or "🔗" in status:
+    if "🔗" in statuses or (sub_url and ('💻' not in statuses or '❌🔗' not in statuses)):
         text = SubUrls(text)
-    if '🧮' in status:
-        text = OrderList(text)
-    if '💻' in status:
-        text = Code(text)
-    if '🗒' in status:
-        text = List(text)
-    if '🪞' in status:
-        text = Spoiler(text)
+
+    for status in statuses.split(","):
+        if status == "🗒": text = List(text)
+        if status == "🧮": text = OrderList(text)
+        if status == "💻": text = Code(text)
+        if status == "🪞": text = Spoiler(text)
 
     return text
 
@@ -717,7 +717,7 @@ class Cooldown:
         if update_dict or result[0]:
             self.cooldown_dict[f'{key}'] = t1
         return result
-CSVCooldown = Cooldown(1800, {})
+CSVCooldown = Cooldown(30*60, {})
 
 def main_log(user_status: int, chat_id: int, action: str, text: str) -> None:
     if user_status == 2 or is_admin_id(chat_id):
@@ -797,7 +797,7 @@ class MyMessage:
                     WHERE {column_to_order} IN ({data[0][0]}) AND ({WHERE})
                     ORDER BY {column_to_order} {direction};""")]
 
-            if self._settings.direction == "⬆️":
+            if self._settings.direction_sql == "ASC":
                 first_message = first_message[::-1]
             self.event_list = first_message
 
@@ -823,19 +823,17 @@ class MyMessage:
         Возвращает события входящие в values с условием WHERE
         """
         try:
-            direction = {"⬇️": "DESC", "⬆️": "ASC"}[self._settings.direction]
             res = [Event(*event) for event in SQL(f"""
                 SELECT date, event_id, status, text, isdel FROM root
                 WHERE event_id IN ({', '.join(values)}) AND ({WHERE})
-                ORDER BY {sqlite_format_date('date')} {direction};""")]
+                ORDER BY {sqlite_format_date('date')} {self._settings.direction_sql};""")]
         except Error as e:
             logging.info(f'[func.py -> MyMessage.get_events] Error "{e}"')
             self.event_list = []
         else:
-            if self._settings.direction != "⬆️":
-                self.event_list = res
-            else:
-                self.event_list = res[::-1]
+            if self._settings.direction_sql == "ASC":
+                res = res[::-1]
+            self.event_list = res
         return self
 
     def format(self,
@@ -950,7 +948,7 @@ def search(settings: UserSettings,
     re_id = re.compile(r"[#\b ]id=(\d{,6})[\b]?")
     re_status = re.compile(r"[#\b ]status=(\S+)[\b]?")
 
-    querylst = query.replace('\n', ' ').split()
+    querylst = query.replace("\n", " ").split()
     splitquery = " OR ".join(f"date LIKE '%{x}%' OR text LIKE '%{x}%' OR status LIKE '%{x}%' OR event_id LIKE '%{x}%'" for x in querylst)
     WHERE = f"(user_id = {chat_id} AND isdel == 0) AND ({splitquery})"
 
@@ -958,9 +956,9 @@ def search(settings: UserSettings,
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
-        generated.get_data(WHERE=WHERE, direction={"⬇️": "DESC", "⬆️": "ASC"}[settings.direction])
-    generated.format(title=f'{get_translate("search", settings.lang)} {query}:\n'
-                           f'{"<b>"+get_translate("page", settings.lang)+f" {page}</b>{backslash_n}" if int(page) > 1 else ""}',
+        generated.get_data(WHERE=WHERE, direction=settings.direction_sql)
+    generated.format(title=f"{get_translate('search', settings.lang)} {query}:\n"
+                           f"{'<b>'+get_translate('page', settings.lang)+f' {page}</b>{backslash_n}' if int(page) > 1 else''}",
                      args="<b>{numd}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
                      if_empty=get_translate("nothing_found", settings.lang))
 
@@ -1017,8 +1015,8 @@ def week_event_list(settings: UserSettings,
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
         generated.get_data(WHERE=WHERE, direction="ASC")
-    generated.format(title=f'{get_translate("week_events", settings.lang)}\n'
-                           f'{"<b>"+get_translate("page", settings.lang)+f" {page}</b>{backslash_n}" if int(page) > 1 else ""}',
+    generated.format(title=f"{get_translate('week_events', settings.lang)}\n"
+                           f"{'<b>'+get_translate('page', settings.lang)+f' {page}</b>{backslash_n}' if int(page) > 1 else ''}",
                      args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
                      if_empty=get_translate("nothing_found", settings.lang))
     return generated
@@ -1046,14 +1044,14 @@ def deleted(settings: UserSettings,
 
     generated = MyMessage(settings, reply_markup=generate_buttons([
         {"✖": "message_del", "❌ "+get_translate("delete_permanently", settings.lang): "event_del bin"},
-        {"↩️ "+get_translate("recover", settings.lang): "event_recover bin"}]))
+        {"🔄": "update", "↩️ "+get_translate("recover", settings.lang): "event_recover bin"}]))
 
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
-        generated.get_data(WHERE=WHERE, direction={"⬇️": "DESC", "⬆️": "ASC"}[settings.direction])
-    generated.format(title=f'{get_translate("basket", settings.lang)}\n'
-                           f'{"<b>"+get_translate("page", settings.lang)+f" {page}</b>{backslash_n}" if int(page) > 1 else ""}',
+        generated.get_data(WHERE=WHERE, direction=settings.direction_sql)
+    generated.format(title=f"{get_translate('basket', settings.lang)}\n"
+                           f"{'<b>'+get_translate('page', settings.lang)+f' {page}</b>{backslash_n}' if int(page) > 1 else ''}",
                      args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({days_before_delete})\n{markdown_text}\n",
                      if_empty=get_translate("message_empty", settings.lang))
     return generated
@@ -1080,9 +1078,10 @@ def today_message(settings: UserSettings,
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
-        generated.get_data(WHERE=WHERE, direction={"⬇️": "DESC", "⬆️": "ASC"}[settings.direction])
-    generated.format(title='{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n'
-                           f'{"<b>"+get_translate("page", settings.lang)+f" {page}</b>{backslash_n}" if int(page) > 1 else ""}',
+        generated.get_data(WHERE=WHERE, direction=settings.direction_sql)
+
+    generated.format(title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n"
+                           f"{'<b>'+get_translate('page', settings.lang)+f' {page}</b>{backslash_n}' if int(page) > 1 else ''}",
                      args="<b>{numd}.{event_id}.</b>{status}\n{markdown_text}\n",
                      if_empty=get_translate("nodata", settings.lang))
 
@@ -1173,24 +1172,28 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
                         )
                         AND date='{strdates[0]}'
                     ) 
-                    OR 
+                    OR
+                    (
+                        status LIKE "%🟥%"
+                        AND date IN ({", ".join(f"'{date}'" for date in strdates)})
+                    )
+                    OR
                     ( -- Каждый год
                         (
                             status LIKE "%🎉%" OR status LIKE "%🎊%" OR status LIKE "%📆%"
                         )
-                        AND SUBSTR(date, 1, 2) || '.' || SUBSTR(date, 4, 2) IN ({", ".join(date[:5] for date in strdates)})
+                        AND SUBSTR(date, 1, 5) IN ({", ".join(f"'{date[:5]}'" for date in strdates)})
                     )
                     OR
                     ( -- Каждый месяц
                         status LIKE "%📅%"
-                        AND SUBSTR(date, 1, 2) IN ({", ".join(date[:2] for date in strdates)})
+                        AND SUBSTR(date, 1, 2) IN ({", ".join(f"'{date[:2]}'" for date in strdates)})
                     )
                     OR
                     ( -- Каждую неделю
                         status LIKE "%🗞%"
                         AND
                         strftime('%w', {sqlite_format_date('date')}) IN ({", ".join(f"'{w}'" for w in weekdays)})
-                        
                     )
                     OR
                     ( -- Каждый день
@@ -1204,14 +1207,14 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
             if id_list:
                 generated.get_events(WHERE=WHERE, values=id_list)
             else:
-                generated.get_data(WHERE=WHERE, direction={"⬇️": "DESC", "⬆️": "ASC"}[settings.direction])
+                generated.get_data(WHERE=WHERE, direction=settings.direction_sql)
 
             if len(generated.event_list) or from_command:
                 # Если в generated.event_list есть события
                 # или
                 # Если уведомления вызывали командой (сообщение на команду приходит даже если оно пустое)
-                generated.format(title=(f'🔔 {get_translate("reminder", settings.lang)} 🔔\n'
-                                        f'{"<b>" + get_translate("page", settings.lang) + f" {page}</b>{backslash_n}" if int(page) > 1 else ""}'),
+                generated.format(title=(f"🔔 {get_translate('reminder', settings.lang)} 🔔\n"
+                                        f"{'<b>' + get_translate('page', settings.lang) + f' {page}</b>{backslash_n}' if int(page) > 1 else ''}"),
                                  args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
                                  if_empty=get_translate("message_empty", settings.lang))
 
@@ -1290,9 +1293,9 @@ def recurring(settings: UserSettings,
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
-        generated.get_data(WHERE=WHERE, direction={"⬇️": "DESC", "⬆️": "ASC"}[settings.direction], prefix="|!")
-    generated.format(title='{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n'
-                           f'{"<b>"+get_translate("page", settings.lang)+f" {page}</b>{backslash_n}" if int(page) > 1 else ""}',
+        generated.get_data(WHERE=WHERE, direction=settings.direction_sql, prefix="|!")
+    generated.format(title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n"
+                           f"{'<b>'+get_translate('page', settings.lang)+f' {page}</b>{backslash_n}' if int(page) > 1 else ''}",
                      args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
                      if_empty=get_translate("nothing_found", settings.lang))
     return generated

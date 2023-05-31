@@ -395,6 +395,10 @@ Reduce the number of characters or remove unnecessary events."""
         "ru": "Выберите событие для удаления",
         "en": "Select an event to delete"
     },
+    "select_event_to_recover": {
+        "ru": "Выберите событие для восстановления",
+        "en": "Select an event to recover"
+    },
     "choose_event": {
         "ru": "Выберите событие",
         "en": "Choose an event"

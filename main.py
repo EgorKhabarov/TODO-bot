@@ -476,23 +476,16 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             except IndexError: # Если этого события уже нет
                 callback_handler(settings, chat_id, message_id, message_text, "update", call_id, message)
                 return
-            if call_data == "event_status":
-                callback_handler(settings, chat_id, message_id, message_text, f"edit_page_status {event_id} {msg_date}", call_id, message)
-                return
-            if call_data == "event_del":
-                callback_handler(settings, chat_id, message_id, message_text, f"before del {msg_date} {event_id} _", call_id, message)
-                return
-            elif call_data == "event_del bin":
-                event_date, event_id = events_list[0][:10], events_list[0].split('.', maxsplit=4)[-2] # TODO изменить парсинг переменных
-                callback_handler(settings, chat_id, message_id, message_text, f"del {event_date} {event_id} bin delete", call_id, message)
-                return
-            elif call_data == "event_recover bin":
-                event_date, event_id = events_list[0][:10], events_list[0].split('.', maxsplit=4)[-2] # TODO изменить парсинг переменных
-                callback_handler(settings, chat_id, message_id, message_text, f"recover {event_date} {event_id}", call_id, message)
-                return
-            elif call_data == "open event":
+
+            if call_data in ("event_del bin", "event_recover bin", "event_status", "event_del", "open event"):
                 event_date = events_list[0][:10]
-                callback_handler(settings, chat_id, message_id, message_text, f"{event_date}", call_id, message)
+                if call_data == "event_del bin":       new_call_data = f"del {event_date} {event_id} bin delete"
+                elif call_data == "event_recover bin": new_call_data = f"recover {event_date} {event_id}"
+                elif call_data == "event_status":      new_call_data = f"edit_page_status {event_id} {msg_date}"
+                elif call_data == "event_del":         new_call_data = f"before del {msg_date} {event_id} _"
+                else:                                  new_call_data = f"{event_date}" # "open event"
+
+                callback_handler(settings, chat_id, message_id, message_text, new_call_data, call_id, message)
                 return
 
         markup = InlineKeyboardMarkup()
@@ -515,37 +508,61 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                     text=f"{event}{callbackTab * 20}",
                     switch_inline_query_current_chat=f"Edit message({event_id}, {msg_date}, {message.message_id})\n"
                                                      f"{NoHTML(event_text)}"))
-            elif call_data == "event_status":
-                markup.row(InlineKeyboardButton(f"{event}{callbackTab * 20}",
-                                                callback_data=f"edit_page_status {event_id} {msg_date}"))
-            elif call_data == "event_del":
-                button_title = event.replace('\n', ' ')[:41]
-                markup.row(InlineKeyboardButton(f"{button_title}{callbackTab * 20}",
-                                                callback_data=f"before del {msg_date} {event_id} _"))
-            elif call_data == "event_del bin":
-                event_date, event_id = event[:10], event.split('.', maxsplit=4)[-2] # TODO изменить парсинг переменных
-                button_title = f"{event_date} {event_id} " + event.split('\n', maxsplit=1)[-1][:50]
-                markup.row(InlineKeyboardButton(f"{button_title}{callbackTab * 20}",
-                                                callback_data=f"del {event_date} {event_id} bin delete")) # before -delete
-            elif call_data == "event_recover bin":
-                event_date, event_id = event[:10], event.split('.', maxsplit=4)[-2] # TODO изменить парсинг переменных
-                button_title = event_date + " " + event_id + " " + event.split('\n')[-1]
-                markup.row(InlineKeyboardButton(f"{button_title}{callbackTab * 20}",
-                                                callback_data=f"recover {event_date} {event_id}"))
-            elif call_data == "open event":
-                event_date_status, event_text = event.split(" ", maxsplit=1)[0], event.split("\n", maxsplit=1)[-1]
-                markup.row(InlineKeyboardButton(f"{event_date_status} {event_text}{callbackTab * 20}",
-                                                callback_data=f"{event[:10]}"))
 
-        if not markup.to_dict()["inline_keyboard"]:
+            elif call_data in ("event_status", "event_del"): # Действия в обычном дне
+                button_title = event.replace('\n', ' ')[:50]
+                if call_data == "event_status":
+                    callback_data = f"edit_page_status {event_id} {msg_date}"
+                else:
+                    callback_data = f"before del {msg_date} {event_id} _"
+
+                markup.row(InlineKeyboardButton(text=f"{button_title}{callbackTab * 20}", callback_data=callback_data))
+
+            elif call_data in ("event_del bin", "event_recover bin"): # Действия в корзине
+                event_date = event[:10]
+                button_title = event.split(" ", maxsplit=1)[0] + " " + event.split("\n", maxsplit=1)[-1][:50]
+                if call_data == "event_del bin":
+                    callback_data = f"del {event_date} {event_id} bin delete" # before -delete
+                else:
+                    callback_data = f"recover {event_date} {event_id}"
+
+                markup.row(InlineKeyboardButton(f"{button_title}{callbackTab * 20}", callback_data=callback_data))
+
+            elif call_data == "open event":
+                event_text = event.split("\n", maxsplit=1)[-1]
+                text = f"{event.split(' ', maxsplit=1)[0]} {event_text}{callbackTab * 20}"
+                markup.row(InlineKeyboardButton(text=text, callback_data=f"{event[:10]}"))
+
+        if not markup.to_dict()["inline_keyboard"]: # Созданный markup пустой
             callback_handler(settings, chat_id, message_id, message_text, "update", call_id, message)
             return
+
         markup.row(InlineKeyboardButton("🔙", callback_data="back" if not call_data.endswith("bin") else "back bin"))
 
-        if call_data == "event_edit": text = f'{msg_date}\n{get_translate("select_event_to_edit", settings.lang)}'
-        elif call_data == "event_status": text = f'{msg_date}\n{get_translate("select_event_to_change_status", settings.lang)}'
-        elif call_data == "event_del": text = f'{msg_date}\n{get_translate("select_event_to_delete", settings.lang)}'
-        else: text = f'{msg_date}\n{get_translate("choose_event", settings.lang)}'
+        if call_data == "event_edit":
+            text = f"{msg_date}\n" \
+                   f"{get_translate('select_event_to_edit', settings.lang)}"
+
+        elif call_data == "event_status":
+            text = f"{msg_date}\n" \
+                   f"{get_translate('select_event_to_change_status', settings.lang)}"
+
+        elif call_data == "event_del":
+            text = f"{msg_date}\n" \
+                   f"{get_translate('select_event_to_delete', settings.lang)}"
+
+        elif call_data == "event_del bin":
+            text = f"{get_translate('basket', settings.lang)}\n" \
+                   f"{get_translate('select_event_to_delete', settings.lang)}"
+
+        elif call_data == "event_recover bin":
+            text = f"{get_translate('basket', settings.lang)}\n" \
+                   f"{get_translate('select_event_to_recover', settings.lang)}"
+
+        else:
+            text = f"{msg_date}\n" \
+                   f"{get_translate('choose_event', settings.lang)}"
+
         bot.edit_message_text(text, chat_id, message_id, reply_markup=markup)
 
     elif call_data.startswith("recover"):
@@ -611,7 +628,9 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
             return
 
-        if new_status in old_status:
+        if new_status == "⬜️" == old_status:
+            return
+        elif new_status in old_status:
             bot.answer_callback_query(callback_query_id=call_id, show_alert=True, text=get_translate("status_already_posted", settings.lang))
         elif len(old_status.split(",")) > 4 and new_status != "⬜️":
             bot.answer_callback_query(callback_query_id=call_id, show_alert=True, text=get_translate("more_5_statuses", settings.lang))
