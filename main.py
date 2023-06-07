@@ -27,7 +27,7 @@ Me = bot.get_me()
 BOT_ID = Me.id
 BOT_USERNAME = Me.username
 COMMANDS = ("calendar", "start", "deleted", "version", "forecast", "week_event_list",
-            "weather", "search", "bell", "dice", "help", "settings", "today", "sqlite",
+            "weather", "search", "bell", "dice", "help", "settings", "today", "sqlite", "account",
             "files", "SQL", "save_to_csv", "setuserstatus", "id", "deleteuser", "idinfo", "commands")
 def check(key, val) -> str:
     """Подсветит не правильные настройки красным цветом"""
@@ -127,7 +127,7 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
         bot.send_message(chat_id=chat_id, text=get_translate("start", settings.lang), reply_markup=markup)
 
     elif message_text.startswith("/deleted"):
-        if list(limits.keys())[int(settings.user_status)] in ("premium", "admin") or is_admin_id(chat_id):
+        if settings.user_status in (1, 2) or is_admin_id(chat_id):
             generated = deleted(settings=settings, chat_id=chat_id)
             generated.send(chat_id=chat_id)
         else:
@@ -334,6 +334,7 @@ SyntaxError
             user_id = int(message_text.removeprefix("/deleteuser "))
             if not is_admin_id(user_id):
                 try:
+                    # TODO присылать sql файл для восстановления
                     SQL(f"DELETE FROM root     WHERE user_id={user_id};", commit=True)
                     SQL(f"DELETE FROM settings WHERE user_id={user_id};", commit=True)
                 except Error as e:
@@ -347,7 +348,12 @@ SyntaxError
 
         bot.reply_to(message=message, text=text)
 
-    elif message_text.startswith("/commands"):
+    elif message_text.startswith("/account"):
+        date = now_time(settings.timezone)
+        bot.send_photo(chat_id, create_image(settings, date.year, date.month, date.day))
+
+    elif message_text.startswith("/commands"): # TODO перевод
+        # /account - Ваш аккаунт (просмотр лимитов)
         bot.send_message(chat_id, """
 /start - Старт
 /calendar - Календарь
@@ -362,6 +368,7 @@ SyntaxError
 /settings - Настройки
 /search {...} - Поиск
 /id - Получить свой Telegram id
+
 /commands - Этот список
 """ + ("" if not is_admin_id(chat_id) else """
 /version - Версия бота
@@ -378,13 +385,40 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                      call_data: str, call_id: int, message: Message):
     """
     Отвечает за реакцию бота на нажатия на кнопку
+    "event_add" - Добавить событие. Бот входит в режим ожидания получения события.
+    "/calendar" - Изменить сообщение на календарь дней
+    "back" -
+    "message_del" - Пытается удалить сообщение. При ошибке шлёт сообщение с просьбой выдать права.
+    "set database" - Нужно быть админом. Шлёт свою базу данных и заменяет её на бд из сообщения.
+    "confirm change" -
+    "event_edit" -
+    "event_status" -
+    "event_del" -
+    "event_del bin" -
+    "event_recover bin" -
+    "open event" -
+    "recover" -
+    "edit_page_status" -
+    "status page" -
+    "set_status" -
+    "del_status" -
+    "before del" -
+    "del" -
+    "|" -
+    "generate month calendar" -
+    "generate calendar" -
+    "settings" - par_name, par_val - Изменить значение колонки par_name на par_val и обновить сообщение с новыми настройками
+    "recurring" - Вызвать сообщение с повторяющимися событиями. Например дни рождения за прошлые года.
+    "<<<", ">>>" - Изменение на 1 день в сообщении на дату.
+    r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z" - Вызвать сообщение с текущей датой.
+    "update" - Обновить сообщение в зависимости от типа. Поддерживает поиск, week_event_list, корзина, сообщение с датой.
     """
     if call_data == "event_add":
         clear_state(chat_id)
         msg_date = message_text[:10]
 
         # Проверяем будет ли превышен лимит для пользователя, если добавить 1 событие с 1 символом
-        if is_exceeded_limit(chat_id, msg_date, list(limits.values())[int(settings.user_status)], (1, 1)):
+        if is_exceeded_limit(settings, msg_date, 1, 1):
             bot.answer_callback_query(callback_query_id=call_id, show_alert=True,
                                       text=get_translate("exceeded_limit", settings.lang))
             return
@@ -396,8 +430,8 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                               chat_id, message_id, reply_markup=backmarkup)
 
     elif call_data == "/calendar":
-        bot.edit_message_text(get_translate("choose_date", settings.lang), chat_id, message_id,
-                              reply_markup=mycalendar(chat_id, settings.timezone, settings.lang))
+        markup = mycalendar(chat_id, settings.timezone, settings.lang)
+        bot.edit_message_text(get_translate("choose_date", settings.lang), chat_id, message_id, reply_markup=markup)
 
     elif call_data.startswith("back"):
         # не вызываем await clear_state(chat_id) так как она после очистки вызывает сегодняшнее сообщение
@@ -410,6 +444,11 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         msg_date = message_text[:10]
         if call_data.endswith("bin"):
             deleted(settings=settings, chat_id=chat_id).edit(chat_id=chat_id, message_id=message_id)
+
+        elif message_text.startswith("🔍 "):  # Поиск
+            query = ToHTML(message_text.split("\n", maxsplit=1)[0].split(maxsplit=2)[-1][:-1])
+            generated = search(settings=settings, chat_id=chat_id, query=query)
+            generated.edit(chat_id=chat_id, message_id=message_id)
 
         elif len(msg_date.split('.')) == 3:
             try: # Пытаемся изменить сообщение
@@ -430,11 +469,11 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         try:
             with open(config.database_path, 'rb') as file:
                 bot.send_document(chat_id, file,
-                                  caption=f'{now_time_strftime(settings.timezone)}\n'
-                                          f'На данный момент база выглядит так.',
+                                  caption=f"{now_time_strftime(settings.timezone)}\n"
+                                          f"На данный момент база выглядит так.",
                                   reply_markup=databasemarkup)
         except ApiTelegramException:
-            bot.send_message(chat_id, 'Отправить файл не получилось')
+            bot.send_message(chat_id, "Отправить файл не получилось")
 
         file_info = bot.get_file(message.document.file_id)
         downloaded_file = bot.download_file(file_info.file_path)
@@ -490,7 +529,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
         markup = InlineKeyboardMarkup()
         for event in events_list:
-            if call_data.endswith("bin"):
+            if call_data.endswith("bin") or message_text.startswith("🔍 "):
                 event_id = event.split('.', maxsplit=4)[-2] # TODO изменить парсинг переменных
             else:
                 event_id = event.split('.', maxsplit=2)[-2]
@@ -537,6 +576,9 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             callback_handler(settings, chat_id, message_id, message_text, "update", call_id, message)
             return
 
+        # TODO заменить чтобы при поиске ставилось другое и убрать костыль в back
+        # if message_text.startswith("🔍 "):  # Поиск
+        #     query = ToHTML(message_text.split("\n", maxsplit=1)[0].split(maxsplit=2)[-1][:-1])
         markup.row(InlineKeyboardButton("🔙", callback_data="back" if not call_data.endswith("bin") else "back bin"))
 
         if call_data == "event_edit":
@@ -559,6 +601,11 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             text = f"{get_translate('basket', settings.lang)}\n" \
                    f"{get_translate('select_event_to_recover', settings.lang)}"
 
+        elif message_text.startswith("🔍 "):
+            query = ToHTML(message_text.split("\n", maxsplit=1)[0].split(maxsplit=2)[-1][:-1])
+            text = f"🔍 {get_translate('search', settings.lang)} {query}:\n" \
+                   f"{get_translate('choose_event', settings.lang)}"
+
         else:
             text = f"{msg_date}\n" \
                    f"{get_translate('choose_event', settings.lang)}"
@@ -567,6 +614,22 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
     elif call_data.startswith("recover"):
         event_date, event_id = call_data.split(maxsplit=2)[1:]
+        try:
+            event_len = SQL(f"""
+                SELECT LENGTH(text) FROM root
+                WHERE user_id={chat_id} AND event_id={event_id}
+                AND date='{event_date}' AND isdel!=0;""")[0][0]
+        except IndexError:
+            bot.answer_callback_query(callback_query_id=call_id, show_alert=True,
+                                      text=get_translate("error", settings.lang))
+            return # такого события нет
+
+        # TODO проверка лимита
+        if is_exceeded_limit(settings, event_date, 1, event_len):
+            bot.answer_callback_query(callback_query_id=call_id, show_alert=True,
+                                      text=get_translate("exceeded_limit", settings.lang))
+            return
+
         SQL(f"""
             UPDATE root SET isdel=0
             WHERE user_id={chat_id} AND event_id={event_id}
@@ -611,10 +674,10 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                 {"🔙": f"edit_page_status {event_id} {event_date}"}
             ])
 
-        bot.edit_message_text(f'{event_date}\n'
-                              f'<b>{get_translate("select_status_to_event", settings.lang)}\n'
-                              f'{event_date}.{event_id}.{status}</b>\n'
-                              f'{markdown(text, status, settings.sub_urls)}',
+        bot.edit_message_text(f"{event_date}\n"
+                              f"<b>{get_translate('select_status_to_event', settings.lang)}\n"
+                              f"{event_date}.{event_id}.{status}</b>\n"
+                              f"{markdown(text, status, settings.sub_urls)}",
                               chat_id, message_id, reply_markup=markup)
 
     elif call_data.startswith("set_status"):
@@ -694,10 +757,10 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             {"🔙": "back" if back_to_bin != "bin" else
              "back bin", "❌ "+get_translate("delete_permanently", settings.lang): f"{call_data.split(maxsplit=1)[-1]} delete"}])
 
-        if (list(limits.keys())[int(settings.user_status)] in ("premium", "admin") and back_to_bin != "bin") or is_admin_id(chat_id):
+        if (settings.user_status in (1, 2) and back_to_bin != "bin") or is_admin_id(chat_id):
             predelmarkup.row(InlineKeyboardButton("🗑 "+get_translate("trash_bin", settings.lang), callback_data=f"{call_data.split(maxsplit=1)[-1]} to_bin"))
 
-        end_text = get_translate("/deleted", settings.lang) if (list(limits.keys())[int(settings.user_status)] in ("premium", "admin") or is_admin_id(chat_id)) else ""
+        end_text = get_translate("/deleted", settings.lang) if (settings.user_status in (1, 2) or is_admin_id(chat_id)) else ""
         day = DayInfo(settings, event_date)
         bot.edit_message_text(f'<b>{event_date}.{event_id}.</b>{status} <u><i>{day.str_date}  {day.week_date}</i> {day.relatively_date}</u>\n'
                               f'<b>{get_translate("are_you_sure", settings.lang)}:</b>\n'
@@ -708,7 +771,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
     elif call_data.startswith("del "):
         event_date, event_id, where, mode = call_data.split(maxsplit=4)[1:]
         try:
-            if (list(limits.keys())[int(settings.user_status)] in ("premium", "admin") or is_admin_id(chat_id)) and mode == "to_bin":
+            if (settings.user_status in (1, 2) or is_admin_id(chat_id)) and mode == "to_bin":
                 SQL(f"""
                     UPDATE root SET isdel='{now_time_strftime(settings.timezone)}' 
                     WHERE user_id={chat_id} AND date='{event_date}' AND event_id={event_id};""", commit=True)
@@ -726,7 +789,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         id_list = id_list.split(",")
         try:
             if message_text.startswith("🔍 "): # Поиск
-                query = ToHTML(message_text.split('\n', maxsplit=1)[0].split(maxsplit=2)[-1][:-1])
+                query = ToHTML(message_text.split("\n", maxsplit=1)[0].split(maxsplit=2)[-1][:-1])
                 generated = search(settings=settings, chat_id=chat_id, query=query, id_list=id_list, page=page)
                 generated.edit(chat_id=chat_id, message_id=message_id, markup=message.reply_markup)
 
@@ -754,34 +817,45 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             bot.answer_callback_query(callback_query_id=call_id, text=get_translate("already_on_this_page", settings.lang))
 
     elif call_data.startswith("generate month calendar "):
-        sleep(0.5)  # TODO Задержка
-        YY = int(call_data.split()[-1])
+        sleep(0.5)  # FIXME Задержка
+        year = call_data.split()[-1]
+        if year == "now":
+            YY = now_time(settings.timezone).year
+        else:
+            YY = int(year)
+
         if 1980 <= YY <= 3000:
-            bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id,
-                                          reply_markup=generate_month_calendar(settings.timezone, settings.lang,
-                                                                               chat_id, YY))
+            markup = generate_month_calendar(settings.timezone, settings.lang, chat_id, YY)
+            try:
+                bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=markup)
+            except ApiTelegramException: # Сообщение не изменено
+                callback_handler(settings, chat_id, message_id, message_text, "/calendar", call_id, message)
         else:
             bot.answer_callback_query(callback_query_id=call_id, text="🤔")
 
     elif call_data.startswith("generate calendar "):
-        YY_MM = [int(i) for i in call_data.split()[-2:]]
-        bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id,
-                                      reply_markup=mycalendar(chat_id, settings.timezone, settings.lang, YY_MM))
+        sleep(0.5) # FIXME Задержка
+        if call_data.split()[-1] == "now":
+            YY_MM = new_time_calendar(settings.timezone)
+        else:
+            YY_MM = [int(i) for i in call_data.split()[-2:]]
 
-    elif call_data == "year now":
-        try:
-            markup = generate_month_calendar(settings.timezone, settings.lang,
-                                             chat_id, now_time(settings.timezone).year)
-            bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
-        except ApiTelegramException:
-            callback_handler(settings, chat_id, message_id, message_text, '/calendar', call_id, message)
+        if 1980 <= YY_MM[0] <= 3000:
+            markup = mycalendar(chat_id, settings.timezone, settings.lang, YY_MM)
+            try:
+                bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=markup)
+            except ApiTelegramException: # Если нажата кнопка ⟳, но сообщение не изменено
+                generated = today_message(settings=settings, chat_id=chat_id, date=now_time_strftime(settings.timezone))
+                generated.edit(chat_id=chat_id, message_id=message_id)
+        else:
+            bot.answer_callback_query(callback_query_id=call_id, text="🤔")
 
     elif call_data.startswith("settings"):
-        par_name, par_val = call_data.split(' ', maxsplit=2)[1:]
+        par_name, par_val = call_data.split(" ", maxsplit=2)[1:]
         if isinstance(par_val, str):
-            SQL(f"UPDATE settings SET {par_name}='{par_val}' WHERE user_id={chat_id};", commit=True)
-        else:
-            SQL(f"UPDATE settings SET {par_name}={par_val} WHERE user_id={chat_id};", commit=True)
+            par_val = f"'{par_val}'"
+
+        SQL(f"UPDATE settings SET {par_name}={par_val} WHERE user_id={chat_id};", commit=True)
 
         settings = UserSettings(chat_id)
         set_commands(settings, chat_id, settings.user_status)
@@ -795,59 +869,42 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         generated = recurring(settings=settings, date=message_text[:10], chat_id=chat_id)
         generated.edit(chat_id=chat_id, message_id=message_id)
 
-    elif call_data in ("<<<", ">>>"):
-        msgdate = [int(i) for i in message_text.split(maxsplit=1)[0].split('.')]
-        new_date = datetime(*msgdate[::-1])
-        sleep(0.5)  # TODO Задержка
+    elif call_data in ("<<<", ">>>"): # Изменение на 1 день в сообщении на дату
+        msgdate = [int(i) for i in message_text[:10].split('.')[::-1]]
+        new_date = datetime(*msgdate)
+        sleep(0.5)  # FIXME Задержка
         if 1980 < new_date.year < 3000:
-            if call_data == '<<<': new_date -= timedelta(days=1)
-            if call_data == '>>>': new_date += timedelta(days=1)
-            new_date = '.'.join(f'{new_date}'.split(maxsplit=1)[0].split('-')[::-1])
+            if call_data == "<<<": new_date -= timedelta(days=1)
+            if call_data == ">>>": new_date += timedelta(days=1)
+            new_date = ".".join(f"{new_date}".split(maxsplit=1)[0].split("-")[::-1])
             generated = today_message(settings=settings, chat_id=chat_id, date=new_date)
             generated.edit(chat_id=chat_id, message_id=message_id)
         else:
             bot.answer_callback_query(callback_query_id=call_id, text="🤔")
 
-    elif call_data in ("<<", "<", "⟳", ">", ">>"):
-        # TODO Парсить из текста, а не из кнопок
-        mydatatime = [int(i) for i in message.json["reply_markup"]['inline_keyboard'][0][0]["text"].split()[-3][1:-1].split('.')[::-1]]
-        # получаем [2023, 4] [year, month]
-        if call_data == '<': mydatatime = [mydatatime[0] - 1, 12] if mydatatime[1] == 1 else [mydatatime[0], mydatatime[1] - 1]
-        if call_data == '>': mydatatime = [mydatatime[0] + 1, 1] if mydatatime[1] == 12 else [mydatatime[0], mydatatime[1] + 1]
-        if call_data == '<<': mydatatime[0] -= 1
-        if call_data == '>>': mydatatime[0] += 1
-        if call_data == '⟳': mydatatime = new_time_calendar(settings.timezone)
-        if 1980 <= mydatatime[0] <= 3000:
-            sleep(0.5)  # TODO Задержка
-            try:
-                bot.edit_message_reply_markup(chat_id=chat_id,
-                                              message_id=message_id,
-                                              reply_markup=mycalendar(chat_id,
-                                                                      settings.timezone,
-                                                                      settings.lang,
-                                                                      mydatatime))
-            except ApiTelegramException:  # Если нажата кнопка ⟳, но сообщение не изменено
-                generated = today_message(settings=settings, chat_id=chat_id, date=now_time_strftime(settings.timezone))
-                generated.edit(chat_id=chat_id, message_id=message_id)
+    elif re_call_data_date.search(call_data):
+        year = int(call_data[-4:])
+        sleep(0.5)  # FIXME Задержка
+        if 1980 < year < 3000:
+            generated = today_message(settings=settings, chat_id=chat_id, date=call_data)
+            generated.edit(chat_id=chat_id, message_id=message_id)
         else:
             bot.answer_callback_query(callback_query_id=call_id, text="🤔")
 
-    elif re_call_data_date.search(call_data):
-        generated = today_message(settings=settings, chat_id=chat_id, date=call_data)
-        generated.edit(chat_id=chat_id, message_id=message_id)
-
-    elif call_data == "update":
+    elif call_data == "update": # TODO мб обновлять и кнопки?
         try:
-            if message_text.startswith('🔍 '):  # Поиск
-                query = ToHTML(message_text.split('\n', maxsplit=1)[0].split(maxsplit=2)[-1][:-1])
+            message.reply_markup = None
+
+            if message_text.startswith("🔍 "): # Поиск
+                query = ToHTML(message_text.split("\n", maxsplit=1)[0].split(maxsplit=2)[-1][:-1])
                 generated = search(settings=settings, chat_id=chat_id, query=query)
                 generated.edit(chat_id=chat_id, message_id=message_id, markup=message.reply_markup)
 
-            elif message_text.startswith('📆'):  # Если /week_event_list
+            elif message_text.startswith("📆"):  # Если /week_event_list
                 generated = week_event_list(settings=settings, chat_id=chat_id)
                 generated.edit(chat_id=chat_id, message_id=message_id, markup=message.reply_markup)
 
-            elif message_text.startswith('🗑'):  # Корзина
+            elif message_text.startswith("🗑"):  # Корзина
                 generated = deleted(settings=settings, chat_id=chat_id)
                 generated.edit(chat_id=chat_id, message_id=message_id, markup=message.reply_markup)
 
@@ -905,41 +962,62 @@ def get_edit_message(message: Message):
     chat_id, edit_message_id = message.chat.id, message.message_id
     settings = UserSettings(chat_id)
     main_log(user_status=settings.user_status, chat_id=chat_id, text="edit event text", action="send")
+
     res = re_edit_message.search(message.text)[0]
-    event_id = int(re.findall(r"\((\d+)", res)[0])
-    msg_date = re.findall(r" (\d{1,2}\.\d{1,2}\.\d{4}),", res)[0]
-    message_id = int(re.findall(r", (\d+)\)", res)[0])
-    text = message.text.split('\n', maxsplit=1)[-1].strip("\n") # ВАЖНО!
-    markup = InlineKeyboardMarkup()
-    markup.row(InlineKeyboardButton(f"{event_id} {text[:20]}{callbackTab * 20}",
-                                    switch_inline_query_current_chat=f"{message.text.split(maxsplit=1)[-1]}"))
-    markup.row(InlineKeyboardButton("✖", callback_data="message_del"))
+
+    (
+        event_id,
+        event_date,
+        message_id,
+        text
+    ) = (
+        int(re.findall(r"\((\d+)", res)[0]),
+        str(re.findall(r" (\d{1,2}\.\d{1,2}\.\d{4}),", res)[0]),
+        int(re.findall(r", (\d+)\)", res)[0]),
+        message.text.split('\n', maxsplit=1)[-1].strip("\n")  # ВАЖНО!
+    )
+
+    markup = generate_buttons([
+        {f"{event_id} {text[:20]}{callbackTab * 20}": {
+            "switch_inline_query_current_chat": f"{message.text.split(maxsplit=1)[-1]}"}},
+        {"✖": "message_del"}
+    ])
+
     tag_len_max = len(text) > 3800
-    tag_limit_exceeded = is_exceeded_limit(chat_id, msg_date, list(limits.values())[int(settings.user_status)], (len(text), 0))
-    tag_len_less = len(text) < len(SQL(f"""
-        SELECT text FROM root
-        WHERE user_id={chat_id} AND event_id='{event_id}'
-        AND date='{msg_date}' AND isdel=0;""")[0][0])
+    try:
+        # Уменьшится ли длинна события
+        len_old_event, tag_len_less = SQL(f"""
+            SELECT LENGTH(text), {len(text)} < LENGTH(text) FROM root
+            WHERE user_id={chat_id} AND event_id='{event_id}'
+            AND date='{event_date}' AND isdel=0;""")[0]
+    except ValueError:
+        return # Этого события нет
+
+    # TODO проверка лимита
+    added_length = 0 if tag_len_less else len(text) - len_old_event
+    tag_limit_exceeded = is_exceeded_limit(settings, event_date, 0, added_length)
 
     if tag_len_max:
         bot.reply_to(message, get_translate("message_is_too_long", settings.lang), reply_markup=markup)
-    elif tag_limit_exceeded and not tag_len_less:
+    elif tag_limit_exceeded:
         bot.reply_to(message, get_translate("exceeded_limit", settings.lang), reply_markup=markup)
     else:
         try:
-            day = DayInfo(settings, msg_date)
+            day = DayInfo(settings, event_date)
             bot.edit_message_text(f"""
-{msg_date} <u><i>{day.str_date}  {day.week_date}</i> {day.relatively_date}</u> {event_id}
+{event_date} <u><i>{day.str_date}  {day.week_date}</i> {day.relatively_date}</u> {event_id}
 <b>{get_translate("are_you_sure_edit", settings.lang)}</b>
 <i>{ToHTML(text)}</i>
 """,
                                   chat_id, message_id,
-                                  reply_markup=InlineKeyboardMarkup(keyboard=[
-                                      [InlineKeyboardButton(text="🔙", callback_data="back"),
-                                       InlineKeyboardButton(
-                                           text="📝",
-                                           switch_inline_query_current_chat=f"{message.text.split(maxsplit=1)[-1]}"),
-                                       InlineKeyboardButton(text="✅", callback_data="confirm change")]
+                                  reply_markup=generate_buttons([
+                                      {
+                                          "🔙": "back",
+                                          "📝": {
+                                              "switch_inline_query_current_chat": f"{message.text.split(maxsplit=1)[-1]}"
+                                          },
+                                          "✅": "confirm change"
+                                      }
                                   ])
                                   )
         except ApiTelegramException as e:
@@ -979,18 +1057,24 @@ def add_event(message: Message):
     settings = UserSettings(chat_id)
     main_log(user_status=settings.user_status, chat_id=chat_id, text="add event", action="send")
 
-    msg_date = SQL(f"SELECT add_event_date FROM settings WHERE user_id={chat_id};")[0][0].split(",")[0]
+    new_event_date = SQL(f"SELECT add_event_date FROM settings WHERE user_id={chat_id};")[0][0].split(",")[0]
 
     # Если сообщение команда то проигнорировать
-    if message_text.lower().split("@")[0][1:] in COMMANDS:
+    if message_text.split("@")[0][1:] in COMMANDS:
         return
 
     # Если сообщение длиннее 3800 символов, то ошибка
     if len(message_text) >= 3800:
         bot.reply_to(message, get_translate("message_is_too_long", settings.lang), reply_markup=delmarkup)
+        return
+
+    # TODO проверка лимита
+    if is_exceeded_limit(settings, new_event_date, 1, len(message_text)):
+        bot.reply_to(message, get_translate("exceeded_limit", settings.lang), reply_markup=delmarkup)
+        return
 
     # Пытаемся создать событие
-    if create_event(chat_id, msg_date, ToHTML(message_text)):
+    if create_event(chat_id, new_event_date, ToHTML(message_text)):
         clear_state(chat_id)
         try:
             bot.delete_message(chat_id, message_id)
@@ -1009,13 +1093,14 @@ def schedule_loop():
         if str(while_time.minute).endswith("0"): # 0, 10, 20, 30, 40, 50
             notifications()
         if while_time.minute in (0, 30):
-            logging.info(f"[{log_time_strftime()}] {config.link} ", end="")
-            try:
-                logging.info(f"{get(config.link, headers=config.headers).status_code}")
-            except MissingSchema as e:
-                logging.info(f"{e}")
-            except ConnectionError:
-                logging.info("404")
+            if config.link:
+                logging.info(f"[{log_time_strftime()}] {config.link} ", end="")
+                try:
+                    logging.info(f"{get(config.link, headers=config.headers).status_code}")
+                except MissingSchema as e:
+                    logging.info(f"{e}")
+                except ConnectionError:
+                    logging.info("404")
 
         sleep(60)
 

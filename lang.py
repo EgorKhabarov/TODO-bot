@@ -294,8 +294,8 @@ Get id /id
         "en": "📆 Events in the next 7 days:"
     },
     "search": {
-        "ru": "🔍 Поиск",
-        "en": "🔍 Search"
+        "ru": "Поиск",
+        "en": "Search"
     },
     "weather": {
         "ru": """{} {} <u>{}</u>
@@ -499,11 +499,11 @@ Reduce the number of characters or remove unnecessary events."""
     },
     "are_you_sure_edit": {
         "ru": "Вы точно хотите изменить тест события на: ",
-        "en": "You want to change the event test to:"
+        "en": "You want to change the event text to:"
     },
     "error": {
-        "ru": "Произошла ошибка :/",
-        "en": "An error has occurred :/"
+        "ru": "Произошла ошибка",
+        "en": "An error has occurred"
     },
     "file_is_too_big": {
         "ru": "Возникла ошибка. Возможно файл слишком большой 🫤",
@@ -523,7 +523,7 @@ Reduce the number of characters or remove unnecessary events."""
     },
     "add_bot_to_group": {
         "ru": "Добавить бота в группу",
-        "en": "Add a bot to a group"
+        "en": "Add bot to group"
     },
     "0_command_list": {
         "ru": [
@@ -630,6 +630,28 @@ Reduce the number of characters or remove unnecessary events."""
     "no_events_to_interact": {
         "ru": "Нет событий для взаимодействия",
         "en": "No events to interact"
+    },
+    "account": {
+        "ru": (
+            "Событий в день",
+            "Символов в день",
+            "Событий в месяц",
+            "Символов в месяц",
+            "Событий в год",
+            "Символов в год",
+            "Событий всего",
+            "Символов всего"
+        ),
+        "en": (
+            "Events per day",
+            "Symbols per day",
+            "Events per month",
+            "Symbols per month",
+            "Events per year",
+            "Symbols per year",
+            "Total events",
+            "Total symbols"
+        )
     },
     "": {
         "ru": "",

@@ -1,12 +1,15 @@
+import os
 from datetime import datetime, timedelta, timezone
 from calendar import monthcalendar, isleap
 from textwrap import wrap as textwrap
 from sqlite3 import connect, Error # pip3.10 install --user sqlite3
 from urllib.parse import urlparse
 from dataclasses import dataclass
+from io import StringIO, BytesIO
+from PIL import Image, ImageFont
+from PIL.ImageDraw import Draw
 from typing import Literal, Any
 from copy import deepcopy
-from io import StringIO
 from time import time
 import re
 
@@ -26,12 +29,12 @@ class logging:
                     for val in values], sep=sep, end=end, file=file)
 
 """sql"""
-sqlite_format_date = lambda column, quotes="", sep="-": f"""
-    SUBSTR({quotes}{column}{quotes}, 7, 4) || \'{sep}\' || 
-    SUBSTR({quotes}{column}{quotes}, 4, 2) || \'{sep}\' || 
-    SUBSTR({quotes}{column}{quotes}, 1, 2)"""
+sqlite_format_date = lambda _column, _quotes="", _sep="-": f"""
+    SUBSTR({_quotes}{_column}{_quotes}, 7, 4) || \'{_sep}\' || 
+    SUBSTR({_quotes}{_column}{_quotes}, 4, 2) || \'{_sep}\' || 
+    SUBSTR({_quotes}{_column}{_quotes}, 1, 2)"""
 """SUBSTR({column}, 7, 4) || '{sep}' || SUBSTR({column}, 4, 2) || '{sep}' || SUBSTR({column}, 1, 2)"""
-sqlite_format_date2 = lambda date: "-".join(date.split(".")[::-1])
+sqlite_format_date2 = lambda _date: "-".join(_date.split(".")[::-1])
 """ "12.34.5678" -> "5678-34-12" """
 
 def SQL(query: str,
@@ -95,7 +98,7 @@ class UserSettings:
         ) = self._get_user_settings()
         self.direction_sql = {"⬇️": "DESC", "⬆️": "ASC"}[self.direction]
 
-    def _get_user_settings(self):
+    def _get_user_settings(self) -> tuple[str, int, str, int, str, int, int, str]:
         """
         Возвращает список из настроек для пользователя self.user_id
         """
@@ -391,8 +394,8 @@ class DayInfo:
 
 """weather"""
 # TODO добавить персональные api ключи для запрашивания погоды
-#  Сделать декоратор для проверки api ключа у пользователя
-#  и в зависимости от наличия ключа ставить разные лимиты на запросы
+# TODO сделать декоратор для проверки api ключа у пользователя
+# TODO и в зависимости от наличия ключа ставить разные лимиты на запросы
 def no_spam(requests_count: int = 3, time_sec: int = 60):
     """
     Возвращает текст ошибки, если пользователи вызывали функцию чаще чем 3 раза в 60 секунд.
@@ -513,15 +516,43 @@ def forecast_in(settings: UserSettings, city: str) -> str:
 def generate_buttons(buttons_data: list[dict]) -> InlineKeyboardMarkup:
     """
     Генерация клавиатуры из списка словарей
+
+    Два ряда по 2 кнопке c callback_data в каждом ряду
+    markup = generate_buttons([
+        {"Кнопка 1": "button data 1", Кнопка 2": "button data 2"}
+        {"Кнопка 3": "button data 3", Кнопка 4": "button data 4"}])
+
+    Пример с другими аргументами
+    markup = generate_buttons([{"Ссылка": {"url": "https://example.com"}}])
+
+    Поддерживаются:
+    url, callback_data, switch_inline_query, switch_inline_query_current_chat
+
+    Не поддерживается:
+    web_app, callback_game, pay, login_url
     """
-    keyboard = [[InlineKeyboardButton(text=text, callback_data=data)
-                 for text, data in row.items()]
-                for row in buttons_data]
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                text=text,
+                callback_data=data
+            )
+            if isinstance(data, str) else
+            InlineKeyboardButton(
+                text=text,
+                url=data.get("url"),
+                callback_data=data.get("callback_data"),
+                switch_inline_query=data.get("switch_inline_query"),
+                switch_inline_query_current_chat=data.get("switch_inline_query_current_chat")
+            )
+            for text, data in row.items()]
+        for row in buttons_data]
     return InlineKeyboardMarkup(keyboard=keyboard)
 
 def mycalendar(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list | tuple[int, int] = None) -> InlineKeyboardMarkup():
     """
     Создаёт календарь на месяц и возвращает inline клавиатуру
+    param YY_MM: Необязательный аргумент. Если None, то подставит текущую дату.
     """
     if YY_MM:
         YY, MM = YY_MM
@@ -535,29 +566,27 @@ def mycalendar(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list | 
     week_day_list = get_translate("week_days_list", lang)
     markup.row(*[InlineKeyboardButton(day, callback_data="None") for day in week_day_list])
 
-    # получаем из базы данных дни на которых есть событие
-    SqlResult = SQL(f"""
+    # Дни в которые есть события
+    has_events = [x[0] for x in SQL(f"""
         SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as INT) FROM root
-        WHERE user_id={chat_id} AND isdel=0 AND date LIKE "__.{MM:0>2}.{YY}";""")
-    beupdate = [x[0] for x in SqlResult]
+        WHERE user_id={chat_id} AND isdel=0 AND date LIKE "__.{MM:0>2}.{YY}";""")]
 
-    birthday = [x[0] for x in SQL(f"""
+    # Дни рождения, праздники и каждый год или месяц
+    every_year_or_month = [x[0] for x in SQL(f"""
         SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as INT) FROM root
         WHERE user_id={chat_id} AND isdel=0
         AND
         (
             (
-                (
-                    status LIKE "%🎉%" OR status LIKE "%🎊%" OR status LIKE "%📆%"
-                )
-                AND
-                SUBSTR(date, 4, 2)="{MM:0>2}"
+                (status LIKE "%🎉%" OR status LIKE "%🎊%" OR status LIKE "%📆%")
+                AND SUBSTR(date, 4, 2)="{MM:0>2}"
             )
-            OR
-            status LIKE "%📅%"
+            OR status LIKE "%📅%"
         );
     """)]
-    birthday2 = [6 if x[0] == -1 else x[0] for x in SQL(f"""
+
+    # Каждую неделю
+    every_week = [6 if x[0] == -1 else x[0] for x in SQL(f"""
         SELECT DISTINCT CAST(strftime('%w', {sqlite_format_date('date')})-1 as INT) FROM root
         WHERE user_id={chat_id} AND isdel=0 AND status LIKE "%🗞%";
     """)]
@@ -571,67 +600,74 @@ def mycalendar(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list | 
             if day == 0:
                 weekbuttons.append(InlineKeyboardButton("  ", callback_data="None"))
             else:
-                tag_today = '#' if day == today else ''
-                tag_event = '*' if day in beupdate else ''
-                tag_birthday = '!' if (day in birthday or wd in birthday2) else ''
+                tag_today = "#" if day == today else ""
+                tag_event = "*" if day in has_events else ""
+                tag_birthday = "!" if (day in every_year_or_month or wd in every_week) else ""
                 weekbuttons.append(InlineKeyboardButton(f"{tag_today}{day}{tag_event}{tag_birthday}",
                                                         callback_data=f"{f'0{day}' if len(str(day)) == 1 else day}."
                                                                       f"{f'0{MM}' if len(str(MM)) == 1 else MM}.{YY}"))
         markup.row(*weekbuttons)
-    markup.row(*[InlineKeyboardButton(f"{day}", callback_data=f"{day}") for day in ('<<', '<', '⟳', '>', '>>')])
+    markup.row(*[
+        InlineKeyboardButton(f"{text}", callback_data=f"generate calendar {data}")
+        for text, data in { # [2023, 4]
+            "<<": f"{YY - 1} {MM}", # mydatatime[0] -= 1
+            "<": f"{YY - 1} {12}" if MM == 1 else f"{YY} {MM - 1}",
+            "⟳": "now",
+            ">": f"{YY + 1} {1}" if MM == 12 else f"{YY} {MM + 1}",
+            ">>": f"{YY + 1} {MM}" # mydatatime[0] += 1
+        }.items()])
     return markup
 
 def generate_month_calendar(user_timezone: int, lang: str, chat_id, YY) -> InlineKeyboardMarkup():
     """
     Создаёт календарь из месяцев на определённый год и возвращает inline клавиатуру
     """
+    # В этом году
     month_list = [x[0] for x in SQL(f"""
         SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM root
         WHERE user_id={chat_id} AND date LIKE "__.__.{YY}" AND isdel=0;
-    """)] # Форматирование результата
+    """)]
 
+    # Повторение каждый год
     recurring_list = [x[0] for x in SQL(f"""
         SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM root
         WHERE user_id={chat_id} AND isdel=0
-        AND
-        (
-            status LIKE "%🎉%" OR status LIKE "%🎊%" OR status LIKE "%📆%"
-        );
-    """)] # Форматирование результата
+        AND (status LIKE "%🎉%" OR status LIKE "%🎊%" OR status LIKE "%📆%");
+    """)]
 
+    # Повторение каждый месяц TODO Убрать DISTINCT ?
     every_month = [x[0] for x in SQL(f"""
         SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM root
-        WHERE user_id={chat_id} AND isdel=0 AND status LIKE "%📅%";
-    """)] # Форматирование результата
+        WHERE user_id={chat_id} AND isdel=0 AND status LIKE "%📅%" LIMIT 1;
+    """)]
 
-    nowMonth = now_time(user_timezone).month
-    isNowMonth = lambda numM: numM == nowMonth
-
+    now_month = now_time(user_timezone).month
     months = get_translate("months_list", lang)
 
-    result = []
+    month_buttons = []
     for row in months:
-        result.append({})
+        month_buttons.append({})
         for nameM, numm in row:
-            tag_today = "#" if isNowMonth(numm) else ""
+            tag_today = "#" if numm == now_month else ""
             tag_event = "*" if numm in month_list else ""
             tag_birthday = "!" if (numm in recurring_list or every_month) else ""
-            result[-1][f"{tag_today}{nameM}{tag_event}{tag_birthday}"] = f"generate calendar {YY} {numm}"
+            month_buttons[-1][f"{tag_today}{nameM}{tag_event}{tag_birthday}"] = f"generate calendar {YY} {numm}"
 
-    markupL = [
+    return generate_buttons([
         {f"{YY} ({year_info(YY, lang)})": "None"},
-        *result,
-        {"<<": f"generate month calendar {YY-1}", "⟳": "year now", ">>": f"generate month calendar {YY+1}"}
-    ]
-    return generate_buttons(markupL)
+        *month_buttons,
+        {text: f"generate month calendar {year}"
+         for text, year in {"<<": YY - 1, "⟳": "now", ">>": YY + 1}.items()}
+    ])
 
 allmarkup = generate_buttons([
     {"➕": "event_add", "📝": "event_edit", "🚩": "event_status", "🗑": "event_del"},
-    {"🔙": "back", "<": "<<<", ">": ">>>", "🔄": "update"}]) # "✖": "message_del"
+    {"🔙": "back", "<": "<<<", ">": ">>>", "🔄": "update"}])
 backmarkup = generate_buttons([{"🔙": "back"}])
 delmarkup = generate_buttons([{"✖": "message_del"}])
-databasemarkup = generate_buttons([{'Применить базу данных': 'set database'}])
-
+databasemarkup = generate_buttons([{"Применить базу данных": "set database"}])
+delopenmarkup = generate_buttons([{"✖": "message_del", "↖️": "open event"}])
+backopenmarkup = generate_buttons([{"🔙": "back", "↖️": "open event"}])
 
 """Другое"""
 callbackTab = '⠀⠀⠀'
@@ -658,19 +694,19 @@ def markdown(text: str, statuses: str, sub_url: bool | int = False) -> str:
         return "▪️" + _text.replace("\n", "\n▪️").replace("\n▪️⠀\n", "\n⠀\n")
 
     def Spoiler(_text: str):
-        return f'<span class="tg-spoiler">{_text}</span>'
+        return f"<span class='tg-spoiler'>{_text}</span>"
 
     def SubUrls(_text: str):
         la = lambda url: f'<a href="{url[0]}">{urlparse(url[0]).netloc}</a>'
-        return re.sub(r'(http?s?://[^\"\'\n ]+)', la, _text) # r'(http?s?://\S+)'
+        return re.sub(r"(http?s?://[^\"\'\n ]+)", la, _text) # r"(http?s?://\S+)"
 
     def Code(_text: str):
-        return f'<code>{_text}</code>'
+        return f"<code>{_text}</code>"
 
     # Сокращаем несколько подряд переносов строки
-    text = re.sub(r'\n(\n*)\n', '\n⠀\n', text)
+    text = re.sub(r"\n(\n*)\n", "\n⠀\n", text)
 
-    if "🔗" in statuses or (sub_url and ('💻' not in statuses or '❌🔗' not in statuses)):
+    if ("🔗" in statuses and "❌🔗" not in statuses) or (sub_url and ("💻" not in statuses and "❌🔗" not in statuses)):
         text = SubUrls(text)
 
     for status in statuses.split(","):
@@ -936,9 +972,9 @@ def search(settings: UserSettings,
         search(settings=settings, chat_id=chat_id, query=query, id_list=id_list, page=page)
     TODO шаблоны для поиска
     """
-    if not re.match(r'\S', query):
+    if not re.match(r"\S", query):
         generated = MyMessage(settings, reply_markup=delmarkup)
-        generated.format(title=f'{get_translate("search", settings.lang)} {query}:\n',
+        generated.format(title=f"🔍 {get_translate('search', settings.lang)} {query}:\n",
                          if_empty=get_translate("request_empty", settings.lang))
         return generated
 
@@ -952,14 +988,14 @@ def search(settings: UserSettings,
     splitquery = " OR ".join(f"date LIKE '%{x}%' OR text LIKE '%{x}%' OR status LIKE '%{x}%' OR event_id LIKE '%{x}%'" for x in querylst)
     WHERE = f"(user_id = {chat_id} AND isdel == 0) AND ({splitquery})"
 
-    generated = MyMessage(settings, reply_markup=delmarkup)
+    generated = MyMessage(settings, reply_markup=delopenmarkup)
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
         generated.get_data(WHERE=WHERE, direction=settings.direction_sql)
-    generated.format(title=f"{get_translate('search', settings.lang)} {query}:\n"
+    generated.format(title=f"🔍 {get_translate('search', settings.lang)} {query}:\n"
                            f"{'<b>'+get_translate('page', settings.lang)+f' {page}</b>{backslash_n}' if int(page) > 1 else''}",
-                     args="<b>{numd}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
+                     args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
                      if_empty=get_translate("nothing_found", settings.lang))
 
     return generated
@@ -1043,8 +1079,8 @@ def deleted(settings: UserSettings,
 
 
     generated = MyMessage(settings, reply_markup=generate_buttons([
-        {"✖": "message_del", "❌ "+get_translate("delete_permanently", settings.lang): "event_del bin"},
-        {"🔄": "update", "↩️ "+get_translate("recover", settings.lang): "event_recover bin"}]))
+        {"✖": "message_del", f"❌ {get_translate('delete_permanently', settings.lang)}": "event_del bin"},
+        {"🔄": "update", f"↩️ {get_translate('recover', settings.lang)}": "event_recover bin"}]))
 
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
@@ -1173,7 +1209,7 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
                         AND date='{strdates[0]}'
                     ) 
                     OR
-                    (
+                    ( -- Совпадения сегодня и +1, +2, +3 и +7 дней
                         status LIKE "%🟥%"
                         AND date IN ({", ".join(f"'{date}'" for date in strdates)})
                     )
@@ -1287,9 +1323,7 @@ def recurring(settings: UserSettings,
             )
         )
     """
-    generated = MyMessage(settings=settings,
-                          date=date,
-                          reply_markup=generate_buttons([{"🔙": "back", "↖️": "open event"}]))
+    generated = MyMessage(settings=settings, date=date, reply_markup=backopenmarkup)
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
@@ -1302,22 +1336,66 @@ def recurring(settings: UserSettings,
 
 """Проверки"""
 limits = {
-    "normal": (4000, 20),
-    "premium": (8000, 40),
-    "admin": (999999, 999)
-}
+        -1: {
+            "max_event_day": 0, "max_symbol_day": 0,
+            "max_event_month": 0, "max_symbol_month": 0,
+            "max_event_year": 0, "max_symbol_year": 0,
+            "max_event_all": 0, "max_symbol_all": 0
+        },
+        0: {
+            "max_event_day": 20, "max_symbol_day": 4000,
+            "max_event_month": 75, "max_symbol_month": 10000,
+            "max_event_year": 500, "max_symbol_year": 80000,
+            "max_event_all": 500, "max_symbol_all": 100000
+        },
+        1: {
+            "max_event_day": 40, "max_symbol_day": 8000,
+            "max_event_month": 100, "max_symbol_month": 15000,
+            "max_event_year": 750, "max_symbol_year": 100000,
+            "max_event_all": 900, "max_symbol_all": 150000
+        },
+        2: {
+            "max_event_day": 60, "max_symbol_day": 20000,
+            "max_event_month": 200, "max_symbol_month": 50000,
+            "max_event_year": 1000, "max_symbol_year": 120000,
+            "max_event_all": 2000, "max_symbol_all": 200000
+        }
+    }
+limits["ban"], limits["default"], limits["premium"], limits["admin"] = limits[-1], limits[0], limits[1], limits[2]
+def is_exceeded_limit(settings: UserSettings, date: str, event_count: int = 0, symbol_count: int = 0) -> bool:
+    """
+    Возвращает True если был превышен лимит на день, на месяц, на год и на всё сразу
+    """
+    user_id = settings.user_id
+    (
+        limit_event_day, limit_symbol_day,
+        limit_event_month, limit_symbol_month,
+        limit_event_year, limit_symbol_year,
+        limit_event_all, limit_symbol_all
+    ) = SQL(f"""
+SELECT
+    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND date='{date}'                  ) AS count_today,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND date='{date}'                  ) AS sum_length_today,
+    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND SUBSTR(date, 4, 7)='{date[3:]}') AS count_month,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND SUBSTR(date, 4, 7)='{date[3:]}') AS sum_length_month,
+    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND SUBSTR(date, 7, 4)='{date[6:]}') AS count_year,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND SUBSTR(date, 7, 4)='{date[6:]}') AS sum_length_year,
+    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id}                                    ) AS total_count,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id}                                    ) AS total_length;
+    """)[0]
 
-def is_exceeded_limit(chat_id: int,
-                      date: str,
-                      limit: tuple[int, int] = (4000, 20),
-                      difference: tuple[int, int] = (0, 0)) -> bool:
-    """
-    True если превышен лимит для пользователя
-    """
-    user_limit = SQL(f"""SELECT IFNULL(SUM(LENGTH(text)), 0), IFNULL(COUNT(date), 0) FROM root 
-                         WHERE user_id={chat_id} AND date='{date}' AND isdel=0;""")[0]
-    res = (user_limit[0] + difference[0]) >= limit[0] or (user_limit[1] + difference[1]) >= limit[1]
-    return res
+    inf = float('inf')
+    limits_dict = limits[settings.user_status]
+    return (
+        limit_event_day + event_count >= (limits_dict["max_event_day"] or inf) or
+        limit_symbol_day + symbol_count >= (limits_dict["max_symbol_day"] or inf) or
+        limit_event_month + event_count >= (limits_dict["max_event_month"] or inf) or
+        limit_symbol_month + symbol_count >= (limits_dict["max_symbol_month"] or inf) or
+        limit_event_year + event_count >= (limits_dict["max_event_year"] or inf) or
+        limit_symbol_year + symbol_count >= (limits_dict["max_symbol_year"] or inf) or
+        limit_event_all + event_count >= (limits_dict["max_event_all"] or inf) or
+        limit_symbol_all + symbol_count >= (limits_dict["max_symbol_all"] or inf)
+    )
 
 def is_admin_id(chat_id: int) -> bool:
     """
@@ -1397,3 +1475,112 @@ def write_table_to_str(file: StringIO,
             file.write(template.format(*row))
         file.write("\n")
     file.write(sep)
+
+def semicircle(title: str, val: int, y: int) -> Image:
+    if not y:
+        y = float("inf")
+
+    colors = {
+        "g":    "#00cc00",
+        "bg g": "#95ff95",
+        "y":    "#fcf11d",
+        "bg y": "#fef998",
+        "o":    "#ff9900",
+        "bg o": "#ffcc80",
+        "r":    "#ff4400",
+        "bg r": "#ffb093",
+    }
+
+    percent = int((val / y) * 100)
+    if str(y) == "inf": y = "ꝏ"
+    text = f"{val}/{y}"
+    percent_str = f"{percent}%"
+
+    if percent < 25:        bg_color, color = colors["bg g"], colors["g"]
+    elif 24 < percent < 51: bg_color, color = colors["bg y"], colors["y"]
+    elif 50 < percent < 76: bg_color, color = colors["bg o"], colors["o"]
+    else:                   bg_color, color = colors["bg r"], colors["r"]
+
+    o = 90//2 # 45
+
+    font = ImageFont.truetype("arial.ttf", 30)
+    image = Image.new("RGB", (291, 202), "#F0F0F0")
+    draw = Draw(image)
+
+    # Название дуги
+    text_width, text_height = [wh // 2 for wh in draw.textbbox((0, 0), text=title, font=font)[2:]]
+    draw.text((145 - text_width, 15 - text_height), title, fill="black", font=font)
+
+    # Рисуем дугу
+    draw.pieslice(((45, 42), (245, 242)), 180, 360, fill=bg_color)# "#778795")
+    draw.pieslice(((45, 42), (245, 242)), 180, ((180 + (percent / 100) * 180) if percent < 101 else 360), fill=color) # "#303b44")
+    draw.pieslice(((95, 50+42), (195, 192)), 180, 360, fill="#F0F0F0")
+
+    text_width, text_height = [wh // 2 for wh in draw.textbbox((0, 0), text=text, font=font)[2:]]
+    draw.text((145 - text_width, 172 - text_height), text, fill="black", font=font)
+
+    text_width, text_height = [wh // 2 for wh in draw.textbbox((0, 0), text=percent_str, font=font)[2:]]
+    draw.text((145 - text_width, 119 - text_height), percent_str, fill="black", font=font)
+
+    return image
+
+def create_image(settings: UserSettings, year=None, month=None, day=None, text="Account") -> BytesIO:
+    user_info = limits[settings.user_status]
+    now_date = now_time(settings.timezone)
+    if not year: year = now_date.year
+    if not month: month = now_date.month
+    if not day: day = now_date.day
+
+
+    image = Image.new("RGB", (1500, 1000), "#F0F0F0")
+    draw = Draw(image)
+
+    font = ImageFont.truetype("arial.ttf", 100)
+    text_width, text_height = draw.textsize(text, font=font)
+    draw.text((375 * 2 - text_width // 2, 60 - text_height // 2), text, fill="black", font=font)
+
+    user_id, date = settings.user_id, f"{day:0>2}.{month:0>2}.{year}"
+    (limit_event_day, limit_symbol_day,
+     limit_event_month, limit_symbol_month,
+     limit_event_year, limit_symbol_year,
+     limit_event_all, limit_symbol_all) = SQL(f"""
+SELECT 
+    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND date='{date}'                  ) AS count_today,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND date='{date}'                  ) AS sum_length_today,
+    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND SUBSTR(date, 4, 7)='{date[3:]}') AS count_month,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND SUBSTR(date, 4, 7)='{date[3:]}') AS sum_length_month,
+    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND SUBSTR(date, 7, 4)='{date[6:]}') AS count_year,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND SUBSTR(date, 7, 4)='{date[6:]}') AS sum_length_year,
+    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id}                                    ) AS total_count,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id}                                    ) AS total_length;
+    """)[0]
+    (event_day, symbol_day,
+     event_month, symbol_month,
+     event_year, symbol_year,
+     event_all, symbol_all) = get_translate("account", settings.lang)
+
+    if day:
+        image.paste(semicircle(event_day,   limit_event_day,    user_info["max_event_day"]), (100, 140))
+        image.paste(semicircle(symbol_day,  limit_symbol_day,   user_info["max_symbol_day"]), (390, 140))
+    if month:
+        image.paste(semicircle(event_month,  limit_event_month,  user_info["max_event_month"]), (100, 345))
+        image.paste(semicircle(symbol_month, limit_symbol_month, user_info["max_symbol_month"]), (390, 345))
+    if year:
+        image.paste(semicircle(event_year,    limit_event_year,   user_info["max_event_year"]), (100, 562))
+        image.paste(semicircle(symbol_year,   limit_symbol_year,  user_info["max_symbol_year"]), (390, 562))
+    image.paste(semicircle(event_all,    limit_event_all,    user_info["max_event_all"]), (100, 766))
+    image.paste(semicircle(symbol_all,   limit_symbol_all,   user_info["max_symbol_all"]), (390, 766))
+
+    draw.rectangle(((800, 139), (1355, 956)), outline="#000000", width=5)
+
+    text = "..."
+    font = ImageFont.truetype("arial.ttf", 30)
+    text_width, text_height = [wh // 2 for wh in draw.textbbox((0, 0), text=text, font=font)[2:]]
+    draw.text((1073 - text_width, 551 - text_height), text, fill="black", font=font)
+    # image.paste(Image.open(r"C:\Users\Egor\PycharmProjects\pythonProject2\Cats\r8jad.jpg").resize((555, 817)), (800, 139))
+
+    buffer = BytesIO()
+    image.save(buffer, format="png")
+    image.save("images/account.png", format="png")
+    buffer.seek(0)
+    return buffer
