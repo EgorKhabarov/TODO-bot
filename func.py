@@ -1,4 +1,3 @@
-import os
 from datetime import datetime, timedelta, timezone
 from calendar import monthcalendar, isleap
 from textwrap import wrap as textwrap
@@ -11,10 +10,11 @@ from PIL.ImageDraw import Draw
 from typing import Literal, Any
 from copy import deepcopy
 from time import time
+import json
 import re
 
 from requests import get # pip install requests
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 from telebot.apihelper import ApiTelegramException
 
 from lang import translation
@@ -24,9 +24,12 @@ class logging:
     @staticmethod
     def info(*values: object, sep: str | None = " ", end: str | None = "\n"):
         print(*values, sep=sep, end=end)
-        with open(config.log_file, "a", encoding="utf-8") as file:
-            print(*[str(val).replace("\033[0m", "").replace("\033[21m", "").replace("\033[32m", "").replace("\033[34m", "")
-                    for val in values], sep=sep, end=end, file=file)
+        try:
+            with open(config.log_file, "a", encoding="utf-8") as file:
+                print(*[str(val).replace("\033[0m", "").replace("\033[21m", "").replace("\033[32m", "").replace("\033[34m", "")
+                        for val in values], sep=sep, end=end, file=file)
+        except PermissionError:
+            pass
 
 """sql"""
 sqlite_format_date = lambda _column, _quotes="", _sep="-": f"""
@@ -125,17 +128,17 @@ class UserSettings:
         str_utz = f"""{utz} {"🌍" if -2 < int(utz) < 5 else ("🌏" if 4 < int(utz) < 12 else "🌎")}"""
 
         time_zone_dict = {}
-        time_zone_dict.__setitem__(*('‹‹‹', f'settings timezone {utz - 1}') if utz > -11 else ('   ', 'None'))
-        time_zone_dict[str_utz] = 'settings timezone 3'
-        time_zone_dict.__setitem__(*('›››', f'settings timezone {utz + 1}') if utz < 11 else ('   ', 'None'))
+        time_zone_dict.__setitem__(*("‹‹‹", f"settings timezone {utz - 1}") if utz > -11 else ("   ", "None"))
+        time_zone_dict[str_utz] = "settings timezone 3"
+        time_zone_dict.__setitem__(*("›››", f"settings timezone {utz + 1}") if utz < 11 else ("   ", "None"))
 
         notifications_time = {}
         if not_notifications_[0] == "🔕":
-            notifications_time['‹‹‹'] = f"settings notifications_time " + (f"{n_hours-1:0>2}:{n_minutes:0>2}" if n_hours > 0 else f"23:{n_minutes:0>2}")
-            notifications_time['<'] = f"settings notifications_time " + (f"{n_hours:0>2}:{n_minutes-10:0>2}" if n_minutes > 0 else f"{n_hours-1:0>2}:50")
+            notifications_time["‹‹‹"] = f"settings notifications_time " + (f"{n_hours-1:0>2}:{n_minutes:0>2}" if n_hours > 0 else f"23:{n_minutes:0>2}")
+            notifications_time["<"] = f"settings notifications_time " + (f"{n_hours:0>2}:{n_minutes-10:0>2}" if n_minutes > 0 else f"{n_hours-1:0>2}:50")
             notifications_time[f"{n_hours:0>2}:{n_minutes:0>2} ⏰"] = "settings notifications_time 08:00"
-            notifications_time['>'] = f"settings notifications_time " + (f"{n_hours:0>2}:{n_minutes+10:0>2}" if n_minutes < 50 else f"{n_hours+1:0>2}:00")
-            notifications_time['›››'] = f"settings notifications_time " + (f"{n_hours+1:0>2}:{n_minutes:0>2}" if n_hours < 23 else f"00:{n_minutes:0>2}")
+            notifications_time[">"] = f"settings notifications_time " + (f"{n_hours:0>2}:{n_minutes+10:0>2}" if n_minutes < 50 else f"{n_hours+1:0>2}:00")
+            notifications_time["›››"] = f"settings notifications_time " + (f"{n_hours+1:0>2}:{n_minutes:0>2}" if n_hours < 23 else f"00:{n_minutes:0>2}")
 
         markup = generate_buttons([{f"🗣 {self.lang}": f"settings lang {not_lang}",
                                     f"🔗 {bool(self.sub_urls)}": f"settings sub_urls {not_sub_urls}",
@@ -341,7 +344,7 @@ def year_info(year: int, lang: str) -> str:
         result += get_translate("leap", lang)
     else:
         result += get_translate("not_leap", lang)
-    result += ' '
+    result += " "
     result += ("🐀", "🐂", "🐅", "🐇", "🐲", "🐍", "🐴", "🐐", "🐒", "🐓", "🐕", "🐖")[(year - 4) % 12]
     return result
 
@@ -372,16 +375,16 @@ class DayInfo:
         today, tomorrow, day_after_tomorrow, yesterday, day_before_yesterday, after, ago, Fday = get_translate("relative_date_list", settings.lang)
         x = now_time(settings.timezone)
         x = datetime(x.year, x.month, x.day)
-        y = datetime(*[int(x) for x in date.split('.')][::-1])
+        y = datetime(*[int(x) for x in date.split(".")][::-1])
 
         day_diff = (y - x).days
-        if day_diff == 0:    day_diff = f'{today}'
-        elif day_diff == 1:  day_diff = f'{tomorrow}'
-        elif day_diff == 2:  day_diff = f'{day_after_tomorrow}'
-        elif day_diff == -1: day_diff = f'{yesterday}'
-        elif day_diff == -2: day_diff = f'{day_before_yesterday}'
-        elif day_diff > 2:   day_diff = f'{after} {day_diff} {Fday(day_diff)}'
-        else: day_diff = f'{-day_diff} {Fday(day_diff)} {ago}'
+        if day_diff == 0:    day_diff = f"{today}"
+        elif day_diff == 1:  day_diff = f"{tomorrow}"
+        elif day_diff == 2:  day_diff = f"{day_after_tomorrow}"
+        elif day_diff == -1: day_diff = f"{yesterday}"
+        elif day_diff == -2: day_diff = f"{day_before_yesterday}"
+        elif day_diff > 2:   day_diff = f"{after} {day_diff} {Fday(day_diff)}"
+        else: day_diff = f"{-day_diff} {Fday(day_diff)} {ago}"
 
         week_days = get_translate("week_days_list_full", settings.lang)
         month_list = get_translate("months_name2", settings.lang)
@@ -441,9 +444,9 @@ def weather_in(settings: UserSettings, city: str) -> str:
     Возвращает текущую погоду по городу city
     """
     logging.info(f"\nweather in {city:<67}", end="")
-    url = 'http://api.openweathermap.org/data/2.5/weather'
-    weather = get(url, params={'APPID': config.weather_api_key, 'q': city, 'units': 'metric', 'lang': settings.lang}).json()
-    weather_icon = weather['weather'][0]['icon']
+    url = "http://api.openweathermap.org/data/2.5/weather"
+    weather = get(url, params={"APPID": config.weather_api_key, "q": city, "units": "metric", "lang": settings.lang}).json()
+    weather_icon = weather["weather"][0]["icon"]
     dn = {"d": "☀", "n": "🌑"}
     we = {"01": "", "02": "🌤", "03": "🌥", "04": "☁", "09": "🌨", "10": "🌧", "11": "⛈", "13": "❄", "50": "🌫"}
     de = {0: "⬆️", 45: "↗️", 90: "➡️", 135: "↘️", 180: "⬇️", 225: "↙️", 270: "⬅️", 315: "↖️"}
@@ -451,21 +454,21 @@ def weather_in(settings: UserSettings, city: str) -> str:
     try:
         weather_icon = dn[weather_icon[-1]] + we[weather_icon[:2]]
     except KeyError:
-        weather_icon = weather['weather'][0]['main']
+        weather_icon = weather["weather"][0]["main"]
 
     delta = timedelta(hours=weather["timezone"]//60//60)
     city_name = weather["name"].capitalize()
-    weather_description = weather['weather'][0]['description'].capitalize().replace(' ', "\u00A0")
-    time_in_city = f'{datetime.now(timezone.utc)+delta}'.replace('-', '.')[:-13]
-    weather_time = f'{datetime.utcfromtimestamp(weather["dt"])+delta}'.replace('-', '.')
-    temp = int(weather['main']['temp'])
-    feels_like = int(weather['main']['feels_like'])
+    weather_description = weather["weather"][0]["description"].capitalize().replace(" ", "\u00A0")
+    time_in_city = f"{datetime.now(timezone.utc)+delta}".replace("-", ".")[:-13]
+    weather_time = f"{datetime.utcfromtimestamp(weather['dt'])+delta}".replace("-", ".")
+    temp = int(weather["main"]["temp"])
+    feels_like = int(weather["main"]["feels_like"])
     wind_speed = f"{weather['wind']['speed']:.1f}"
-    wind_deg = weather['wind']['deg']
+    wind_deg = weather["wind"]["deg"]
     wind_deg_icon = de[0 if (d := round(int(wind_deg)/45)*45) == 360 else d]
-    sunrise = f'{datetime.utcfromtimestamp(weather["sys"]["sunrise"])+delta}'.split(' ')[-1]
-    sunset = f'{datetime.utcfromtimestamp(weather["sys"]["sunset"])+delta}'.split(' ')[-1]
-    visibility = weather['visibility']
+    sunrise = f"{datetime.utcfromtimestamp(weather['sys']['sunrise'])+delta}".split(" ")[-1]
+    sunset = f"{datetime.utcfromtimestamp(weather['sys']['sunset'])+delta}".split(" ")[-1]
+    visibility = weather["visibility"]
 
     return get_translate("weather", settings.lang).format(city_name, weather_icon, weather_description,
                                                           time_in_city, weather_time,
@@ -481,30 +484,30 @@ def forecast_in(settings: UserSettings, city: str) -> str:
     """
     logging.info(f"\nforecast in {city:<67}", end="")
     url = "http://api.openweathermap.org/data/2.5/forecast"
-    weather = get(url, params={'APPID': config.weather_api_key, 'q': city, 'units': 'metric', 'lang': settings.lang}).json()
+    weather = get(url, params={"APPID": config.weather_api_key, "q": city, "units": "metric", "lang": settings.lang}).json()
     dn = {"d": "☀", "n": "🌑"}
     we = {"01": "", "02": "🌤", "03": "🌥", "04": "☁", "09": "🌨", "10": "🌧", "11": "⛈", "13": "❄", "50": "🌫"}
     de = {0: "⬆️", 45: "↗️", 90: "➡️", 135: "↘️", 180: "⬇️", 225: "↙️", 270: "⬅️", 315: "↖️"}
 
-    citytimezone = timedelta(hours=weather['city']['timezone']//60//60)
-    sunrise = f"{datetime.utcfromtimestamp(weather['city']['sunrise'])+citytimezone}".split(' ')[-1]
-    sunset = f"{datetime.utcfromtimestamp(weather['city']['sunset'])+citytimezone}".split(' ')[-1]
+    citytimezone = timedelta(hours=weather["city"]["timezone"]//60//60)
+    sunrise = f"{datetime.utcfromtimestamp(weather['city']['sunrise'])+citytimezone}".split(" ")[-1]
+    sunset = f"{datetime.utcfromtimestamp(weather['city']['sunset'])+citytimezone}".split(" ")[-1]
     result = f"{weather['city']['name']}\n☀ {sunrise}\n🌑 {sunset}"
     for hour in weather["list"]:
-        weather_icon = hour['weather'][0]['icon']
+        weather_icon = hour["weather"][0]["icon"]
 
         try:
             weather_icon = dn[weather_icon[-1]] + we[weather_icon[:2]]
         except KeyError:
-            weather_icon = hour['weather'][0]['main']
+            weather_icon = hour["weather"][0]["main"]
 
-        weather_description = hour['weather'][0]['description'].capitalize().replace(' ', "\u00A0")
-        temp = hour['main']['temp']
-        wind_speed = hour['wind']['speed']
-        wind_deg = hour['wind']['deg']
+        weather_description = hour["weather"][0]["description"].capitalize().replace(" ", "\u00A0")
+        temp = hour["main"]["temp"]
+        wind_speed = hour["wind"]["speed"]
+        wind_deg = hour["wind"]["deg"]
         wind_deg_icon = de[0 if (d := round(int(wind_deg) / 45) * 45) == 360 else d]
-        city_time = hour['dt_txt'].replace('-', '.')[:-3]
-        date = ".".join(city_time.split()[0].split('.')[::-1])
+        city_time = hour["dt_txt"].replace("-", ".")[:-3]
+        date = ".".join(city_time.split()[0].split(".")[::-1])
         if date not in result:
             day = DayInfo(settings, date)
             result += f"\n\n<b>{date}</b> <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})"
@@ -604,17 +607,16 @@ def mycalendar(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list | 
                 tag_event = "*" if day in has_events else ""
                 tag_birthday = "!" if (day in every_year_or_month or wd in every_week) else ""
                 weekbuttons.append(InlineKeyboardButton(f"{tag_today}{day}{tag_event}{tag_birthday}",
-                                                        callback_data=f"{f'0{day}' if len(str(day)) == 1 else day}."
-                                                                      f"{f'0{MM}' if len(str(MM)) == 1 else MM}.{YY}"))
+                                                        callback_data=f"{day:0>2}.{MM:0>2}.{YY}"))
         markup.row(*weekbuttons)
     markup.row(*[
         InlineKeyboardButton(f"{text}", callback_data=f"generate calendar {data}")
-        for text, data in { # [2023, 4]
-            "<<": f"{YY - 1} {MM}", # mydatatime[0] -= 1
+        for text, data in {
+            "<<": f"{YY - 1} {MM}",
             "<": f"{YY - 1} {12}" if MM == 1 else f"{YY} {MM - 1}",
             "⟳": "now",
             ">": f"{YY + 1} {1}" if MM == 12 else f"{YY} {MM + 1}",
-            ">>": f"{YY + 1} {MM}" # mydatatime[0] += 1
+            ">>": f"{YY + 1} {MM}"
         }.items()])
     return markup
 
@@ -629,7 +631,7 @@ def generate_month_calendar(user_timezone: int, lang: str, chat_id, YY) -> Inlin
     """)]
 
     # Повторение каждый год
-    recurring_list = [x[0] for x in SQL(f"""
+    every_year = [x[0] for x in SQL(f"""
         SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM root
         WHERE user_id={chat_id} AND isdel=0
         AND (status LIKE "%🎉%" OR status LIKE "%🎊%" OR status LIKE "%📆%");
@@ -650,7 +652,7 @@ def generate_month_calendar(user_timezone: int, lang: str, chat_id, YY) -> Inlin
         for nameM, numm in row:
             tag_today = "#" if numm == now_month else ""
             tag_event = "*" if numm in month_list else ""
-            tag_birthday = "!" if (numm in recurring_list or every_month) else ""
+            tag_birthday = "!" if (numm in every_year or every_month) else ""
             month_buttons[-1][f"{tag_today}{nameM}{tag_event}{tag_birthday}"] = f"generate calendar {YY} {numm}"
 
     return generate_buttons([
@@ -660,9 +662,6 @@ def generate_month_calendar(user_timezone: int, lang: str, chat_id, YY) -> Inlin
          for text, year in {"<<": YY - 1, "⟳": "now", ">>": YY + 1}.items()}
     ])
 
-allmarkup = generate_buttons([
-    {"➕": "event_add", "📝": "event_edit", "🚩": "event_status", "🗑": "event_del"},
-    {"🔙": "back", "<": "<<<", ">": ">>>", "🔄": "update"}])
 backmarkup = generate_buttons([{"🔙": "back"}])
 delmarkup = generate_buttons([{"✖": "message_del"}])
 databasemarkup = generate_buttons([{"Применить базу данных": "set database"}])
@@ -670,14 +669,14 @@ delopenmarkup = generate_buttons([{"✖": "message_del", "↖️": "open event"}
 backopenmarkup = generate_buttons([{"🔙": "back", "↖️": "open event"}])
 
 """Другое"""
-callbackTab = '⠀⠀⠀'
+callbackTab = "⠀⠀⠀"
 backslash_n = "\n"
 
 def ToHTML(text: str) -> str:
-    return text.replace("<", '&lt;').replace(">", '&gt;').replace("'", '&#39;').replace('"', '&quot;')
+    return text.replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;").replace('"', "&quot;")
 
 def NoHTML(text: str) -> str:
-    return text.replace("&lt;", '<').replace("&gt;", '>').replace("&#39;", "'").replace('&quot;', '"')
+    return text.replace("&lt;", "<").replace("&gt;", ">").replace("&#39;", "'").replace("&quot;", '"')
 
 def markdown(text: str, statuses: str, sub_url: bool | int = False) -> str:
     """
@@ -751,7 +750,7 @@ class Cooldown:
         except Exception as e:
             logging.info(f'[func.py -> Cooldown.check] Exception "{e}"')
         if update_dict or result[0]:
-            self.cooldown_dict[f'{key}'] = t1
+            self.cooldown_dict[f"{key}"] = t1
         return result
 CSVCooldown = Cooldown(30*60, {})
 
@@ -802,7 +801,7 @@ class MyMessage:
     def get_data(self,
                  *,
                  column_to_limit: str = "text",
-                 column_to_order: str = sqlite_format_date('date'),
+                 column_to_order: str = sqlite_format_date("date"),
                  column_to_return: str = "event_id",
                  WHERE: str,
                  table: str = "root",
@@ -840,7 +839,7 @@ class MyMessage:
             count_columns = 5
             diapason_list = []
             for num, d in enumerate(data):  # Заполняем данные из диапазонов в список
-                if int(f'{num}'[-1]) in (0, count_columns):  # Разделяем диапазоны в строчки по 5
+                if int(f"{num}"[-1]) in (0, count_columns):  # Разделяем диапазоны в строчки по 5
                     diapason_list.append([])
                 diapason_list[-1].append((num + 1, d[0]))  # Номер страницы, id
 
@@ -849,8 +848,8 @@ class MyMessage:
                     diapason_list[-1].append((0, 0))
 
                 [self.reply_markup.row(*[
-                    InlineKeyboardButton(f'{numpage}', callback_data=f'{prefix}{numpage}|{vals}') if vals else
-                    InlineKeyboardButton(f' ', callback_data=f'None') for numpage, vals in row])
+                    InlineKeyboardButton(f"{numpage}", callback_data=f"{prefix}{numpage}|{vals}") if vals else
+                    InlineKeyboardButton(" ", callback_data="None") for numpage, vals in row])
                  for row in diapason_list[:8]] # Обрезаем до 8 строк кнопок чтобы не было слишком много строк кнопок
         return self
 
@@ -903,7 +902,7 @@ class MyMessage:
         """
         dd = lambda deldate_: 30 if deldate_ in (0, 1) else (30 - (
             (datetime.now() + timedelta(hours=self._settings.timezone)) -
-            datetime(*[int(x) for x in str(deldate_).split('.')][::-1])).days)
+            datetime(*[int(x) for x in str(deldate_).split(".")][::-1])).days)
 
         day = DayInfo(self._settings, self._date)
 
@@ -937,7 +936,7 @@ class MyMessage:
         self.text = format_string+ending
         return self
 
-    def send(self, chat_id: int) -> None:
+    def send(self, chat_id: int) -> Message:
         ...
 
     def edit(self,
@@ -1096,13 +1095,15 @@ def today_message(settings: UserSettings,
                   chat_id: int,
                   date: str,
                   id_list: list | tuple = tuple(),
-                  page: int | str = 1) -> MyMessage:
+                  page: int | str = 1,
+                  message_id: int = None) -> MyMessage:
     """
     :param settings: settings
     :param chat_id: chat_id
     :param date: дата у сообщения
     :param id_list: Список из event_id
     :param page: Номер страницы
+    :param message_id: Используется когда в сообщении одно событие для генерации кнопки для изменения события
 
     Вызвать сообщение с сегодняшним днём:
         today_message(settings=settings, chat_id=chat_id, date=now_time_strftime(settings.timezone))
@@ -1110,11 +1111,37 @@ def today_message(settings: UserSettings,
         today_message(settings=settings, chat_id=chat_id, date=date, id_list=id_list, page=page)
     """
     WHERE = f"user_id={chat_id} AND isdel=0 AND date='{date}'"
-    generated = MyMessage(settings, date=date, reply_markup=allmarkup)
+
+    event_date = [int(i) for i in date.split(".")][::-1]
+    new_date = datetime(*event_date)
+    if 1980 < (new_date - timedelta(days=1)).year < 3000:
+        yesterday = (new_date - timedelta(days=1)).strftime("%d.%m.%Y")
+    else: yesterday = "None"
+
+    if 1980 < (new_date + timedelta(days=1)).year < 3000:
+        tomorrow = (new_date + timedelta(days=1)).strftime("%d.%m.%Y")
+    else: tomorrow = "None"
+
+    markup = generate_buttons([
+        {"➕": "event_add", "📝": "event_edit", "🚩": "event_status", "🗑": "event_del"},
+        {"🔙": "back", "<": yesterday, ">": tomorrow, "🔄": "update"}])
+    generated = MyMessage(settings, date=date, reply_markup=markup)
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
         generated.get_data(WHERE=WHERE, direction=settings.direction_sql)
+
+    if len(generated.event_list) == 1 and message_id:
+        event = generated.event_list[0]
+        generated.reply_markup = generate_buttons([
+            {"➕": "event_add",
+             "📝": {
+                 "switch_inline_query_current_chat": f"Edit message({event.event_id}, {event.date}, {message_id})\n"
+                                                     f"{NoHTML(event.text)}"
+             },
+             "🚩": "event_status",
+             "🗑": "event_del"},
+            {"🔙": "back", "<": yesterday, ">": tomorrow, "🔄": "update"}])
 
     generated.format(title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n"
                            f"{'<b>'+get_translate('page', settings.lang)+f' {page}</b>{backslash_n}' if int(page) > 1 else ''}",
@@ -1195,7 +1222,7 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
 
         if settings.notifications or from_command:
             _now = datetime.now()
-            dates = [_now+timedelta(days=day, hours=settings.timezone) for day in (0, 1, 2, 3, 7)]
+            dates = [_now+timedelta(days=days, hours=settings.timezone) for days in (0, 1, 2, 3, 7)]
             strdates = [date.strftime("%d.%m.%Y") for date in dates]
             weekdays = ["0" if (w := date.weekday()) == 6 else str(w+1) for date in dates[1:]]
             del _now, dates
@@ -1243,7 +1270,7 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
             if id_list:
                 generated.get_events(WHERE=WHERE, values=id_list)
             else:
-                generated.get_data(WHERE=WHERE, direction=settings.direction_sql)
+                generated.get_data(WHERE=WHERE, direction="ASC")
 
             if len(generated.event_list) or from_command:
                 # Если в generated.event_list есть события
@@ -1384,7 +1411,7 @@ SELECT
     (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id}                                    ) AS total_length;
     """)[0]
 
-    inf = float('inf')
+    inf = float("inf")
     limits_dict = limits[settings.user_status]
     return (
         limit_event_day + event_count >= (limits_dict["max_event_day"] or inf) or
@@ -1477,9 +1504,6 @@ def write_table_to_str(file: StringIO,
     file.write(sep)
 
 def semicircle(title: str, val: int, y: int) -> Image:
-    if not y:
-        y = float("inf")
-
     colors = {
         "g":    "#00cc00",
         "bg g": "#95ff95",
@@ -1491,6 +1515,7 @@ def semicircle(title: str, val: int, y: int) -> Image:
         "bg r": "#ffb093",
     }
 
+    if not y: y = float("inf")
     percent = int((val / y) * 100)
     if str(y) == "inf": y = "ꝏ"
     text = f"{val}/{y}"
@@ -1500,8 +1525,6 @@ def semicircle(title: str, val: int, y: int) -> Image:
     elif 24 < percent < 51: bg_color, color = colors["bg y"], colors["y"]
     elif 50 < percent < 76: bg_color, color = colors["bg o"], colors["o"]
     else:                   bg_color, color = colors["bg r"], colors["r"]
-
-    o = 90//2 # 45
 
     font = ImageFont.truetype("arial.ttf", 30)
     image = Image.new("RGB", (291, 202), "#F0F0F0")
@@ -1545,14 +1568,14 @@ def create_image(settings: UserSettings, year=None, month=None, day=None, text="
      limit_event_year, limit_symbol_year,
      limit_event_all, limit_symbol_all) = SQL(f"""
 SELECT 
-    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND date='{date}'                  ) AS count_today,
-    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND date='{date}'                  ) AS sum_length_today,
-    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND SUBSTR(date, 4, 7)='{date[3:]}') AS count_month,
-    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND SUBSTR(date, 4, 7)='{date[3:]}') AS sum_length_month,
-    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND SUBSTR(date, 7, 4)='{date[6:]}') AS count_year,
-    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND SUBSTR(date, 7, 4)='{date[6:]}') AS sum_length_year,
-    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id}                                    ) AS total_count,
-    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id}                                    ) AS total_length;
+    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND isdel=0 AND date='{date}'                  ) AS count_today,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND isdel=0 AND date='{date}'                  ) AS sum_length_today,
+    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND isdel=0 AND SUBSTR(date, 4, 7)='{date[3:]}') AS count_month,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND isdel=0 AND SUBSTR(date, 4, 7)='{date[3:]}') AS sum_length_month,
+    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND isdel=0 AND SUBSTR(date, 7, 4)='{date[6:]}') AS count_year,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND isdel=0 AND SUBSTR(date, 7, 4)='{date[6:]}') AS sum_length_year,
+    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND isdel=0                                    ) AS total_count,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND isdel=0                                    ) AS total_length;
     """)[0]
     (event_day, symbol_day,
      event_month, symbol_month,
@@ -1560,16 +1583,17 @@ SELECT
      event_all, symbol_all) = get_translate("account", settings.lang)
 
     if day:
-        image.paste(semicircle(event_day,   limit_event_day,    user_info["max_event_day"]), (100, 140))
-        image.paste(semicircle(symbol_day,  limit_symbol_day,   user_info["max_symbol_day"]), (390, 140))
+        image.paste(semicircle(event_day, limit_event_day, user_info["max_event_day"]), (100, 140))
+        image.paste(semicircle(symbol_day, limit_symbol_day, user_info["max_symbol_day"]), (390, 140))
     if month:
-        image.paste(semicircle(event_month,  limit_event_month,  user_info["max_event_month"]), (100, 345))
+        image.paste(semicircle(event_month, limit_event_month, user_info["max_event_month"]), (100, 345))
         image.paste(semicircle(symbol_month, limit_symbol_month, user_info["max_symbol_month"]), (390, 345))
     if year:
-        image.paste(semicircle(event_year,    limit_event_year,   user_info["max_event_year"]), (100, 562))
-        image.paste(semicircle(symbol_year,   limit_symbol_year,  user_info["max_symbol_year"]), (390, 562))
-    image.paste(semicircle(event_all,    limit_event_all,    user_info["max_event_all"]), (100, 766))
-    image.paste(semicircle(symbol_all,   limit_symbol_all,   user_info["max_symbol_all"]), (390, 766))
+        image.paste(semicircle(event_year, limit_event_year, user_info["max_event_year"]), (100, 562))
+        image.paste(semicircle(symbol_year, limit_symbol_year, user_info["max_symbol_year"]), (390, 562))
+    # all
+    image.paste(semicircle(event_all, limit_event_all, user_info["max_event_all"]), (100, 766))
+    image.paste(semicircle(symbol_all, limit_symbol_all, user_info["max_symbol_all"]), (390, 766))
 
     draw.rectangle(((800, 139), (1355, 956)), outline="#000000", width=5)
 
@@ -1581,6 +1605,5 @@ SELECT
 
     buffer = BytesIO()
     image.save(buffer, format="png")
-    image.save("images/account.png", format="png")
     buffer.seek(0)
     return buffer
