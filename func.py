@@ -10,7 +10,6 @@ from PIL.ImageDraw import Draw
 from typing import Literal, Any
 from copy import deepcopy
 from time import time
-import json
 import re
 
 from requests import get # pip install requests
@@ -101,7 +100,7 @@ class UserSettings:
         ) = self._get_user_settings()
         self.direction_sql = {"⬇️": "DESC", "⬆️": "ASC"}[self.direction]
 
-    def _get_user_settings(self) -> tuple[str, int, str, int, str, int, int, str]:
+    def _get_user_settings(self) -> tuple[str, int, str, int, str, Literal[-1, 0, 1, 2], int, str]:
         """
         Возвращает список из настроек для пользователя self.user_id
         """
@@ -114,7 +113,7 @@ class UserSettings:
             SQL(f"INSERT INTO settings (user_id) VALUES ({self.user_id});", commit=True)
         return SQL(query)[0]
 
-    def get_settings(self) -> tuple[str, InlineKeyboardMarkup]:
+    def to_message(self) -> 'MessageGenerator':
         """
         Ставит настройки для пользователя chat_id
         """
@@ -134,20 +133,23 @@ class UserSettings:
 
         notifications_time = {}
         if not_notifications_[0] == "🔕":
-            notifications_time["‹‹‹"] = f"settings notifications_time " + (f"{n_hours-1:0>2}:{n_minutes:0>2}" if n_hours > 0 else f"23:{n_minutes:0>2}")
-            notifications_time["<"] = f"settings notifications_time " + (f"{n_hours:0>2}:{n_minutes-10:0>2}" if n_minutes > 0 else f"{n_hours-1:0>2}:50")
-            notifications_time[f"{n_hours:0>2}:{n_minutes:0>2} ⏰"] = "settings notifications_time 08:00"
-            notifications_time[">"] = f"settings notifications_time " + (f"{n_hours:0>2}:{n_minutes+10:0>2}" if n_minutes < 50 else f"{n_hours+1:0>2}:00")
-            notifications_time["›››"] = f"settings notifications_time " + (f"{n_hours+1:0>2}:{n_minutes:0>2}" if n_hours < 23 else f"00:{n_minutes:0>2}")
+            notifications_time["‹‹‹"] = "settings notifications_time {}".format(
+                f"{n_hours-1:0>2}:{n_minutes:0>2}" if n_hours > 0 else f"23:{n_minutes:0>2}"
+            )
+            notifications_time["<"] = "settings notifications_time {}".format(
+                f"{n_hours:0>2}:{n_minutes-10:0>2}" if n_minutes > 0 else f"{n_hours-1:0>2}:50"
+            )
+            notifications_time[f"{n_hours:0>2}:{n_minutes:0>2} ⏰"] = "settings notifications_time {}".format(
+                "08:00"
+            )
+            notifications_time[">"] = "settings notifications_time {}".format(
+                f"{n_hours:0>2}:{n_minutes+10:0>2}" if n_minutes < 50 else f"{n_hours+1:0>2}:00"
+            )
+            notifications_time["›››"] = "settings notifications_time {}".format(
+                f"{n_hours+1:0>2}:{n_minutes:0>2}" if n_hours < 23 else f"00:{n_minutes:0>2}"
+            )
 
-        markup = generate_buttons([{f"🗣 {self.lang}": f"settings lang {not_lang}",
-                                    f"🔗 {bool(self.sub_urls)}": f"settings sub_urls {not_sub_urls}",
-                                    f"{not_direction}": f"settings direction {not_direction}",
-                                    f"{not_notifications_[0]}": f"settings notifications {not_notifications_[1]}"},
-                                   time_zone_dict,
-                                   notifications_time,
-                                   {"✖": "message_del"}])
-        return get_translate("settings", self.lang).format(
+        text = get_translate("settings", self.lang).format(
             self.lang,
             bool(self.sub_urls),
             self.city,
@@ -155,7 +157,18 @@ class UserSettings:
             self.direction,
             "🔔" if self.notifications else "🔕",
             f"{n_hours:0>2}:{n_minutes:0>2}" if self.notifications else ""
-        ), markup
+        )
+        markup = generate_buttons([{f"🗣 {self.lang}": f"settings lang {not_lang}",
+                                    f"🔗 {bool(self.sub_urls)}": f"settings sub_urls {not_sub_urls}",
+                                    f"{not_direction}": f"settings direction {not_direction}",
+                                    f"{not_notifications_[0]}": f"settings notifications {not_notifications_[1]}"},
+                                   time_zone_dict,
+                                   notifications_time,
+                                   {"✖": "message_del"}])
+
+        generated = MessageGenerator(self, reply_markup=markup)
+        generated.format(title="", args="", ending=text, if_empty="")
+        return generated
 
 def create_tables() -> None:
     """
@@ -359,7 +372,7 @@ def execution_time(func):
         start = time()
         result = func(*args, **kwargs)
         end = time()
-        logging.info(f" \t({end - start:.3f})")
+        logging.info(f" \t({end - start:.3f})") # TODO цвет в зависимости от значения
         return result
     return wrapper
 
@@ -552,7 +565,7 @@ def generate_buttons(buttons_data: list[dict]) -> InlineKeyboardMarkup:
         for row in buttons_data]
     return InlineKeyboardMarkup(keyboard=keyboard)
 
-def mycalendar(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list | tuple[int, int] = None) -> InlineKeyboardMarkup():
+def calendar_days(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list | tuple[int, int] = None) -> InlineKeyboardMarkup():
     """
     Создаёт календарь на месяц и возвращает inline клавиатуру
     param YY_MM: Необязательный аргумент. Если None, то подставит текущую дату.
@@ -561,13 +574,13 @@ def mycalendar(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list | 
         YY, MM = YY_MM
     else:
         YY, MM = new_time_calendar(user_timezone)
+
     markup = InlineKeyboardMarkup()
     #  December (12.2022)
     # Пн Вт Ср Чт Пт Сб Вс
-    markup.row(InlineKeyboardButton(f"{get_translate('months_name', lang)[MM-1]} ({MM}.{YY}) ({year_info(YY, lang)})",
-                                    callback_data=f"generate month calendar {YY}"))
-    week_day_list = get_translate("week_days_list", lang)
-    markup.row(*[InlineKeyboardButton(day, callback_data="None") for day in week_day_list])
+    title = f"{get_translate('months_name', lang)[MM-1]} ({MM}.{YY}) ({year_info(YY, lang)})"
+    markup.row(InlineKeyboardButton(text=title, callback_data=f"generate calendar months  {YY}"))
+    markup.row(*[InlineKeyboardButton(text=week_day, callback_data="None") for week_day in get_translate("week_days_list", lang)])
 
     # Дни в которые есть события
     has_events = [x[0] for x in SQL(f"""
@@ -609,8 +622,9 @@ def mycalendar(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list | 
                 weekbuttons.append(InlineKeyboardButton(f"{tag_today}{day}{tag_event}{tag_birthday}",
                                                         callback_data=f"{day:0>2}.{MM:0>2}.{YY}"))
         markup.row(*weekbuttons)
+
     markup.row(*[
-        InlineKeyboardButton(f"{text}", callback_data=f"generate calendar {data}")
+        InlineKeyboardButton(f"{text}", callback_data=f"generate calendar days {data}")
         for text, data in {
             "<<": f"{YY - 1} {MM}",
             "<": f"{YY - 1} {12}" if MM == 1 else f"{YY} {MM - 1}",
@@ -620,7 +634,7 @@ def mycalendar(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list | 
         }.items()])
     return markup
 
-def generate_month_calendar(user_timezone: int, lang: str, chat_id, YY) -> InlineKeyboardMarkup():
+def calendar_months(user_timezone: int, lang: str, chat_id, YY) -> InlineKeyboardMarkup():
     """
     Создаёт календарь из месяцев на определённый год и возвращает inline клавиатуру
     """
@@ -653,20 +667,20 @@ def generate_month_calendar(user_timezone: int, lang: str, chat_id, YY) -> Inlin
             tag_today = "#" if numm == now_month else ""
             tag_event = "*" if numm in month_list else ""
             tag_birthday = "!" if (numm in every_year or every_month) else ""
-            month_buttons[-1][f"{tag_today}{nameM}{tag_event}{tag_birthday}"] = f"generate calendar {YY} {numm}"
+            month_buttons[-1][f"{tag_today}{nameM}{tag_event}{tag_birthday}"] = f"generate calendar days {YY} {numm}"
 
     return generate_buttons([
         {f"{YY} ({year_info(YY, lang)})": "None"},
         *month_buttons,
-        {text: f"generate month calendar {year}"
+        {text: f"generate calendar months {year}"
          for text, year in {"<<": YY - 1, "⟳": "now", ">>": YY + 1}.items()}
     ])
 
 backmarkup = generate_buttons([{"🔙": "back"}])
 delmarkup = generate_buttons([{"✖": "message_del"}])
 databasemarkup = generate_buttons([{"Применить базу данных": "set database"}])
-delopenmarkup = generate_buttons([{"✖": "message_del", "↖️": "open event"}])
-backopenmarkup = generate_buttons([{"🔙": "back", "↖️": "open event"}])
+delopenmarkup = generate_buttons([{"✖": "message_del", "↖️": "select event open"}])
+backopenmarkup = generate_buttons([{"🔙": "back", "↖️": "select event open"}])
 
 """Другое"""
 callbackTab = "⠀⠀⠀"
@@ -732,10 +746,10 @@ class Cooldown:
     MyCooldown.check(chat_id)
     """
     def __init__(self, cooldown_time_sec: int, cooldown_dict: dict):
-        self.cooldown_time_sec = cooldown_time_sec
-        self.cooldown_dict = cooldown_dict
+        self._cooldown_time_sec = cooldown_time_sec
+        self._cooldown_dict = cooldown_dict
 
-    def check(self, key, update_dict=True):
+    def check(self, key: Any, update_dict=True):
         """
         :param key: Ключ по которому проверять словарь
         :param update_dict: Отвечает за обновление словаря
@@ -744,14 +758,17 @@ class Cooldown:
         """
         t1 = time()
         result = True, 0
+
         try:
-            if (localtime := (t1 - self.cooldown_dict[str(key)])) < self.cooldown_time_sec:
-                result = False, int(self.cooldown_time_sec - int(localtime))
-        except Exception as e:
-            logging.info(f'[func.py -> Cooldown.check] Exception "{e}"')
+            if (localtime := (t1 - self._cooldown_dict[str(key)])) < self._cooldown_time_sec:
+                result = (False, int(self._cooldown_time_sec - int(localtime)))
+        except KeyError:
+            pass
+
         if update_dict or result[0]:
-            self.cooldown_dict[f"{key}"] = t1
+            self._cooldown_dict[f"{key}"] = t1
         return result
+
 CSVCooldown = Cooldown(30*60, {})
 
 def main_log(user_status: int, chat_id: int, action: str, text: str) -> None:
@@ -781,7 +798,7 @@ class Event:
     text: str = ""
     deldate: str = "0"
 
-class MyMessage:
+class MessageGenerator:
     """
     Класс для заполнения и форматирования сообщений по шаблону
     """
@@ -863,7 +880,7 @@ class MyMessage:
                 WHERE event_id IN ({', '.join(values)}) AND ({WHERE})
                 ORDER BY {sqlite_format_date('date')} {self._settings.direction_sql};""")]
         except Error as e:
-            logging.info(f'[func.py -> MyMessage.get_events] Error "{e}"')
+            logging.info(f'[func.py -> MessageGenerator.get_events] Error "{e}"')
             self.event_list = []
         else:
             if self._settings.direction_sql == "ASC":
@@ -957,7 +974,7 @@ def search(settings: UserSettings,
            chat_id: int,
            query: str,
            id_list: list | tuple = tuple(),
-           page: int | str = 1) -> MyMessage:
+           page: int | str = 1) -> MessageGenerator:
     """
     :param settings: settings
     :param chat_id: chat_id
@@ -972,7 +989,7 @@ def search(settings: UserSettings,
     TODO шаблоны для поиска
     """
     if not re.match(r"\S", query):
-        generated = MyMessage(settings, reply_markup=delmarkup)
+        generated = MessageGenerator(settings, reply_markup=delmarkup)
         generated.format(title=f"🔍 {get_translate('search', settings.lang)} {query}:\n",
                          if_empty=get_translate("request_empty", settings.lang))
         return generated
@@ -987,7 +1004,7 @@ def search(settings: UserSettings,
     splitquery = " OR ".join(f"date LIKE '%{x}%' OR text LIKE '%{x}%' OR status LIKE '%{x}%' OR event_id LIKE '%{x}%'" for x in querylst)
     WHERE = f"(user_id = {chat_id} AND isdel == 0) AND ({splitquery})"
 
-    generated = MyMessage(settings, reply_markup=delopenmarkup)
+    generated = MessageGenerator(settings, reply_markup=delopenmarkup)
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
@@ -1002,7 +1019,7 @@ def search(settings: UserSettings,
 def week_event_list(settings: UserSettings,
                     chat_id: int,
                     id_list: list | tuple = tuple(),
-                    page: int | str = 1) -> MyMessage:
+                    page: int | str = 1) -> MessageGenerator:
     """
     :param settings: settings
     :param chat_id: chat_id
@@ -1045,7 +1062,7 @@ def week_event_list(settings: UserSettings,
     )
     """
 
-    generated = MyMessage(settings, reply_markup=delmarkup)
+    generated = MessageGenerator(settings, reply_markup=delmarkup)
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
@@ -1059,7 +1076,7 @@ def week_event_list(settings: UserSettings,
 def deleted(settings: UserSettings,
             chat_id: int,
             id_list: list | tuple = tuple(),
-            page: int | str = 1) -> MyMessage:
+            page: int | str = 1) -> MessageGenerator:
     """
     :param settings: settings
     :param chat_id: chat_id
@@ -1077,9 +1094,9 @@ def deleted(settings: UserSettings,
     (julianday('now') - julianday({sqlite_format_date("isdel")}) > 30);""", commit=True)
 
 
-    generated = MyMessage(settings, reply_markup=generate_buttons([
-        {"✖": "message_del", f"❌ {get_translate('delete_permanently', settings.lang)}": "event_del bin"},
-        {"🔄": "update", f"↩️ {get_translate('recover', settings.lang)}": "event_recover bin"}]))
+    generated = MessageGenerator(settings, reply_markup=generate_buttons([
+        {"✖": "message_del", f"❌ {get_translate('delete_permanently', settings.lang)}": "select event delete bin"},
+        {"🔄": "update", f"↩️ {get_translate('recover', settings.lang)}": "select event recover bin"}]))
 
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
@@ -1096,7 +1113,7 @@ def today_message(settings: UserSettings,
                   date: str,
                   id_list: list | tuple = tuple(),
                   page: int | str = 1,
-                  message_id: int = None) -> MyMessage:
+                  message_id: int = None) -> MessageGenerator:
     """
     :param settings: settings
     :param chat_id: chat_id
@@ -1123,9 +1140,9 @@ def today_message(settings: UserSettings,
     else: tomorrow = "None"
 
     markup = generate_buttons([
-        {"➕": "event_add", "📝": "event_edit", "🚩": "event_status", "🗑": "event_del"},
+        {"➕": "event_add", "📝": "select event edit", "🚩": "select event status", "🗑": "select event delete"},
         {"🔙": "back", "<": yesterday, ">": tomorrow, "🔄": "update"}])
-    generated = MyMessage(settings, date=date, reply_markup=markup)
+    generated = MessageGenerator(settings, date=date, reply_markup=markup)
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
@@ -1139,8 +1156,8 @@ def today_message(settings: UserSettings,
                  "switch_inline_query_current_chat": f"Edit message({event.event_id}, {event.date}, {message_id})\n"
                                                      f"{NoHTML(event.text)}"
              },
-             "🚩": "event_status",
-             "🗑": "event_del"},
+             "🚩": "select event status",
+             "🗑": "select event delete"},
             {"🔙": "back", "<": yesterday, ">": tomorrow, "🔄": "update"}])
 
     generated.format(title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n"
@@ -1212,10 +1229,10 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
         user_id_list = [int(user_id) for user in SQL(f"""
             SELECT GROUP_CONCAT(user_id, ',') AS user_id_list
             FROM settings
-            WHERE notifications=1
+            WHERE notifications=1 AND user_status != -1
             AND ((CAST(SUBSTR(notifications_time, 1, 2) AS INT) - timezone + 24) % 24)={n_time.hour}
-            AND CAST(SUBSTR(notifications_time, 4, 2) AS INT)={n_time.minute}
-        ;""") if user[0] for user_id in user[0].split(",")] # [('id1,id2,id3',)] -> [id1, id2, id3]
+            AND CAST(SUBSTR(notifications_time, 4, 2) AS INT)={n_time.minute};
+        """) if user[0] for user_id in user[0].split(",")] # [('id1,id2,id3',)] -> [id1, id2, id3]
 
     for user_id in user_id_list:
         settings = UserSettings(user_id)
@@ -1266,7 +1283,8 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
                 AND isdel=0
             """
 
-            generated = MyMessage(settings, reply_markup=delmarkup)
+            generated = MessageGenerator(settings, reply_markup=delmarkup)
+
             if id_list:
                 generated.get_events(WHERE=WHERE, values=id_list)
             else:
@@ -1350,11 +1368,13 @@ def recurring(settings: UserSettings,
             )
         )
     """
-    generated = MyMessage(settings=settings, date=date, reply_markup=backopenmarkup)
+    generated = MessageGenerator(settings=settings, date=date, reply_markup=backopenmarkup)
+
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
         generated.get_data(WHERE=WHERE, direction=settings.direction_sql, prefix="|!")
+
     generated.format(title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n"
                            f"{'<b>'+get_translate('page', settings.lang)+f' {page}</b>{backslash_n}' if int(page) > 1 else ''}",
                      args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
@@ -1363,42 +1383,43 @@ def recurring(settings: UserSettings,
 
 """Проверки"""
 limits = {
-        -1: {
-            "max_event_day": 0, "max_symbol_day": 0,
-            "max_event_month": 0, "max_symbol_month": 0,
-            "max_event_year": 0, "max_symbol_year": 0,
-            "max_event_all": 0, "max_symbol_all": 0
-        },
-        0: {
-            "max_event_day": 20, "max_symbol_day": 4000,
-            "max_event_month": 75, "max_symbol_month": 10000,
-            "max_event_year": 500, "max_symbol_year": 80000,
-            "max_event_all": 500, "max_symbol_all": 100000
-        },
-        1: {
-            "max_event_day": 40, "max_symbol_day": 8000,
-            "max_event_month": 100, "max_symbol_month": 15000,
-            "max_event_year": 750, "max_symbol_year": 100000,
-            "max_event_all": 900, "max_symbol_all": 150000
-        },
-        2: {
-            "max_event_day": 60, "max_symbol_day": 20000,
-            "max_event_month": 200, "max_symbol_month": 50000,
-            "max_event_year": 1000, "max_symbol_year": 120000,
-            "max_event_all": 2000, "max_symbol_all": 200000
-        }
+    -1: {
+        "max_event_day": 0,     "max_symbol_day": 0,
+        "max_event_month": 0,   "max_symbol_month": 0,
+        "max_event_year": 0,    "max_symbol_year": 0,
+        "max_event_all": 0,     "max_symbol_all": 0
+    },
+    0: {
+        "max_event_day": 20,    "max_symbol_day": 4000,
+        "max_event_month": 75,  "max_symbol_month": 10000,
+        "max_event_year": 500,  "max_symbol_year": 80000,
+        "max_event_all": 500,   "max_symbol_all": 100000
+    },
+    1: {
+        "max_event_day": 40,    "max_symbol_day": 8000,
+        "max_event_month": 100, "max_symbol_month": 15000,
+        "max_event_year": 750,  "max_symbol_year": 100000,
+        "max_event_all": 900,   "max_symbol_all": 150000
+    },
+    2: {
+        "max_event_day": 60,    "max_symbol_day": 20000,
+        "max_event_month": 200, "max_symbol_month": 50000,
+        "max_event_year": 1000, "max_symbol_year": 120000,
+        "max_event_all": 2000,  "max_symbol_all": 200000
     }
+}
 limits["ban"], limits["default"], limits["premium"], limits["admin"] = limits[-1], limits[0], limits[1], limits[2]
+
 def is_exceeded_limit(settings: UserSettings, date: str, event_count: int = 0, symbol_count: int = 0) -> bool:
     """
     Возвращает True если был превышен лимит на день, на месяц, на год и на всё сразу
     """
     user_id = settings.user_id
     (
-        limit_event_day, limit_symbol_day,
+        limit_event_day,   limit_symbol_day,
         limit_event_month, limit_symbol_month,
-        limit_event_year, limit_symbol_year,
-        limit_event_all, limit_symbol_all
+        limit_event_year,  limit_symbol_year,
+        limit_event_all,   limit_symbol_all
     ) = SQL(f"""
 SELECT
     (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND date='{date}'                  ) AS count_today,
@@ -1411,17 +1432,20 @@ SELECT
     (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id}                                    ) AS total_length;
     """)[0]
 
-    inf = float("inf")
-    limits_dict = limits[settings.user_status]
+    inf = float("inf") # Бесконечность
+    user_limits = limits[settings.user_status]
+
+    # Если хоть один лимит нарушен, то возвращает False
+    # Если лимит отсутствует, то он бесконечный
     return (
-        limit_event_day + event_count >= (limits_dict["max_event_day"] or inf) or
-        limit_symbol_day + symbol_count >= (limits_dict["max_symbol_day"] or inf) or
-        limit_event_month + event_count >= (limits_dict["max_event_month"] or inf) or
-        limit_symbol_month + symbol_count >= (limits_dict["max_symbol_month"] or inf) or
-        limit_event_year + event_count >= (limits_dict["max_event_year"] or inf) or
-        limit_symbol_year + symbol_count >= (limits_dict["max_symbol_year"] or inf) or
-        limit_event_all + event_count >= (limits_dict["max_event_all"] or inf) or
-        limit_symbol_all + symbol_count >= (limits_dict["max_symbol_all"] or inf)
+        limit_event_day + event_count >= (user_limits["max_event_day"] or inf) or
+        limit_symbol_day + symbol_count >= (user_limits["max_symbol_day"] or inf) or
+        limit_event_month + event_count >= (user_limits["max_event_month"] or inf) or
+        limit_symbol_month + symbol_count >= (user_limits["max_symbol_month"] or inf) or
+        limit_event_year + event_count >= (user_limits["max_event_year"] or inf) or
+        limit_symbol_year + symbol_count >= (user_limits["max_symbol_year"] or inf) or
+        limit_event_all + event_count >= (user_limits["max_event_all"] or inf) or
+        limit_symbol_all + symbol_count >= (user_limits["max_symbol_all"] or inf)
     )
 
 def is_admin_id(chat_id: int) -> bool:
