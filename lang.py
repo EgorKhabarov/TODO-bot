@@ -407,7 +407,7 @@ Reduce the number of characters or remove unnecessary events."""
         "ru": "Выберите дату",
         "en": "Select a date"
     },
-    "status_list": {
+    "status_home_page": {
         "ru": {
             "⬜️ Без статуса                        ": None,
             "🗂 Сделано                            ": "status page 1",

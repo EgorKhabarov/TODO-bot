@@ -443,10 +443,10 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
     "select event recover bin" -
     "select event open" - Открывает день выбранного события.
     "recover" - Восстанавливает событие из корзины.
-    "edit_page_status" -
+    "status_home_page" -
     "status page" -
-    "set_status" - Установить статус для события.
-    "del_status" -
+    "status set" - Установить статус для события.
+    "status delete" -
     "before del" -
     "del" -
     "|" -
@@ -464,19 +464,22 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
         # Проверяем будет ли превышен лимит для пользователя, если добавить 1 событие с 1 символом
         if is_exceeded_limit(settings, date, 1, 1):
-            bot.answer_callback_query(callback_query_id=call_id, show_alert=True,
-                                      text=get_translate("exceeded_limit", settings.lang))
+            text = get_translate("exceeded_limit", settings.lang)
+            bot.answer_callback_query(callback_query_id=call_id, show_alert=True, text=text)
             return
 
         SQL(f"UPDATE settings SET add_event_date='{date},{message_id}' WHERE user_id={chat_id};", commit=True)
-        bot.answer_callback_query(callback_query_id=call_id,
-                                  text=get_translate("send_event_text", settings.lang))
-        bot.edit_message_text(f"{ToHTML(message_text)}\n\n0.0.⬜\n{get_translate('send_event_text', settings.lang)}",
-                              chat_id, message_id, reply_markup=backmarkup)
+
+        text = get_translate("send_event_text", settings.lang)
+        bot.answer_callback_query(callback_query_id=call_id, text=text)
+
+        text = f"{ToHTML(message_text)}\n\n0.0.⬜\n{text}"
+        bot.edit_message_text(text=text, chat_id=chat_id, message_id=message_id, reply_markup=backmarkup)
 
     elif call_data == "/calendar":
-        markup = calendar_days(chat_id, settings.timezone, settings.lang)
-        bot.edit_message_text(get_translate("choose_date", settings.lang), chat_id, message_id, reply_markup=markup)
+        text = get_translate("choose_date", settings.lang)
+        markup = calendar_days(chat_id=chat_id, user_timezone=settings.timezone, lang=settings.lang)
+        bot.edit_message_text(text=text, chat_id=chat_id, message_id=message_id, reply_markup=markup)
 
     elif call_data.startswith("back"):
         # не вызываем await clear_state(chat_id) так как она после очистки вызывает сегодняшнее сообщение
@@ -511,15 +514,14 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         try:
             bot.delete_message(chat_id, message_id)
         except ApiTelegramException:
-            bot.reply_to(message, get_translate("get_admin_rules", settings.lang), reply_markup=delmarkup)
+            text = get_translate("get_admin_rules", settings.lang)
+            bot.reply_to(message=message, text=text, reply_markup=delmarkup)
 
     elif call_data == "set database" and is_admin_id(chat_id):
         try:
             with open(config.database_path, "rb") as file:
-                bot.send_document(chat_id, file,
-                                  caption=f"{now_time_strftime(settings.timezone)}\n"
-                                          f"На данный момент база выглядит так.",
-                                  reply_markup=databasemarkup)
+                text = f"{now_time_strftime(settings.timezone)}\nНа данный момент база выглядит так."
+                bot.send_document(chat_id=chat_id, document=file, caption=text, reply_markup=databasemarkup)
         except ApiTelegramException:
             bot.send_message(chat_id, "Отправить файл не получилось...")
             return
@@ -578,7 +580,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
             if action in ("status", "delete", "delete bin", "recover bin", "open"):
                 event_date = events_list[0][:10]
-                if action == "status":        new_call_data = f"edit_page_status {event_id} {msg_date}"
+                if action == "status":        new_call_data = f"status_home_page {event_id} {msg_date}"
                 elif action == "delete":      new_call_data = f"before del {msg_date} {event_id} _"
                 elif action == "delete bin":  new_call_data = f"del {event_date} {event_id} bin delete"
                 elif action == "recover bin": new_call_data = f"recover {event_date} {event_id}"
@@ -613,7 +615,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             elif action in ("status", "delete"): # Действия в обычном дне
                 button_title = event.replace("\n", " ")[:50]
                 if action == "status":
-                    callback_data = f"edit_page_status {event_id} {msg_date}"
+                    callback_data = f"status_home_page {event_id} {msg_date}"
                 else: # "delete"
                     callback_data = f"before del {msg_date} {event_id} _"
 
@@ -623,7 +625,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                 event_date = event[:10]
                 button_title = event.split(" ", maxsplit=1)[0] + " " + event.split("\n", maxsplit=1)[-1][:50]
                 if action == "delete bin":
-                    callback_data = f"del {event_date} {event_id} bin delete" # before -delete
+                    callback_data = f"del {event_date} {event_id} bin delete"
                 else: # "recover bin"
                     callback_data = f"recover {event_date} {event_id}"
 
@@ -698,11 +700,11 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             AND date='{event_date}';""", commit=True)
         callback_handler(settings, chat_id, message_id, message_text, "back bin", call_id, message)
 
-    elif call_data.startswith("edit_page_status") or call_data.startswith("status page "):
+    elif call_data.startswith("status_home_page") or call_data.startswith("status page "):
         # Парсим данные
-        if call_data.startswith("edit_page_status"):
+        if call_data.startswith("status_home_page"):
             event_id, event_date = call_data.split(" ")[1:]
-        else:
+        else: # status page
             args = message_text.split("\n", maxsplit=3)
             event_date, event_id = args[0], args[2].split(".", maxsplit=4)[3]
 
@@ -716,26 +718,27 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
             return
 
-        if call_data.startswith("edit_page_status"):
+        if call_data.startswith("status_home_page"):
             sl = status.split(",")
             sl.extend([""]*(5-len(sl)))
             markup = generate_buttons([
                 *[{f"{title}{callbackTab * 20}": (
-                    f"{data}" if data else f"set_status {title.split(maxsplit=1)[0]} {event_id} {event_date}")}
-                  for title, data in get_translate("status_list", settings.lang).items()],
+                    f"{data}" if data else f"status set {title.split(maxsplit=1)[0]} {event_id} {event_date}")}
+                  for title, data in get_translate("status_home_page", settings.lang).items()],
                 {f"{i}" if i else " "*n:
-                 f"del_status {i} {event_id} {event_date}" if i else "None"
+                 f"status delete {i} {event_id} {event_date}" if i else "None"
                  for n, i in enumerate(sl)} if status != "⬜️" else {},
                 {"🔙": "back"}
             ])
         else: # status page
+            buttons_data = get_translate(call_data, settings.lang)
             markup = generate_buttons([
-                *[{f"{row}{callbackTab * 20}": f"set_status {row.split(maxsplit=1)[0]} {event_id} {event_date}"
+                *[{f"{row}{callbackTab * 20}": f"status set {row.split(maxsplit=1)[0]} {event_id} {event_date}"
                    for row in status_column} if len(status_column) > 1 else {
-                    f"{status_column[0]}{callbackTab * 20}": f"set_status {status_column[0].split(maxsplit=1)[0]} {event_id} {event_date}"
+                    f"{status_column[0]}{callbackTab * 20}": f"status set {status_column[0].split(maxsplit=1)[0]} {event_id} {event_date}"
                 }
-                  for status_column in get_translate(call_data, settings.lang)],
-                {"🔙": f"edit_page_status {event_id} {event_date}"}
+                  for status_column in buttons_data],
+                {"🔙": f"status_home_page {event_id} {event_date}"}
             ])
 
         bot.edit_message_text(f"{event_date}\n"
@@ -744,8 +747,9 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                               f"{markdown(text, status, settings.sub_urls)}",
                               chat_id, message_id, reply_markup=markup)
 
-    elif call_data.startswith("set_status"):
-        _, new_status, event_id, event_date = call_data.split()
+    elif call_data.startswith("status set"):
+        new_status, event_id, event_date = call_data.split()[2:]
+
         try: # Если события нет, то обновляем сообщение
             text, old_status = SQL(f"""
                 SELECT text, status FROM root
@@ -758,36 +762,53 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         if new_status == "⬜️" == old_status:
             callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
             return
-        if new_status in old_status:
-            bot.answer_callback_query(callback_query_id=call_id, show_alert=True, text=get_translate("status_already_posted", settings.lang))
+
+        elif new_status in old_status:
+            text = get_translate("status_already_posted", settings.lang)
+            bot.answer_callback_query(callback_query_id=call_id, show_alert=True, text=text)
+
         elif len(old_status.split(",")) > 4 and new_status != "⬜️":
-            bot.answer_callback_query(callback_query_id=call_id, show_alert=True, text=get_translate("more_5_statuses", settings.lang))
-        elif ("🔗" in old_status or "💻" in old_status) and new_status in ("🔗", "💻"): # Убираем конфликтующие статусы
-            bot.answer_callback_query(callback_query_id=call_id, show_alert=True, text=get_translate("conflict_statuses", settings.lang) + f" 🔗, 💻")
+            text = get_translate("more_5_statuses", settings.lang)
+            bot.answer_callback_query(callback_query_id=call_id, show_alert=True, text=text)
+
+        # Убираем конфликтующие статусы
+        elif ("🔗" in old_status or "💻" in old_status) and new_status in ("🔗", "💻"):
+            get_translate("conflict_statuses", settings.lang) + f" 🔗, 💻"
+            bot.answer_callback_query(callback_query_id=call_id, show_alert=True, text=text)
+
         elif ("🪞" in old_status or "💻" in old_status) and new_status in ("🪞", "💻"):
-            bot.answer_callback_query(callback_query_id=call_id, show_alert=True, text=get_translate("conflict_statuses", settings.lang) + f" 🪞, 💻")
+            text = get_translate("conflict_statuses", settings.lang) + f" 🪞, 💻"
+            bot.answer_callback_query(callback_query_id=call_id, show_alert=True, text=text)
+
         elif ("🔗" in old_status or "❌🔗" in old_status) and new_status in ("🔗", "❌🔗"):
-            bot.answer_callback_query(callback_query_id=call_id, show_alert=True, text=get_translate("conflict_statuses", settings.lang) + f" 🔗, ❌🔗")
+            text = get_translate("conflict_statuses", settings.lang) + f" 🔗, ❌🔗"
+            bot.answer_callback_query(callback_query_id=call_id, show_alert=True, text=text)
+
         else:
             if old_status == "⬜️":
                 res_status = new_status
+
             elif new_status == "⬜️":
                 res_status = "⬜️"
+
             else:
                 res_status = f"{old_status},{new_status}"
+
             SQL(f"""
                 UPDATE root SET status='{res_status}'
                 WHERE user_id={chat_id} AND event_id={event_id}
                 AND date='{event_date}';""", commit=True)
 
-        # "back" Вернуться в сообщение с датой
+        if new_status == "⬜️":
+            callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
+        else:
+            callback_handler(settings, chat_id, message_id, message_text, f"status_home_page {event_id} {event_date}", call_id, message)
+
         # callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
 
-        # Вернуться в сообщение с папками статусов
-        callback_handler(settings, chat_id, message_id, message_text, f"edit_page_status {event_id} {event_date}", call_id, message)
+    elif call_data.startswith("status delete"):
+        status, event_id, event_date = call_data.split()[2:]
 
-    elif call_data.startswith("del_status"):
-        _, del_status, event_id, event_date = call_data.split()
         try: # Если события нет, то обновляем сообщение
             text, old_status = SQL(f"""
                 SELECT text, status FROM root
@@ -796,20 +817,23 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         except IndexError:
             callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
             return
-        if del_status == "⬜️":
+
+        if status == "⬜️":
             return
-        res_status = old_status.replace(f",{del_status}", "").replace(f"{del_status},", "").replace(f"{del_status}", "")
+
+        res_status = old_status.replace(f",{status}", "").replace(f"{status},", "").replace(f"{status}", "")
+
         if not res_status:
             res_status = "⬜️"
+
         SQL(f"""
             UPDATE root SET status='{res_status}' 
             WHERE user_id={chat_id} AND event_id={event_id} 
             AND date='{event_date}';""", commit=True)
 
-        if res_status == "⬜️":
-            callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
-        else:
-            callback_handler(settings, chat_id, message_id, message_text, f"edit_page_status {event_id} {event_date}", call_id, message)
+        callback_handler(settings, chat_id, message_id, message_text, f"status_home_page {event_id} {event_date}", call_id, message)
+
+        # callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
 
     elif call_data.startswith("before del "):
         event_date, event_id, back_to_bin = call_data.split()[2:]
@@ -823,20 +847,21 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             bot.answer_callback_query(callback_query_id=call_id, text=get_translate("error", settings.lang))
             callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
             return
+
         predelmarkup = generate_buttons([
             {"🔙": "back" if back_to_bin != "bin" else
-             "back bin", "❌ "+get_translate("delete_permanently", settings.lang): f"{call_data.split(maxsplit=1)[-1]} delete"}])
+             "back bin", "❌ "+get_translate("delete_permanently", settings.lang): f"{call_data.split(maxsplit=1)[-1]} delete"},
+            {
+                "🗑 " + get_translate("trash_bin", settings.lang): f"{call_data.split(maxsplit=1)[-1]} to_bin"
+            } if ((settings.user_status in (1, 2) and back_to_bin != "bin") or is_admin_id(chat_id)) else {}
+        ])
 
-        if (settings.user_status in (1, 2) and back_to_bin != "bin") or is_admin_id(chat_id):
-            predelmarkup.row(InlineKeyboardButton("🗑 "+get_translate("trash_bin", settings.lang), callback_data=f"{call_data.split(maxsplit=1)[-1]} to_bin"))
-
-        end_text = get_translate("/deleted", settings.lang) if (settings.user_status in (1, 2) or is_admin_id(chat_id)) else ""
         day = DayInfo(settings, event_date)
-        bot.edit_message_text(f"<b>{event_date}.{event_id}.</b>{status} <u><i>{day.str_date}  {day.week_date}</i> {day.relatively_date}</u>\n"
-                              f"<b>{get_translate('are_you_sure', settings.lang)}:</b>\n"
-                              f"{text[:3800]}\n\n"
-                              f"{end_text}", chat_id, message_id,
-                              reply_markup=predelmarkup)
+        sure_text = get_translate('are_you_sure', settings.lang)
+        end_text = get_translate("/deleted", settings.lang) if (settings.user_status in (1, 2) or is_admin_id(chat_id)) else ""
+        text = (f"<b>{event_date}.{event_id}.</b>{status} <u><i>{day.str_date}  {day.week_date}</i> {day.relatively_date}</u>\n"
+                f"<b>{sure_text}:</b>\n{text[:3800]}\n\n{end_text}")
+        bot.edit_message_text(text=text, chat_id=chat_id, message_id=message_id, reply_markup=predelmarkup)
 
     elif call_data.startswith("del "):
         event_date, event_id, where, mode = call_data.split(maxsplit=4)[1:]
