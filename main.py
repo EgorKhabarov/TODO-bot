@@ -184,13 +184,25 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
         generated = today_message(settings=settings, chat_id=chat_id, date=message_date)
         new_message = generated.send(chat_id=chat_id)
 
-        try:
-            generated = today_message(settings=settings, chat_id=chat_id, date=message_date, message_id=new_message.message_id)
-            generated.edit(chat_id=chat_id, message_id=new_message.message_id, only_markup=True)
-        except ApiTelegramException: # message is not modified
-            pass
+        # Чтобы не создавать новый `generated`, изменяем уже существующее, если в сообщение событие только одно.
+        if len(generated.event_list) == 1:
+            event = generated.event_list[0]
+            markup = generated.reply_markup.to_dict()
 
-        # callback_handler(UserSettings(chat_id), chat_id, new_message.message_id, message_date, "update", None, None)
+            button = markup["inline_keyboard"][0][1] # Находим вторую кнопку в первом ряду.
+
+            # Заменяем callback_data на switch_inline_query_current_chat
+            del button["callback_data"]
+            button["switch_inline_query_current_chat"] = (
+                f"Edit message({event.event_id}, {event.date}, {new_message.message_id})\n"
+                f"{NoHTML(event.text)}")
+
+            generated.reply_markup = InlineKeyboardMarkup.de_json(markup) # Преобразуем из dict в InlineKeyboardMarkup
+
+            try:
+                generated.edit(chat_id=chat_id, message_id=new_message.message_id, only_markup=True)
+            except ApiTelegramException: # message is not modified
+                pass
 
     elif message_text.startswith("/sqlite") and is_admin_id(chat_id) and message.chat.type == "private":
         bot.send_chat_action(chat_id=chat_id, action="upload_document")
