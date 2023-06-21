@@ -187,17 +187,11 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
         # Чтобы не создавать новый `generated`, изменяем уже существующее, если в сообщение событие только одно.
         if len(generated.event_list) == 1:
             event = generated.event_list[0]
-            markup = generated.reply_markup.to_dict()
-
-            button = markup["inline_keyboard"][0][1] # Находим вторую кнопку в первом ряду.
-
-            # Заменяем callback_data на switch_inline_query_current_chat
-            del button["callback_data"]
-            button["switch_inline_query_current_chat"] = (
-                f"Edit message({event.event_id}, {event.date}, {new_message.message_id})\n"
-                f"{NoHTML(event.text)}")
-
-            generated.reply_markup = InlineKeyboardMarkup.de_json(markup) # Преобразуем из dict в InlineKeyboardMarkup
+            generated.reply_markup[0][1].replace(
+                old="callback_data",
+                new="switch_inline_query_current_chat",
+                val=f"Edit message({event.event_id}, {event.date}, {new_message.message_id})\n{NoHTML(event.text)}"
+            )
 
             try:
                 generated.edit(chat_id=chat_id, message_id=new_message.message_id, only_markup=True)
@@ -1091,6 +1085,8 @@ def callback_query_handler(call: CallbackQuery):
 def get_search_message(message: Message):
     """
     Ловит сообщения поиска
+    #   (ИЛИ)
+    #!  (И)
     """
     query = ToHTML(message.text[1:].replace("--", "").replace("\n", " "))
     chat_id = message.chat.id

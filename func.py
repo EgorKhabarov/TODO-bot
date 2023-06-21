@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from calendar import monthcalendar, isleap
+from typing import Literal, Any, Callable
 from textwrap import wrap as textwrap
 from sqlite3 import connect, Error # pip3.10 install --user sqlite3
 from urllib.parse import urlparse
@@ -7,7 +8,6 @@ from dataclasses import dataclass
 from io import StringIO, BytesIO
 from PIL import Image, ImageFont
 from PIL.ImageDraw import Draw
-from typing import Literal, Any
 from copy import deepcopy
 from time import time
 import re
@@ -676,6 +676,12 @@ def calendar_months(user_timezone: int, lang: str, chat_id, YY) -> InlineKeyboar
          for text, year in {"<<": YY - 1, "⟳": "now", ">>": YY + 1}.items()}
     ])
 
+_getitem: Callable[[InlineKeyboardMarkup, int], list[InlineKeyboardButton]] = lambda self, key: self.keyboard[key]
+_replace: Callable[[InlineKeyboardButton, str, str, str], None] = lambda self, old, new, val:\
+    self.__setattr__(old, None) or self.__setattr__(new, val)
+InlineKeyboardMarkup.__getitem__, InlineKeyboardButton.replace = _getitem, _replace
+del _getitem, _replace
+
 backmarkup = generate_buttons([{"🔙": "back"}])
 delmarkup = generate_buttons([{"✖": "message_del"}])
 databasemarkup = generate_buttons([{"Применить базу данных": "set database"}])
@@ -1148,17 +1154,14 @@ def today_message(settings: UserSettings,
     else:
         generated.get_data(WHERE=WHERE, direction=settings.direction_sql)
 
+    # Изменяем уже существующий `generated`, если в сообщение событие только одно.
     if len(generated.event_list) == 1 and message_id:
         event = generated.event_list[0]
-        generated.reply_markup = generate_buttons([
-            {"➕": "event_add",
-             "📝": {
-                 "switch_inline_query_current_chat": f"Edit message({event.event_id}, {event.date}, {message_id})\n"
-                                                     f"{NoHTML(event.text)}"
-             },
-             "🚩": "select event status",
-             "🗑": "select event delete"},
-            {"🔙": "back", "<": yesterday, ">": tomorrow, "🔄": "update"}])
+        generated.reply_markup[0][1].replace(
+            old="callback_data",
+            new="switch_inline_query_current_chat",
+            val=f"Edit message({event.event_id}, {event.date}, {message_id})\n{NoHTML(event.text)}"
+        )
 
     generated.format(title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n"
                            f"{'<b>'+get_translate('page', settings.lang)+f' {page}</b>{backslash_n}' if int(page) > 1 else ''}",
