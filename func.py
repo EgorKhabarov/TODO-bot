@@ -1008,7 +1008,7 @@ def search(settings: UserSettings,
 
     querylst = query.replace("\n", " ").split()
     splitquery = " OR ".join(f"date LIKE '%{x}%' OR text LIKE '%{x}%' OR status LIKE '%{x}%' OR event_id LIKE '%{x}%'" for x in querylst)
-    WHERE = f"(user_id = {chat_id} AND isdel == 0) AND ({splitquery})"
+    WHERE = f"(user_id={chat_id} AND isdel=0) AND ({splitquery})"
 
     generated = MessageGenerator(settings, reply_markup=delopenmarkup)
     if id_list:
@@ -1171,7 +1171,7 @@ def today_message(settings: UserSettings,
     # Добавить дополнительную кнопку для дней в которых есть праздники
     daylist = [x[0] for x in SQL(f"""
         SELECT DISTINCT date FROM root 
-        WHERE isdel=0 AND user_id={chat_id} 
+        WHERE user_id={chat_id} AND isdel=0 
         AND 
         (
             ( -- Каждый год
@@ -1248,6 +1248,8 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
             del _now, dates
 
             WHERE = f"""
+                user_id={user_id} AND isdel=0
+                AND
                 (
                     ( -- На сегодняшние даты
                         (
@@ -1283,7 +1285,6 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
                         status LIKE "%📬%"
                     )
                 )
-                AND isdel=0
             """
 
             generated = MessageGenerator(settings, reply_markup=delmarkup)
@@ -1341,7 +1342,7 @@ def recurring(settings: UserSettings,
         recurring(settings=settings, date=date, chat_id=chat_id, id_list=id_list, page=page)
     """
     WHERE = f"""
-        isdel=0 AND user_id={chat_id} 
+        user_id={chat_id} AND isdel=0
         AND 
         (
             ( -- Каждый год
