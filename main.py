@@ -318,6 +318,7 @@ SyntaxError
     elif message_text.startswith("/idinfo ") and is_admin_id(chat_id) and message.chat.type == "private":
         if len(message_text.split(" ")) == 2:
             user_id = int(message_text.removeprefix("/idinfo "))
+            _settings = UserSettings(user_id)
             chat = bot.get_chat(user_id)
             text = f"""
 type: <code>{chat.type}</code>
@@ -327,13 +328,13 @@ first_name: <code>{chat.first_name}</code>
 last_name: <code>{chat.last_name}</code>
 id: <code>{chat.id}</code>
 
-lang: {settings.lang}
-timezone: {settings.timezone}
-city: {settings.city}
-notifications: {settings.notifications}
-notifications_time: {settings.notifications_time}
-direction: {settings.direction}
-sub_urls: {settings.sub_urls}
+lang: {_settings.lang}
+timezone: {_settings.timezone}
+city: {_settings.city}
+notifications: {_settings.notifications}
+notifications_time: {_settings.notifications_time}
+direction: {_settings.direction}
+sub_urls: {_settings.sub_urls}
 
 command: <code>/idinfo {chat.id}</code>
 promote: <code>/setuserstatus {chat.id} </code>
