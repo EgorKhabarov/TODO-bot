@@ -209,15 +209,23 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
 
     elif message_text.startswith("/files") and is_admin_id(chat_id) and message.chat.type == "private":
         bot.send_chat_action(chat_id=chat_id, action="upload_document")
+        tag_log = True if message_text.endswith(" +log") else False
+
+        class _:
+            def __enter__(self): pass
+            def __exit__(self, exc_type, exc_val, exc_tb): pass
+
         try:
-            with (open("config.py", "rb") as config_file,
-                  open("lang.py",   "rb") as lang_file,
-                  open("func.py",   "rb") as func_file,
-                  open(__file__,    "rb") as main_file,
-                  open(config.database_path, 'rb') as db_file):
+            with (open(config.log_file,      "rb") if tag_log else _() as log_file,
+                  open("config.py",          "rb") as config_file,
+                  open("lang.py",            "rb") as lang_file,
+                  open("func.py",            "rb") as func_file,
+                  open("main.py",            "rb") as main_file,
+                  open(config.database_path, "rb") as db_file):
                 bot.send_media_group(
                     chat_id=chat_id,
                     media=[
+                        InputMediaDocument(log_file,    caption="Файл лога") if tag_log else None,
                         InputMediaDocument(config_file, caption="Файл настроек"),
                         InputMediaDocument(lang_file,   caption="Языковой файл"),
                         InputMediaDocument(func_file,   caption="Файл с функциями"),
