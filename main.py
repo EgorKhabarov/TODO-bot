@@ -1,9 +1,9 @@
-from requests.exceptions import MissingSchema, ConnectionError
 from threading import Thread
 from sys import platform
 from time import sleep
 import csv
 
+from requests.exceptions import MissingSchema, ConnectionError
 from telebot import TeleBot
 from telebot.types import CallbackQuery, InputFile
 from telebot.types import BotCommandScopeChat    # Команды для определённого чата

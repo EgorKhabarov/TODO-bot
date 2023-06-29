@@ -22,4 +22,12 @@ pip install -r requirements.txt
 
 Bot settings => Group Privacy => disabled
 Bot settings => Inline Mode   => disabled
+
+pip3.11 install --user requests
+pip3.11 install --user sqlite3
+pip3.11 install --user pillow
+
+pip install requests
+pip install sqlite3
+pip install pillow
 """

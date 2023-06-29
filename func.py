@@ -2,17 +2,17 @@ from datetime import datetime, timedelta, timezone
 from calendar import monthcalendar, isleap
 from typing import Literal, Any, Callable
 from textwrap import wrap as textwrap
-from sqlite3 import connect, Error # pip3.10 install --user sqlite3
+from sqlite3 import connect, Error
 from urllib.parse import urlparse
 from dataclasses import dataclass
 from io import StringIO, BytesIO
-from PIL import Image, ImageFont
-from PIL.ImageDraw import Draw
 from copy import deepcopy
 from time import time
 import re
 
-from requests import get # pip install requests
+from PIL import Image, ImageFont
+from PIL.ImageDraw import Draw
+from requests import get
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 from telebot.apihelper import ApiTelegramException
 
