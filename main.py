@@ -20,7 +20,7 @@ if platform == "win32": # Windows := 0:
 
 re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
 re_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}")
-re_edit_message = re.compile(r"message\((\d+), (\d{1,2}\.\d{1,2}\.\d{4}), (\d+)\)")
+re_edit_message = re.compile(r"event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.edit")
 
 bot = TeleBot(config.bot_token)
 Me = bot.get_me()
@@ -190,7 +190,7 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
             generated.reply_markup[0][1].replace(
                 old="callback_data",
                 new="switch_inline_query_current_chat",
-                val=f"Edit message({event.event_id}, {event.date}, {new_message.message_id})\n{NoHTML(event.text)}"
+                val=f"event({event.date}, {event.event_id}, {new_message.message_id}).edit\n{NoHTML(event.text)}"
             )
 
             try:
@@ -554,7 +554,8 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
     elif call_data == "confirm change":
         text = ToHTML(message_text.split("\n", maxsplit=2)[-1]) # Получаем изменённый текст
-        msg_date, *_, event_id = message_text.split("\n", maxsplit=1)[0].split(" ") # TODO изменить парсинг переменных
+        # TODO изменить парсинг переменных
+        msg_date, event_id = message_text.split("\n", maxsplit=1)[0].split(" ", maxsplit=2)[:2]
 
         try:
             SQL(f"""
@@ -624,7 +625,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             if action == "edit":
                 markup.row(InlineKeyboardButton(
                     text=f"{event}{callbackTab * 20}",
-                    switch_inline_query_current_chat=f"Edit message({event_id}, {msg_date}, {message.message_id})\n"
+                    switch_inline_query_current_chat=f"event({msg_date}, {event_id}, {message.message_id}).edit\n"
                                                      f"{NoHTML(event_text)}"))
 
             elif action in ("status", "delete"): # Действия в обычном дне
@@ -1108,7 +1109,7 @@ def get_search_message(message: Message):
     generated = search(settings=settings, chat_id=chat_id, query=query)
     generated.send(chat_id=chat_id)
 
-@bot.message_handler(func=lambda m: m.text.startswith(f"@{BOT_USERNAME} Edit message(") and re_edit_message.search(m.text))
+@bot.message_handler(func=lambda m: re_edit_message.search(m.text))
 @execution_time
 def get_edit_message(message: Message):
     """
@@ -1125,13 +1126,13 @@ def get_edit_message(message: Message):
     res = re_edit_message.search(message.text)[0]
 
     (
-        event_id,
         event_date,
+        event_id,
         message_id,
         text
     ) = (
-        int(re.findall(r"\((\d+)", res)[0]),
-        str(re.findall(r" (\d{1,2}\.\d{1,2}\.\d{4}),", res)[0]),
+        str(re.findall(r"\((\d{1,2}\.\d{1,2}\.\d{4}),", res)[0]),
+        int(re.findall(r" (\d+)", res)[0]),
         int(re.findall(r", (\d+)\)", res)[0]),
         message.text.split("\n", maxsplit=1)[-1].strip("\n")  # ВАЖНО!
     )
@@ -1165,7 +1166,7 @@ def get_edit_message(message: Message):
         try:
             day = DayInfo(settings, event_date)
             bot.edit_message_text(f"""
-{event_date} <u><i>{day.str_date}  {day.week_date}</i> {day.relatively_date}</u> {event_id}
+{event_date} {event_id} <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})
 <b>{get_translate("are_you_sure_edit", settings.lang)}</b>
 <i>{ToHTML(text)}</i>
 """,
@@ -1181,9 +1182,9 @@ def get_edit_message(message: Message):
                                   ])
                                   )
         except ApiTelegramException as e:
-            if "message is not modified" not in str(e):
+            if "message is not modified" not in str(e) and "message to edit not found" not in str(e):
                 logging.info(f'[main.py -> get_edit_message] ApiTelegramException "{e}"')
-                return
+            return
     try:
         bot.delete_message(chat_id, edit_message_id)
     except ApiTelegramException:

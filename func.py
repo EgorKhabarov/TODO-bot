@@ -676,10 +676,13 @@ def calendar_months(user_timezone: int, lang: str, chat_id, YY) -> InlineKeyboar
          for text, year in {"<<": YY - 1, "⟳": "now", ">>": YY + 1}.items()}
     ])
 
+# Для изменения одной кнопки в клавиатуре InlineKeyboardMarkup
+# markup[row][column].replace(old, new, val)
 _getitem: Callable[[InlineKeyboardMarkup, int], list[InlineKeyboardButton]] = lambda self, key: self.keyboard[key]
 _replace: Callable[[InlineKeyboardButton, str, str, str], None] = lambda self, old, new, val:\
     self.__setattr__(old, None) or self.__setattr__(new, val)
-InlineKeyboardMarkup.__getitem__, InlineKeyboardButton.replace = _getitem, _replace
+InlineKeyboardMarkup.__getitem__ = _getitem
+InlineKeyboardButton.replace = _replace
 del _getitem, _replace
 
 backmarkup = generate_buttons([{"🔙": "back"}])
@@ -1160,7 +1163,7 @@ def today_message(settings: UserSettings,
         generated.reply_markup[0][1].replace(
             old="callback_data",
             new="switch_inline_query_current_chat",
-            val=f"Edit message({event.event_id}, {event.date}, {message_id})\n{NoHTML(event.text)}"
+            val=f"event({event.date}, {event.event_id}, {message_id}).edit\n{NoHTML(event.text)}"
         )
 
     generated.format(title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n"
