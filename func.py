@@ -372,7 +372,7 @@ def execution_time(func):
         start = time()
         result = func(*args, **kwargs)
         end = time()
-        logging.info(f" \t({end - start:.3f})") # TODO цвет в зависимости от значения
+        logging.info(f" \t({end - start:.3f})")
         return result
     return wrapper
 
@@ -385,7 +385,16 @@ class DayInfo:
     self.relatively_date "через x дней" или "x дней назад"
     """
     def __init__(self, settings: UserSettings, date: str):
-        today, tomorrow, day_after_tomorrow, yesterday, day_before_yesterday, after, ago, Fday = get_translate("relative_date_list", settings.lang)
+        (
+            today,
+            tomorrow,
+            day_after_tomorrow,
+            yesterday,
+            day_before_yesterday,
+            after,
+            ago,
+            Fday
+        ) = get_translate("relative_date_list", settings.lang)
         x = now_time(settings.timezone)
         x = datetime(x.year, x.month, x.day)
         y = datetime(*[int(x) for x in date.split(".")][::-1])
@@ -410,8 +419,8 @@ class DayInfo:
 
 """weather"""
 # TODO добавить персональные api ключи для запрашивания погоды
-# TODO сделать декоратор для проверки api ключа у пользователя
-# TODO и в зависимости от наличия ключа ставить разные лимиты на запросы
+# TODO декоратор для проверки api ключа у пользователя
+# TODO в зависимости от наличия ключа ставить разные лимиты на запросы
 def no_spam(requests_count: int = 3, time_sec: int = 60):
     """
     Возвращает текст ошибки, если пользователи вызывали функцию чаще чем 3 раза в 60 секунд.
@@ -678,8 +687,8 @@ def calendar_months(user_timezone: int, lang: str, chat_id, YY) -> InlineKeyboar
 
 # Для изменения одной кнопки в клавиатуре InlineKeyboardMarkup
 # markup[row][column].replace(old, new, val)
-_getitem: Callable[[InlineKeyboardMarkup, int], list[InlineKeyboardButton]] = lambda self, key: self.keyboard[key]
-_replace: Callable[[InlineKeyboardButton, str, str, str], None] = lambda self, old, new, val:\
+def _getitem(self: InlineKeyboardMarkup, key: int) -> list[InlineKeyboardButton]: return self.keyboard[key]
+def _replace(self: InlineKeyboardButton, old: str, new: str, val: str) -> None:
     self.__setattr__(old, None) or self.__setattr__(new, val)
 InlineKeyboardMarkup.__getitem__ = _getitem
 InlineKeyboardButton.replace = _replace
@@ -692,8 +701,8 @@ delopenmarkup = generate_buttons([{"✖": "message_del", "↖️": "select event
 backopenmarkup = generate_buttons([{"🔙": "back", "↖️": "select event open"}])
 
 """Другое"""
-callbackTab = "⠀⠀⠀"
-backslash_n = "\n"
+callbackTab = "⠀⠀⠀" # Специальные прозрачные символы для заполнения
+backslash_n = "\n" # Для использования внутри f строк
 
 def ToHTML(text: str) -> str:
     return text.replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;").replace('"', "&quot;")
@@ -879,7 +888,7 @@ class MessageGenerator:
                  for row in diapason_list[:8]] # Обрезаем до 8 строк кнопок чтобы не было слишком много строк кнопок
         return self
 
-    def get_events(self, WHERE: str, values: list | tuple):
+    def get_events(self, WHERE: str, values: list | tuple[str]):
         """
         Возвращает события входящие в values с условием WHERE
         """
@@ -982,7 +991,7 @@ class MessageGenerator:
 def search(settings: UserSettings,
            chat_id: int,
            query: str,
-           id_list: list | tuple = tuple(),
+           id_list: list | tuple[str] = tuple(),
            page: int | str = 1) -> MessageGenerator:
     """
     :param settings: settings
@@ -1027,7 +1036,7 @@ def search(settings: UserSettings,
 
 def week_event_list(settings: UserSettings,
                     chat_id: int,
-                    id_list: list | tuple = tuple(),
+                    id_list: list | tuple[str] = tuple(),
                     page: int | str = 1) -> MessageGenerator:
     """
     :param settings: settings
@@ -1084,7 +1093,7 @@ def week_event_list(settings: UserSettings,
 
 def deleted(settings: UserSettings,
             chat_id: int,
-            id_list: list | tuple = tuple(),
+            id_list: list | tuple[str] = tuple(),
             page: int | str = 1) -> MessageGenerator:
     """
     :param settings: settings
@@ -1120,7 +1129,7 @@ def deleted(settings: UserSettings,
 def today_message(settings: UserSettings,
                   chat_id: int,
                   date: str,
-                  id_list: list | tuple = tuple(),
+                  id_list: list | tuple[str] = tuple(),
                   page: int | str = 1,
                   message_id: int = None) -> MessageGenerator:
     """
@@ -1206,7 +1215,7 @@ def today_message(settings: UserSettings,
     return generated
 
 def notifications(user_id_list: list | tuple[int | str, ...] = None,
-                  id_list: list | tuple = tuple(),
+                  id_list: list | tuple[str] = tuple(),
                   page: int | str = 1,
                   message_id: int = -1,
                   markup: InlineKeyboardMarkup = None,
@@ -1330,7 +1339,7 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
 def recurring(settings: UserSettings,
               date: str,
               chat_id: int,
-              id_list: list | tuple = tuple(),
+              id_list: list | tuple[str] = tuple(),
               page: int | str = 1):
     """
     :param settings: settings
@@ -1474,7 +1483,7 @@ def write_table_to_str(file: StringIO,
     table = [list(str(column) for column in row) for row in (SQL(query, commit=commit, column_names=True)
                                                              if not table else table)]
 
-    # Обрезаем длинные строки до 315 символов (уменьшается размер файла)
+    # Обрезаем длинные строки до 126 символов (уменьшается размер файла)
     table = [
         [
             "\n".join(
@@ -1566,8 +1575,8 @@ def semicircle(title: str, val: int, y: int) -> Image:
     draw.text((145 - text_width, 15 - text_height), title, fill="black", font=font)
 
     # Рисуем дугу
-    draw.pieslice(((45, 42), (245, 242)), 180, 360, fill=bg_color)# "#778795")
-    draw.pieslice(((45, 42), (245, 242)), 180, ((180 + (percent / 100) * 180) if percent < 101 else 360), fill=color) # "#303b44")
+    draw.pieslice(((45, 42), (245, 242)), 180, 360, fill=bg_color) # "#778795"
+    draw.pieslice(((45, 42), (245, 242)), 180, ((180 + (percent / 100) * 180) if percent < 101 else 360), fill=color) # "#303b44"
     draw.pieslice(((95, 50+42), (195, 192)), 180, 360, fill="#F0F0F0")
 
     text_width, text_height = [wh // 2 for wh in draw.textbbox((0, 0), text=text, font=font)[2:]]
@@ -1632,7 +1641,6 @@ SELECT
     font = ImageFont.truetype("arial.ttf", 30)
     text_width, text_height = [wh // 2 for wh in draw.textbbox((0, 0), text=text, font=font)[2:]]
     draw.text((1073 - text_width, 551 - text_height), text, fill="black", font=font)
-    # image.paste(Image.open(r"C:\Users\Egor\PycharmProjects\pythonProject2\Cats\r8jad.jpg").resize((555, 817)), (800, 139))
 
     buffer = BytesIO()
     image.save(buffer, format="png")

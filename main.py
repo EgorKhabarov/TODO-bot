@@ -47,21 +47,23 @@ def check(key, val) -> str:
             if keylist[key] == str(val) else
             f"\033[31m{val!s:<5}\033[0m{indent}"
             ) if key in keylist else f"{val}"
+
 logging.info(f"+{'-'*59}+\n"+"".join(f"| {k: >27} = {check(k, v): <27} |\n" for k, v in bot_dict.items())+f"+{'-'*59}+")
+# Знаю, что не читабельно. Просто решил записать компактно.
 del check
 
 bot.disable_web_page_preview = True
 bot.parse_mode = "html"
 
-def send(self, chat_id: int) -> Message:
+def _send(self, chat_id: int) -> Message:
     return bot.send_message(chat_id=chat_id, text=self.text, reply_markup=self.reply_markup)
 
-def edit(self,
-         *,
-         chat_id: int,
-         message_id: int,
-         only_markup: bool = False,
-         markup: InlineKeyboardMarkup = None) -> None:
+def _edit(self,
+          *,
+          chat_id: int,
+          message_id: int,
+          only_markup: bool = False,
+          markup: InlineKeyboardMarkup = None) -> None:
     """
     :param chat_id: chat_id
     :param message_id: message_id
@@ -75,10 +77,10 @@ def edit(self,
     else:
         bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=self.text, reply_markup=self.reply_markup)
 
-MessageGenerator.send = send
-MessageGenerator.edit = edit
-del send
-del edit
+MessageGenerator.send = _send
+MessageGenerator.edit = _edit
+del _send
+del _edit
 
 def clear_state(chat_id: int | str):
     """
@@ -111,7 +113,7 @@ bot.set_my_commands(commands=get_translate("0_command_list", "ru"), scope=BotCom
 def command_handler(settings: UserSettings, chat_id: int, message_text: str, message: Message) -> None:
     """
     Отвечает за реакцию бота на команды
-    Метод message.text.startswith("") используется для групп (в них сообщение приходит в формате /command{BOT_USERNAME})
+    Метод message.text.startswith("") используется и для групп (в них сообщение приходит в формате /command{BOT_USERNAME})
     """
     if message_text.startswith("/calendar"):
         text = get_translate("choose_date", settings.lang)
@@ -241,8 +243,8 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
         query = message_text[5:].strip()
         file = StringIO()
         file.name = "table.txt"
-        try:
 
+        try:
             write_table_to_str(file=file,
                                query=query,
                                commit=message_text.endswith("\n--commit=True"))
@@ -393,7 +395,7 @@ SyntaxError
         date = now_time(settings.timezone)
         bot.send_photo(chat_id, create_image(settings, date.year, date.month, date.day))
 
-    elif message_text.startswith("/currency") and 0:
+    elif message_text.startswith("/currency") and 0: # В разработке ...
         currency1 = "₽"
         currency2 = "$"
         bot.send_message(chat_id, f"Калькулятор валют\n0\n{currency1} ➡️ {currency2}", reply_markup=generate_buttons([
@@ -461,10 +463,10 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
     "status_home_page" -
     "status page" -
     "status set" - Установить статус для события.
-    "status delete" -
-    "before del" -
-    "del" -
-    "|" -
+    "status delete" - Удаляет статус для события
+    "before del" - Подтверждение удаления события.
+    "del" - Удаление события.
+    "|" - Меняет страничку.
     "generate calendar month" -
     "generate calendar days" -
     "settings" - par_name, par_val - Изменить значение колонки par_name на par_val и обновить сообщение с новыми настройками
@@ -554,7 +556,6 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
     elif call_data == "confirm change":
         text = ToHTML(message_text.split("\n", maxsplit=2)[-1]) # Получаем изменённый текст
-        # TODO изменить парсинг переменных
         msg_date, event_id = message_text.split("\n", maxsplit=1)[0].split(" ", maxsplit=2)[:2]
 
         try:
@@ -583,7 +584,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         # Если событие одно то оно сразу выбирается
         if len(events_list) == 1:
             event_id = events_list[0].split(".", maxsplit=2)[1]
-            if action.endswith("bin"): # TODO изменить парсинг переменных
+            if action.endswith("bin"):
                 event_id = events_list[0].split(".", maxsplit=4)[-2]
             try:
                 SQL(f"""
@@ -656,9 +657,6 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             callback_handler(settings, chat_id, message_id, message_text, "update", call_id, message)
             return
 
-        # TODO заменить чтобы при поиске ставилось другое и убрать костыль в back
-        # if message_text.startswith("🔍 "):  # Поиск
-        #     query = ToHTML(message_text.split("\n", maxsplit=1)[0].split(maxsplit=2)[-1][:-1])
         markup.row(InlineKeyboardButton("🔙", callback_data="back" if not action.endswith("bin") else "back bin"))
 
         if action == "edit":
@@ -704,7 +702,6 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                                       text=get_translate("error", settings.lang))
             return # такого события нет
 
-        # TODO проверка лимита
         if is_exceeded_limit(settings, event_date, 1, event_len):
             bot.answer_callback_query(callback_query_id=call_id, show_alert=True,
                                       text=get_translate("exceeded_limit", settings.lang))
@@ -936,7 +933,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             bot.answer_callback_query(callback_query_id=call_id, text=get_translate("already_on_this_page", settings.lang))
 
     elif call_data.startswith("generate calendar months "):
-        sleep(0.5)  # FIXME Задержка
+        sleep(0.5)
         year = call_data.split()[-1]
         if year == "now":
             YY = now_time(settings.timezone).year
@@ -953,7 +950,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             bot.answer_callback_query(callback_query_id=call_id, text="🤔")
 
     elif call_data.startswith("generate calendar days "):
-        sleep(0.5) # FIXME Задержка
+        sleep(0.5)
         if call_data.split()[-1] == "now":
             YY_MM = new_time_calendar(settings.timezone)
         else:
@@ -991,7 +988,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
     elif re_call_data_date.search(call_data):
         year = int(call_data[-4:])
-        sleep(0.3)  # FIXME Задержка
+        sleep(0.3)
         if 1980 < year < 3000:
             generated = today_message(settings=settings, chat_id=chat_id, date=call_data, message_id=message_id)
             generated.edit(chat_id=chat_id, message_id=message_id)
@@ -1155,7 +1152,7 @@ def get_edit_message(message: Message):
 
     # Вычисляем сколько символов добавил пользователь. Если символов стало меньше, то 0.
     added_length = 0 if tag_len_less else len(text) - len_old_event
-    # TODO проверка лимита
+
     tag_limit_exceeded = is_exceeded_limit(settings, event_date, 0, added_length)
 
     if tag_len_max:
@@ -1237,7 +1234,6 @@ def add_event(message: Message):
         bot.reply_to(message, get_translate("message_is_too_long", settings.lang), reply_markup=delmarkup)
         return
 
-    # TODO проверка лимита
     if is_exceeded_limit(settings, new_event_date, 1, len(message_text)):
         bot.reply_to(message, get_translate("exceeded_limit", settings.lang), reply_markup=delmarkup)
         return
