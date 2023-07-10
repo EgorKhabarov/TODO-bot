@@ -17,9 +17,7 @@ if platform == "win32": # Windows := 0:
     from ctypes import windll
     (lambda k: k.SetConsoleMode(k.GetStdHandle(-11), 7))(windll.kernel32)
 
-re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
-re_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}")
-re_edit_message = re.compile(r"event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.edit")
+
 
 bot = TeleBot(config.bot_token)
 bot.disable_web_page_preview = True
@@ -300,7 +298,7 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
             file = StringIO()
             file.name = f"ToDoList {message.from_user.username} ({now_time_strftime(settings.timezone)}).csv"
             table = SQL(f"""
-                SELECT event_id, date, status, text FROM root
+                SELECT event_id, date, status, text FROM events
                 WHERE user_id={chat_id} AND isdel=0;""", column_names=True)
             file_writer = csv.writer(file)
             [file_writer.writerows([[str(event_id), event_date, str(event_status), NoHTML(event_text)]])
@@ -408,7 +406,7 @@ SyntaxError
             if not is_admin_id(user_id):
                 try:
                     # TODO присылать sql файл для восстановления
-                    SQL(f"DELETE FROM root     WHERE user_id={user_id};", commit=True)
+                    SQL(f"DELETE FROM events   WHERE user_id={user_id};", commit=True)
                     SQL(f"DELETE FROM settings WHERE user_id={user_id};", commit=True)
                 except Error as e:
                     text = f'Ошибка базы данных: "{e}"'
@@ -575,7 +573,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
         try:
             SQL(f"""
-                UPDATE root SET text='{text}'
+                UPDATE events SET text='{text}'
                 WHERE user_id={chat_id} AND event_id={event_id}
                 AND date='{msg_date}';""", commit=True)
         except Error as e:
@@ -604,7 +602,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                 event_id = events_list[0].split(".", maxsplit=4)[-2]
             try:
                 SQL(f"""
-                    SELECT text FROM root 
+                    SELECT text FROM events 
                     WHERE event_id={event_id} AND user_id={chat_id}
                     {"AND isdel!=0" if action.endswith("bin") else ""};""")[0][0]
             except IndexError: # Если этого события не существует
@@ -633,7 +631,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             # Проверяем существование события
             try:
                 event_text = SQL(f"""
-                    SELECT text FROM root 
+                    SELECT text FROM events 
                     WHERE event_id={event_id} AND user_id={chat_id}
                     AND isdel{"!" if action.endswith("bin") else ""}=0;""")[0][0]
             except IndexError:
@@ -711,7 +709,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
         try:
             event_len = SQL(f"""
-                SELECT LENGTH(text) FROM root
+                SELECT LENGTH(text) FROM events
                 WHERE user_id={chat_id} AND event_id={event_id}
                 AND date='{event_date}' AND isdel!=0;""")[0][0]
         except IndexError:
@@ -725,7 +723,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             return
 
         SQL(f"""
-            UPDATE root SET isdel=0
+            UPDATE events SET isdel=0
             WHERE user_id={chat_id} AND event_id={event_id}
             AND date='{event_date}';""", commit=True)
         callback_handler(settings, chat_id, message_id, message_text, "back bin", call_id, message)
@@ -741,7 +739,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         # Проверяем наличие события
         try: # Если события нет, то обновляем сообщение
             text, status = SQL(f"""
-                SELECT text, status FROM root
+                SELECT text, status FROM events
                 WHERE user_id={chat_id} AND event_id="{event_id}"
                 AND isdel=0 AND date="{event_date}";""")[0]
         except IndexError:  # Если этого события уже нет
@@ -787,7 +785,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
         try: # Если события нет, то обновляем сообщение
             text, old_status = SQL(f"""
-                SELECT text, status FROM root
+                SELECT text, status FROM events
                 WHERE user_id={chat_id} AND event_id="{event_id}"
                 AND isdel=0 AND date="{event_date}";""")[0]
         except IndexError:
@@ -830,7 +828,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                 res_status = f"{old_status},{new_status}"
 
             SQL(f"""
-                UPDATE root SET status='{res_status}'
+                UPDATE events SET status='{res_status}'
                 WHERE user_id={chat_id} AND event_id={event_id}
                 AND date='{event_date}';""", commit=True)
 
@@ -846,7 +844,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
         try: # Если события нет, то обновляем сообщение
             text, old_status = SQL(f"""
-                SELECT text, status FROM root
+                SELECT text, status FROM events
                 WHERE user_id={chat_id} AND event_id="{event_id}"
                 AND isdel=0 AND date="{event_date}";""")[0]
         except IndexError:
@@ -862,7 +860,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             res_status = "⬜️"
 
         SQL(f"""
-            UPDATE root SET status='{res_status}' 
+            UPDATE events SET status='{res_status}' 
             WHERE user_id={chat_id} AND event_id={event_id} 
             AND date='{event_date}';""", commit=True)
 
@@ -875,7 +873,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
         try:
             text, status = SQL(f"""
-                SELECT text, status FROM root
+                SELECT text, status FROM events
                 WHERE user_id={chat_id} AND event_id={event_id} AND date='{event_date}' AND
                 isdel{"!" if back_to_bin == "bin" else ""}=0;""")[0]
         except IndexError as e:
@@ -905,11 +903,11 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         try:
             if (settings.user_status in (1, 2) or is_admin_id(chat_id)) and mode == "to_bin":
                 SQL(f"""
-                    UPDATE root SET isdel='{now_time_strftime(settings.timezone)}' 
+                    UPDATE events SET isdel='{now_time_strftime(settings.timezone)}' 
                     WHERE user_id={chat_id} AND date='{event_date}' AND event_id={event_id};""", commit=True)
             else:
                 SQL(f"""
-                    DELETE FROM root 
+                    DELETE FROM events 
                     WHERE user_id={chat_id} AND date='{event_date}' AND event_id={event_id};""", commit=True)
         except Error as e:
             logging.info(f'[main.py -> callback_handler -> "del"] Error "{e}"')
@@ -935,7 +933,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                 generated = deleted(settings=settings, chat_id=chat_id, id_list=id_list, page=page)
                 generated.edit(chat_id=chat_id, message_id=message_id, markup=message.reply_markup)
 
-            elif re_date.match(message_text) is not None:
+            elif re_date.match(message_text):
                 msg_date = re_date.match(message_text)[0]
                 if page.startswith("!"):
                     generated = recurring(settings=settings,
@@ -950,7 +948,26 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                                               id_list=id_list,
                                               page=page,
                                               message_id=message_id)
-                generated.edit(chat_id=chat_id, message_id=message_id, markup=message.reply_markup)
+
+                # Изменяем кнопку изменения текста события на актуальную
+                markup = message.reply_markup
+                events = generated.event_list
+
+                if len(events) == 1:
+                    event = events[0]
+                    markup[0][1].replace(
+                        old="callback_data",
+                        new="switch_inline_query_current_chat",
+                        val=f"event({event.date}, {event.event_id}, {message.message_id}).edit\n{NoHTML(event.text)}"
+                    )
+                else:
+                    markup[0][1].replace(
+                        old="switch_inline_query_current_chat",
+                        new="callback_data",
+                        val="select event edit"
+                    )
+
+                generated.edit(chat_id=chat_id, message_id=message_id, markup=markup)
 
             elif message_text.startswith("🔔"): # Будильник
                 notifications(user_id_list=[chat_id], id_list=id_list, page=page, message_id=message_id, markup=message.reply_markup)
@@ -1137,7 +1154,7 @@ def get_edit_message(message: Message):
 
     try: # Уменьшится ли длинна события
         len_old_event, tag_len_less = SQL(f"""
-            SELECT LENGTH(text), {len(text)} < LENGTH(text) FROM root
+            SELECT LENGTH(text), {len(text)} < LENGTH(text) FROM events
             WHERE user_id={chat_id} AND event_id='{event_id}'
             AND date='{event_date}' AND isdel=0;""")[0]
     except ValueError:

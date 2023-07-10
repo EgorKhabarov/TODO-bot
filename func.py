@@ -180,11 +180,11 @@ def create_tables() -> None:
     try:
         SQL("""
             SELECT event_id, user_id, date, text, isdel, status
-            FROM root LIMIT 1;""")
+            FROM events LIMIT 1;""")
     except Error as e:
-        if str(e) == "no such table: root":
+        if str(e) == "no such table: events":
             SQL("""
-                CREATE TABLE root (
+                CREATE TABLE events (
                     event_id  INTEGER,
                     user_id   INT,
                     date      TEXT,
@@ -227,7 +227,7 @@ def create_event(user_id: int, date: str, text: str) -> bool:
     """
     try:
         SQL(f"""
-            INSERT INTO root(event_id, user_id, date, text)
+            INSERT INTO events(event_id, user_id, date, text)
             VALUES(
               COALESCE((SELECT user_max_event_id FROM settings WHERE user_id = {user_id}), 1),
               {user_id}, '{date}', '{text}'
@@ -595,12 +595,12 @@ def calendar_days(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list
 
     # Дни в которые есть события
     has_events = [x[0] for x in SQL(f"""
-        SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as INT) FROM root
+        SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as INT) FROM events
         WHERE user_id={chat_id} AND isdel=0 AND date LIKE "__.{MM:0>2}.{YY}";""")]
 
     # Дни рождения, праздники и каждый год или месяц
     every_year_or_month = [x[0] for x in SQL(f"""
-        SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as INT) FROM root
+        SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as INT) FROM events
         WHERE user_id={chat_id} AND isdel=0
         AND
         (
@@ -614,7 +614,7 @@ def calendar_days(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list
 
     # Каждую неделю
     every_week = [6 if x[0] == -1 else x[0] for x in SQL(f"""
-        SELECT DISTINCT CAST(strftime('%w', {sqlite_format_date('date')})-1 as INT) FROM root
+        SELECT DISTINCT CAST(strftime('%w', {sqlite_format_date('date')})-1 as INT) FROM events
         WHERE user_id={chat_id} AND isdel=0 AND status LIKE "%🗞%";
     """)]
 
@@ -651,20 +651,20 @@ def calendar_months(user_timezone: int, lang: str, chat_id, YY) -> InlineKeyboar
     """
     # В этом году
     month_list = [x[0] for x in SQL(f"""
-        SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM root
+        SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM events
         WHERE user_id={chat_id} AND date LIKE "__.__.{YY}" AND isdel=0;
     """)]
 
     # Повторение каждый год
     every_year = [x[0] for x in SQL(f"""
-        SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM root
+        SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM events
         WHERE user_id={chat_id} AND isdel=0
         AND (status LIKE "%🎉%" OR status LIKE "%🎊%" OR status LIKE "%📆%");
     """)]
 
     # Повторение каждый месяц TODO Убрать DISTINCT ?
     every_month = [x[0] for x in SQL(f"""
-        SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM root
+        SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM events
         WHERE user_id={chat_id} AND isdel=0 AND status LIKE "%📅%" LIMIT 1;
     """)]
 
@@ -700,13 +700,11 @@ def _removeline(self: InlineKeyboardMarkup, key: int) -> None:
     del self.keyboard[key]
 InlineKeyboardMarkup.__getitem__ = _getitem
 InlineKeyboardButton.replace = _replace
-del _getitem, _replace
 
 # Задокументировать эти строки.
 # Вынести в отдельный файл, чтобы PyCharm не ругался.
 InlineKeyboardButton.remove = _remove
 InlineKeyboardMarkup.removeline = _removeline
-del _remove, _removeline
 
 backmarkup = generate_buttons([{"🔙": "back"}])
 delmarkup = generate_buttons([{"✖": "message_del"}])
@@ -715,6 +713,10 @@ delopenmarkup = generate_buttons([{"✖": "message_del", "↖️": "select event
 backopenmarkup = generate_buttons([{"🔙": "back", "↖️": "select event open"}])
 
 """Другое"""
+re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
+re_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}")
+re_edit_message = re.compile(r"event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.edit")
+re_html_tags = re.compile(r"</?\w+>")
 callbackTab = "⠀⠀⠀" # Специальные прозрачные символы для заполнения
 backslash_n = "\n" # Для использования внутри f строк
 
@@ -853,7 +855,7 @@ class MessageGenerator:
                  column_to_order: str = sqlite_format_date("date"),
                  column_to_return: str = "event_id",
                  WHERE: str,
-                 table: str = "root",
+                 table: str = "events",
                  MAXLEN: int = 2500,
                  MAXEVENTCOUNT: int = 10,
                  direction: Literal["ASC", "DESC"] = "DESC",
@@ -870,9 +872,9 @@ class MessageGenerator:
                           MAXEVENTCOUNT=MAXEVENTCOUNT,
                           direction=direction)
         if data:
-            if table == "root":
+            if table == "events":
                 first_message = [Event(*event) for event in SQL(f"""
-                    SELECT date, event_id, status, text, isdel FROM root 
+                    SELECT date, event_id, status, text, isdel FROM events 
                     WHERE event_id IN ({data[0][0]}) AND ({WHERE})
                     ORDER BY {column_to_order} {direction};""")]
             else:
@@ -908,7 +910,7 @@ class MessageGenerator:
         """
         try:
             res = [Event(*event) for event in SQL(f"""
-                SELECT date, event_id, status, text, isdel FROM root
+                SELECT date, event_id, status, text, isdel FROM events
                 WHERE event_id IN ({', '.join(values)}) AND ({WHERE})
                 ORDER BY {sqlite_format_date('date')} {self._settings.direction_sql};""")]
         except Error as e:
@@ -982,7 +984,7 @@ class MessageGenerator:
                     text=event.text
                 ) + "\n"
 
-        self.text = format_string+ending
+        self.text = (format_string+ending).strip()
         return self
 
     def send(self, chat_id: int) -> Message:
@@ -1026,11 +1028,11 @@ def search(settings: UserSettings,
                          if_empty=get_translate("request_empty", settings.lang))
         return generated
 
-    re_day = re.compile(r"[#\b ]day=(\d{1,2})[\b]?")
-    re_month = re.compile(r"[#\b ]month=(\d{1,2})[\b]?")
-    re_year = re.compile(r"[#\b ]year=(\d{4})[\b]?")
-    re_id = re.compile(r"[#\b ]id=(\d{,6})[\b]?")
-    re_status = re.compile(r"[#\b ]status=(\S+)[\b]?")
+    # re_day = re.compile(r"[#\b ]day=(\d{1,2})[\b]?")
+    # re_month = re.compile(r"[#\b ]month=(\d{1,2})[\b]?")
+    # re_year = re.compile(r"[#\b ]year=(\d{4})[\b]?")
+    # re_id = re.compile(r"[#\b ]id=(\d{,6})[\b]?")
+    # re_status = re.compile(r"[#\b ]status=(\S+)[\b]?")
 
     querylst = query.replace("\n", " ").split()
     splitquery = " OR ".join(f"date LIKE '%{x}%' OR text LIKE '%{x}%' OR status LIKE '%{x}%' OR event_id LIKE '%{x}%'" for x in querylst)
@@ -1122,7 +1124,7 @@ def deleted(settings: UserSettings,
     """
     WHERE = f"""user_id={chat_id} AND isdel!=0"""
     # Удаляем события старше 30 дней
-    SQL(f"""DELETE FROM root WHERE isdel!=0 AND 
+    SQL(f"""DELETE FROM events WHERE isdel!=0 AND 
     (julianday('now') - julianday({sqlite_format_date("isdel")}) > 30);""", commit=True)
 
 
@@ -1196,7 +1198,7 @@ def today_message(settings: UserSettings,
 
     # Добавить дополнительную кнопку для дней в которых есть праздники
     daylist = [x[0] for x in SQL(f"""
-        SELECT DISTINCT date FROM root 
+        SELECT DISTINCT date FROM events 
         WHERE user_id={chat_id} AND isdel=0 
         AND 
         (
@@ -1338,7 +1340,7 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
                         generated.send(chat_id=user_id)
                     if not from_command:
                         SQL(f"""
-                            UPDATE root 
+                            UPDATE events 
                             SET status=REPLACE(status, '🔔', '🔕')
                             WHERE status LIKE '%🔔%'
                             AND date='{now_time_strftime(settings.timezone)}';
@@ -1452,14 +1454,14 @@ def is_exceeded_limit(settings: UserSettings, date: str, event_count: int = 0, s
         limit_event_all,   limit_symbol_all
     ) = SQL(f"""
 SELECT
-    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND date='{date}'                  ) AS count_today,
-    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND date='{date}'                  ) AS sum_length_today,
-    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND SUBSTR(date, 4, 7)='{date[3:]}') AS count_month,
-    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND SUBSTR(date, 4, 7)='{date[3:]}') AS sum_length_month,
-    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND SUBSTR(date, 7, 4)='{date[6:]}') AS count_year,
-    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND SUBSTR(date, 7, 4)='{date[6:]}') AS sum_length_year,
-    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id}                                    ) AS total_count,
-    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id}                                    ) AS total_length;
+    (SELECT IFNULL(COUNT(*)         , 0) FROM events WHERE user_id={user_id} AND date='{date}'                  ) AS count_today,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM events WHERE user_id={user_id} AND date='{date}'                  ) AS sum_length_today,
+    (SELECT IFNULL(COUNT(*)         , 0) FROM events WHERE user_id={user_id} AND SUBSTR(date, 4, 7)='{date[3:]}') AS count_month,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM events WHERE user_id={user_id} AND SUBSTR(date, 4, 7)='{date[3:]}') AS sum_length_month,
+    (SELECT IFNULL(COUNT(*)         , 0) FROM events WHERE user_id={user_id} AND SUBSTR(date, 7, 4)='{date[6:]}') AS count_year,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM events WHERE user_id={user_id} AND SUBSTR(date, 7, 4)='{date[6:]}') AS sum_length_year,
+    (SELECT IFNULL(COUNT(*)         , 0) FROM events WHERE user_id={user_id}                                    ) AS total_count,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM events WHERE user_id={user_id}                                    ) AS total_length;
     """)[0]
 
     inf = float("inf") # Бесконечность
@@ -1622,14 +1624,14 @@ def create_image(settings: UserSettings, year=None, month=None, day=None, text="
      limit_event_year, limit_symbol_year,
      limit_event_all, limit_symbol_all) = SQL(f"""
 SELECT 
-    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND isdel=0 AND date='{date}'                  ) AS count_today,
-    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND isdel=0 AND date='{date}'                  ) AS sum_length_today,
-    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND isdel=0 AND SUBSTR(date, 4, 7)='{date[3:]}') AS count_month,
-    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND isdel=0 AND SUBSTR(date, 4, 7)='{date[3:]}') AS sum_length_month,
-    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND isdel=0 AND SUBSTR(date, 7, 4)='{date[6:]}') AS count_year,
-    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND isdel=0 AND SUBSTR(date, 7, 4)='{date[6:]}') AS sum_length_year,
-    (SELECT IFNULL(COUNT(*)         , 0) FROM root WHERE user_id={user_id} AND isdel=0                                    ) AS total_count,
-    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM root WHERE user_id={user_id} AND isdel=0                                    ) AS total_length;
+    (SELECT IFNULL(COUNT(*)         , 0) FROM events WHERE user_id={user_id} AND isdel=0 AND date='{date}'                  ) AS count_today,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM events WHERE user_id={user_id} AND isdel=0 AND date='{date}'                  ) AS sum_length_today,
+    (SELECT IFNULL(COUNT(*)         , 0) FROM events WHERE user_id={user_id} AND isdel=0 AND SUBSTR(date, 4, 7)='{date[3:]}') AS count_month,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM events WHERE user_id={user_id} AND isdel=0 AND SUBSTR(date, 4, 7)='{date[3:]}') AS sum_length_month,
+    (SELECT IFNULL(COUNT(*)         , 0) FROM events WHERE user_id={user_id} AND isdel=0 AND SUBSTR(date, 7, 4)='{date[6:]}') AS count_year,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM events WHERE user_id={user_id} AND isdel=0 AND SUBSTR(date, 7, 4)='{date[6:]}') AS sum_length_year,
+    (SELECT IFNULL(COUNT(*)         , 0) FROM events WHERE user_id={user_id} AND isdel=0                                    ) AS total_count,
+    (SELECT IFNULL(SUM(LENGTH(text)), 0) FROM events WHERE user_id={user_id} AND isdel=0                                    ) AS total_length;
     """)[0]
     (event_day, symbol_day,
      event_month, symbol_month,
@@ -1670,3 +1672,22 @@ def poke_link() -> None:
         logging.info(f"{e}")
     except ConnectionError:
         logging.info("404")
+
+def parse_message(text: str) -> list[Event]:
+    """
+    Парсит сообщение и возвращает список событий
+    """
+    text = re_html_tags.sub("", text)
+
+    if re_date.match(text):
+        msg_date = re_date.match(text)[0]
+        return [
+            Event(
+                date=msg_date,
+                event_id=int(str_event.split(".", maxsplit=2)[1]),
+                status=str_event.split("\n", maxsplit=1)[0].rsplit(".", maxsplit=1)[-1],
+                text=str_event.split("\n", maxsplit=1)[1]
+            )
+            for str_event in text.split("\n\n")[1:]
+        ]
+

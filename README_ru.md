@@ -179,7 +179,7 @@
 ---
 
 ```
-git clone https://github.com/EgorKhabarov/TODO-telegram-bot .
+git clone https://github.com/EgorKhabarov/TODO-bot .
 ```
 ```
 pip install -r requirements.txt
