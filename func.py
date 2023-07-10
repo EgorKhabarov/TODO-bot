@@ -32,13 +32,16 @@ class logging:
             pass
 
 """sql"""
-sqlite_format_date = lambda _column, _quotes="", _sep="-": f"""
-    SUBSTR({_quotes}{_column}{_quotes}, 7, 4) || \'{_sep}\' || 
-    SUBSTR({_quotes}{_column}{_quotes}, 4, 2) || \'{_sep}\' || 
+def sqlite_format_date(_column, _quotes="", _sep="-"):
+    """SUBSTR({column}, 7, 4) || '{sep}' || SUBSTR({column}, 4, 2) || '{sep}' || SUBSTR({column}, 1, 2)"""
+    return f"""
+    SUBSTR({_quotes}{_column}{_quotes}, 7, 4) || '{_sep}' || 
+    SUBSTR({_quotes}{_column}{_quotes}, 4, 2) || '{_sep}' || 
     SUBSTR({_quotes}{_column}{_quotes}, 1, 2)"""
-"""SUBSTR({column}, 7, 4) || '{sep}' || SUBSTR({column}, 4, 2) || '{sep}' || SUBSTR({column}, 1, 2)"""
-sqlite_format_date2 = lambda _date: "-".join(_date.split(".")[::-1])
-""" "12.34.5678" -> "5678-34-12" """
+
+def sqlite_format_date2(_date):
+    """12.34.5678 -> 5678-34-12"""
+    return "-".join(_date.split(".")[::-1])
 
 def SQL(query: str,
         params: tuple = (),
@@ -190,7 +193,7 @@ def create_tables() -> None:
                     date      TEXT,
                     text      TEXT,
                     isdel     INTEGER DEFAULT (0),
-                    status    TEXT    DEFAULT ⬜️
+                    status    TEXT    DEFAULT '⬜️'
                 );""", commit=True)
         else:
             quit(f"{e}")
@@ -206,14 +209,14 @@ def create_tables() -> None:
             SQL("""
                 CREATE TABLE settings (
                     user_id            INT  NOT NULL UNIQUE ON CONFLICT ROLLBACK,
-                    lang               TEXT DEFAULT ru,
+                    lang               TEXT DEFAULT 'ru',
                     sub_urls           INT  DEFAULT (1),
-                    city               TEXT DEFAULT Москва,
+                    city               TEXT DEFAULT 'Москва',
                     timezone           INT  DEFAULT (3),
-                    direction          TEXT DEFAULT ⬇️,
+                    direction          TEXT DEFAULT '⬇️',
                     user_status        INT  DEFAULT (0),
                     notifications      INT DEFAULT (0),
-                    notifications_time TEXT DEFAULT "08:00",
+                    notifications_time TEXT DEFAULT '08:00',
                     user_max_event_id  INT  DEFAULT (1),
                     add_event_date     INT  DEFAULT (0)
                 );""", commit=True)
@@ -349,6 +352,13 @@ def new_time_calendar(user_timezone: int) -> tuple[int, int]:
     date = now_time(user_timezone)
     return date.year, date.month
 
+def convert_date_format(date: str) -> datetime:
+    """
+    Принимает дату в формате dd.mm.yyyy
+    Возвращает datetime(year=yyyy, month=mm, day=dd)
+    """
+    return datetime(*[int(x) for x in date.split(".")][::-1])
+
 def year_info(year: int, lang: str) -> str:
     """
     Строковая информация про год
@@ -369,7 +379,7 @@ def get_week_number(YY, MM, DD) -> int: # TODO добавить номер не�
     """
     return datetime(YY, MM, DD).isocalendar()[1]
 
-def execution_time(func):
+def log_execution_time(func):
     def wrapper(*args, **kwargs):
         start = time()
         result = func(*args, **kwargs)
@@ -399,16 +409,24 @@ class DayInfo:
         ) = get_translate("relative_date_list", settings.lang)
         x = now_time(settings.timezone)
         x = datetime(x.year, x.month, x.day)
-        y = datetime(*[int(x) for x in date.split(".")][::-1])
+        y = convert_date_format(date)
 
         day_diff = (y - x).days
-        if day_diff == 0:    day_diff = f"{today}"
-        elif day_diff == 1:  day_diff = f"{tomorrow}"
-        elif day_diff == 2:  day_diff = f"{day_after_tomorrow}"
-        elif day_diff == -1: day_diff = f"{yesterday}"
-        elif day_diff == -2: day_diff = f"{day_before_yesterday}"
-        elif day_diff > 2:   day_diff = f"{after} {day_diff} {Fday(day_diff)}"
-        else: day_diff = f"{-day_diff} {Fday(day_diff)} {ago}"
+        match day_diff:
+            case 0:
+                self.relatively_date = f"{today}"
+            case 1:
+                self.relatively_date = f"{tomorrow}"
+            case 2:
+                self.relatively_date = f"{day_after_tomorrow}"
+            case -1:
+                self.relatively_date = f"{yesterday}"
+            case -2:
+                self.relatively_date = f"{day_before_yesterday}"
+            case n if n > 2:
+                self.relatively_date = f"{after} {n} {Fday(n)}"
+            case _ as n:
+                self.relatively_date = f"{-n} {Fday(n)} {ago}"
 
         week_days = get_translate("week_days_list_full", settings.lang)
         month_list = get_translate("months_name2", settings.lang)
@@ -416,14 +434,13 @@ class DayInfo:
         self.date = date
         self.str_date = f"{y.day} {month_list[y.month - 1]}"
         self.week_date = week_days[y.weekday()]
-        self.relatively_date = day_diff
 
 
 """weather"""
 # TODO добавить персональные api ключи для запрашивания погоды
 # TODO декоратор для проверки api ключа у пользователя
 # TODO в зависимости от наличия ключа ставить разные лимиты на запросы
-def no_spam(requests_count: int = 3, time_sec: int = 60):
+def rate_limit_requests(requests_count: int = 3, time_sec: int = 60):
     """
     Возвращает текст ошибки, если пользователи вызывали функцию чаще чем 3 раза в 60 секунд.
     """
@@ -442,7 +459,7 @@ def no_spam(requests_count: int = 3, time_sec: int = 60):
         return wrapper
     return decorator
 
-def time_cache(cache_time_sec: int = 60):
+def cache_with_ttl(cache_time_sec: int = 60):
     """
     Кеширует значение функции подобно functools.cache, но держит значение не больше cache_time_sec.
     Не даёт запрашивать новый результат функции с одним и тем же аргументом чаще чем в cache_time_sec секунды.
@@ -461,9 +478,9 @@ def time_cache(cache_time_sec: int = 60):
 
     return decorator
 
-@no_spam(4, 60)
-@time_cache(300)
-def weather_in(settings: UserSettings, city: str) -> str:
+@rate_limit_requests(4, 60)
+@cache_with_ttl(300)
+def fetch_weather(settings: UserSettings, city: str) -> str:
     """
     Возвращает текущую погоду по городу city
     """
@@ -500,9 +517,9 @@ def weather_in(settings: UserSettings, city: str) -> str:
                                                           wind_speed, wind_deg_icon,  wind_deg,
                                                           sunrise, sunset, visibility)
 
-@no_spam(4, 60)
-@time_cache(3600)
-def forecast_in(settings: UserSettings, city: str) -> str:
+@rate_limit_requests(4, 60)
+@cache_with_ttl(3600)
+def fetch_forecast(settings: UserSettings, city: str) -> str:
     """
     Прогноз погоды на 5 дней для города city
     """
@@ -576,7 +593,7 @@ def generate_buttons(buttons_data: list[dict]) -> InlineKeyboardMarkup:
         for row in buttons_data]
     return InlineKeyboardMarkup(keyboard=keyboard)
 
-def calendar_days(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list | tuple[int, int] = None) -> InlineKeyboardMarkup():
+def create_monthly_calendar_keyboard(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list | tuple[int, int] = None) -> InlineKeyboardMarkup():
     """
     Создаёт календарь на месяц и возвращает inline клавиатуру
     param YY_MM: Необязательный аргумент. Если None, то подставит текущую дату.
@@ -596,7 +613,7 @@ def calendar_days(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list
     # Дни в которые есть события
     has_events = [x[0] for x in SQL(f"""
         SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as INT) FROM events
-        WHERE user_id={chat_id} AND isdel=0 AND date LIKE "__.{MM:0>2}.{YY}";""")]
+        WHERE user_id={chat_id} AND isdel=0 AND date LIKE '__.{MM:0>2}.{YY}';""")]
 
     # Дни рождения, праздники и каждый год или месяц
     every_year_or_month = [x[0] for x in SQL(f"""
@@ -605,17 +622,17 @@ def calendar_days(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list
         AND
         (
             (
-                (status LIKE "%🎉%" OR status LIKE "%🎊%" OR status LIKE "%📆%")
-                AND SUBSTR(date, 4, 2)="{MM:0>2}"
+                (status LIKE '%🎉%' OR status LIKE '%🎊%' OR status LIKE '%📆%')
+                AND SUBSTR(date, 4, 2)='{MM:0>2}'
             )
-            OR status LIKE "%📅%"
+            OR status LIKE '%📅%'
         );
     """)]
 
     # Каждую неделю
     every_week = [6 if x[0] == -1 else x[0] for x in SQL(f"""
         SELECT DISTINCT CAST(strftime('%w', {sqlite_format_date('date')})-1 as INT) FROM events
-        WHERE user_id={chat_id} AND isdel=0 AND status LIKE "%🗞%";
+        WHERE user_id={chat_id} AND isdel=0 AND status LIKE '%🗞%';
     """)]
 
     # получаем сегодняшнее число
@@ -645,27 +662,27 @@ def calendar_days(chat_id: str | int, user_timezone: int, lang: str, YY_MM: list
         }.items()])
     return markup
 
-def calendar_months(user_timezone: int, lang: str, chat_id, YY) -> InlineKeyboardMarkup():
+def create_yearly_calendar_keyboard(user_timezone: int, lang: str, chat_id, YY) -> InlineKeyboardMarkup():
     """
     Создаёт календарь из месяцев на определённый год и возвращает inline клавиатуру
     """
     # В этом году
     month_list = [x[0] for x in SQL(f"""
         SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM events
-        WHERE user_id={chat_id} AND date LIKE "__.__.{YY}" AND isdel=0;
+        WHERE user_id={chat_id} AND date LIKE '__.__.{YY}' AND isdel=0;
     """)]
 
     # Повторение каждый год
     every_year = [x[0] for x in SQL(f"""
         SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM events
         WHERE user_id={chat_id} AND isdel=0
-        AND (status LIKE "%🎉%" OR status LIKE "%🎊%" OR status LIKE "%📆%");
+        AND (status LIKE '%🎉%' OR status LIKE '%🎊%' OR status LIKE '%📆%');
     """)]
 
-    # Повторение каждый месяц TODO Убрать DISTINCT ?
+    # Повторение каждый месяц
     every_month = [x[0] for x in SQL(f"""
-        SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM events
-        WHERE user_id={chat_id} AND isdel=0 AND status LIKE "%📅%" LIMIT 1;
+        SELECT date FROM events
+        WHERE user_id={chat_id} AND isdel=0 AND status LIKE '%📅%' LIMIT 1;
     """)]
 
     now_month = now_time(user_timezone).month
@@ -687,24 +704,10 @@ def calendar_months(user_timezone: int, lang: str, chat_id, YY) -> InlineKeyboar
          for text, year in {"<<": YY - 1, "⟳": "now", ">>": YY + 1}.items()}
     ])
 
-# Для изменения одной кнопки в клавиатуре InlineKeyboardMarkup
-# markup[row][column].replace(old, new, val)
-def _getitem(self: InlineKeyboardMarkup, key: int) -> list[InlineKeyboardButton]:
-    return self.keyboard[key]
-def _replace(self: InlineKeyboardButton, old: str, new: str, val: str) -> None:
-    self.__setattr__(old, None) or self.__setattr__(new, val)
-
-def _remove(self: InlineKeyboardButton) -> None:
-    del self
-def _removeline(self: InlineKeyboardMarkup, key: int) -> None:
-    del self.keyboard[key]
-InlineKeyboardMarkup.__getitem__ = _getitem
-InlineKeyboardButton.replace = _replace
-
-# Задокументировать эти строки.
-# Вынести в отдельный файл, чтобы PyCharm не ругался.
-InlineKeyboardButton.remove = _remove
-InlineKeyboardMarkup.removeline = _removeline
+def edit_button_attrs(markup: InlineKeyboardMarkup, row: int, column: int, old: str, new: str, val: str) -> None:
+    button = markup.keyboard[row][column]
+    button.__setattr__(old, None)
+    button.__setattr__(new, val)
 
 backmarkup = generate_buttons([{"🔙": "back"}])
 delmarkup = generate_buttons([{"✖": "message_del"}])
@@ -951,9 +954,14 @@ class MessageGenerator:
         :param if_empty: Если результат запроса пустой
         :return:         message.text
         """
-        dd = lambda deldate_: 30 if deldate_ in (0, 1) else (30 - (
-            (datetime.now() + timedelta(hours=self._settings.timezone)) -
-            datetime(*[int(x) for x in str(deldate_).split(".")][::-1])).days)
+        def days_before_delete(event_deletion_date):
+            if event_deletion_date in (0, 1):
+                return 30
+            else:
+                d1 = (datetime.now() + timedelta(hours=self._settings.timezone)) # Текущее дата у пользователя
+                d2 = convert_date_format(event_deletion_date)
+
+                return 30 - (d1 - d2).days
 
         day = DayInfo(self._settings, self._date)
 
@@ -979,7 +987,7 @@ class MessageGenerator:
                     status=event.status,
                     markdown_text=markdown(event.text, event.status, self._settings.sub_urls),
                     markdown_text_nourlsub=markdown(event.text, event.status),
-                    days_before_delete=get_translate("deldate", self._settings.lang)(dd(event.deldate)),
+                    days_before_delete=get_translate("deldate", self._settings.lang)(days_before_delete(event.deldate)),
                     **kwargs,
                     text=event.text
                 ) + "\n"
@@ -1075,7 +1083,7 @@ def week_event_list(settings: UserSettings,
         OR 
         ( -- Каждый год
             (
-                status LIKE "%🎉%" OR status LIKE "%🎊%" OR status LIKE "%📆%"
+                status LIKE '%🎉%' OR status LIKE '%🎊%' OR status LIKE '%📆%'
             )
             AND
             (
@@ -1086,13 +1094,13 @@ def week_event_list(settings: UserSettings,
         )
         OR
         ( -- Каждый месяц
-            status LIKE "%📅%"
+            status LIKE '%📅%'
             AND SUBSTR(date, 1, 2) 
             BETWEEN strftime('%m-%d', 'now', '{settings.timezone:+} hours')
                 AND strftime('%m-%d', 'now', '+7 day', '{settings.timezone:+} hours')
         )
-        OR status LIKE "%🗞%" -- Каждую неделю
-        OR status LIKE "%📬%" -- Каждый день
+        OR status LIKE '%🗞%' -- Каждую неделю
+        OR status LIKE '%📬%' -- Каждый день
     )
     """
 
@@ -1163,8 +1171,7 @@ def today_message(settings: UserSettings,
     """
     WHERE = f"user_id={chat_id} AND isdel=0 AND date='{date}'"
 
-    event_date = [int(i) for i in date.split(".")][::-1]
-    new_date = datetime(*event_date)
+    new_date = convert_date_format(date)
     if 1980 < (new_date - timedelta(days=1)).year < 3000:
         yesterday = (new_date - timedelta(days=1)).strftime("%d.%m.%Y")
     else: yesterday = "None"
@@ -1185,7 +1192,10 @@ def today_message(settings: UserSettings,
     # Изменяем уже существующий `generated`, если в сообщение событие только одно.
     if len(generated.event_list) == 1 and message_id:
         event = generated.event_list[0]
-        generated.reply_markup[0][1].replace(
+        edit_button_attrs(
+            markup=generated.reply_markup,
+            row=0,
+            column=1,
             old="callback_data",
             new="switch_inline_query_current_chat",
             val=f"event({event.date}, {event.event_id}, {message_id}).edit\n{NoHTML(event.text)}"
@@ -1204,25 +1214,25 @@ def today_message(settings: UserSettings,
         (
             ( -- Каждый год
                 (
-                    status LIKE "%🎉%" OR status LIKE "%🎊%" OR status LIKE "%📆%"
+                    status LIKE '%🎉%' OR status LIKE '%🎊%' OR status LIKE '%📆%'
                 )
                 AND date LIKE '{date[:-5]}.____'
             )
             OR
             ( -- Каждый месяц
-                status LIKE "%📅%"
+                status LIKE '%📅%'
                 AND date LIKE '{date[:2]}.__.____'
             )
             OR
             ( -- Каждую неделю
-                status LIKE "%🗞%"
+                status LIKE '%🗞%'
                 AND
                 strftime('%w', {sqlite_format_date('date')}) = 
                 CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT)
             )
             OR
             ( -- Каждый день
-                status LIKE "%📬%"
+                status LIKE '%📬%'
             )
         );
     """) if x[0] != date]
@@ -1281,36 +1291,36 @@ def notifications(user_id_list: list | tuple[int | str, ...] = None,
                 (
                     ( -- На сегодняшние даты
                         (
-                            status LIKE "%🔔%" OR status LIKE "%🔕%"
+                            status LIKE '%🔔%' OR status LIKE '%🔕%'
                         )
                         AND date='{strdates[0]}'
                     ) 
                     OR
                     ( -- Совпадения сегодня и +1, +2, +3 и +7 дней
-                        status LIKE "%🟥%"
+                        status LIKE '%🟥%'
                         AND date IN ({", ".join(f"'{date}'" for date in strdates)})
                     )
                     OR
                     ( -- Каждый год
                         (
-                            status LIKE "%🎉%" OR status LIKE "%🎊%" OR status LIKE "%📆%"
+                            status LIKE '%🎉%' OR status LIKE '%🎊%' OR status LIKE '%📆%'
                         )
                         AND SUBSTR(date, 1, 5) IN ({", ".join(f"'{date[:5]}'" for date in strdates)})
                     )
                     OR
                     ( -- Каждый месяц
-                        status LIKE "%📅%"
+                        status LIKE '%📅%'
                         AND SUBSTR(date, 1, 2) IN ({", ".join(f"'{date[:2]}'" for date in strdates)})
                     )
                     OR
                     ( -- Каждую неделю
-                        status LIKE "%🗞%"
+                        status LIKE '%🗞%'
                         AND
                         strftime('%w', {sqlite_format_date('date')}) IN ({", ".join(f"'{w}'" for w in weekdays)})
                     )
                     OR
                     ( -- Каждый день
-                        status LIKE "%📬%"
+                        status LIKE '%📬%'
                     )
                 )
             """
@@ -1375,28 +1385,28 @@ def recurring(settings: UserSettings,
         (
             ( -- Каждый год
                 (
-                    status LIKE "%🎉%"
+                    status LIKE '%🎉%'
                      OR
-                     status LIKE "%🎊%"
+                     status LIKE '%🎊%'
                      OR
-                     status LIKE "%📆%"
+                     status LIKE '%📆%'
                 )
                 AND date LIKE '{date[:-5]}.____'
             )
             OR
             ( -- Каждый месяц
-                status LIKE "%📅%"
+                status LIKE '%📅%'
                 AND date LIKE '{date[:2]}.__.____'
             )
             OR
             ( -- Каждую неделю
-                status LIKE "%🗞%"
+                status LIKE '%🗞%'
                 AND strftime('%w', {sqlite_format_date('date')}) =
                 CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT)
             )
             OR
             ( -- Каждый день
-                status LIKE "%📬%"
+                status LIKE '%📬%'
             )
         )
     """
@@ -1673,7 +1683,8 @@ def poke_link() -> None:
     except ConnectionError:
         logging.info("404")
 
-def parse_message(text: str) -> list[Event]:
+
+def parse_message(text: str) -> list[Event]: # not used
     """
     Парсит сообщение и возвращает список событий
     """

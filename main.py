@@ -1,5 +1,4 @@
 from threading import Thread
-from sys import platform
 from time import sleep
 import csv
 
@@ -10,13 +9,6 @@ from telebot.types import BotCommandScopeDefault # Дефолтные коман
 from telebot.types import InputMediaDocument     # Команда /files шлёт все файлы бота в одном сообщении
 
 from func import * # InlineKeyboardMarkup, InlineKeyboardButton, re, config импортируются из func
-
-
-"""Для цветных логов (Выполнять только для Windows)"""
-if platform == "win32": # Windows := 0:
-    from ctypes import windll
-    (lambda k: k.SetConsoleMode(k.GetStdHandle(-11), 7))(windll.kernel32)
-
 
 
 bot = TeleBot(config.bot_token)
@@ -139,7 +131,7 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
     """
     if message_text.startswith("/calendar"):
         text = get_translate("choose_date", settings.lang)
-        markup = calendar_days(chat_id, settings.timezone, settings.lang)
+        markup = create_monthly_calendar_keyboard(chat_id, settings.timezone, settings.lang)
         bot.send_message(chat_id=chat_id, text=text, reply_markup=markup)
 
     elif message_text.startswith("/start"):
@@ -174,9 +166,9 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
 
         try:
             if message_text.startswith("/weather"):
-                weather = weather_in(settings=settings, city=nowcity)
+                weather = fetch_weather(settings=settings, city=nowcity)
             else: # forecast
-                weather = forecast_in(settings=settings, city=nowcity)
+                weather = fetch_forecast(settings=settings, city=nowcity)
 
             bot.send_message(chat_id=chat_id, text=weather, reply_markup=delmarkup)
         except KeyError:
@@ -212,7 +204,10 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
         # Чтобы не создавать новый `generated`, изменяем уже существующее, если в сообщение событие только одно.
         if len(generated.event_list) == 1:
             event = generated.event_list[0]
-            generated.reply_markup[0][1].replace(
+            edit_button_attrs(
+                markup=generated.reply_markup,
+                row=0,
+                column=1,
                 old="callback_data",
                 new="switch_inline_query_current_chat",
                 val=f"event({event.date}, {event.event_id}, {new_message.message_id}).edit\n{NoHTML(event.text)}"
@@ -506,7 +501,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
     elif call_data == "/calendar":
         text = get_translate("choose_date", settings.lang)
-        markup = calendar_days(chat_id=chat_id, user_timezone=settings.timezone, lang=settings.lang)
+        markup = create_monthly_calendar_keyboard(chat_id=chat_id, user_timezone=settings.timezone, lang=settings.lang)
         bot.edit_message_text(text=text, chat_id=chat_id, message_id=message_id, reply_markup=markup)
 
     elif call_data.startswith("back"):
@@ -536,7 +531,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             except ApiTelegramException: # Если сообщение не изменено, то шлём календарь
                 YY_MM = [int(x) for x in msg_date.split(".")[1:]][::-1] # "dd.mm.yyyy" -> [yyyy, mm]
                 text = get_translate("choose_date", settings.lang)
-                markup = calendar_days(chat_id, settings.timezone, settings.lang, YY_MM)
+                markup = create_monthly_calendar_keyboard(chat_id, settings.timezone, settings.lang, YY_MM)
                 bot.edit_message_text(text, chat_id, message_id, reply_markup=markup)
 
     elif call_data == "message_del":
@@ -740,8 +735,8 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         try: # Если события нет, то обновляем сообщение
             text, status = SQL(f"""
                 SELECT text, status FROM events
-                WHERE user_id={chat_id} AND event_id="{event_id}"
-                AND isdel=0 AND date="{event_date}";""")[0]
+                WHERE user_id={chat_id} AND event_id='{event_id}'
+                AND isdel=0 AND date='{event_date}';""")[0]
         except IndexError:  # Если этого события уже нет
             callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
             return
@@ -762,7 +757,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
             # Если статус равен ⬜️, то удалить первую строчку с предложением обнулить все статусы.
             if status == "⬜️":
-                markup.removeline(0)
+                markup.keyboard = markup.keyboard[1:] # Убираем первую строку клавиатуры
         else: # status page
             buttons_data = get_translate(call_data, settings.lang)
             markup = generate_buttons([
@@ -786,8 +781,8 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         try: # Если события нет, то обновляем сообщение
             text, old_status = SQL(f"""
                 SELECT text, status FROM events
-                WHERE user_id={chat_id} AND event_id="{event_id}"
-                AND isdel=0 AND date="{event_date}";""")[0]
+                WHERE user_id={chat_id} AND event_id='{event_id}'
+                AND isdel=0 AND date='{event_date}';""")[0]
         except IndexError:
             callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
             return
@@ -837,16 +832,14 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         else:
             callback_handler(settings, chat_id, message_id, message_text, f"status_home_page {event_id} {event_date}", call_id, message)
 
-        # callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
-
     elif call_data.startswith("status delete"):
         status, event_id, event_date = call_data.split()[2:]
 
         try: # Если события нет, то обновляем сообщение
             text, old_status = SQL(f"""
                 SELECT text, status FROM events
-                WHERE user_id={chat_id} AND event_id="{event_id}"
-                AND isdel=0 AND date="{event_date}";""")[0]
+                WHERE user_id={chat_id} AND event_id='{event_id}'
+                AND isdel=0 AND date='{event_date}';""")[0]
         except IndexError:
             callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
             return
@@ -865,8 +858,6 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             AND date='{event_date}';""", commit=True)
 
         callback_handler(settings, chat_id, message_id, message_text, f"status_home_page {event_id} {event_date}", call_id, message)
-
-        # callback_handler(settings, chat_id, message_id, message_text, "back", call_id, message)
 
     elif call_data.startswith("before del "):
         event_date, event_id, back_to_bin = call_data.split()[2:]
@@ -951,17 +942,22 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
                 # Изменяем кнопку изменения текста события на актуальную
                 markup = message.reply_markup
-                events = generated.event_list
 
-                if len(events) == 1:
-                    event = events[0]
-                    markup[0][1].replace(
+                if len(generated.event_list) == 1:
+                    event = generated.event_list[0]
+                    edit_button_attrs(
+                        markup=markup,
+                        row=0,
+                        column=1,
                         old="callback_data",
                         new="switch_inline_query_current_chat",
-                        val=f"event({event.date}, {event.event_id}, {message.message_id}).edit\n{NoHTML(event.text)}"
+                        val=f"event({event.date}, {event.event_id}, {message_id}).edit\n{NoHTML(event.text)}"
                     )
                 else:
-                    markup[0][1].replace(
+                    edit_button_attrs(
+                        markup=markup,
+                        row=0,
+                        column=1,
                         old="switch_inline_query_current_chat",
                         new="callback_data",
                         val="select event edit"
@@ -985,7 +981,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             YY = int(year)
 
         if 1980 <= YY <= 3000:
-            markup = calendar_months(settings.timezone, settings.lang, chat_id, YY)
+            markup = create_yearly_calendar_keyboard(settings.timezone, settings.lang, chat_id, YY)
             try:
                 bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=markup)
             except ApiTelegramException: # Сообщение не изменено
@@ -1001,7 +997,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             YY_MM = [int(i) for i in call_data.split()[-2:]]
 
         if 1980 <= YY_MM[0] <= 3000:
-            markup = calendar_days(chat_id, settings.timezone, settings.lang, YY_MM)
+            markup = create_monthly_calendar_keyboard(chat_id, settings.timezone, settings.lang, YY_MM)
             try:
                 bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=markup)
             except ApiTelegramException: # Если нажата кнопка ⟳, но сообщение не изменено
@@ -1064,7 +1060,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
 
 @bot.message_handler(commands=[*COMMANDS])
-@execution_time
+@log_execution_time
 def message_handler(message: Message):
     """
     Ловит команды от пользователей
@@ -1079,7 +1075,7 @@ def message_handler(message: Message):
     command_handler(settings, chat_id, message_text, message)
 
 @bot.callback_query_handler(func=lambda call: True)
-@execution_time
+@log_execution_time
 def callback_query_handler(call: CallbackQuery):
     """
     Ловит нажатия на кнопки
@@ -1098,8 +1094,8 @@ def callback_query_handler(call: CallbackQuery):
     callback_handler(settings, chat_id, message_id, call.message.text, call.data, call.id, call.message)
 
 @bot.message_handler(func=lambda m: m.text.startswith("#"))
-@execution_time
-def get_search_message(message: Message):
+@log_execution_time
+def processing_search_message(message: Message):
     """
     Ловит сообщения поиска
     #   (ИЛИ)
@@ -1117,8 +1113,8 @@ def get_search_message(message: Message):
     generated.send(chat_id=chat_id)
 
 @bot.message_handler(func=lambda m: re_edit_message.search(m.text))
-@execution_time
-def get_edit_message(message: Message):
+@log_execution_time
+def processing_edit_message(message: Message):
     """
     Ловит сообщения для изменения событий
     """
@@ -1199,8 +1195,8 @@ def get_edit_message(message: Message):
         bot.reply_to(message, get_translate("get_admin_rules", settings.lang), reply_markup=delmarkup)
 
 @bot.message_handler(func=lambda m: m.reply_to_message and m.reply_to_message.text.startswith("⚙️") and m.reply_to_message.from_user.id == BOT_ID)
-@execution_time
-def get_edit_city_message(message: Message):
+@log_execution_time
+def processing_edit_city_message(message: Message):
     """
     Ловит сообщения ответ на сообщение бота с настройками
     Изменение города пользователя
@@ -1219,10 +1215,12 @@ def get_edit_city_message(message: Message):
     except ApiTelegramException:
         bot.reply_to(message, get_translate("get_admin_rules", settings.lang), reply_markup=delmarkup)
 
-add_event_func = lambda msg: add_event_date[0][0] \
-    if (add_event_date := SQL(f"SELECT add_event_date FROM settings WHERE user_id={msg.chat.id};")) else 0
+def add_event_func(msg) -> int:
+    add_event_date = SQL(f"SELECT add_event_date FROM settings WHERE user_id={msg.chat.id};")
+    return add_event_date[0][0] if add_event_date else 0
+
 @bot.message_handler(func=add_event_func)
-@execution_time
+@log_execution_time
 def add_event(message: Message):
     """
     Ловит сообщение если пользователь хочет добавить событие
