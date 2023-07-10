@@ -3,7 +3,6 @@ from sys import platform
 from time import sleep
 import csv
 
-from requests.exceptions import MissingSchema, ConnectionError
 from telebot import TeleBot
 from telebot.types import CallbackQuery, InputFile
 from telebot.types import BotCommandScopeChat    # Команды для определённого чата
@@ -23,37 +22,63 @@ re_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}")
 re_edit_message = re.compile(r"event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.edit")
 
 bot = TeleBot(config.bot_token)
+bot.disable_web_page_preview = True
+bot.parse_mode = "html"
+bot.protect_content = False
+
+# Ставим дефолтные команды для всех пользователей при запуске бота
+bot.set_my_commands(commands=get_translate("0_command_list", "ru"), scope=BotCommandScopeDefault())
+
 Me = bot.get_me()
 BOT_ID = Me.id
 BOT_USERNAME = Me.username
-COMMANDS = ("calendar", "start", "deleted", "version", "forecast", "week_event_list", "currency",
-            "weather", "search", "bell", "dice", "help", "settings", "today", "sqlite", "account",
-            "files", "SQL", "save_to_csv", "setuserstatus", "id", "deleteuser", "idinfo", "commands")
+COMMANDS = (
+    "calendar",
+    "start",
+    "deleted",
+    "version",
+    "forecast",
+    "week_event_list",
+    "currency",
+    "weather",
+    "search",
+    "bell",
+    "dice",
+    "help",
+    "settings",
+    "today",
+    "sqlite",
+    "account",
+    "files",
+    "SQL",
+    "save_to_csv",
+    "setuserstatus",
+    "id",
+    "deleteuser",
+    "idinfo",
+    "commands"
+)
 
 bot_dict = Me.to_dict()
-bot_dict = {
-    **bot_dict,
+bot_dict.update({
     "database":      config.database_path,
     "log_file":      config.log_file,
     "notifications": config.notifications,
     "__version__":   config.__version__,
     "Время запуска": log_time_strftime()
-}
+})
+
 def check(key, val) -> str:
-    """Подсветит не правильные настройки красным цветом"""
+    """Подсветит неправильные настройки красным цветом"""
     keylist = {"can_join_groups": "True", "can_read_all_group_messages": "True", "supports_inline_queries": "False"}
     indent = " " * 22
-    return (f"\033[32m{val!s:<5}\033[0m{indent}" # \033[32m{val!s:<5}\033[0m{indent}
+    return (f"\033[32m{val!s:<5}\033[0m{indent}"
             if keylist[key] == str(val) else
             f"\033[31m{val!s:<5}\033[0m{indent}"
             ) if key in keylist else f"{val}"
 
 logging.info(f"+{'-'*59}+\n"+"".join(f"| {k: >27} = {check(k, v): <27} |\n" for k, v in bot_dict.items())+f"+{'-'*59}+")
 # Знаю, что не читабельно. Просто решил записать компактно.
-del check
-
-bot.disable_web_page_preview = True
-bot.parse_mode = "html"
 
 def _send(self, chat_id: int) -> Message:
     return bot.send_message(chat_id=chat_id, text=self.text, reply_markup=self.reply_markup)
@@ -79,14 +104,13 @@ def _edit(self,
 
 MessageGenerator.send = _send
 MessageGenerator.edit = _edit
-del _send
-del _edit
 
 def clear_state(chat_id: int | str):
     """
     Очищает состояние приёма сообщения у пользователя и изменяет сообщение по id из add_event_date
     """
     add_event_date = SQL(f"SELECT add_event_date FROM settings WHERE user_id={chat_id};")[0][0]
+
     if add_event_date:
         msg_date, message_id = add_event_date.split(",")
         SQL(f"UPDATE settings SET add_event_date=0 WHERE user_id={chat_id};", commit=True)
@@ -98,8 +122,10 @@ def set_commands(settings: UserSettings, chat_id: int, user_status: int | str = 
     """
     if is_admin_id(chat_id):
         user_status = 2
+
     target = f"{user_status}_command_list"
     lang = settings.lang
+
     try:
         return bot.set_my_commands(commands=get_translate(target, lang),
                                    scope=BotCommandScopeChat(chat_id))
@@ -107,8 +133,6 @@ def set_commands(settings: UserSettings, chat_id: int, user_status: int | str = 
         logging.info(f'[main.py -> set_commands -> "|"] (ApiTelegramException, KeyError) "{e}"')
         return False
 
-# Ставим дефолтные команды для всех пользователей при запуске бота
-bot.set_my_commands(commands=get_translate("0_command_list", "ru"), scope=BotCommandScopeDefault())
 
 def command_handler(settings: UserSettings, chat_id: int, message_text: str, message: Message) -> None:
     """
@@ -149,6 +173,7 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
             nowcity = message_text.split(maxsplit=1)[-1]
         else:
             nowcity = UserSettings(user_id=chat_id).city
+
         try:
             if message_text.startswith("/weather"):
                 weather = weather_in(settings=settings, city=nowcity)
@@ -202,10 +227,13 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
 
     elif message_text.startswith("/sqlite") and is_admin_id(chat_id) and message.chat.type == "private":
         bot.send_chat_action(chat_id=chat_id, action="upload_document")
+
         try:
             with open(config.database_path, "rb") as file:
-                bot.send_document(chat_id=chat_id, document=file,
-                                  caption=f"{now_time_strftime(settings.timezone)}", reply_markup=databasemarkup)
+                bot.send_document(chat_id=chat_id,
+                                  document=file,
+                                  caption=f"{now_time_strftime(settings.timezone)}",
+                                  reply_markup=databasemarkup)
         except ApiTelegramException:
             bot.send_message(chat_id=chat_id, text="Отправить файл не получилось")
 
@@ -266,6 +294,7 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
 
     elif message_text.startswith("/save_to_csv"):
         response, t = CSVCooldown.check(key=chat_id, update_dict=False)
+
         if response:
             bot.send_chat_action(chat_id=chat_id, action="upload_document")
             file = StringIO()
@@ -292,6 +321,7 @@ def command_handler(settings: UserSettings, chat_id: int, message_text: str, mes
     elif message_text.startswith("/setuserstatus") and is_admin_id(chat_id) and message.chat.type == "private":
         if len(message_text.split(" ")) == 3:
             user_id, user_status = message_text.split(" ")[1:]
+
             try:
                 if user_status not in (-1, 0, 1, 2):
                     raise ValueError
@@ -395,23 +425,6 @@ SyntaxError
         date = now_time(settings.timezone)
         bot.send_photo(chat_id, create_image(settings, date.year, date.month, date.day))
 
-    elif message_text.startswith("/currency") and 0: # В разработке ...
-        currency1 = "₽"
-        currency2 = "$"
-        bot.send_message(chat_id, f"Калькулятор валют\n0\n{currency1} ➡️ {currency2}", reply_markup=generate_buttons([
-            *[
-                {f"{val}": f"currency {val}" for val in i}
-                for i in (
-                    (7, 8, 9),
-                    (4, 5, 6),
-                    (1, 2, 3),
-                    (0, ".", "="),
-                    ("clear", "🔙")
-                )
-            ],
-            {f"from {currency1}": "currency set 1", "↔️": "currency ↔️", f"to {currency2}": "currency set 2"}
-        ]))
-
     elif message_text.startswith("/commands"): # TODO перевод
         # /account - Ваш аккаунт (просмотр лимитов)
         bot.send_message(chat_id, """
@@ -501,6 +514,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
     elif call_data.startswith("back"):
         # не вызываем await clear_state(chat_id) так как она после очистки вызывает сегодняшнее сообщение
         add_event_date = SQL(f"SELECT add_event_date FROM settings WHERE user_id={chat_id};")[0][0]
+
         if add_event_date:
             add_event_message_id = add_event_date.split(",")[1]
             if int(message_id) == int(add_event_message_id):
@@ -549,6 +563,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
             with open(f"{message.document.file_name}", "wb") as new_file:
                 new_file.write(downloaded_file)
+
             bot.reply_to(message, "Файл записан")
         except ApiTelegramException:
             bot.send_message(chat_id, "Скачать или записать файл не получилось...")
@@ -584,6 +599,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         # Если событие одно то оно сразу выбирается
         if len(events_list) == 1:
             event_id = events_list[0].split(".", maxsplit=2)[1]
+
             if action.endswith("bin"):
                 event_id = events_list[0].split(".", maxsplit=4)[-2]
             try:
@@ -692,6 +708,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
     elif call_data.startswith("recover"):
         event_date, event_id = call_data.split(maxsplit=2)[1:]
+
         try:
             event_len = SQL(f"""
                 SELECT LENGTH(text) FROM root
@@ -735,6 +752,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
             sl = status.split(",")
             sl.extend([""]*(5-len(sl)))
             markup = generate_buttons([
+                # {} if status == "⬜️" else {get_translate("status page 1", settings.lang)[0][0]+"                        ": f"status set ⬜️ {event_id} {event_date}"},
                 *[{f"{title}{callbackTab * 20}": (
                     f"{data}" if data else f"status set {title.split(maxsplit=1)[0]} {event_id} {event_date}")}
                   for title, data in get_translate("status_home_page", settings.lang).items()],
@@ -743,6 +761,10 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
                  for n, i in enumerate(sl)} if status != "⬜️" else {},
                 {"🔙": "back"}
             ])
+
+            # Если статус равен ⬜️, то удалить первую строчку с предложением обнулить все статусы.
+            if status == "⬜️":
+                markup.removeline(0)
         else: # status page
             buttons_data = get_translate(call_data, settings.lang)
             markup = generate_buttons([
@@ -850,6 +872,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
     elif call_data.startswith("before del "):
         event_date, event_id, back_to_bin = call_data.split()[2:]
+
         try:
             text, status = SQL(f"""
                 SELECT text, status FROM root
@@ -878,6 +901,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
 
     elif call_data.startswith("del "):
         event_date, event_id, where, mode = call_data.split(maxsplit=4)[1:]
+
         try:
             if (settings.user_status in (1, 2) or is_admin_id(chat_id)) and mode == "to_bin":
                 SQL(f"""
@@ -890,11 +914,13 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         except Error as e:
             logging.info(f'[main.py -> callback_handler -> "del"] Error "{e}"')
             bot.answer_callback_query(callback_query_id=call_id, text=get_translate("error", settings.lang))
+
         callback_handler(settings, chat_id, message_id, message_text, "back" if where != "bin" else "back bin", call_id, message)
 
     elif call_data.startswith("|"): # Список id событий на странице
         page, id_list = call_data.split("|")[1:]
         id_list = id_list.split(",")
+
         try:
             if message_text.startswith("🔍 "): # Поиск
                 query = ToHTML(message_text.split("\n", maxsplit=1)[0].split(maxsplit=2)[-1][:-1])
@@ -935,6 +961,7 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
     elif call_data.startswith("generate calendar months "):
         sleep(0.5)
         year = call_data.split()[-1]
+
         if year == "now":
             YY = now_time(settings.timezone).year
         else:
@@ -1018,42 +1045,6 @@ def callback_handler(settings: UserSettings, chat_id: int, message_id: int, mess
         except ApiTelegramException:
             pass
 
-    elif call_data.startswith("currency"):
-        data = call_data.split(" ", maxsplit=1)[-1]
-        value = message_text.splitlines()[1]
-        currency1, currency2 = message_text.splitlines()[-1].split(" ➡️ ")
-        if data == "clear": value = "0"
-        if data == "↔️": currency1, currency2 = currency2, currency1
-        if data in "0123456789.":
-            if value == "0" and data != ".": value = ""
-            if data == "." and "." in value: return
-            value += data
-        if data == "🔙":
-            value = value[:-1]
-            if value == "": value = "0"
-
-        try:
-            bot.edit_message_text(
-                text=f"Калькулятор валют\n{value}\n{currency1} ➡️ {currency2}",
-                chat_id=chat_id,
-                message_id=message_id,
-                reply_markup=generate_buttons([
-                    *[
-                        {f"{val}": f"currency {val}" for val in i}
-                        for i in (
-                            (7, 8, 9),
-                            (4, 5, 6),
-                            (1, 2, 3),
-                            (0, ".", "="),
-                            ("clear", "🔙")
-                        )
-                    ],
-                    {f"from {currency1}": "currency set 1", "↔️": "currency ↔️", f"to {currency2}": "currency set 2"}
-                ])
-            )
-        except ApiTelegramException:
-            pass
-
 
 @bot.message_handler(commands=[*COMMANDS])
 @execution_time
@@ -1083,8 +1074,10 @@ def callback_query_handler(call: CallbackQuery):
         return
 
     main_log(user_status=settings.user_status, chat_id=chat_id, text=call_data, action="pressed")
+
     if call.data == "None":
         return 0
+
     callback_handler(settings, chat_id, message_id, call.message.text, call.data, call.id, call.message)
 
 @bot.message_handler(func=lambda m: m.text.startswith("#"))
@@ -1095,13 +1088,13 @@ def get_search_message(message: Message):
     #   (ИЛИ)
     #!  (И)
     """
-    query = ToHTML(message.text[1:].replace("--", "").replace("\n", " "))
     chat_id = message.chat.id
     settings = UserSettings(user_id=chat_id)
 
     if settings.user_status == -1 and not is_admin_id(chat_id):
         return
 
+    query = ToHTML(message.text[1:].replace("--", "").replace("\n", " "))
     main_log(user_status=settings.user_status, chat_id=chat_id, text=message.text, action="search ")
     generated = search(settings=settings, chat_id=chat_id, query=query)
     generated.send(chat_id=chat_id)
@@ -1141,8 +1134,8 @@ def get_edit_message(message: Message):
     ])
 
     tag_len_max = len(text) > 3800
-    try:
-        # Уменьшится ли длинна события
+
+    try: # Уменьшится ли длинна события
         len_old_event, tag_len_less = SQL(f"""
             SELECT LENGTH(text), {len(text)} < LENGTH(text) FROM root
             WHERE user_id={chat_id} AND event_id='{event_id}'
@@ -1160,8 +1153,8 @@ def get_edit_message(message: Message):
     elif tag_limit_exceeded:
         bot.reply_to(message, get_translate("exceeded_limit", settings.lang), reply_markup=markup)
     else:
+        day = DayInfo(settings, event_date)
         try:
-            day = DayInfo(settings, event_date)
             bot.edit_message_text(f"""
 {event_date} {event_id} <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})
 <b>{get_translate("are_you_sure_edit", settings.lang)}</b>
@@ -1182,6 +1175,7 @@ def get_edit_message(message: Message):
             if "message is not modified" not in str(e) and "message to edit not found" not in str(e):
                 logging.info(f'[main.py -> get_edit_message] ApiTelegramException "{e}"')
             return
+
     try:
         bot.delete_message(chat_id, edit_message_id)
     except ApiTelegramException:
@@ -1202,6 +1196,7 @@ def get_edit_city_message(message: Message):
 
     main_log(user_status=settings.user_status, chat_id=chat_id, text="edit city", action="send")
     callback_handler(settings, chat_id, message.reply_to_message.message_id, message.text, f"settings city {message.text[:25]}", 0, message.reply_to_message)
+
     try:
         bot.delete_message(chat_id, message_id)
     except ApiTelegramException:
@@ -1241,6 +1236,7 @@ def add_event(message: Message):
     # Пытаемся создать событие
     if create_event(chat_id, new_event_date, message_text):
         clear_state(chat_id)
+
         try:
             bot.delete_message(chat_id, message_id)
         except ApiTelegramException: # Если в группе у бота нет прав для удаления сообщений
@@ -1255,21 +1251,19 @@ def schedule_loop():
     sleep(60 - now_time(config.hours_difference).second)
     while True:
         while_time = now_time(config.hours_difference)
-        if str(while_time.minute).endswith("0"): # 0, 10, 20, 30, 40, 50
+
+        if while_time.minute in (0, 10, 20, 30, 40, 50):
             Thread(target=notifications, daemon=True).start()
-        if while_time.minute in (0, 30):
+
+        if while_time.minute in (0, 15, 30, 45):
             if config.link:
-                logging.info(f"[{log_time_strftime()}] {config.link} ", end="")
-                try:
-                    logging.info(f"{get(config.link, headers=config.headers).status_code}")
-                except MissingSchema as e:
-                    logging.info(f"{e}")
-                except ConnectionError:
-                    logging.info("404")
+                Thread(target=poke_link, daemon=True).start()
+
 
         sleep(60)
 
 if __name__ == "__main__":
     if config.notifications:
         Thread(target=schedule_loop, daemon=True).start()
+
     bot.infinity_polling()

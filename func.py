@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from calendar import monthcalendar, isleap
-from typing import Literal, Any, Callable
+from typing import Literal, Any
 from textwrap import wrap as textwrap
 from sqlite3 import connect, Error
 from urllib.parse import urlparse
@@ -10,9 +10,10 @@ from copy import deepcopy
 from time import time
 import re
 
+import requests
 from PIL import Image, ImageFont
 from PIL.ImageDraw import Draw
-from requests import get
+from requests.exceptions import MissingSchema, ConnectionError
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 from telebot.apihelper import ApiTelegramException
 
@@ -154,6 +155,7 @@ class UserSettings:
             bool(self.sub_urls),
             self.city,
             str_utz,
+            now_time(self.timezone).strftime("%Y.%m.%d %H:%M"),
             self.direction,
             "🔔" if self.notifications else "🔕",
             f"{n_hours:0>2}:{n_minutes:0>2}" if self.notifications else ""
@@ -467,7 +469,7 @@ def weather_in(settings: UserSettings, city: str) -> str:
     """
     logging.info(f"\nweather in {city:<67}", end="")
     url = "http://api.openweathermap.org/data/2.5/weather"
-    weather = get(url, params={"APPID": config.weather_api_key, "q": city, "units": "metric", "lang": settings.lang}).json()
+    weather = requests.get(url, params={"APPID": config.weather_api_key, "q": city, "units": "metric", "lang": settings.lang}).json()
     weather_icon = weather["weather"][0]["icon"]
     dn = {"d": "☀", "n": "🌑"}
     we = {"01": "", "02": "🌤", "03": "🌥", "04": "☁", "09": "🌨", "10": "🌧", "11": "⛈", "13": "❄", "50": "🌫"}
@@ -506,7 +508,7 @@ def forecast_in(settings: UserSettings, city: str) -> str:
     """
     logging.info(f"\nforecast in {city:<67}", end="")
     url = "http://api.openweathermap.org/data/2.5/forecast"
-    weather = get(url, params={"APPID": config.weather_api_key, "q": city, "units": "metric", "lang": settings.lang}).json()
+    weather = requests.get(url, params={"APPID": config.weather_api_key, "q": city, "units": "metric", "lang": settings.lang}).json()
     dn = {"d": "☀", "n": "🌑"}
     we = {"01": "", "02": "🌤", "03": "🌥", "04": "☁", "09": "🌨", "10": "🌧", "11": "⛈", "13": "❄", "50": "🌫"}
     de = {0: "⬆️", 45: "↗️", 90: "➡️", 135: "↘️", 180: "⬇️", 225: "↙️", 270: "⬅️", 315: "↖️"}
@@ -687,12 +689,24 @@ def calendar_months(user_timezone: int, lang: str, chat_id, YY) -> InlineKeyboar
 
 # Для изменения одной кнопки в клавиатуре InlineKeyboardMarkup
 # markup[row][column].replace(old, new, val)
-def _getitem(self: InlineKeyboardMarkup, key: int) -> list[InlineKeyboardButton]: return self.keyboard[key]
+def _getitem(self: InlineKeyboardMarkup, key: int) -> list[InlineKeyboardButton]:
+    return self.keyboard[key]
 def _replace(self: InlineKeyboardButton, old: str, new: str, val: str) -> None:
     self.__setattr__(old, None) or self.__setattr__(new, val)
+
+def _remove(self: InlineKeyboardButton) -> None:
+    del self
+def _removeline(self: InlineKeyboardMarkup, key: int) -> None:
+    del self.keyboard[key]
 InlineKeyboardMarkup.__getitem__ = _getitem
 InlineKeyboardButton.replace = _replace
 del _getitem, _replace
+
+# Задокументировать эти строки.
+# Вынести в отдельный файл, чтобы PyCharm не ругался.
+InlineKeyboardButton.remove = _remove
+InlineKeyboardMarkup.removeline = _removeline
+del _remove, _removeline
 
 backmarkup = generate_buttons([{"🔙": "back"}])
 delmarkup = generate_buttons([{"✖": "message_del"}])
@@ -1646,3 +1660,13 @@ SELECT
     image.save(buffer, format="png")
     buffer.seek(0)
     return buffer
+
+def poke_link() -> None:
+    logging.info(f"[{log_time_strftime()}] {config.link} ", end="")
+
+    try:
+        logging.info(f"{requests.get(config.link, headers=config.headers).status_code}")
+    except MissingSchema as e:
+        logging.info(f"{e}")
+    except ConnectionError:
+        logging.info("404")

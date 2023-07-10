@@ -244,7 +244,7 @@ Get id /id
 <b>{}</b> <i>(Москва по умолчанию)</i>
 
 [<u>Часовой пояс</u>]
-<b>{}</b> <i>(3 по умолчанию)</i>
+<b>{}</b> <i>(3 по умолчанию)</i> У вас сейчас <b>{}</b>?
 
 [<u>Порядок событий в сообщении</u>]
 <b>{}</b> <i>(⬇️ по умолчанию)</i>
@@ -266,7 +266,7 @@ Get id /id
 <b>{}</b> <i>(Moscow by default)</i>
 
 [<u>Timezone</u>]
-<b>{}</b> <i>(3 by default)</i>
+<b>{}</b> <i>(3 by default)</i> Do you have <b>{}</b> now?
 
 [<u>Order of events in a message</u>]
 <b>{}</b> <i>(⬇️ by default)</i>

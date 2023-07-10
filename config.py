@@ -14,7 +14,7 @@ headers = {
                   "Chrome/113.0.0.0 Safari/537.36 Edg/113.0.1774.42"
 }
 
-__version__ = "01.07.2023"
+__version__ = "10.07.2023"
 __autor__ = "EgorKhabarov"
 
 """
@@ -22,12 +22,4 @@ pip install -r requirements.txt
 
 Bot settings => Group Privacy => disabled
 Bot settings => Inline Mode   => disabled
-
-pip3.11 install --user requests
-pip3.11 install --user sqlite3
-pip3.11 install --user pillow
-
-pip install requests
-pip install sqlite3
-pip install pillow
 """
