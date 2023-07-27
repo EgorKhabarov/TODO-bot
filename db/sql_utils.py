@@ -45,91 +45,9 @@ WHERE user_id = {user_id};
         return True
     except Error as e:
         logging.info(
-            f'[func.py -> create_event] Error "{e}"  arg: {user_id=}, {date=}, {text=}'
+            f'[sql_utils.py -> create_event] Error "{e}"  arg: {user_id=}, {date=}, {text=}'
         )
         return False
-
-
-def get_values(
-    column_to_limit: str,
-    column_to_order: str,
-    column_to_return: str,
-    WHERE: str,
-    table: str,
-    MAXLEN: int = 2500,
-    MAXEVENTCOUNT: int = 10,
-    direction: Literal["ASC", "DESC"] = "DESC",
-) -> list[tuple[int | str | bytes, ...], ...]:
-    """
-    Возвращает результаты по условиям WHERE, разделённые по условиям MAXLEN и MAXEVENTCOUNT на 'страницы'
-
-    :param column_to_limit: Столбец для ограничения
-    :param column_to_order: Столбец для сортировки (например id)
-    :param column_to_return: Столбец для return (например id)
-    :param WHERE:           Условие выбора строк из таблицы
-    :param table:           Название таблицы
-    :param MAXLEN:          Максимальная длинна символов в одном диапазоне
-    :param MAXEVENTCOUNT:   Максимальное количество строк в диапазоне
-    :param direction:       Направление сбора строк ("ASC" or "DESC")
-    """
-    column = "end_id" if direction == "DESC" else "start_id"
-    query = f"""
-WITH numbered_table AS (
-  SELECT 
-      ROW_NUMBER() OVER (ORDER BY {column_to_order} {direction}) AS row_num, 
-      {column_to_return} AS order_column, 
-      LENGTH({column_to_limit}) as len
-  FROM {table}
-  WHERE {WHERE}
-  LIMIT 400
-),
-temp_table AS (
-  SELECT
-      numbered_table.row_num,
-      numbered_table.order_column,
-      numbered_table.len,
-      numbered_table.order_column AS {column},
-      numbered_table.len AS sum_len,
-      1 AS group_id,
-      1 AS event_count
-  FROM numbered_table 
-  WHERE numbered_table.row_num = 1
-  UNION ALL
-  SELECT
-      numbered_table.row_num,
-      numbered_table.order_column,
-      numbered_table.len,
-    CASE 
-        WHEN temp_table.sum_len + numbered_table.len <= {MAXLEN} AND temp_table.event_count < {MAXEVENTCOUNT} 
-        THEN temp_table.{column}                     
-        ELSE numbered_table.order_column 
-    END AS {column},
-    CASE 
-        WHEN temp_table.sum_len + numbered_table.len <= {MAXLEN} AND temp_table.event_count < {MAXEVENTCOUNT} 
-        THEN temp_table.sum_len + numbered_table.len 
-        ELSE numbered_table.len          
-    END AS sum_len,
-    CASE 
-        WHEN temp_table.sum_len + numbered_table.len <= {MAXLEN} AND temp_table.event_count < {MAXEVENTCOUNT} 
-        THEN temp_table.group_id                     
-        ELSE temp_table.group_id + 1     
-    END AS group_id,
-    CASE 
-        WHEN temp_table.sum_len + numbered_table.len <= {MAXLEN} AND temp_table.event_count < {MAXEVENTCOUNT} 
-        THEN temp_table.event_count + 1              
-        ELSE 1                           
-    END AS event_count
-  FROM numbered_table JOIN temp_table ON numbered_table.row_num = temp_table.row_num + 1
-)
-SELECT 
-    GROUP_CONCAT(COALESCE(numbered_table.order_column, ''), ',') AS ids
-    -- , SUM(numbered_table.len) AS sum_len
-FROM numbered_table
-JOIN temp_table ON numbered_table.row_num = temp_table.row_num
-GROUP BY temp_table.group_id;
-"""
-    data = SQL(query)
-    return data
 
 
 def pagination(

@@ -438,7 +438,7 @@ def notifications(
                     if_empty=get_translate("message_empty", settings.lang),
                 )
 
-                logging.info(f"\n[func.py -> notifications] -> {user_id} -> ")
+                logging.info(f"[func.py -> notifications] -> {user_id} -> ")
 
                 try:
                     if id_list:
@@ -457,9 +457,9 @@ def notifications(
                             """,
                             commit=True,
                         )
-                    logging.info(f"{'Ok':<32}")
+                    logging.info("Ok")
                 except ApiTelegramException:
-                    logging.info(f"{'Error':<32}")
+                    logging.info("Error")
 
                 if not from_command:
                     logging.info("\n")

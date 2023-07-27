@@ -75,7 +75,7 @@ class Bot(TeleBot):
             )
         except (ApiTelegramException, KeyError) as e:
             logging.info(
-                f'[main.py -> set_commands -> "|"] (ApiTelegramException, KeyError) "{e}"'
+                f'[bot.py -> set_commands -> "|"] (ApiTelegramException, KeyError) "{e}"'
             )
             return False
 

@@ -211,7 +211,7 @@ def fetch_weather(settings: UserSettings, city: str) -> str:
     """
     Возвращает текущую погоду по городу city
     """
-    logging.info(f"\nweather in {city:<67}")
+    logging.info(f"weather in {city}")
     url = "http://api.openweathermap.org/data/2.5/weather"
     weather = requests.get(
         url,
@@ -292,7 +292,7 @@ def fetch_forecast(settings: UserSettings, city: str) -> str:
     """
     Прогноз погоды на 5 дней для города city
     """
-    logging.info(f"\nforecast in {city:<67}")
+    logging.info(f"forecast in {city}")
     url = "http://api.openweathermap.org/data/2.5/forecast"
     weather = requests.get(
         url,
@@ -474,4 +474,4 @@ def main_log(user_status: int, chat_id: int, action: str, text: str) -> None:
     else:  # user_status == 0:
         log_chat_id = f"\033[21m{chat_id}\033[0m"
     log_text = f"[{log_chat_id:<15}] {action:<7} " + text.replace("\n", "\\n")
-    logging.info(f"{log_text:<90}")
+    logging.info(log_text)

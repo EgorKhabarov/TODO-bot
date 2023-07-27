@@ -127,7 +127,7 @@ ORDER BY {sqlite_format_date('date')} {self._settings.direction_sql};
                 )
             ]
         except Error as e:
-            logging.info(f'[func.py -> MessageGenerator.get_events] Error "{e}"')
+            logging.info(f'[message_generator.py -> MessageGenerator.get_events] Error "{e}"')
             self.event_list = []
         else:
             if self._settings.direction_sql == "ASC":

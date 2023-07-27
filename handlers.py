@@ -699,7 +699,7 @@ AND date='{msg_date}';
 
         msg_date = message_text[:10]
 
-        # Если событие одно то оно сразу выбирается
+        # Если событие одно, то оно сразу выбирается
         if len(events_list) == 1:
             event_id = events_list[0].split(".", maxsplit=2)[1]
 
@@ -1218,26 +1218,25 @@ isdel{"!" if back_to_bin == "bin" else ""}=0;
             )
             return
 
+
+        delete_permanently = get_translate("delete_permanently", settings.lang)
+        trash_bin = get_translate("trash_bin", settings.lang)
+        split_data = call_data.split(maxsplit=1)[-1]
+
+        is_wastebasket_available = (
+            settings.user_status in (1, 2) and back_to_bin != "bin"
+        ) or is_admin_id(chat_id)
+
         predelmarkup = generate_buttons(
             [
                 {
                     "🔙": "back" if back_to_bin != "bin" else "back bin",
-                    "❌ "
-                    + get_translate(
-                        "delete_permanently", settings.lang
-                    ): f"{call_data.split(maxsplit=1)[-1]} delete",
+                    f"❌ {delete_permanently}": f"{split_data} delete",
+                    **(
+                        {f"🗑 {trash_bin}": f"{split_data} to_bin"}
+                        if is_wastebasket_available else {}
+                    ),
                 },
-                {
-                    "🗑 "
-                    + get_translate(
-                        "trash_bin", settings.lang
-                    ): f"{call_data.split(maxsplit=1)[-1]} to_bin"
-                }
-                if (
-                    (settings.user_status in (1, 2) and back_to_bin != "bin")
-                    or is_admin_id(chat_id)
-                )
-                else {},
             ]
         )
 

@@ -172,7 +172,7 @@ def create_image(
     image = Image.new("RGB", (1500, 1000), "#F0F0F0")
     draw = Draw(image)
 
-    font = ImageFont.truetype("arial.ttf", 100)
+    font = ImageFont.truetype("fonts/arial.ttf", 100)
     text_width, text_height = draw.textsize(text, font=font)
     draw.text(
         (375 * 2 - text_width // 2, 60 - text_height // 2),
