@@ -122,7 +122,7 @@ def _semicircle(title: str, val: int, y: int) -> Image:
     else:
         bg_color, color = colors["bg r"], colors["r"]
 
-    font = ImageFont.truetype("arial.ttf", 30)
+    font = ImageFont.truetype("fonts/arial.ttf", 30)
     image = Image.new("RGB", (291, 202), "#F0F0F0")
     draw = Draw(image)
 
@@ -244,11 +244,14 @@ def create_image(
     draw.rectangle(((800, 139), (1355, 956)), outline="#000000", width=5)
 
     text = "..."
-    font = ImageFont.truetype("arial.ttf", 30)
+    font = ImageFont.truetype("fonts/arial.ttf", 30)
     text_width, text_height = [
         wh // 2 for wh in draw.textbbox((0, 0), text=text, font=font)[2:]
     ]
     draw.text((1073 - text_width, 551 - text_height), text, fill="black", font=font)
+
+    # Временно обрезаем всё лишнее.
+    image = image.crop((94, 114, 694, 981))
 
     buffer = BytesIO()
     image.save(buffer, format="png")

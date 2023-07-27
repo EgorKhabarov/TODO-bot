@@ -20,14 +20,6 @@ def now_time_strftime(user_timezone: int) -> str:
     return now_time(user_timezone).strftime("%d.%m.%Y")
 
 
-def log_time_strftime(log_timezone: int = config.hours_difference) -> str:
-    """
-    Возвращает форматированную ("%Y.%m.%d %H:%M:%S") функцию now_time()
-    Для логов
-    """
-    return (now_time(log_timezone)).strftime("%Y.%m.%d %H:%M:%S")
-
-
 def new_time_calendar(user_timezone: int) -> tuple[int, int]:
     """
     Возвращает [год, месяц]

@@ -19,7 +19,7 @@ from bot import bot
 from db.db import SQL
 from lang import get_translate
 from limits import create_image, is_exceeded_limit
-from time_utils import now_time_strftime, now_time, DayInfo, new_time_calendar
+from time_utils import now_time_strftime, now_time, DayInfo, new_time_calendar, convert_date_format
 from user_settings import UserSettings
 from buttons_utils import (
     create_monthly_calendar_keyboard,
@@ -448,8 +448,29 @@ SyntaxError
         bot.reply_to(message=message, text=text)
 
     elif message_text.startswith("/account"):
-        date = now_time(settings.timezone)
-        bot.send_photo(chat_id, create_image(settings, date.year, date.month, date.day))
+        if message_text == "/account":
+            date = now_time(settings.timezone)
+        else:
+            str_date = message_text[9:]
+            if re_call_data_date.search(str_date):
+                try:
+                    date = convert_date_format(str_date)
+                except ValueError:
+                    bot.send_message(chat_id, get_translate("error", settings.lang))
+                    return
+            else:
+                bot.send_message(chat_id, get_translate("error", settings.lang))
+                return
+
+            if not 1980 < date.year < 3000:
+                bot.send_message(chat_id, get_translate("error", settings.lang))
+                return
+
+        bot.send_photo(
+            chat_id,
+            create_image(settings, date.year, date.month, date.day),
+            reply_markup=delmarkup
+        )
 
     elif message_text.startswith("/commands"):  # TODO перевод
         # /account - Ваш аккаунт (просмотр лимитов)

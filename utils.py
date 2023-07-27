@@ -14,7 +14,7 @@ import config
 import logging
 from db.db import SQL
 from lang import get_translate
-from time_utils import DayInfo, log_time_strftime
+from time_utils import DayInfo
 from user_settings import UserSettings
 
 
@@ -377,7 +377,7 @@ def is_admin_id(chat_id: int) -> bool:
 
 
 def poke_link() -> None:
-    logging.info(f"[{log_time_strftime()}] {config.link} ")
+    logging.info(f"{config.link}")
 
     try:
         logging.info(f"{requests.get(config.link, headers=config.headers).status_code}")
