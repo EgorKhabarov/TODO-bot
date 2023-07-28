@@ -198,7 +198,7 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 [<u>Language</u>]
 <b>{}</b>
 
-<u>Minify links</u>]
+[<u>Minify links</u>]
 <b>{}</b> <i>(True recommended)</i>
 
 [<u>City</u>]
