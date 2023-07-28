@@ -16,7 +16,7 @@ def SQL(
     :param column_names: Названия столбцов вставить в результат
     :return: Результат запроса
     """
-    connection = connect(config.database_path)
+    connection = connect(config.DATABASE_PATH)
     cursor = connection.cursor()
     try:
         cursor.execute(query, params)

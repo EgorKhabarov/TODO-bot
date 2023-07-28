@@ -25,9 +25,9 @@ class Bot(TeleBot):
         bot_dict = self._me.to_dict()
         bot_dict.update(
             {
-                "database": config.database_path,
-                "log_file": config.log_file,
-                "notifications": config.notifications,
+                "database": config.DATABASE_PATH,
+                "log_file": config.LOG_FILE,
+                "notifications": config.NOTIFICATIONS,
                 "__version__": config.__version__,
             }
         )
@@ -80,4 +80,4 @@ class Bot(TeleBot):
             return False
 
 
-bot = Bot(config.bot_token)
+bot = Bot(config.BOT_TOKEN)

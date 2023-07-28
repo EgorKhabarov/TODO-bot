@@ -216,7 +216,7 @@ def fetch_weather(settings: UserSettings, city: str) -> str:
     weather = requests.get(
         url,
         params={
-            "APPID": config.weather_api_key,
+            "APPID": config.WEATHER_API_KEY,
             "q": city,
             "units": "metric",
             "lang": settings.lang,
@@ -297,7 +297,7 @@ def fetch_forecast(settings: UserSettings, city: str) -> str:
     weather = requests.get(
         url,
         params={
-            "APPID": config.weather_api_key,
+            "APPID": config.WEATHER_API_KEY,
             "q": city,
             "units": "metric",
             "lang": settings.lang,
@@ -377,10 +377,10 @@ def is_admin_id(chat_id: int) -> bool:
 
 
 def poke_link() -> None:
-    logging.info(f"{config.link}")
+    logging.info(f"{config.LINK}")
 
     try:
-        logging.info(f"{requests.get(config.link, headers=config.headers).status_code}")
+        logging.info(f"{requests.get(config.LINK, headers=config.headers).status_code}")
     except MissingSchema as e:
         logging.info(f"{e}")
     except ConnectionError:

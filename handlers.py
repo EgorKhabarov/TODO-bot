@@ -191,7 +191,7 @@ def command_handler(
         bot.send_chat_action(chat_id=chat_id, action="upload_document")
 
         try:
-            with open(config.database_path, "rb") as file:
+            with open(config.DATABASE_PATH, "rb") as file:
                 bot.send_document(
                     chat_id=chat_id,
                     document=file,
@@ -218,12 +218,12 @@ def command_handler(
 
         try:
             with (
-                open(config.log_file, "rb") if tag_log else _() as log_file,
+                open(config.LOG_FILE, "rb") if tag_log else _() as log_file,
                 open("config.py", "rb") as config_file,
                 open("lang.py", "rb") as lang_file,
                 open("func.py", "rb") as func_file,
                 open("main.py", "rb") as main_file,
-                open(config.database_path, "rb") as db_file,
+                open(config.DATABASE_PATH, "rb") as db_file,
             ):
                 bot.send_media_group(
                     chat_id=chat_id,
@@ -641,7 +641,7 @@ def callback_handler(
 
     elif call_data == "set database" and is_admin_id(chat_id):
         try:
-            with open(config.database_path, "rb") as file:
+            with open(config.DATABASE_PATH, "rb") as file:
                 text = (
                     f"{now_time_strftime(settings.timezone)}\n"
                     f"На данный момент база выглядит так."

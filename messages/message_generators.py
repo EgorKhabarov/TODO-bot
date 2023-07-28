@@ -8,7 +8,6 @@ import logging
 from db.db import SQL
 from lang import get_translate
 from utils import remove_html_escaping
-from config import backslash_n
 from db.sql_utils import sqlite_format_date, sqlite_format_date2
 from time_utils import convert_date_format, now_time, now_time_strftime
 from user_settings import UserSettings
@@ -21,6 +20,8 @@ from buttons_utils import (
     backopenmarkup,
 )
 
+
+backslash_n = "\n"  # Для использования внутри f строк
 
 def search(
     settings: UserSettings,

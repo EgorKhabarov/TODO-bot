@@ -351,22 +351,22 @@ def add_event(message: Message):
 
 def schedule_loop():
     # ждём чтобы цикл уведомлений начинался
-    sleep(60 - now_time(config.hours_difference).second)
+    sleep(60 - now_time().second)
     while True:
-        while_time = now_time(config.hours_difference)
+        while_time = now_time()
 
-        if while_time.minute in (0, 10, 20, 30, 40, 50):
+        if config.NOTIFICATIONS and while_time.minute in (0, 10, 20, 30, 40, 50):
             Thread(target=notifications, daemon=True).start()
 
-        if while_time.minute in (0, 15, 30, 45):
-            if config.link:
+        if config.POKE_LINK and while_time.minute in (0, 15, 30, 45):
+            if config.LINK:
                 Thread(target=poke_link, daemon=True).start()
 
         sleep(60)
 
 
 if __name__ == "__main__":
-    if notifications:
+    if config.NOTIFICATIONS or config.POKE_LINK:
         Thread(target=schedule_loop, daemon=True).start()
 
     bot.infinity_polling()

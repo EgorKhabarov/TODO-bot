@@ -3,3 +3,4 @@ pyTelegramBotAPI==4.8.0
 pillow==9.5.0
 pytest~=7.4.0
 SQLAlchemy~=2.0.19
+python-dotenv~=1.0.0
