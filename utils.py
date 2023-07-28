@@ -91,12 +91,12 @@ def markdown(text: str, statuses: str, sub_url: bool | int = False) -> str:
 
     def SubUrls(_text: str):
         def la(url):
-            return f'<a href="{url[0]}">{urlparse(url[0]).netloc}</a>'
+            return f"<a href='{url[0]}'>{urlparse(url[0]).netloc}</a>"
 
         return re.sub(r"(http?s?://[^\"\'\n ]+)", la, _text)  # r"(http?s?://\S+)"
 
     def Code(_text: str):
-        return f"<code>{_text}</code>"
+        return f"<pre>{_text}</pre>"
 
     # Сокращаем несколько подряд переносов строки
     text = re.sub(r"\n(\n*)\n", "\n⠀\n", text)
