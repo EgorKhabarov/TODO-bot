@@ -19,8 +19,14 @@ from bot import bot
 from db.db import SQL
 from lang import get_translate
 from limits import create_image, is_exceeded_limit
-from time_utils import now_time_strftime, now_time, DayInfo, new_time_calendar, convert_date_format
 from user_settings import UserSettings
+from time_utils import (
+    now_time_strftime,
+    now_time,
+    DayInfo,
+    new_time_calendar,
+    convert_date_format,
+)
 from buttons_utils import (
     create_monthly_calendar_keyboard,
     generate_buttons,
@@ -469,7 +475,7 @@ SyntaxError
         bot.send_photo(
             chat_id,
             create_image(settings, date.year, date.month, date.day),
-            reply_markup=delmarkup
+            reply_markup=delmarkup,
         )
 
     elif message_text.startswith("/commands"):  # TODO перевод
@@ -1239,7 +1245,6 @@ isdel{"!" if back_to_bin == "bin" else ""}=0;
             )
             return
 
-
         delete_permanently = get_translate("delete_permanently", settings.lang)
         trash_bin = get_translate("trash_bin", settings.lang)
         split_data = call_data.split(maxsplit=1)[-1]
@@ -1255,7 +1260,8 @@ isdel{"!" if back_to_bin == "bin" else ""}=0;
                     f"❌ {delete_permanently}": f"{split_data} delete",
                     **(
                         {f"🗑 {trash_bin}": f"{split_data} to_bin"}
-                        if is_wastebasket_available else {}
+                        if is_wastebasket_available
+                        else {}
                     ),
                 },
             ]
@@ -1556,6 +1562,23 @@ WHERE user_id={chat_id} AND date='{event_date}' AND event_id={event_id};
                 callback_query_id=call_id,
                 text=get_translate("already_on_this_page", settings.lang),
             )
+
+    elif call_data == "clean_bin":
+        SQL(
+            f"""
+DELETE FROM events WHERE user_id={chat_id} AND isdel!=0;
+""",
+            commit=True,
+        )
+        callback_handler(
+            settings=settings,
+            chat_id=chat_id,
+            message_id=message_id,
+            message_text=message_text,
+            call_data="update",
+            call_id=call_id,
+            message=message,
+        )
 
 
 def clear_state(chat_id: int | str):

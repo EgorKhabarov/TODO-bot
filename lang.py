@@ -349,6 +349,10 @@ Visibility <b>{}</b>m""",
         "ru": "Выберите дату",
         "en": "Select a date",
     },
+    "clean_bin": {
+        "ru": "Опустошить корзину",
+        "en": "Emptify basket",
+    },
     "status_home_page": {
         "ru": {
             "⬜️ Без статуса                        ": None,

@@ -23,6 +23,7 @@ from buttons_utils import (
 
 backslash_n = "\n"  # Для использования внутри f строк
 
+
 def search(
     settings: UserSettings,
     chat_id: int,
@@ -173,9 +174,9 @@ def deleted(
     # Удаляем события старше 30 дней
     SQL(
         f"""
-            DELETE FROM events WHERE isdel!=0 AND 
-            (julianday('now') - julianday({sqlite_format_date("isdel")}) > 30);
-        """,
+DELETE FROM events WHERE isdel!=0 AND 
+(julianday('now') - julianday({sqlite_format_date("isdel")}) > 30);
+""",
         commit=True,
     )
 
@@ -191,6 +192,7 @@ def deleted(
                     "🔄": "update",
                     f"↩️ {get_translate('recover', settings.lang)}": "select event recover bin",
                 },
+                {f"🧹 {get_translate('clean_bin', settings.lang)}": "clean_bin"},
             ]
         ),
     )
