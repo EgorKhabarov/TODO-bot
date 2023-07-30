@@ -708,8 +708,8 @@ AND date='{msg_date}';
 
         # Заглушка если событий нет
         if events_list[0].startswith("👀") or events_list[0].startswith("🕸"):
-            no_events_to_interact = get_translate("no_events_to_interact", settings.lang)
-            bot.answer_callback_query(call_id, no_events_to_interact, True)
+            no_events = get_translate("no_events_to_interact", settings.lang)
+            bot.answer_callback_query(call_id, no_events, True)
             return
 
         msg_date = message_text[:10]
@@ -902,7 +902,9 @@ AND date='{event_date}' AND isdel!=0;
             bot.answer_callback_query(call_id, error, True)
             return  # такого события нет
 
-        if is_exceeded_limit(settings, event_date, event_count=1, symbol_count=event_len):
+        if is_exceeded_limit(
+            settings, event_date, event_count=1, symbol_count=event_len
+        ):
             exceeded_limit = get_translate("exceeded_limit", settings.lang)
             bot.answer_callback_query(call_id, exceeded_limit, True)
             return

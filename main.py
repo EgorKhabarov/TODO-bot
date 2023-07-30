@@ -156,7 +156,9 @@ AND date='{event_date}' AND isdel=0;
     # Вычисляем сколько символов добавил пользователь. Если символов стало меньше, то 0.
     added_length = 0 if tag_len_less else len(text) - len_old_event
 
-    tag_limit_exceeded = is_exceeded_limit(settings, event_date, event_count=0, symbol_count=added_length)
+    tag_limit_exceeded = is_exceeded_limit(
+        settings, event_date, event_count=0, symbol_count=added_length
+    )
 
     if tag_len_max:
         bot.reply_to(
@@ -284,7 +286,9 @@ def add_event(message: Message):
         bot.reply_to(message, message_is_too_long, reply_markup=delmarkup)
         return
 
-    if is_exceeded_limit(settings, new_event_date, event_count=1, symbol_count=len(markdown_text)):
+    if is_exceeded_limit(
+        settings, new_event_date, event_count=1, symbol_count=len(markdown_text)
+    ):
         exceeded_limit = get_translate("exceeded_limit", settings.lang)
         bot.reply_to(message, exceeded_limit, reply_markup=delmarkup)
         return
