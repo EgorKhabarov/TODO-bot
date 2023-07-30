@@ -22,7 +22,6 @@ from utils import (
     to_html_escaping,
     is_admin_id,
     poke_link,
-    main_log,
     remove_html_escaping,
     html_to_markdown,
 )
@@ -49,12 +48,7 @@ def message_handler(message: Message):
     if settings.user_status == -1 and not is_admin_id(chat_id):
         return
 
-    main_log(
-        user_status=settings.user_status,
-        chat_id=chat_id,
-        text=message_text,
-        action="send",
-    )
+    settings.log("send", message_text)
     command_handler(settings, chat_id, message_text, message)
 
 
@@ -74,12 +68,7 @@ def callback_query_handler(call: CallbackQuery):
     if settings.user_status == -1 and not is_admin_id(chat_id):
         return
 
-    main_log(
-        user_status=settings.user_status,
-        chat_id=chat_id,
-        text=call_data,
-        action="pressed",
-    )
+    settings.log("pressed", call_data)
 
     if call.data == "None":
         return 0
@@ -108,13 +97,9 @@ def processing_search_message(message: Message):
     if settings.user_status == -1 and not is_admin_id(chat_id):
         return
 
-    query = to_html_escaping(message.text[1:].replace("\n", " ").replace("--", ""))
-    main_log(
-        user_status=settings.user_status,
-        chat_id=chat_id,
-        text=message.text,
-        action="search ",
-    )
+    raw_query = message.text[1:].replace("\n", " ").replace("--", "")
+    query = to_html_escaping(raw_query.strip())
+    settings.log("search", query)
     generated = search(settings=settings, chat_id=chat_id, query=query)
     generated.send(chat_id=chat_id)
 
@@ -130,12 +115,7 @@ def processing_edit_message(message: Message):
     if settings.user_status == -1 and not is_admin_id(chat_id):
         return
 
-    main_log(
-        user_status=settings.user_status,
-        chat_id=chat_id,
-        text="edit event text",
-        action="send",
-    )
+    settings.log("send", "edit event text")
 
     markdown_text = html_to_markdown(message.html_text)
 
@@ -176,9 +156,7 @@ AND date='{event_date}' AND isdel=0;
     # Вычисляем сколько символов добавил пользователь. Если символов стало меньше, то 0.
     added_length = 0 if tag_len_less else len(text) - len_old_event
 
-    tag_limit_exceeded = is_exceeded_limit(
-        settings, date=event_date, event_count=0, symbol_count=added_length
-    )
+    tag_limit_exceeded = is_exceeded_limit(settings, event_date, event_count=0, symbol_count=added_length)
 
     if tag_len_max:
         bot.reply_to(
@@ -247,12 +225,7 @@ def processing_edit_city_message(message: Message):
     if settings.user_status == -1 and not is_admin_id(chat_id):
         return
 
-    main_log(
-        user_status=settings.user_status,
-        chat_id=chat_id,
-        text="edit city",
-        action="send",
-    )
+    settings.log("send", "edit city")
     callback_handler(
         settings=settings,
         chat_id=chat_id,
@@ -295,12 +268,7 @@ def add_event(message: Message):
     if settings.user_status == -1 and not is_admin_id(chat_id):
         return
 
-    main_log(
-        user_status=settings.user_status,
-        chat_id=chat_id,
-        text="add event",
-        action="send",
-    )
+    settings.log("send", "add event")
 
     new_event_date = SQL(
         f"SELECT add_event_date FROM settings WHERE user_id={chat_id};"
@@ -312,21 +280,13 @@ def add_event(message: Message):
 
     # Если сообщение длиннее 3800 символов, то ошибка
     if len(markdown_text) >= 3800:
-        bot.reply_to(
-            message,
-            get_translate("message_is_too_long", settings.lang),
-            reply_markup=delmarkup,
-        )
+        message_is_too_long = get_translate("message_is_too_long", settings.lang)
+        bot.reply_to(message, message_is_too_long, reply_markup=delmarkup)
         return
 
-    if is_exceeded_limit(
-        settings, date=new_event_date, event_count=1, symbol_count=len(markdown_text)
-    ):
-        bot.reply_to(
-            message,
-            get_translate("exceeded_limit", settings.lang),
-            reply_markup=delmarkup,
-        )
+    if is_exceeded_limit(settings, new_event_date, event_count=1, symbol_count=len(markdown_text)):
+        exceeded_limit = get_translate("exceeded_limit", settings.lang)
+        bot.reply_to(message, exceeded_limit, reply_markup=delmarkup)
         return
 
     # Пытаемся создать событие

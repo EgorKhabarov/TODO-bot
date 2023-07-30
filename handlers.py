@@ -562,34 +562,29 @@ def callback_handler(
         date = message_text[:10]
 
         # Проверяем будет ли превышен лимит для пользователя, если добавить 1 событие с 1 символом
-        if is_exceeded_limit(settings, date=date, event_count=1, symbol_count=1):
+        if is_exceeded_limit(settings, date, event_count=1, symbol_count=1):
             text = get_translate("exceeded_limit", settings.lang)
-            bot.answer_callback_query(
-                callback_query_id=call_id, show_alert=True, text=text
-            )
+            bot.answer_callback_query(call_id, text, True)
             return
 
         SQL(
-            f"UPDATE settings SET add_event_date='{date},{message_id}' WHERE user_id={chat_id};",
+            f"UPDATE settings SET add_event_date='{date},{message_id}'"
+            f"WHERE user_id={chat_id};",
             commit=True,
         )
 
         text = get_translate("send_event_text", settings.lang)
-        bot.answer_callback_query(callback_query_id=call_id, text=text)
+        bot.answer_callback_query(call_id, text)
 
         text = f"{message.html_text}\n\n<b>?.?.</b>⬜\n{text}"
-        bot.edit_message_text(
-            text=text, chat_id=chat_id, message_id=message_id, reply_markup=backmarkup
-        )
+        bot.edit_message_text(text, chat_id, message_id, reply_markup=backmarkup)
 
     elif call_data == "/calendar":
         text = get_translate("choose_date", settings.lang)
         markup = create_monthly_calendar_keyboard(
-            chat_id=chat_id, user_timezone=settings.timezone, lang=settings.lang
+            chat_id, settings.timezone, settings.lang
         )
-        bot.edit_message_text(
-            text=text, chat_id=chat_id, message_id=message_id, reply_markup=markup
-        )
+        bot.edit_message_text(text, chat_id, message_id, reply_markup=markup)
 
     elif call_data.startswith("back"):
         # не вызываем await clear_state(chat_id) так как она после очистки вызывает сегодняшнее сообщение
@@ -612,9 +607,9 @@ def callback_handler(
             generated.edit(chat_id=chat_id, message_id=message_id)
 
         elif message_text.startswith("🔍 "):  # Поиск
-            query = to_html_escaping(
-                message_text.split("\n", maxsplit=1)[0].split(maxsplit=2)[-1][:-1]
-            )
+            first_line = message_text.split("\n", maxsplit=1)[0]
+            raw_query = first_line.split(maxsplit=2)[-1][:-1]
+            query = to_html_escaping(raw_query)
             generated = search(settings=settings, chat_id=chat_id, query=query)
             generated.edit(chat_id=chat_id, message_id=message_id)
 
@@ -627,9 +622,8 @@ def callback_handler(
                     message_id=message_id,
                 )
                 generated.edit(chat_id=chat_id, message_id=message_id)
-            except (
-                ApiTelegramException
-            ):  # Если сообщение не изменено, то шлём календарь
+            except ApiTelegramException:
+                # Если сообщение не изменено, то шлём календарь
                 # "dd.mm.yyyy" -> [yyyy, mm]
                 YY_MM = [int(x) for x in msg_date.split(".")[1:]][::-1]
                 text = get_translate("choose_date", settings.lang)
@@ -675,12 +669,10 @@ def callback_handler(
             return
 
     elif call_data == "confirm change":
-        text = to_html_escaping(
-            message_text.split("\n", maxsplit=2)[-1]
-        )  # Получаем изменённый текст
-        msg_date, event_id = message_text.split("\n", maxsplit=1)[0].split(
-            " ", maxsplit=2
-        )[:2]
+        raw_text = message_text.split("\n", maxsplit=2)[-1]
+        text = to_html_escaping(raw_text)  # Получаем изменённый текст
+        first_line = message_text.split("\n", maxsplit=1)[0]
+        msg_date, event_id = first_line.split(" ", maxsplit=2)[:2]
 
         try:
             SQL(
@@ -695,9 +687,8 @@ AND date='{msg_date}';
             logging.info(
                 f'[handlers.py -> callback_handler -> "confirm change"] Error "{e}"'
             )
-            bot.answer_callback_query(
-                callback_query_id=call_id, text=get_translate("error", settings.lang)
-            )
+            error = get_translate("error", settings.lang)
+            bot.answer_callback_query(call_id, error)
 
         callback_handler(
             settings=UserSettings(chat_id),
@@ -717,11 +708,8 @@ AND date='{msg_date}';
 
         # Заглушка если событий нет
         if events_list[0].startswith("👀") or events_list[0].startswith("🕸"):
-            bot.answer_callback_query(
-                call_id,
-                get_translate("no_events_to_interact", settings.lang),
-                show_alert=True,
-            )
+            no_events_to_interact = get_translate("no_events_to_interact", settings.lang)
+            bot.answer_callback_query(call_id, no_events_to_interact, True)
             return
 
         msg_date = message_text[:10]
@@ -841,9 +829,8 @@ AND isdel{"!" if action.endswith("bin") else ""}=0;
             elif action == "open":
                 event_text = event.split("\n", maxsplit=1)[-1]
                 text = f"{event.split(' ', maxsplit=1)[0]} {event_text}{config.callbackTab * 20}"
-                markup.row(
-                    InlineKeyboardButton(text=text, callback_data=f"{event[:10]}")
-                )
+                button = InlineKeyboardButton(text=text, callback_data=f"{event[:10]}")
+                markup.row(button)
 
         if not markup.to_dict()["inline_keyboard"]:  # Созданный markup пустой
             callback_handler(
@@ -864,46 +851,38 @@ AND isdel{"!" if action.endswith("bin") else ""}=0;
         )
 
         if action == "edit":
-            text = (
-                f"{msg_date}\n"
-                f"{get_translate('select_event_to_edit', settings.lang)}"
-            )
+            select_event = get_translate("select_event_to_edit", settings.lang)
+            text = f"{msg_date}\n{select_event}"
 
         elif action == "status":
-            text = (
-                f"{msg_date}\n"
-                f"{get_translate('select_event_to_change_status', settings.lang)}"
-            )
+            select_event = get_translate("select_event_to_change_status", settings.lang)
+            text = f"{msg_date}\n{select_event}"
 
         elif action == "delete":
-            text = (
-                f"{msg_date}\n"
-                f"{get_translate('select_event_to_delete', settings.lang)}"
-            )
+            select_event = get_translate("select_event_to_delete", settings.lang)
+            text = f"{msg_date}\n{select_event}"
 
         elif action == "delete bin":
-            text = (
-                f"{get_translate('basket', settings.lang)}\n"
-                f"{get_translate('select_event_to_delete', settings.lang)}"
-            )
+            basket = get_translate("basket", settings.lang)
+            select_event = get_translate("select_event_to_delete", settings.lang)
+            text = f"{basket}\n{select_event}"
 
         elif action == "recover bin":
-            text = (
-                f"{get_translate('basket', settings.lang)}\n"
-                f"{get_translate('select_event_to_recover', settings.lang)}"
-            )
+            basket = get_translate("basket", settings.lang)
+            select_event = get_translate("select_event_to_recover", settings.lang)
+            text = f"{basket}\n{select_event}"
 
         elif message_text.startswith("🔍 "):
-            query = to_html_escaping(
-                message_text.split("\n", maxsplit=1)[0].split(maxsplit=2)[-1][:-1]
-            )
-            text = (
-                f"🔍 {get_translate('search', settings.lang)} {query}:\n"
-                f"{get_translate('choose_event', settings.lang)}"
-            )
+            first_line = message_text.split("\n", maxsplit=1)[0]
+            raw_query = first_line.split(maxsplit=2)[-1][:-1]
+            query = to_html_escaping(raw_query)
+            search = get_translate("search", settings.lang)
+            choose_event = get_translate("choose_event", settings.lang)
+            text = f"🔍 {search} {query}:\n{choose_event}"
 
         else:
-            text = f"{msg_date}\n" f"{get_translate('choose_event', settings.lang)}"
+            choose_event = get_translate("choose_event", settings.lang)
+            text = f"{msg_date}\n{choose_event}"
 
         bot.edit_message_text(text, chat_id, message_id, reply_markup=markup)
 
@@ -919,21 +898,13 @@ AND date='{event_date}' AND isdel!=0;
 """
             )[0][0]
         except IndexError:
-            bot.answer_callback_query(
-                callback_query_id=call_id,
-                show_alert=True,
-                text=get_translate("error", settings.lang),
-            )
+            error = get_translate("error", settings.lang)
+            bot.answer_callback_query(call_id, error, True)
             return  # такого события нет
 
-        if is_exceeded_limit(
-            settings, date=event_date, event_count=1, symbol_count=event_len
-        ):
-            bot.answer_callback_query(
-                callback_query_id=call_id,
-                show_alert=True,
-                text=get_translate("exceeded_limit", settings.lang),
-            )
+        if is_exceeded_limit(settings, event_date, event_count=1, symbol_count=event_len):
+            exceeded_limit = get_translate("exceeded_limit", settings.lang)
+            bot.answer_callback_query(call_id, exceeded_limit, True)
             return
 
         SQL(
@@ -954,9 +925,7 @@ AND date='{event_date}';
             message=message,
         )
 
-    elif call_data.startswith("status_home_page") or call_data.startswith(
-        "status page "
-    ):
+    elif any([call_data.startswith(s) for s in ("status_home_page", "status page ")]):
         # Парсим данные
         if call_data.startswith("status_home_page"):
             event_id, event_date = call_data.split(" ")[1:]
@@ -990,7 +959,6 @@ AND isdel=0 AND date='{event_date}';
             sl.extend([""] * (5 - len(sl)))
             markup = generate_buttons(
                 [
-                    # {} if status == "⬜️" else {get_translate("status page 1", settings.lang)[0][0]+"                        ": f"status set ⬜️ {event_id} {event_date}"},
                     *[
                         {
                             f"{title}{config.callbackTab * 20}": (
@@ -1087,40 +1055,28 @@ AND isdel=0 AND date='{event_date}';
 
         elif new_status in old_status:
             text = get_translate("status_already_posted", settings.lang)
-            bot.answer_callback_query(
-                callback_query_id=call_id, show_alert=True, text=text
-            )
+            bot.answer_callback_query(call_id, text, True)
 
         elif len(old_status.split(",")) > 4 and new_status != "⬜️":
             text = get_translate("more_5_statuses", settings.lang)
-            bot.answer_callback_query(
-                callback_query_id=call_id, show_alert=True, text=text
-            )
+            bot.answer_callback_query(call_id, text, True)
 
         # Убираем конфликтующие статусы
         elif ("🔗" in old_status or "💻" in old_status) and new_status in ("🔗", "💻"):
-            get_translate("conflict_statuses", settings.lang) + " 🔗, 💻"
-            bot.answer_callback_query(
-                callback_query_id=call_id, show_alert=True, text=text
-            )
+            text = get_translate("conflict_statuses", settings.lang) + " 🔗, 💻"
+            bot.answer_callback_query(call_id, text, True)
 
         elif ("🪞" in old_status or "💻" in old_status) and new_status in ("🪞", "💻"):
             text = get_translate("conflict_statuses", settings.lang) + " 🪞, 💻"
-            bot.answer_callback_query(
-                callback_query_id=call_id, show_alert=True, text=text
-            )
+            bot.answer_callback_query(call_id, text, True)
 
         elif ("🔗" in old_status or "❌🔗" in old_status) and new_status in ("🔗", "❌🔗"):
             text = get_translate("conflict_statuses", settings.lang) + " 🔗, ❌🔗"
-            bot.answer_callback_query(
-                callback_query_id=call_id, show_alert=True, text=text
-            )
+            bot.answer_callback_query(call_id, text, True)
 
         elif ("🧮" in old_status or "🗒" in old_status) and new_status in ("🧮", "🗒"):
             text = get_translate("conflict_statuses", settings.lang) + " 🧮, 🗒"
-            bot.answer_callback_query(
-                callback_query_id=call_id, show_alert=True, text=text
-            )
+            bot.answer_callback_query(call_id, text, True)
 
         else:
             if old_status == "⬜️":
@@ -1231,9 +1187,8 @@ isdel{"!" if back_to_bin == "bin" else ""}=0;
             logging.info(
                 f'[handlers.py -> callback_handler -> "before del"] IndexError "{e}"'
             )
-            bot.answer_callback_query(
-                callback_query_id=call_id, text=get_translate("error", settings.lang)
-            )
+            error = get_translate("error", settings.lang)
+            bot.answer_callback_query(call_id, error)
             callback_handler(
                 settings=settings,
                 chat_id=chat_id,
@@ -1278,9 +1233,7 @@ isdel{"!" if back_to_bin == "bin" else ""}=0;
             f"<b>{event_date}.{event_id}.</b>{status} <u><i>{day.str_date}  {day.week_date}</i> {day.relatively_date}</u>\n"
             f"<b>{sure_text}:</b>\n{text[:3800]}\n\n{end_text}"
         )
-        bot.edit_message_text(
-            text=text, chat_id=chat_id, message_id=message_id, reply_markup=predelmarkup
-        )
+        bot.edit_message_text(text, chat_id, message_id, reply_markup=predelmarkup)
 
     elif call_data.startswith("del "):
         event_date, event_id, where, mode = call_data.split(maxsplit=4)[1:]
@@ -1306,9 +1259,8 @@ WHERE user_id={chat_id} AND date='{event_date}' AND event_id={event_id};
                 )
         except Error as e:
             logging.info(f'[handlers.py -> callback_handler -> "del"] Error "{e}"')
-            bot.answer_callback_query(
-                callback_query_id=call_id, text=get_translate("error", settings.lang)
-            )
+            error = get_translate("error", settings.lang)
+            bot.answer_callback_query(call_id, error)
 
         callback_handler(
             settings=settings,
@@ -1326,9 +1278,9 @@ WHERE user_id={chat_id} AND date='{event_date}' AND event_id={event_id};
 
         try:
             if message_text.startswith("🔍 "):  # Поиск
-                query = to_html_escaping(
-                    message_text.split("\n", maxsplit=1)[0].split(maxsplit=2)[-1][:-1]
-                )
+                first_line = message_text.split("\n", maxsplit=1)[0]
+                raw_query = first_line.split(maxsplit=2)[-1][:-1]
+                query = to_html_escaping(raw_query)
                 generated = search(
                     settings=settings,
                     chat_id=chat_id,
@@ -1513,9 +1465,9 @@ WHERE user_id={chat_id} AND date='{event_date}' AND event_id={event_id};
 
     elif call_data == "update":
         if message_text.startswith("🔍 "):  # Поиск
-            query = to_html_escaping(
-                message_text.split("\n", maxsplit=1)[0].split(maxsplit=2)[-1][:-1]
-            )
+            first_line = message_text.split("\n", maxsplit=1)[0]
+            raw_query = first_line.split(maxsplit=2)[-1][:-1]
+            query = to_html_escaping(raw_query)
             generated = search(settings=settings, chat_id=chat_id, query=query)
 
         elif message_text.startswith("📆"):  # Если /week_event_list

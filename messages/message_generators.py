@@ -180,19 +180,26 @@ DELETE FROM events WHERE isdel!=0 AND
         commit=True,
     )
 
+    delete_permanently_translate = get_translate("delete_permanently", settings.lang)
+    recover_translate = get_translate("recover", settings.lang)
+    clean_bin_translate = get_translate("clean_bin", settings.lang)
+    basket_translate = get_translate("basket", settings.lang)
+    page_translate = get_translate("page", settings.lang)
+    message_empty_translate = get_translate("message_empty", settings.lang)
+
     generated = MessageGenerator(
         settings,
         reply_markup=generate_buttons(
             [
                 {
                     "✖": "message_del",
-                    f"❌ {get_translate('delete_permanently', settings.lang)}": "select event delete bin",
+                    f"❌ {delete_permanently_translate}": "select event delete bin",
                 },
                 {
                     "🔄": "update",
-                    f"↩️ {get_translate('recover', settings.lang)}": "select event recover bin",
+                    f"↩️ {recover_translate}": "select event recover bin",
                 },
-                {f"🧹 {get_translate('clean_bin', settings.lang)}": "clean_bin"},
+                {f"🧹 {clean_bin_translate}": "clean_bin"},
             ]
         ),
     )
@@ -201,11 +208,12 @@ DELETE FROM events WHERE isdel!=0 AND
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
         generated.get_data(WHERE=WHERE, direction=settings.direction_sql)
+
     generated.format(
-        title=f"🗑 {get_translate('basket', settings.lang)} 🗑\n"
-        f"{'<b>' + get_translate('page', settings.lang) + f' {page}</b>{backslash_n}' if int(page) > 1 else ''}",
+        title=f"🗑 {basket_translate} 🗑\n"
+        f"{'<b>' + page_translate + f' {page}</b>{backslash_n}' if int(page) > 1 else ''}",
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({days_before_delete})\n{markdown_text}\n",
-        if_empty=get_translate("message_empty", settings.lang),
+        if_empty=message_empty_translate,
     )
     return generated
 

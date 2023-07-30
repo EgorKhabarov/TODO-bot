@@ -478,14 +478,3 @@ def write_table_to_str(
             file.write(template.format(*row))
         file.write("\n")
     file.write(sep)
-
-
-def main_log(user_status: int, chat_id: int, action: str, text: str) -> None:
-    if user_status == 2 or is_admin_id(chat_id):
-        log_chat_id = f"\033[21m\033[34m{chat_id}\033[0m"
-    elif user_status == 1:
-        log_chat_id = f"\033[21m\033[32m{chat_id}\033[0m"
-    else:  # user_status == 0:
-        log_chat_id = f"\033[21m{chat_id}\033[0m"
-    log_text = f"[{log_chat_id:<15}] {action:<7} " + text.replace("\n", "\\n")
-    logging.info(log_text)

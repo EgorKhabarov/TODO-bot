@@ -57,3 +57,7 @@ FROM settings WHERE user_id={self.user_id};
             logging.info(f"Добавляю нового пользователя ({self.user_id})")
             SQL(f"INSERT INTO settings (user_id) VALUES ({self.user_id});", commit=True)
         return SQL(query)[0]
+
+    def log(self, action: str, text: str):
+        text = text.replace("\n", "\\n")
+        logging.info(f"[{self.user_id:<10}][{self.user_status}] {action:<7} {text}")

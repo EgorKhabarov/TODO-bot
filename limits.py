@@ -59,7 +59,7 @@ limits["ban"], limits["default"], limits["premium"], limits["admin"] = (
 
 
 def is_exceeded_limit(
-    settings: UserSettings, *, date: str, event_count: int = 0, symbol_count: int = 0
+    settings: UserSettings, date: str, *, event_count: int = 0, symbol_count: int = 0
 ) -> bool:
     """
     Возвращает True если был превышен лимит на день, на месяц, на год и на всё сразу
