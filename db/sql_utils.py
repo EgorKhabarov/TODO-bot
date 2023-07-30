@@ -10,8 +10,7 @@ def sqlite_format_date(_column, _quotes="", _sep="-"):
     return f"""
 SUBSTR({_quotes}{_column}{_quotes}, 7, 4) || '{_sep}' || 
 SUBSTR({_quotes}{_column}{_quotes}, 4, 2) || '{_sep}' || 
-SUBSTR({_quotes}{_column}{_quotes}, 1, 2)
-"""
+SUBSTR({_quotes}{_column}{_quotes}, 1, 2)"""
 
 
 def sqlite_format_date2(_date):
@@ -61,7 +60,7 @@ def pagination(
 SELECT event_id, LENGTH(text) FROM events
 WHERE {WHERE}
 ORDER BY {sqlite_format_date('date')} {direction}
-LIMIT 400
+LIMIT 400;
 """
     )
     _result = []

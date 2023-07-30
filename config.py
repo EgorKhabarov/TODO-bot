@@ -2,7 +2,6 @@ import os
 from dotenv import load_dotenv
 
 
-os.chdir(".")
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -47,7 +46,7 @@ COMMANDS = (
 callbackTab = "⠀⠀⠀"  # Специальные прозрачные символы для заполнения
 
 
-__version__ = "28.07.2023"
+__version__ = "30.07.2023"
 __autor__ = "EgorKhabarov"
 
 """

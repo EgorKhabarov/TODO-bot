@@ -148,7 +148,7 @@ translation = {
 
 ☁️ Погода: Хотите знать прогноз погоды в вашем городе? Просто спросите меня, и я предоставлю вам актуальные данные.
 
-👑 Преимущества премиум-пользователей: Для наших премиум-пользователей увеличены лимиты, а также доступна удобная мусорная корзина для удалённый событий.
+👑 Преимущества премиум-пользователей: Лимиты увеличены, а также доступна удобная мусорная корзина для удалённых событий.
 
 Пользуйтесь всеми преимуществами бота, чтобы упорядочить свою жизнь и не упустить ни одного важного момента! Если у вас возникли вопросы, введите команду /help. Приятного использования! 🌟
 """,
@@ -164,7 +164,7 @@ Here you can easily create events and notes that will be automatically placed on
 
 ☁️ Weather: Want to know the weather forecast for your city? Just ask me and I will provide you with up-to-date data.
 
-👑 Premium user benefits: Limits have been increased for our premium users, and a handy trash can for remote events is also available.
+👑 Premium user benefits: Limits have been increased and a handy recycle bin is available for events that have been removed.
 
 Use all the advantages of the bot to streamline your life and not miss a single important moment! If you have any questions, enter the /help command. Happy using! 🌟
 """,

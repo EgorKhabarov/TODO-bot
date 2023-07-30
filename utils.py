@@ -37,17 +37,31 @@ def remove_html_escaping(text: str) -> str:
 
 
 def html_to_markdown(html_text: str) -> str:
-    markdown_symbols = {
-        "i": "__",
-        "b": "**",
-        "s": "~~",
-        "pre": "```",
-        "code": "`",
-    }
-    markdown_text = re.sub(
-        r"</?(\w+)>", lambda x: markdown_symbols.get(x.group(1), x.group(1)), html_text
+    for (k1, k2), v in {
+        ("<i>", "</i>"): "__",
+        ("<b>", "</b>"): "**",
+        ("<s>", "</s>"): "~~",
+        ("<pre>", "</pre>"): "```",
+        ("<code>", "</code>"): "`",
+        ('<span class="tg-spoiler">', "</span>"): "||",
+    }.items():
+        html_text = html_text.replace(k1, v).replace(k2, v)
+
+    def prepare_url(url):
+        url = url.removeprefix("http://").removeprefix("https://")
+        url = url.strip().strip("/").strip("\\")
+        return f"https://{url}"
+
+    html_text = re.sub(
+        r"<a href=\"(.+?)\">(\S+?)(\n??)</a>",
+        lambda x: " {url} ({text}) {n}".format(  #
+            url=prepare_url(x.group(1)),
+            text=x.group(2).strip(),
+            n=x.group(3),
+        ),
+        html_text,
     )
-    return markdown_text
+    return html_text
 
 
 def markdown(text: str, statuses: str, sub_url: bool | int = False) -> str:
