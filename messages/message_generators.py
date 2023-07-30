@@ -170,11 +170,12 @@ def deleted(
     Изменить страницу:
         deleted(settings=settings, chat_id=chat_id, id_list=id_list, page=page)
     """
-    WHERE = f"""user_id={chat_id} AND isdel!=0"""
+    WHERE = f"user_id={chat_id} AND isdel!=0"
     # Удаляем события старше 30 дней
     SQL(
         f"""
-DELETE FROM events WHERE isdel!=0 AND 
+DELETE FROM events
+WHERE isdel!=0 AND 
 (julianday('now') - julianday({sqlite_format_date("isdel")}) > 30);
 """,
         commit=True,
@@ -294,34 +295,39 @@ def daily_message(
         x[0]
         for x in SQL(
             f"""
-        SELECT DISTINCT date FROM events 
-        WHERE user_id={chat_id} AND isdel=0 
-        AND 
+SELECT DISTINCT date
+FROM events 
+WHERE user_id={chat_id} AND isdel=0 
+AND 
+(
+    ( -- Каждый год
         (
-            ( -- Каждый год
-                (
-                    status LIKE '%🎉%' OR status LIKE '%🎊%' OR status LIKE '%📆%'
-                )
-                AND date LIKE '{date[:-5]}.____'
-            )
+            status LIKE '%🎉%'
             OR
-            ( -- Каждый месяц
-                status LIKE '%📅%'
-                AND date LIKE '{date[:2]}.__.____'
-            )
+            status LIKE '%🎊%'
             OR
-            ( -- Каждую неделю
-                status LIKE '%🗞%'
-                AND
-                strftime('%w', {sqlite_format_date('date')}) = 
-                CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT)
-            )
-            OR
-            ( -- Каждый день
-                status LIKE '%📬%'
-            )
-        );
-    """
+            status LIKE '%📆%'
+        )
+        AND date LIKE '{date[:-5]}.____'
+    )
+    OR
+    ( -- Каждый месяц
+        status LIKE '%📅%'
+        AND date LIKE '{date[:2]}.__.____'
+    )
+    OR
+    ( -- Каждую неделю
+        status LIKE '%🗞%'
+        AND
+        strftime('%w', {sqlite_format_date('date')}) = 
+        CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT)
+    )
+    OR
+    ( -- Каждый день
+        status LIKE '%📬%'
+    )
+);
+"""
         )
         if x[0] != date
     ]
@@ -363,12 +369,12 @@ def notifications(
             int(user_id)
             for user in SQL(
                 f"""
-            SELECT GROUP_CONCAT(user_id, ',') AS user_id_list
-            FROM settings
-            WHERE notifications=1 AND user_status != -1
-            AND ((CAST(SUBSTR(notifications_time, 1, 2) AS INT) - timezone + 24) % 24)={n_time.hour}
-            AND CAST(SUBSTR(notifications_time, 4, 2) AS INT)={n_time.minute};
-        """
+SELECT GROUP_CONCAT(user_id, ',') AS user_id_list
+FROM settings
+WHERE notifications = 1 AND user_status != -1
+AND ((CAST(SUBSTR(notifications_time, 1, 2) AS INT) - timezone + 24) % 24) = {n_time.hour}
+AND CAST(SUBSTR(notifications_time, 4, 2) AS INT) = {n_time.minute};
+"""
             )
             if user[0]
             for user_id in user[0].split(",")
@@ -390,44 +396,50 @@ def notifications(
             del _now, dates
 
             WHERE = f"""
-                user_id={user_id} AND isdel=0
-                AND
-                (
-                    ( -- На сегодняшние даты
-                        (
-                            status LIKE '%🔔%' OR status LIKE '%🔕%'
-                        )
-                        AND date='{strdates[0]}'
-                    ) 
-                    OR
-                    ( -- Совпадения сегодня и +1, +2, +3 и +7 дней
-                        status LIKE '%🟥%'
-                        AND date IN ({", ".join(f"'{date}'" for date in strdates)})
-                    )
-                    OR
-                    ( -- Каждый год
-                        (
-                            status LIKE '%🎉%' OR status LIKE '%🎊%' OR status LIKE '%📆%'
-                        )
-                        AND SUBSTR(date, 1, 5) IN ({", ".join(f"'{date[:5]}'" for date in strdates)})
-                    )
-                    OR
-                    ( -- Каждый месяц
-                        status LIKE '%📅%'
-                        AND SUBSTR(date, 1, 2) IN ({", ".join(f"'{date[:2]}'" for date in strdates)})
-                    )
-                    OR
-                    ( -- Каждую неделю
-                        status LIKE '%🗞%'
-                        AND
-                        strftime('%w', {sqlite_format_date('date')}) IN ({", ".join(f"'{w}'" for w in weekdays)})
-                    )
-                    OR
-                    ( -- Каждый день
-                        status LIKE '%📬%'
-                    )
-                )
-            """
+user_id={user_id} AND isdel=0
+AND
+(
+    ( -- На сегодняшние даты
+        (
+            status LIKE '%🔔%'
+            OR
+            status LIKE '%🔕%'
+        )
+        AND date='{strdates[0]}'
+    ) 
+    OR
+    ( -- Совпадения сегодня и +1, +2, +3 и +7 дней
+        status LIKE '%🟥%'
+        AND date IN ({", ".join(f"'{date}'" for date in strdates)})
+    )
+    OR
+    ( -- Каждый год
+        (
+            status LIKE '%🎉%'
+            OR
+            status LIKE '%🎊%'
+            OR
+            status LIKE '%📆%'
+        )
+        AND SUBSTR(date, 1, 5) IN ({", ".join(f"'{date[:5]}'" for date in strdates)})
+    )
+    OR
+    ( -- Каждый месяц
+        status LIKE '%📅%'
+        AND SUBSTR(date, 1, 2) IN ({", ".join(f"'{date[:2]}'" for date in strdates)})
+    )
+    OR
+    ( -- Каждую неделю
+        status LIKE '%🗞%'
+        AND
+        strftime('%w', {sqlite_format_date('date')}) IN ({", ".join(f"'{w}'" for w in weekdays)})
+    )
+    OR
+    ( -- Каждый день
+        status LIKE '%📬%'
+    )
+)
+"""
 
             generated = MessageGenerator(settings, reply_markup=delmarkup)
 
@@ -440,16 +452,22 @@ def notifications(
                 # Если в generated.event_list есть события
                 # или
                 # Если уведомления вызывали командой (сообщение на команду приходит даже если оно пустое)
+                reminder_translate = get_translate("reminder", settings.lang)
+                page_translate = get_translate("page", settings.lang)
+
                 generated.format(
                     title=(
-                        f"🔔 {get_translate('reminder', settings.lang)} 🔔\n"
-                        f"{'<b>' + get_translate('page', settings.lang) + f' {page}</b>{backslash_n}' if int(page) > 1 else ''}"
+                        f"🔔 {reminder_translate} 🔔\n"
+                        f"{'<b>' + page_translate + f' {page}</b>{backslash_n}' if int(page) > 1 else ''}"
                     ),
-                    args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
+                    args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
+                    "{weekday}</i></u> ({reldate})\n{markdown_text}\n",
                     if_empty=get_translate("message_empty", settings.lang),
                 )
 
-                logging.info(f"[func.py -> notifications] -> {user_id} -> ")
+                logging.info(
+                    f"[message_generators.py -> notifications] -> {user_id} -> "
+                )
 
                 try:
                     if id_list:
@@ -461,11 +479,11 @@ def notifications(
                     if not from_command:
                         SQL(
                             f"""
-                            UPDATE events 
-                            SET status=REPLACE(status, '🔔', '🔕')
-                            WHERE status LIKE '%🔔%'
-                            AND date='{now_time_strftime(settings.timezone)}';
-                            """,
+UPDATE events 
+SET status=REPLACE(status, '🔔', '🔕')
+WHERE status LIKE '%🔔%'
+AND date='{now_time_strftime(settings.timezone)}';
+""",
                             commit=True,
                         )
                     logging.info("Ok")
@@ -496,36 +514,36 @@ def recurring(
         recurring(settings=settings, date=date, chat_id=chat_id, id_list=id_list, page=page)
     """
     WHERE = f"""
-        user_id={chat_id} AND isdel=0
-        AND 
+user_id={chat_id} AND isdel=0
+AND 
+(
+    ( -- Каждый год
         (
-            ( -- Каждый год
-                (
-                    status LIKE '%🎉%'
-                     OR
-                     status LIKE '%🎊%'
-                     OR
-                     status LIKE '%📆%'
-                )
-                AND date LIKE '{date[:-5]}.____'
-            )
+            status LIKE '%🎉%'
             OR
-            ( -- Каждый месяц
-                status LIKE '%📅%'
-                AND date LIKE '{date[:2]}.__.____'
-            )
+            status LIKE '%🎊%'
             OR
-            ( -- Каждую неделю
-                status LIKE '%🗞%'
-                AND strftime('%w', {sqlite_format_date('date')}) =
-                CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT)
-            )
-            OR
-            ( -- Каждый день
-                status LIKE '%📬%'
-            )
+            status LIKE '%📆%'
         )
-    """
+        AND date LIKE '{date[:-5]}.____'
+    )
+    OR
+    ( -- Каждый месяц
+        status LIKE '%📅%'
+        AND date LIKE '{date[:2]}.__.____'
+    )
+    OR
+    ( -- Каждую неделю
+        status LIKE '%🗞%'
+        AND strftime('%w', {sqlite_format_date('date')}) =
+        CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT)
+    )
+    OR
+    ( -- Каждый день
+        status LIKE '%📬%'
+    )
+)
+"""
     generated = MessageGenerator(
         settings=settings, date=date, reply_markup=backopenmarkup
     )

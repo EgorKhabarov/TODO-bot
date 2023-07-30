@@ -2,6 +2,7 @@ from typing import Literal
 from sqlite3 import Error
 
 import logging
+
 from db.db import SQL
 
 
@@ -55,9 +56,37 @@ FROM settings WHERE user_id={self.user_id};
             return SQL(query)[0]
         except (Error, IndexError):
             logging.info(f"Добавляю нового пользователя ({self.user_id})")
-            SQL(f"INSERT INTO settings (user_id) VALUES ({self.user_id});", commit=True)
+            SQL(
+                f"""
+INSERT INTO settings (user_id)
+VALUES ({self.user_id});
+""",
+                commit=True,
+            )
         return SQL(query)[0]
 
     def log(self, action: str, text: str):
         text = text.replace("\n", "\\n")
         logging.info(f"[{self.user_id:<10}][{self.user_status}] {action:<7} {text}")
+
+    def update_userinfo(self, bot):
+        chat = bot.get_chat(self.user_id)
+        chat_info = "\n".join(
+            (
+                f"{chat.id=}",
+                f"{chat.type=}",
+                f"{chat.username=}",
+                f"{chat.first_name=}",
+                f"{chat.last_name=}",
+                f"{chat.invite_link=}",
+            )
+        )
+        SQL(
+            f"""
+UPDATE settings 
+SET username=?
+WHERE user_id=?;
+""",
+            params=(chat_info, self.user_id),
+            commit=True,
+        )

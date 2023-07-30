@@ -25,10 +25,17 @@ def create_event(user_id: int, date: str, text: str) -> bool:
     try:
         SQL(
             f"""
-INSERT INTO events(event_id, user_id, date, text)
-VALUES(
-  COALESCE((SELECT user_max_event_id FROM settings WHERE user_id = {user_id}), 1),
-  {user_id}, '{date}', '{text}'
+INSERT INTO events (event_id, user_id, date, text, adding_time)
+VALUES (
+  COALESCE(
+    (
+      SELECT user_max_event_id
+      FROM settings
+      WHERE user_id = {user_id}
+    ),
+    1
+  ),
+  {user_id}, '{date}', '{text}', DATETIME()
 );
 """,
             commit=True,
@@ -57,7 +64,8 @@ def pagination(
 ) -> list[str]:
     data = SQL(
         f"""
-SELECT event_id, LENGTH(text) FROM events
+SELECT event_id, LENGTH(text)
+FROM events
 WHERE {WHERE}
 ORDER BY {sqlite_format_date('date')} {direction}
 LIMIT 400;

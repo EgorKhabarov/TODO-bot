@@ -78,6 +78,7 @@ def command_handler(
 
     elif message_text.startswith("/start"):
         bot.set_commands(settings)
+        settings.update_userinfo(bot)
         markup = generate_buttons(
             [
                 {"/calendar": "/calendar"},
@@ -677,7 +678,9 @@ def callback_handler(
         try:
             SQL(
                 f"""
-UPDATE events SET text='{text}'
+UPDATE events
+SET text='{text}',
+    change_time=DATETIME()
 WHERE user_id={chat_id} AND event_id={event_id}
 AND date='{msg_date}';
 """,
@@ -723,7 +726,8 @@ AND date='{msg_date}';
             try:
                 SQL(
                     f"""
-SELECT text FROM events 
+SELECT text
+FROM events
 WHERE event_id={event_id} AND user_id={chat_id}
 {"AND isdel!=0" if action.endswith("bin") else ""};
 """
@@ -776,7 +780,8 @@ WHERE event_id={event_id} AND user_id={chat_id}
             try:
                 event_text = SQL(
                     f"""
-SELECT text FROM events 
+SELECT text
+FROM events
 WHERE event_id={event_id} AND user_id={chat_id}
 AND isdel{"!" if action.endswith("bin") else ""}=0;
 """

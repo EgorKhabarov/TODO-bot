@@ -72,9 +72,11 @@ class MessageGenerator:
                 Event(*event)
                 for event in SQL(
                     f"""
-                SELECT date, event_id, status, text, isdel FROM events 
-                WHERE event_id IN ({data[0]}) AND ({WHERE})
-                ORDER BY {sqlite_format_date("date")} {direction};"""
+SELECT date, event_id, status, text, isdel
+FROM events 
+WHERE event_id IN ({data[0]}) AND ({WHERE})
+ORDER BY {sqlite_format_date("date")} {direction};
+"""
                 )
             ]
 
@@ -120,7 +122,8 @@ class MessageGenerator:
                 Event(*event)
                 for event in SQL(
                     f"""
-SELECT date, event_id, status, text, isdel FROM events
+SELECT date, event_id, status, text, isdel
+FROM events
 WHERE event_id IN ({', '.join(values)}) AND ({WHERE})
 ORDER BY {sqlite_format_date('date')} {self._settings.direction_sql};
 """
