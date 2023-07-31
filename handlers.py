@@ -77,7 +77,7 @@ def command_handler(
         bot.send_message(chat_id=chat_id, text=text, reply_markup=markup)
 
     elif message_text.startswith("/start"):
-        bot.set_commands(settings)
+        bot.set_commands(chat_id, settings.user_status, settings.lang)
         settings.update_userinfo(bot)
         markup = generate_buttons(
             [
@@ -100,7 +100,7 @@ def command_handler(
             generated = deleted(settings=settings, chat_id=chat_id)
             generated.send(chat_id=chat_id)
         else:
-            bot.set_commands(settings)
+            bot.set_commands(chat_id, settings.user_status, settings.lang)
             bot.send_message(
                 chat_id=chat_id,
                 text=get_translate("deleted", settings.lang),
@@ -336,18 +336,20 @@ WHERE user_id={chat_id} AND isdel=0;
         and message.chat.type == "private"
     ):
         if len(message_text.split(" ")) == 3:
-            user_id, user_status = message_text.split(" ")[1:]
+            user_id, user_status = [int(i) for i in message_text.split(" ")[1:]]
 
             try:
                 if user_status not in (-1, 0, 1, 2):
                     raise ValueError
 
                 SQL(
-                    f"UPDATE settings SET user_status='{user_status}' WHERE user_id={user_id};",
+                    f"UPDATE settings SET user_status={user_status} WHERE user_id={user_id};",
                     commit=True,
                 )
 
-                if not bot.set_commands(settings):
+                if not bot.set_commands(
+                    user_id, user_status, UserSettings(user_id).lang
+                ):
                     raise KeyError
             except IndexError:  # Если user_id не существует
                 text = "Ошибка: id не существует"
@@ -360,7 +362,7 @@ WHERE user_id={chat_id} AND isdel=0;
             except ValueError:
                 text = "Неверный status\nstatus должен быть в (-1, 0, 1, 2)"
             else:
-                text = "Успешно изменено"
+                text = f"Успешно изменено\n{user_id} -> {user_status}"
         else:
             text = """
 SyntaxError
@@ -680,7 +682,7 @@ def callback_handler(
                 f"""
 UPDATE events
 SET text='{text}',
-    change_time=DATETIME()
+    recent_changes=DATETIME()
 WHERE user_id={chat_id} AND event_id={event_id}
 AND date='{msg_date}';
 """,
@@ -692,6 +694,7 @@ AND date='{msg_date}';
             )
             error = get_translate("error", settings.lang)
             bot.answer_callback_query(call_id, error)
+            return
 
         callback_handler(
             settings=UserSettings(chat_id),
@@ -1443,7 +1446,7 @@ WHERE user_id={chat_id} AND date='{event_date}' AND event_id={event_id};
         )
 
         settings = UserSettings(chat_id)
-        bot.set_commands(settings)
+        bot.set_commands(chat_id, settings.user_status, settings.lang)
         generated = settings_message(settings)
         try:
             generated.edit(chat_id=chat_id, message_id=message_id)

@@ -6,8 +6,6 @@ import config
 import logging
 
 from lang import get_translate
-from user_settings import UserSettings
-from utils import is_admin_id
 
 
 class Bot(TeleBot):
@@ -59,19 +57,19 @@ class Bot(TeleBot):
             + f"+{'-' * 59}+"
         )
 
-    def set_commands(self, settings: UserSettings) -> bool:
+    def set_commands(self, chat_id: int, user_status: int, lang: str) -> bool:
         """
         Ставит список команд для пользователя chat_id
         """
-        if is_admin_id(settings.user_id):
-            settings.user_status = 2
+        # if is_admin_id(chat_id) and user_status != -1:
+        #     user_status = 2
 
-        target = f"{settings.user_status}_command_list"
+        target = f"{user_status}_command_list"
 
         try:
             return self.set_my_commands(
-                commands=get_translate(target, settings.lang),
-                scope=BotCommandScopeChat(settings.user_id),
+                commands=get_translate(target, lang),
+                scope=BotCommandScopeChat(chat_id),
             )
         except (ApiTelegramException, KeyError) as e:
             logging.info(
