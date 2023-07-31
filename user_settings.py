@@ -47,9 +47,8 @@ class UserSettings:
         Возвращает список из настроек для пользователя self.user_id
         """
         query = f"""
-SELECT 
-    lang, sub_urls, city, timezone, direction,
-    user_status, notifications, notifications_time
+SELECT lang, sub_urls, city, timezone, direction,
+user_status, notifications, notifications_time
 FROM settings WHERE user_id={self.user_id};
 """
         try:
@@ -84,7 +83,7 @@ VALUES ({self.user_id});
         SQL(
             f"""
 UPDATE settings 
-SET username=?
+SET userinfo=?
 WHERE user_id=?;
 """,
             params=(chat_info, self.user_id),

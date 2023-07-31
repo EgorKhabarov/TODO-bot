@@ -39,9 +39,10 @@ CREATE TABLE events (
     try:
         SQL(
             """
-SELECT user_id, userinfo, lang, sub_urls, city,
-timezone, direction, user_status, notifications,
-notifications_time, user_max_event_id, add_event_date
+SELECT user_id, userinfo, registration_date, 
+lang, sub_urls, city, timezone, direction,
+user_status, notifications, notifications_time,
+user_max_event_id, add_event_date
 FROM settings LIMIT 1;
 """
         )
@@ -52,6 +53,7 @@ FROM settings LIMIT 1;
 CREATE TABLE settings (
     user_id            INT  NOT NULL UNIQUE ON CONFLICT ROLLBACK,
     userinfo           TEXT DEFAULT '',
+    registration_date  TEXT DEFAULT (DATETIME()),
     lang               TEXT DEFAULT 'ru',
     sub_urls           INT  DEFAULT (1),
     city               TEXT DEFAULT 'Москва',
