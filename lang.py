@@ -356,14 +356,14 @@ Visibility <b>{}</b>m""",
     "status_home_page": {
         "ru": {
             "⬜️ Без статуса                        ": None,
-            "🗂 Сделано                            ": "status page 1",
+            "🗂 Важность                           ": "status page 1",
             "🗂 Разное                             ": "status page 2",
             "🗂 Эффекты                            ": "status page 3",
             # "🗂 Пользовательские                   ": "status page 4",
         },
         "en": {
             "⬜️ No Status                          ": None,
-            "🗂 Done                               ": "status page 1",
+            "🗂 Importance                         ": "status page 1",
             "🗂 Miscellaneous                      ": "status page 2",
             "🗂 Effects                            ": "status page 3",
             # "🗂 Custom                             ": "status page 4",
