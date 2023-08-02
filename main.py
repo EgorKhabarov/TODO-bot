@@ -147,7 +147,7 @@ def processing_edit_message(message: Message):
             f"""
 SELECT LENGTH(text), {len(text)} < LENGTH(text) FROM events
 WHERE user_id={chat_id} AND event_id='{event_id}'
-AND date='{event_date}' AND isdel=0;
+AND date='{event_date}' AND removal_time=0;
 """
         )[0]
     except ValueError:

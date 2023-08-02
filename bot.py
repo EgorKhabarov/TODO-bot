@@ -1,10 +1,10 @@
+import logging
+
 from telebot import TeleBot
 from telebot.apihelper import ApiTelegramException
 from telebot.types import BotCommandScopeChat
 
 import config
-import logging
-
 from lang import get_translate
 
 
@@ -30,31 +30,33 @@ class Bot(TeleBot):
             }
         )
 
-        def check(key, val) -> str:
-            """Подсветит не правильные настройки красным цветом"""
-            keylist = {
-                "can_join_groups": "True",
-                "can_read_all_group_messages": "True",
-                "supports_inline_queries": "False",
-            }
-            indent = " " * 22
-            return (
-                (
-                    f"\033[32m{val!s:<5}\033[0m{indent}"
-                    if keylist[key] == str(val)
-                    else f"\033[31m{val!s:<5}\033[0m{indent}"
+        keylist = {
+            "can_join_groups": "True",
+            "can_read_all_group_messages": "True",
+            "supports_inline_queries": "False",
+        }
+
+        for k, v in keylist.items():
+            if v != str(bot_dict.get(k)):
+                raise AttributeError(
+                    f"{k}\n"
+                    f"Should be {keylist[k]}\n"
+                    f"Actually is {bot_dict[k]}\n\n"
+                    f"{config.bot_settings}"
                 )
-                if key in keylist
-                else f"{val}"
-            )
+
+        max_len_left = max(len(k) for k in bot_dict.keys())
+        max_len_right = max(len(str(v)) for v in bot_dict.values())
+        max_len = max_len_left + max_len_right + 5
 
         logging.info(
             "\n"
-            + f"+{'-' * 59}+\n"
+            + f"+{'-' * max_len}+\n"
             + "".join(
-                f"| {k: >27} = {check(k, v): <27} |\n" for k, v in bot_dict.items()
+                f"| {k: >{max_len_left}} = {str(v): <{max_len_right}} |\n"
+                for k, v in bot_dict.items()
             )
-            + f"+{'-' * 59}+"
+            + f"+{'-' * max_len}+"
         )
 
     def set_commands(self, chat_id: int, user_status: int, lang: str) -> bool:

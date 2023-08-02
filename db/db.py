@@ -34,45 +34,45 @@ def SQL(
 
 class SqlQueries:
     @staticmethod
-    def get_limits(user_id: int, date: str, isdel_equals_0: int = False) -> str:
+    def get_limits(user_id: int, date: str, removal_time_equals_0: int = False) -> str:
         """
-        if isdel_equals_0: "AND isdel=0"
+        if isdel_equals_0: "AND removal_time=0"
         else: ""
         """
-        isdel = "AND isdel=0" if isdel_equals_0 else ""
+        removal_time = "AND removal_time=0" if removal_time_equals_0 else ""
 
         return f"""
 SELECT 
     (
         SELECT IFNULL(COUNT(*), 0) FROM events
-        WHERE user_id={user_id} {isdel} AND date='{date}'
+        WHERE user_id={user_id} {removal_time} AND date='{date}'
     ) AS count_today,
     (
         SELECT IFNULL(SUM(LENGTH(text)), 0) FROM events
-        WHERE user_id={user_id} {isdel} AND date='{date}'
+        WHERE user_id={user_id} {removal_time} AND date='{date}'
     ) AS sum_length_today,
     (
         SELECT IFNULL(COUNT(*), 0) FROM events
-        WHERE user_id={user_id} {isdel} AND SUBSTR(date, 4, 7)='{date[3:]}'
+        WHERE user_id={user_id} {removal_time} AND SUBSTR(date, 4, 7)='{date[3:]}'
     ) AS count_month,
     (
         SELECT IFNULL(SUM(LENGTH(text)), 0) FROM events
-        WHERE user_id={user_id} {isdel} AND SUBSTR(date, 4, 7)='{date[3:]}'
+        WHERE user_id={user_id} {removal_time} AND SUBSTR(date, 4, 7)='{date[3:]}'
     ) AS sum_length_month,
     (
         SELECT IFNULL(COUNT(*), 0) FROM events
-        WHERE user_id={user_id} {isdel} AND SUBSTR(date, 7, 4)='{date[6:]}'
+        WHERE user_id={user_id} {removal_time} AND SUBSTR(date, 7, 4)='{date[6:]}'
     ) AS count_year,
     (
         SELECT IFNULL(SUM(LENGTH(text)), 0) FROM events
-        WHERE user_id={user_id} {isdel} AND SUBSTR(date, 7, 4)='{date[6:]}'
+        WHERE user_id={user_id} {removal_time} AND SUBSTR(date, 7, 4)='{date[6:]}'
     ) AS sum_length_year,
     (
         SELECT IFNULL(COUNT(*), 0) FROM events
-        WHERE user_id={user_id} {isdel}
+        WHERE user_id={user_id} {removal_time}
     ) AS total_count,
     (
         SELECT IFNULL(SUM(LENGTH(text)), 0) FROM events
-        WHERE user_id={user_id} {isdel}
+        WHERE user_id={user_id} {removal_time}
     ) AS total_length;
 """

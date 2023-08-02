@@ -16,8 +16,7 @@ class UserSettings:
     .sub_urls           Сокращать ли ссылки
     .city               Город
     .timezone           Часовой пояс
-    .direction          Направление вывода
-    .direction_sql      Направление вывода на языке sql
+    .direction          Направление вывода на языке sql
     .user_status        Обычный, Премиум, Админ (0, 1, 2)
     .notifications      1 or 0
     .notifications_time 08:00  08:00;09:30
@@ -38,7 +37,6 @@ class UserSettings:
             self.notifications,
             self.notifications_time,
         ) = self._get_user_settings()
-        self.direction_sql = {"⬇️": "DESC", "⬆️": "ASC"}[self.direction]
 
     def _get_user_settings(
         self,

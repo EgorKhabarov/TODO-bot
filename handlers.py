@@ -292,7 +292,7 @@ def command_handler(
             table = SQL(
                 f"""
 SELECT event_id, date, status, text FROM events
-WHERE user_id={chat_id} AND isdel=0;
+WHERE user_id={chat_id} AND removal_time=0;
 """,
                 column_names=True,
             )
@@ -682,7 +682,7 @@ def callback_handler(
                 f"""
 UPDATE events
 SET text='{text}',
-    recent_changes=DATETIME()
+    recent_changes_time=DATETIME()
 WHERE user_id={chat_id} AND event_id={event_id}
 AND date='{msg_date}';
 """,
@@ -732,7 +732,7 @@ AND date='{msg_date}';
 SELECT text
 FROM events
 WHERE event_id={event_id} AND user_id={chat_id}
-{"AND isdel!=0" if action.endswith("bin") else ""};
+{"AND removal_time!=0" if action.endswith("bin") else ""};
 """
                 )[0][0]
             except IndexError:  # Если этого события не существует
@@ -786,7 +786,7 @@ WHERE event_id={event_id} AND user_id={chat_id}
 SELECT text
 FROM events
 WHERE event_id={event_id} AND user_id={chat_id}
-AND isdel{"!" if action.endswith("bin") else ""}=0;
+AND removal_time{"!" if action.endswith("bin") else ""}=0;
 """
                 )[0][0]
             except IndexError:
@@ -902,7 +902,7 @@ AND isdel{"!" if action.endswith("bin") else ""}=0;
                 f"""
 SELECT LENGTH(text) FROM events
 WHERE user_id={chat_id} AND event_id={event_id}
-AND date='{event_date}' AND isdel!=0;
+AND date='{event_date}' AND removal_time!=0;
 """
             )[0][0]
         except IndexError:
@@ -919,7 +919,7 @@ AND date='{event_date}' AND isdel!=0;
 
         SQL(
             f"""
-UPDATE events SET isdel=0
+UPDATE events SET removal_time=0
 WHERE user_id={chat_id} AND event_id={event_id}
 AND date='{event_date}';
 """,
@@ -949,7 +949,7 @@ AND date='{event_date}';
                 f"""
 SELECT text, status FROM events
 WHERE user_id={chat_id} AND event_id='{event_id}'
-AND isdel=0 AND date='{event_date}';
+AND removal_time=0 AND date='{event_date}';
 """
             )[0]
         except IndexError:  # Если этого события уже нет
@@ -1036,7 +1036,7 @@ AND isdel=0 AND date='{event_date}';
                 f"""
 SELECT text, status FROM events
 WHERE user_id={chat_id} AND event_id='{event_id}'
-AND isdel=0 AND date='{event_date}';
+AND removal_time=0 AND date='{event_date}';
 """
             )[0]
         except IndexError:
@@ -1136,7 +1136,7 @@ AND date='{event_date}';
                 f"""
 SELECT text, status FROM events
 WHERE user_id={chat_id} AND event_id='{event_id}'
-AND isdel=0 AND date='{event_date}';
+AND removal_time=0 AND date='{event_date}';
 """
             )[0]
         except IndexError:
@@ -1190,7 +1190,7 @@ AND date='{event_date}';
                 f"""
 SELECT text, status FROM events
 WHERE user_id={chat_id} AND event_id={event_id} AND date='{event_date}' AND
-isdel{"!" if back_to_bin == "bin" else ""}=0;
+removal_time{"!" if back_to_bin == "bin" else ""}=0;
 """
             )[0]
         except IndexError as e:
@@ -1254,7 +1254,7 @@ isdel{"!" if back_to_bin == "bin" else ""}=0;
             ) and mode == "to_bin":
                 SQL(
                     f"""
-UPDATE events SET isdel='{now_time_strftime(settings.timezone)}' 
+UPDATE events SET removal_time=DATE() 
 WHERE user_id={chat_id} AND date='{event_date}' AND event_id={event_id};
 """,
                     commit=True,
@@ -1528,7 +1528,7 @@ WHERE user_id={chat_id} AND date='{event_date}' AND event_id={event_id};
     elif call_data == "clean_bin":
         SQL(
             f"""
-DELETE FROM events WHERE user_id={chat_id} AND isdel!=0;
+DELETE FROM events WHERE user_id={chat_id} AND removal_time!=0;
 """,
             commit=True,
         )

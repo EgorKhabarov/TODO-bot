@@ -1,6 +1,6 @@
 import os
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -46,12 +46,10 @@ COMMANDS = (
 callbackTab = "⠀⠀⠀"  # Специальные прозрачные символы для заполнения
 
 
-__version__ = "30.07.2023"
+__version__ = "02.08.2023"
 __autor__ = "EgorKhabarov"
 
-"""
-pip install -r requirements.txt
-
+bot_settings = """
 Bot settings => Group Privacy => disabled
 Bot settings => Inline Mode   => disabled
-"""
+""".strip()

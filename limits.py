@@ -191,7 +191,7 @@ def create_image(
         limit_symbol_year,
         limit_event_all,
         limit_symbol_all,
-    ) = SQL(SqlQueries.get_limits(user_id, date, isdel_equals_0=True))[0]
+    ) = SQL(SqlQueries.get_limits(user_id, date, removal_time_equals_0=True))[0]
     (
         event_day,
         symbol_day,

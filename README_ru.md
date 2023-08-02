@@ -105,14 +105,14 @@
 # [DataBase](/func.py#L93&L125)
 
 * ### [root](/func.py#L102&L109)
-| name     | data type | default value |
-|:---------|:----------|:--------------|
-| event_id | INT       | _NULL_        |
-| user_id  | INT       | _NULL_        |
-| date     | TEXT      | _NULL_        |
-| text     | TEXT      | _NULL_        |
-| isdel    | INT       | 0             |
-| status   | TEXT      | ⬜️            |
+| name         | data type | default value |
+|:-------------|:----------|:--------------|
+| event_id     | INT       | _NULL_        |
+| user_id      | INT       | _NULL_        |
+| date         | TEXT      | _NULL_        |
+| text         | TEXT      | _NULL_        |
+| removal_time | INT       | 0             |
+| status       | TEXT      | ⬜️            |
 
 * ### [settings](/func.py#L115&L125)
 | name              | data type | default value |
@@ -178,9 +178,9 @@
 
 ---
 
-```
+```bash
 git clone https://github.com/EgorKhabarov/TODO-bot .
 ```
-```
+```bash
 pip install -r requirements.txt
 ```

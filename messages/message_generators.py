@@ -73,13 +73,13 @@ def search(
         f"date LIKE '%{x}%' OR text LIKE '%{x}%' OR status LIKE '%{x}%' OR event_id LIKE '%{x}%'"
         for x in querylst
     )
-    WHERE = f"(user_id={chat_id} AND isdel=0) AND ({splitquery})"
+    WHERE = f"(user_id={chat_id} AND removal_time=0) AND ({splitquery})"
 
     generated = MessageGenerator(settings, reply_markup=delopenmarkup)
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
-        generated.get_data(WHERE=WHERE, direction=settings.direction_sql)
+        generated.get_data(WHERE=WHERE, direction=settings.direction)
     generated.format(
         title=f"🔍 {get_translate('search', settings.lang)} {query}:\n"
         f"{'<b>' + get_translate('page', settings.lang) + f' {page}</b>{backslash_n}' if int(page) > 1 else ''}",
@@ -109,7 +109,7 @@ def week_event_list(
         week_event_list(settings=settings, chat_id=chat_id, id_list=id_list, page=page)
     """
     WHERE = f"""
-    (user_id={chat_id} AND isdel=0) AND (
+    (user_id={chat_id} AND removal_time=0) AND (
         (
             {sqlite_format_date('date')}
             BETWEEN DATE('now', '{settings.timezone:+} hours')
@@ -170,13 +170,13 @@ def deleted(
     Изменить страницу:
         deleted(settings=settings, chat_id=chat_id, id_list=id_list, page=page)
     """
-    WHERE = f"user_id={chat_id} AND isdel!=0"
+    WHERE = f"user_id={chat_id} AND removal_time!=0"
     # Удаляем события старше 30 дней
     SQL(
         f"""
 DELETE FROM events
-WHERE isdel!=0 AND 
-(julianday('now') - julianday({sqlite_format_date("isdel")}) > 30);
+WHERE removal_time!=0 AND 
+(julianday('now') - julianday(removal_time) > 30);
 """,
         commit=True,
     )
@@ -208,7 +208,7 @@ WHERE isdel!=0 AND
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
-        generated.get_data(WHERE=WHERE, direction=settings.direction_sql)
+        generated.get_data(WHERE=WHERE, direction=settings.direction)
 
     generated.format(
         title=f"🗑 {basket_translate} 🗑\n"
@@ -240,7 +240,7 @@ def daily_message(
     Изменить страницу:
         today_message(settings=settings, chat_id=chat_id, date=date, id_list=id_list, page=page)
     """
-    WHERE = f"user_id={chat_id} AND isdel=0 AND date='{date}'"
+    WHERE = f"user_id={chat_id} AND removal_time=0 AND date='{date}'"
 
     new_date = convert_date_format(date)
     if 1980 < (new_date - timedelta(days=1)).year < 3000:
@@ -268,7 +268,7 @@ def daily_message(
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
-        generated.get_data(WHERE=WHERE, direction=settings.direction_sql)
+        generated.get_data(WHERE=WHERE, direction=settings.direction)
 
     # Изменяем уже существующий `generated`, если в сообщение событие только одно.
     if len(generated.event_list) == 1 and message_id:
@@ -297,7 +297,7 @@ def daily_message(
             f"""
 SELECT DISTINCT date
 FROM events 
-WHERE user_id={chat_id} AND isdel=0 
+WHERE user_id={chat_id} AND removal_time=0 
 AND 
 (
     ( -- Каждый год
@@ -396,7 +396,7 @@ AND CAST(SUBSTR(notifications_time, 4, 2) AS INT) = {n_time.minute};
             del _now, dates
 
             WHERE = f"""
-user_id={user_id} AND isdel=0
+user_id={user_id} AND removal_time=0
 AND
 (
     ( -- На сегодняшние даты
@@ -514,7 +514,7 @@ def recurring(
         recurring(settings=settings, date=date, chat_id=chat_id, id_list=id_list, page=page)
     """
     WHERE = f"""
-user_id={chat_id} AND isdel=0
+user_id={chat_id} AND removal_time=0
 AND 
 (
     ( -- Каждый год
@@ -551,7 +551,7 @@ AND
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
-        generated.get_data(WHERE=WHERE, direction=settings.direction_sql, prefix="|!")
+        generated.get_data(WHERE=WHERE, direction=settings.direction, prefix="|!")
 
     generated.format(
         title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n"
@@ -569,7 +569,8 @@ def settings_message(settings: UserSettings) -> MessageGenerator:
     """
     not_lang = "ru" if settings.lang == "en" else "en"
     not_sub_urls = 1 if settings.sub_urls == 0 else 0
-    not_direction = "⬇️" if settings.direction == "⬆️" else "⬆️"
+    not_direction_smile = {"DESC": "⬆️", "ASC": "⬇️"}[settings.direction]
+    not_direction_sql = {"DESC": "ASC", "ASC": "DESC"}[settings.direction]
     not_notifications_ = ("🔕", 0) if settings.notifications else ("🔔", 1)
     n_hours, n_minutes = [int(i) for i in settings.notifications_time.split(":")]
 
@@ -580,35 +581,43 @@ def settings_message(settings: UserSettings) -> MessageGenerator:
 
     time_zone_dict = {}
     time_zone_dict.__setitem__(
-        *("‹‹‹", f"settings timezone {utz - 1}") if utz > -11 else ("   ", "None")
+        *("-3", f"settings timezone {utz - 3}") if utz > -10 else ("    ", "None")
+    )
+    time_zone_dict.__setitem__(
+        *("-1", f"settings timezone {utz - 1}") if utz > -12 else ("   ", "None")
     )
     time_zone_dict[str_utz] = "settings timezone 3"
     time_zone_dict.__setitem__(
-        *("›››", f"settings timezone {utz + 1}") if utz < 11 else ("   ", "None")
+        *("+1", f"settings timezone {utz + 1}") if utz < 12 else ("   ", "None")
+    )
+    time_zone_dict.__setitem__(
+        *("+3", f"settings timezone {utz + 3}") if utz < 10 else ("    ", "None")
     )
 
     notifications_time = {}
     if not_notifications_[0] == "🔕":
-        notifications_time["‹‹‹"] = "settings notifications_time {}".format(
-            f"{n_hours-1:0>2}:{n_minutes:0>2}" if n_hours > 0 else f"23:{n_minutes:0>2}"
+        notifications_time["-1h"] = "settings notifications_time {}".format(
+            f"{n_hours-1:0>2}:{n_minutes:0>2}"
+            if n_hours > 0 else
+            f"23:{n_minutes:0>2}"
         )
-        notifications_time["<"] = "settings notifications_time {}".format(
+        notifications_time["-10m"] = "settings notifications_time {}".format(
             f"{n_hours:0>2}:{n_minutes-10:0>2}"
-            if n_minutes > 0
-            else f"{n_hours-1:0>2}:50"
+            if n_minutes > 0 else
+            f"{n_hours-1:0>2}:50"
         )
         notifications_time[
             f"{n_hours:0>2}:{n_minutes:0>2} ⏰"
         ] = "settings notifications_time {}".format("08:00")
-        notifications_time[">"] = "settings notifications_time {}".format(
+        notifications_time["+10m"] = "settings notifications_time {}".format(
             f"{n_hours:0>2}:{n_minutes+10:0>2}"
-            if n_minutes < 50
-            else f"{n_hours+1:0>2}:00"
+            if n_minutes < 50 else
+            f"{n_hours+1:0>2}:00"
         )
-        notifications_time["›››"] = "settings notifications_time {}".format(
+        notifications_time["+1h"] = "settings notifications_time {}".format(
             f"{n_hours+1:0>2}:{n_minutes:0>2}"
-            if n_hours < 23
-            else f"00:{n_minutes:0>2}"
+            if n_hours < 23 else
+            f"00:{n_minutes:0>2}"
         )
 
     text = get_translate("settings", settings.lang).format(
@@ -617,7 +626,7 @@ def settings_message(settings: UserSettings) -> MessageGenerator:
         settings.city,
         str_utz,
         now_time(settings.timezone).strftime("%H:%M  %d.%m.%Y"),
-        settings.direction,
+        {"DESC": "⬇️", "ASC": "⬆️"}[settings.direction],
         "🔔" if settings.notifications else "🔕",
         f"{n_hours:0>2}:{n_minutes:0>2}" if settings.notifications else "",
     )
@@ -626,7 +635,7 @@ def settings_message(settings: UserSettings) -> MessageGenerator:
             {
                 f"🗣 {settings.lang}": f"settings lang {not_lang}",
                 f"🔗 {bool(settings.sub_urls)}": f"settings sub_urls {not_sub_urls}",
-                f"{not_direction}": f"settings direction {not_direction}",
+                f"{not_direction_smile}": f"settings direction {not_direction_sql}",
                 f"{not_notifications_[0]}": f"settings notifications {not_notifications_[1]}",
             },
             time_zone_dict,

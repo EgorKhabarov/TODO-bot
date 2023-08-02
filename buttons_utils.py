@@ -83,7 +83,7 @@ def create_monthly_calendar_keyboard(
         for x in SQL(
             f"""
 SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as INT) FROM events
-WHERE user_id={chat_id} AND isdel=0 AND date LIKE '__.{MM:0>2}.{YY}';
+WHERE user_id={chat_id} AND removal_time=0 AND date LIKE '__.{MM:0>2}.{YY}';
 """
         )
     ]
@@ -94,7 +94,7 @@ WHERE user_id={chat_id} AND isdel=0 AND date LIKE '__.{MM:0>2}.{YY}';
         for x in SQL(
             f"""
 SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as INT) FROM events
-WHERE user_id={chat_id} AND isdel=0
+WHERE user_id={chat_id} AND removal_time=0
 AND
 (
     (
@@ -115,7 +115,7 @@ AND
 SELECT DISTINCT CAST(
     strftime('%w', {sqlite_format_date('date')})-1 as INT
 ) FROM events
-WHERE user_id={chat_id} AND isdel=0 AND status LIKE '%🗞%';
+WHERE user_id={chat_id} AND removal_time=0 AND status LIKE '%🗞%';
 """
         )
     ]
@@ -171,7 +171,7 @@ def create_yearly_calendar_keyboard(
         for x in SQL(
             f"""
 SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM events
-WHERE user_id={chat_id} AND date LIKE '__.__.{YY}' AND isdel=0;
+WHERE user_id={chat_id} AND date LIKE '__.__.{YY}' AND removal_time=0;
 """
         )
     ]
@@ -182,7 +182,7 @@ WHERE user_id={chat_id} AND date LIKE '__.__.{YY}' AND isdel=0;
         for x in SQL(
             f"""
 SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM events
-WHERE user_id={chat_id} AND isdel=0
+WHERE user_id={chat_id} AND removal_time=0
 AND (status LIKE '%🎉%' OR status LIKE '%🎊%' OR status LIKE '%📆%');
 """
         )
@@ -194,7 +194,7 @@ AND (status LIKE '%🎉%' OR status LIKE '%🎊%' OR status LIKE '%📆%');
         for x in SQL(
             f"""
 SELECT date FROM events
-WHERE user_id={chat_id} AND isdel=0 AND status LIKE '%📅%' LIMIT 1;
+WHERE user_id={chat_id} AND removal_time=0 AND status LIKE '%📅%' LIMIT 1;
 """
         )
     ]

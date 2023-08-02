@@ -19,18 +19,22 @@ from user_settings import UserSettings
 @dataclass
 class Event:
     """
+    event_id: int
     date: str = "now"
-    event_id: int = 0
-    status: str = ""
     text: str = ""
-    deldate: str = "0"
+    status: str = ""
+    removal_time: str = ""
+    adding_time: str = ""
+    recent_changes_time: str = ""
     """
 
+    event_id: int
     date: str = "now"
-    event_id: int = 0
-    status: str = ""
     text: str = ""
-    deldate: str = "0"
+    status: str = ""
+    removal_time: str = ""
+    adding_time: str = ""
+    recent_changes_time: str = ""
 
 
 class MessageGenerator:
@@ -72,7 +76,8 @@ class MessageGenerator:
                 Event(*event)
                 for event in SQL(
                     f"""
-SELECT date, event_id, status, text, isdel
+SELECT event_id, date, text, status,
+removal_time, adding_time, recent_changes_time
 FROM events 
 WHERE event_id IN ({data[0]}) AND ({WHERE})
 ORDER BY {sqlite_format_date("date")} {direction};
@@ -80,7 +85,7 @@ ORDER BY {sqlite_format_date("date")} {direction};
                 )
             ]
 
-            if self._settings.direction_sql == "ASC":
+            if self._settings.direction == "ASC":
                 first_message = first_message[::-1]
             self.event_list = first_message
 
@@ -122,10 +127,11 @@ ORDER BY {sqlite_format_date("date")} {direction};
                 Event(*event)
                 for event in SQL(
                     f"""
-SELECT date, event_id, status, text, isdel
+SELECT event_id, date, text, status,
+removal_time, adding_time, recent_changes_time
 FROM events
 WHERE event_id IN ({', '.join(values)}) AND ({WHERE})
-ORDER BY {sqlite_format_date('date')} {self._settings.direction_sql};
+ORDER BY {sqlite_format_date('date')} {self._settings.direction};
 """
                 )
             ]
@@ -135,7 +141,7 @@ ORDER BY {sqlite_format_date('date')} {self._settings.direction_sql};
             )
             self.event_list = []
         else:
-            if self._settings.direction_sql == "ASC":
+            if self._settings.direction == "ASC":
                 res = res[::-1]
             self.event_list = res
         return self
@@ -172,14 +178,14 @@ ORDER BY {sqlite_format_date('date')} {self._settings.direction_sql};
         :return:         message.text
         """
 
-        def days_before_delete(event_deletion_date):
-            if event_deletion_date in (0, 1):
+        def days_before_delete(event_deletion_date: str):
+            if event_deletion_date == "0":
                 return 30
             else:
                 d1 = datetime.utcnow() + timedelta(
                     hours=self._settings.timezone
                 )  # Текущая дата у пользователя
-                d2 = convert_date_format(event_deletion_date)
+                d2 = datetime(*[int(i) for i in event_deletion_date.split("-")])
 
                 return 30 - (d1 - d2).days
 
@@ -216,7 +222,7 @@ ORDER BY {sqlite_format_date('date')} {self._settings.direction_sql};
                         markdown_text_nourlsub=markdown(event.text, event.status),
                         days_before_delete=get_translate(
                             "deldate", self._settings.lang
-                        )(days_before_delete(event.deldate)),
+                        )(days_before_delete(event.removal_time)),
                         **kwargs,
                         text=event.text,
                     )
