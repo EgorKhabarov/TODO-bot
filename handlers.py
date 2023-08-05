@@ -458,13 +458,17 @@ SyntaxError
 DELETE FROM events
       WHERE user_id = ?;
 """,
-                        params=(user_id,), commit=True)
+                        params=(user_id,),
+                        commit=True,
+                    )
                     SQL(
                         """
 DELETE FROM settings
       WHERE user_id = ?;
 """,
-                        params=(user_id,), commit=True)
+                        params=(user_id,),
+                        commit=True,
+                    )
                 except Error as e:
                     text = f'Ошибка базы данных: "{e}"'
                 else:
@@ -621,7 +625,7 @@ SELECT add_event_date
   FROM settings
  WHERE user_id = ?;
 """,
-            params=(chat_id,)
+            params=(chat_id,),
         )[0][0]
 
         if add_event_date:
@@ -770,7 +774,7 @@ SELECT text
        user_id = ?
        {"AND removal_time != 0" if action.endswith("bin") else ""};
 """,
-                    params=(event_id, chat_id)
+                    params=(event_id, chat_id),
                 )[0][0]
             except IndexError:  # Если этого события не существует
                 callback_handler(
@@ -826,7 +830,7 @@ SELECT text
        user_id = ? AND
        removal_time {"!" if action.endswith("bin") else ""}= 0;
 """,
-                    params=(event_id, chat_id)
+                    params=(event_id, chat_id),
                 )[0][0]
             except IndexError:
                 continue
@@ -946,7 +950,7 @@ SELECT LENGTH(text)
        date = ? AND 
        removal_time != 0;
 """,
-                params=(chat_id, event_id, event_date)
+                params=(chat_id, event_id, event_date),
             )[0][0]
         except IndexError:
             error = get_translate("error", settings.lang)
@@ -1001,7 +1005,7 @@ SELECT text,
        removal_time = 0 AND 
        date = ?;
 """,
-                params=(chat_id, event_id, event_date)
+                params=(chat_id, event_id, event_date),
             )[0]
         except IndexError:  # Если этого события уже нет
             callback_handler(
@@ -1092,7 +1096,7 @@ SELECT text,
        removal_time = 0 AND 
        date = ?;
 """,
-                params=(chat_id, event_id, event_date)
+                params=(chat_id, event_id, event_date),
             )[0]
         except IndexError:
             callback_handler(
@@ -1657,7 +1661,7 @@ SELECT add_event_date
   FROM settings
  WHERE user_id = ?;
 """,
-        params=(chat_id,)
+        params=(chat_id,),
     )[0][0]
 
     if add_event_date:

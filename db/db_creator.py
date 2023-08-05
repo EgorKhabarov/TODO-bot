@@ -58,7 +58,7 @@ BEGIN
      WHERE event_id = NEW.event_id;
 END;
 """,
-                commit=True
+                commit=True,
             )
         else:
             quit(f"{e}")

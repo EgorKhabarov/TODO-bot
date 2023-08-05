@@ -4,7 +4,10 @@ import config
 
 
 def SQL(
-    query: str, params: tuple | dict = (), commit: bool = False, column_names: bool = False
+    query: str,
+    params: tuple | dict = (),
+    commit: bool = False,
+    column_names: bool = False,
 ) -> list[tuple[int | str | bytes, ...], ...]:
     """
     Выполняет SQL запрос
@@ -85,5 +88,10 @@ SELECT
          WHERE user_id = :user_id
     ) AS total_length;
 """,
-            params={"user_id": user_id, "date": date, "date_3": date[3:], "date_6": date[6:]}
+            params={
+                "user_id": user_id,
+                "date": date,
+                "date_3": date[3:],
+                "date_6": date[6:],
+            },
         )[0]

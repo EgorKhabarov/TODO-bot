@@ -60,7 +60,7 @@ UPDATE settings
     except Error as e:
         logging.info(
             f'[sql_utils.py -> create_event] Error "{e}"  '
-            f'arg: {user_id=}, {date=}, {text=}'
+            f"arg: {user_id=}, {date=}, {text=}"
         )
         return False
 

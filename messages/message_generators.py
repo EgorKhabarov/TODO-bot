@@ -329,7 +329,11 @@ SELECT DISTINCT date
     )
 );
 """,
-            params={"user_id": chat_id, "y_date": f"{date[:-5]}.____", "m_date": f"{date[:2]}.__.____"}
+            params={
+                "user_id": chat_id,
+                "y_date": f"{date[:-5]}.____",
+                "m_date": f"{date[:2]}.__.____",
+            },
         )
         if x[0] != date
     ]
@@ -597,27 +601,25 @@ def settings_message(settings: UserSettings) -> MessageGenerator:
     notifications_time = {}
     if not_notifications_[0] == "🔕":
         notifications_time["-1h"] = "settings notifications_time {}".format(
-            f"{n_hours-1:0>2}:{n_minutes:0>2}"
-            if n_hours > 0 else
-            f"23:{n_minutes:0>2}"
+            f"{n_hours-1:0>2}:{n_minutes:0>2}" if n_hours > 0 else f"23:{n_minutes:0>2}"
         )
         notifications_time["-10m"] = "settings notifications_time {}".format(
             f"{n_hours:0>2}:{n_minutes-10:0>2}"
-            if n_minutes > 0 else
-            f"{n_hours-1:0>2}:50"
+            if n_minutes > 0
+            else f"{n_hours-1:0>2}:50"
         )
         notifications_time[
             f"{n_hours:0>2}:{n_minutes:0>2} ⏰"
         ] = "settings notifications_time {}".format("08:00")
         notifications_time["+10m"] = "settings notifications_time {}".format(
             f"{n_hours:0>2}:{n_minutes+10:0>2}"
-            if n_minutes < 50 else
-            f"{n_hours+1:0>2}:00"
+            if n_minutes < 50
+            else f"{n_hours+1:0>2}:00"
         )
         notifications_time["+1h"] = "settings notifications_time {}".format(
             f"{n_hours+1:0>2}:{n_minutes:0>2}"
-            if n_hours < 23 else
-            f"00:{n_minutes:0>2}"
+            if n_hours < 23
+            else f"00:{n_minutes:0>2}"
         )
 
     text = get_translate("settings", settings.lang).format(

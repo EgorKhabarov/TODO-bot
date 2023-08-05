@@ -88,7 +88,7 @@ SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT)
        removal_time = 0 AND 
        date LIKE ?;
 """,
-            params=(chat_id, f"__.{MM:0>2}.{YY}")
+            params=(chat_id, f"__.{MM:0>2}.{YY}"),
         )
     ]
 
@@ -107,7 +107,7 @@ SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT)
            SUBSTR(date, 4, 2) = ?) OR 
          status LIKE '%📅%');
 """,
-            params=(chat_id, f"{MM:0>2}")
+            params=(chat_id, f"{MM:0>2}"),
         )
     ]
 
@@ -122,7 +122,7 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
        removal_time = 0 AND 
        status LIKE '%🗞%';
 """,
-            params=(chat_id,)
+            params=(chat_id,),
         )
     ]
 
@@ -182,7 +182,7 @@ SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT)
        date LIKE ? AND 
        removal_time = 0;
 """,
-            params=(chat_id, f"__.__.{YY}")
+            params=(chat_id, f"__.__.{YY}"),
         )
     ]
 
@@ -199,7 +199,7 @@ SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT)
         status LIKE '%🎊%' OR 
         status LIKE '%📆%');
 """,
-            params=(chat_id,)
+            params=(chat_id,),
         )
     ]
 
@@ -215,7 +215,7 @@ SELECT date
        status LIKE '%📅%'
  LIMIT 1;
 """,
-            params=(chat_id, )
+            params=(chat_id,),
         )
     ]
 

@@ -153,7 +153,7 @@ SELECT LENGTH(text),
        date = ? AND 
        removal_time = 0;
 """,
-            params=(len(text), chat_id, event_id, event_date)
+            params=(len(text), chat_id, event_id, event_date),
         )[0]
     except ValueError:
         return  # Этого события нет
@@ -260,7 +260,7 @@ SELECT add_event_date
   FROM settings
  WHERE user_id = ?;
 """,
-        params=(msg.chat.id,)
+        params=(msg.chat.id,),
     )
     return add_event_date[0][0] if add_event_date else 0
 
@@ -288,7 +288,7 @@ SELECT add_event_date
   FROM settings
  WHERE user_id = ?;
 """,
-        params=(chat_id,)
+        params=(chat_id,),
     )[0][0].split(",")[0]
 
     # Если сообщение команда, то проигнорировать
