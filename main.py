@@ -77,8 +77,8 @@ def callback_query_handler(call: CallbackQuery):
         settings=settings,
         chat_id=chat_id,
         message_id=message_id,
-        message_text=call.message.text,
-        call_data=call.data,
+        message_text=message_text,
+        call_data=call_data,
         call_id=call.id,
         message=call.message,
     )

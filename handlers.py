@@ -597,8 +597,8 @@ def callback_handler(
         SQL(
             """
 UPDATE settings
-SET add_event_date = ?
-WHERE user_id = ?;
+   SET add_event_date = ?
+ WHERE user_id = ?;
 """,
             params=(f"{date},{message_id}", chat_id),
             commit=True,
@@ -719,10 +719,11 @@ UPDATE settings
             SQL(
                 """
 UPDATE events
-SET text = ?,
-    recent_changes_time=DATETIME()
-WHERE user_id = ? AND event_id = ?
-AND date = ?;
+   SET text = ?,
+       recent_changes_time = DATETIME() 
+ WHERE user_id = ? AND 
+       event_id = ? AND 
+       date = ?;
 """,
                 params=(text, chat_id, event_id, msg_date),
                 commit=True,

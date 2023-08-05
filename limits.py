@@ -1,4 +1,3 @@
-from calendar import monthcalendar
 from io import BytesIO
 
 from PIL import Image, ImageFont
@@ -6,7 +5,7 @@ from PIL.ImageDraw import Draw
 
 from lang import get_translate
 from time_utils import now_time
-from db.db import SQL, SqlQueries
+from db.db import SqlQueries
 from user_settings import UserSettings
 
 limits = {

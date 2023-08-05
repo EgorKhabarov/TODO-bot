@@ -54,10 +54,13 @@ def search(
         )
     TODO шаблоны для поиска
     """
+    translate_search = get_translate("search", settings.lang)
+    translate_page = get_translate("page", settings.lang)
+
     if not re.match(r"\S", query):
         generated = MessageGenerator(settings, reply_markup=delmarkup)
         generated.format(
-            title=f"🔍 {get_translate('search', settings.lang)} {query}:\n",
+            title=f"🔍 {translate_search} {query}:\n",
             if_empty=get_translate("request_empty", settings.lang),
         )
         return generated
@@ -70,10 +73,11 @@ def search(
 
     querylst = query.replace("\n", " ").split()
     splitquery = " OR ".join(
-        f"date LIKE '%{x}%' OR text LIKE '%{x}%' OR status LIKE '%{x}%' OR event_id LIKE '%{x}%'"
+        f"date LIKE '%{x}%' OR text LIKE '%{x}%' OR "
+        f"status LIKE '%{x}%' OR event_id LIKE '%{x}%'"
         for x in querylst
     )
-    WHERE = f"(user_id={chat_id} AND removal_time=0) AND ({splitquery})"
+    WHERE = f"(user_id = {chat_id} AND removal_time = 0) AND ({splitquery})"
 
     generated = MessageGenerator(settings, reply_markup=delopenmarkup)
     if id_list:
@@ -81,8 +85,8 @@ def search(
     else:
         generated.get_data(WHERE=WHERE, direction=settings.direction)
     generated.format(
-        title=f"🔍 {get_translate('search', settings.lang)} {query}:\n"
-        f"{'<b>' + get_translate('page', settings.lang) + f' {page}</b>{backslash_n}' if int(page) > 1 else ''}",
+        title=f"🔍 {translate_search} {query}:\n"
+        f"{f'<b>{translate_page} {page}</b>{backslash_n}' if int(page) > 1 else ''}",
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
         "{weekday}</i></u> ({reldate})\n{markdown_text}\n",
         if_empty=get_translate("nothing_found", settings.lang),
@@ -109,7 +113,7 @@ def week_event_list(
         week_event_list(settings=settings, chat_id=chat_id, id_list=id_list, page=page)
     """
     WHERE = f"""
-    (user_id={chat_id} AND removal_time=0) AND (
+    (user_id = {chat_id} AND removal_time = 0) AND (
         (
             {sqlite_format_date('date')}
             BETWEEN DATE('now', '{settings.timezone:+} hours')
@@ -144,10 +148,14 @@ def week_event_list(
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
         generated.get_data(WHERE=WHERE, direction="ASC")
+
+    translate_page = get_translate("page", settings.lang)
+
     generated.format(
         title=f"📆 {get_translate('week_events', settings.lang)} 📆\n"
-        f"{'<b>' + get_translate('page', settings.lang) + f' {page}</b>{backslash_n}' if int(page) > 1 else ''}",
-        args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
+        f"{f'<b>{translate_page} {page}</b>{backslash_n}' if int(page) > 1 else ''}",
+        args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
+        "{weekday}</i></u> ({reldate})\n{markdown_text}\n",
         if_empty=get_translate("nothing_found", settings.lang),
     )
     return generated
@@ -170,7 +178,7 @@ def deleted(
     Изменить страницу:
         deleted(settings=settings, chat_id=chat_id, id_list=id_list, page=page)
     """
-    WHERE = f"user_id={chat_id} AND removal_time!=0"
+    WHERE = f"user_id = {chat_id} AND removal_time != 0"
     # Удаляем события старше 30 дней
     SQL(
         """
@@ -212,8 +220,9 @@ DELETE FROM events
 
     generated.format(
         title=f"🗑 {basket_translate} 🗑\n"
-        f"{'<b>' + page_translate + f' {page}</b>{backslash_n}' if int(page) > 1 else ''}",
-        args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({days_before_delete})\n{markdown_text}\n",
+        f"{f'<b>{page_translate} {page}</b>{backslash_n}' if int(page) > 1 else ''}",
+        args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
+        "{weekday}</i></u> ({days_before_delete})\n{markdown_text}\n",
         if_empty=message_empty_translate,
     )
     return generated
@@ -283,9 +292,11 @@ def daily_message(
             f"{remove_html_escaping(event.text)}",
         )
 
+    translate_page = get_translate("page", settings.lang)
+
     generated.format(
         title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n"
-        f"{'<b>' + get_translate('page', settings.lang) + f' {page}</b>{backslash_n}' if int(page) > 1 else ''}",
+        f"{f'<b>{translate_page} {page}</b>{backslash_n}' if int(page) > 1 else ''}",
         args="<b>{numd}.{event_id}.</b>{status}\n{markdown_text}\n",
         if_empty=get_translate("nodata", settings.lang),
     )
@@ -374,13 +385,15 @@ def notifications(
         user_id_list = [
             int(user_id)
             for user in SQL(
-                f"""
+                """
 SELECT GROUP_CONCAT(user_id, ',') AS user_id_list
-FROM settings
-WHERE notifications = 1 AND user_status != -1
-AND ((CAST(SUBSTR(notifications_time, 1, 2) AS INT) - timezone + 24) % 24) = {n_time.hour}
-AND CAST(SUBSTR(notifications_time, 4, 2) AS INT) = {n_time.minute};
-"""
+  FROM settings
+ WHERE notifications = 1 AND 
+       user_status != -1 AND 
+       ((CAST(SUBSTR(notifications_time, 1, 2) AS INT) - timezone + 24) % 24) = ? AND 
+       CAST(SUBSTR(notifications_time, 4, 2) AS INT) = ?;
+""",
+                params=(n_time.hour, n_time.minute),
             )
             if user[0]
             for user_id in user[0].split(",")
@@ -402,7 +415,7 @@ AND CAST(SUBSTR(notifications_time, 4, 2) AS INT) = {n_time.minute};
             del _now, dates
 
             WHERE = f"""
-user_id={user_id} AND removal_time=0
+user_id = {user_id} AND removal_time = 0
 AND
 (
     ( -- На сегодняшние даты
@@ -464,7 +477,7 @@ AND
                 generated.format(
                     title=(
                         f"🔔 {reminder_translate} 🔔\n"
-                        f"{'<b>' + page_translate + f' {page}</b>{backslash_n}' if int(page) > 1 else ''}"
+                        f"{f'<b>{page_translate} {page}</b>{backslash_n}' if int(page) > 1 else ''}"
                     ),
                     args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
                     "{weekday}</i></u> ({reldate})\n{markdown_text}\n",
@@ -557,9 +570,10 @@ AND
     else:
         generated.get_data(WHERE=WHERE, direction=settings.direction, prefix="|!")
 
+    translate_page = get_translate("page", settings.lang)
     generated.format(
         title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n"
-        f"{'<b>' + get_translate('page', settings.lang) + f' {page}</b>{backslash_n}' if int(page) > 1 else ''}",
+        f"{f'<b>{translate_page} {page}</b>{backslash_n}' if int(page) > 1 else ''}",
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
         "{weekday}</i></u> ({reldate})\n{markdown_text}\n",
         if_empty=get_translate("nothing_found", settings.lang),
