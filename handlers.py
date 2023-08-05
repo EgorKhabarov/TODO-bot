@@ -170,7 +170,7 @@ def command_handler(
         generated = daily_message(settings=settings, chat_id=chat_id, date=message_date)
         new_message = generated.send(chat_id=chat_id)
 
-        # Чтобы не создавать новый `generated`, изменяем уже существующее, если в сообщение событие только одно.
+        # Изменяем уже существующую клавиатуру если событие в сообщение только одно.
         if len(generated.event_list) == 1:
             event = generated.event_list[0]
             edit_button_attrs(
@@ -269,7 +269,6 @@ def command_handler(
         except Error as e:
             bot.reply_to(message, text=f'[handlers.py -> "/SQL"] Error "{e}"')
         else:
-            file.seek(0)
             bot.send_document(
                 chat_id=chat_id,
                 document=InputFile(file),
@@ -290,10 +289,16 @@ def command_handler(
             file = StringIO()
             file.name = f"ToDoList {message.from_user.username} ({now_time_strftime(settings.timezone)}).csv"
             table = SQL(
-                f"""
-SELECT event_id, date, status, text FROM events
-WHERE user_id={chat_id} AND removal_time=0;
+                """
+SELECT event_id,
+       date,
+       status,
+       text
+  FROM events
+ WHERE user_id = ? AND 
+       removal_time = 0;
 """,
+                params=(chat_id,),
                 column_names=True,
             )
             file_writer = csv.writer(file)
@@ -343,7 +348,12 @@ WHERE user_id={chat_id} AND removal_time=0;
                     raise ValueError
 
                 SQL(
-                    f"UPDATE settings SET user_status={user_status} WHERE user_id={user_id};",
+                    """
+UPDATE settings
+   SET user_status = ?
+ WHERE user_id = ?;
+""",
+                    params=(user_status, user_id),
                     commit=True,
                 )
 
@@ -443,8 +453,18 @@ SyntaxError
             if not is_admin_id(user_id):
                 try:
                     # TODO присылать sql файл для восстановления
-                    SQL(f"DELETE FROM events   WHERE user_id={user_id};", commit=True)
-                    SQL(f"DELETE FROM settings WHERE user_id={user_id};", commit=True)
+                    SQL(
+                        """
+DELETE FROM events
+      WHERE user_id = ?;
+""",
+                        params=(user_id,), commit=True)
+                    SQL(
+                        """
+DELETE FROM settings
+      WHERE user_id = ?;
+""",
+                        params=(user_id,), commit=True)
                 except Error as e:
                     text = f'Ошибка базы данных: "{e}"'
                 else:
@@ -571,8 +591,12 @@ def callback_handler(
             return
 
         SQL(
-            f"UPDATE settings SET add_event_date='{date},{message_id}'"
-            f"WHERE user_id={chat_id};",
+            """
+UPDATE settings
+SET add_event_date = ?
+WHERE user_id = ?;
+""",
+            params=(f"{date},{message_id}", chat_id),
             commit=True,
         )
 
@@ -592,14 +616,24 @@ def callback_handler(
     elif call_data.startswith("back"):
         # не вызываем await clear_state(chat_id) так как она после очистки вызывает сегодняшнее сообщение
         add_event_date = SQL(
-            f"SELECT add_event_date FROM settings WHERE user_id={chat_id};"
+            """
+SELECT add_event_date
+  FROM settings
+ WHERE user_id = ?;
+""",
+            params=(chat_id,)
         )[0][0]
 
         if add_event_date:
             add_event_message_id = add_event_date.split(",")[1]
             if int(message_id) == int(add_event_message_id):
                 SQL(
-                    f"UPDATE settings SET add_event_date=0 WHERE user_id={chat_id};",
+                    """
+UPDATE settings
+   SET add_event_date = 0
+ WHERE user_id = ?;
+""",
+                    params=(chat_id,),
                     commit=True,
                 )
 
@@ -679,13 +713,14 @@ def callback_handler(
 
         try:
             SQL(
-                f"""
+                """
 UPDATE events
-SET text='{text}',
+SET text = ?,
     recent_changes_time=DATETIME()
-WHERE user_id={chat_id} AND event_id={event_id}
-AND date='{msg_date}';
+WHERE user_id = ? AND event_id = ?
+AND date = ?;
 """,
+                params=(text, chat_id, event_id, msg_date),
                 commit=True,
             )
         except Error as e:
@@ -730,10 +765,12 @@ AND date='{msg_date}';
                 SQL(
                     f"""
 SELECT text
-FROM events
-WHERE event_id={event_id} AND user_id={chat_id}
-{"AND removal_time!=0" if action.endswith("bin") else ""};
-"""
+  FROM events
+ WHERE event_id = ? AND 
+       user_id = ?
+       {"AND removal_time != 0" if action.endswith("bin") else ""};
+""",
+                    params=(event_id, chat_id)
                 )[0][0]
             except IndexError:  # Если этого события не существует
                 callback_handler(
@@ -784,10 +821,12 @@ WHERE event_id={event_id} AND user_id={chat_id}
                 event_text = SQL(
                     f"""
 SELECT text
-FROM events
-WHERE event_id={event_id} AND user_id={chat_id}
-AND removal_time{"!" if action.endswith("bin") else ""}=0;
-"""
+  FROM events
+ WHERE event_id = ? AND 
+       user_id = ? AND
+       removal_time {"!" if action.endswith("bin") else ""}= 0;
+""",
+                    params=(event_id, chat_id)
                 )[0][0]
             except IndexError:
                 continue
@@ -884,9 +923,9 @@ AND removal_time{"!" if action.endswith("bin") else ""}=0;
             first_line = message_text.split("\n", maxsplit=1)[0]
             raw_query = first_line.split(maxsplit=2)[-1][:-1]
             query = to_html_escaping(raw_query)
-            search = get_translate("search", settings.lang)
+            translate_search = get_translate("search", settings.lang)
             choose_event = get_translate("choose_event", settings.lang)
-            text = f"🔍 {search} {query}:\n{choose_event}"
+            text = f"🔍 {translate_search} {query}:\n{choose_event}"
 
         else:
             choose_event = get_translate("choose_event", settings.lang)
@@ -899,11 +938,15 @@ AND removal_time{"!" if action.endswith("bin") else ""}=0;
 
         try:
             event_len = SQL(
-                f"""
-SELECT LENGTH(text) FROM events
-WHERE user_id={chat_id} AND event_id={event_id}
-AND date='{event_date}' AND removal_time!=0;
-"""
+                """
+SELECT LENGTH(text) 
+  FROM events
+ WHERE user_id = ? AND 
+       event_id = ? AND 
+       date = ? AND 
+       removal_time != 0;
+""",
+                params=(chat_id, event_id, event_date)
             )[0][0]
         except IndexError:
             error = get_translate("error", settings.lang)
@@ -918,11 +961,14 @@ AND date='{event_date}' AND removal_time!=0;
             return
 
         SQL(
-            f"""
-UPDATE events SET removal_time=0
-WHERE user_id={chat_id} AND event_id={event_id}
-AND date='{event_date}';
+            """
+UPDATE events
+   SET removal_time = 0
+ WHERE user_id = ? AND 
+       event_id = ? AND 
+       date = ?;
 """,
+            params=(chat_id, event_id, event_date),
             commit=True,
         )
         callback_handler(
@@ -946,11 +992,16 @@ AND date='{event_date}';
         # Проверяем наличие события
         try:  # Если события нет, то обновляем сообщение
             text, status = SQL(
-                f"""
-SELECT text, status FROM events
-WHERE user_id={chat_id} AND event_id='{event_id}'
-AND removal_time=0 AND date='{event_date}';
-"""
+                """
+SELECT text,
+       status
+  FROM events
+ WHERE user_id = ? AND 
+       event_id = ? AND 
+       removal_time = 0 AND 
+       date = ?;
+""",
+                params=(chat_id, event_id, event_date)
             )[0]
         except IndexError:  # Если этого события уже нет
             callback_handler(
@@ -970,13 +1021,7 @@ AND removal_time=0 AND date='{event_date}';
             markup = generate_buttons(
                 [
                     *[
-                        {
-                            f"{title}{config.callbackTab * 20}": (
-                                f"{data}"
-                                if data
-                                else f"status set {title.split(maxsplit=1)[0]} {event_id} {event_date}"
-                            )
-                        }
+                        {f"{title}{config.callbackTab * 20}": f"{data}"}
                         for title, data in get_translate(
                             "status_home_page", settings.lang
                         ).items()
@@ -994,23 +1039,28 @@ AND removal_time=0 AND date='{event_date}';
                     {"🔙": "back"},
                 ]
             )
-
-            # Если статус равен ⬜️, то удалить первую строчку с предложением обнулить все статусы.
-            if status == "⬜️":
-                # Убираем первую строку клавиатуры
-                markup.keyboard = markup.keyboard[1:]
         else:  # status page
             buttons_data = get_translate(call_data, settings.lang)
             markup = generate_buttons(
                 [
                     *[
                         {
-                            f"{row}{config.callbackTab * 20}": f"status set {row.split(maxsplit=1)[0]} {event_id} {event_date}"
+                            f"{row}{config.callbackTab * 20}": (
+                                f"status set "
+                                f"{row.split(maxsplit=1)[0]} "
+                                f"{event_id} "
+                                f"{event_date}"
+                            )
                             for row in status_column
                         }
                         if len(status_column) > 1
                         else {
-                            f"{status_column[0]}{config.callbackTab * 20}": f"status set {status_column[0].split(maxsplit=1)[0]} {event_id} {event_date}"
+                            f"{status_column[0]}{config.callbackTab * 20}": (
+                                f"status set "
+                                f"{status_column[0].split(maxsplit=1)[0]} "
+                                f"{event_id} "
+                                f"{event_date}"
+                            )
                         }
                         for status_column in buttons_data
                     ],
@@ -1033,11 +1083,16 @@ AND removal_time=0 AND date='{event_date}';
 
         try:  # Если события нет, то обновляем сообщение
             text, old_status = SQL(
-                f"""
-SELECT text, status FROM events
-WHERE user_id={chat_id} AND event_id='{event_id}'
-AND removal_time=0 AND date='{event_date}';
-"""
+                """
+SELECT text,
+       status
+  FROM events
+ WHERE user_id = ? AND 
+       event_id = ? AND 
+       removal_time = 0 AND 
+       date = ?;
+""",
+                params=(chat_id, event_id, event_date)
             )[0]
         except IndexError:
             callback_handler(
@@ -1080,8 +1135,8 @@ AND removal_time=0 AND date='{event_date}';
             text = get_translate("conflict_statuses", settings.lang) + " 🪞, 💻"
             bot.answer_callback_query(call_id, text, True)
 
-        elif ("🔗" in old_status or "❌🔗" in old_status) and new_status in ("🔗", "❌🔗"):
-            text = get_translate("conflict_statuses", settings.lang) + " 🔗, ❌🔗"
+        elif ("🔗" in old_status or "⛓" in old_status) and new_status in ("🔗", "⛓"):
+            text = get_translate("conflict_statuses", settings.lang) + " 🔗, ⛓"
             bot.answer_callback_query(call_id, text, True)
 
         elif ("🧮" in old_status or "🗒" in old_status) and new_status in ("🧮", "🗒"):
@@ -1099,11 +1154,14 @@ AND removal_time=0 AND date='{event_date}';
                 res_status = f"{old_status},{new_status}"
 
             SQL(
-                f"""
-UPDATE events SET status='{res_status}'
-WHERE user_id={chat_id} AND event_id={event_id}
-AND date='{event_date}';
+                """
+UPDATE events
+   SET status = ?
+ WHERE user_id = ? AND 
+       event_id = ? AND 
+       date = ?;
 """,
+                params=(res_status, chat_id, event_id, event_date),
                 commit=True,
             )
 
@@ -1133,11 +1191,16 @@ AND date='{event_date}';
 
         try:  # Если события нет, то обновляем сообщение
             text, old_status = SQL(
-                f"""
-SELECT text, status FROM events
-WHERE user_id={chat_id} AND event_id='{event_id}'
-AND removal_time=0 AND date='{event_date}';
-"""
+                """
+SELECT text,
+       status
+  FROM events
+ WHERE user_id = ? AND 
+       event_id = ? AND 
+       removal_time = 0 AND 
+       date = ?;
+""",
+                params=(chat_id, event_id, event_date),
             )[0]
         except IndexError:
             callback_handler(
@@ -1164,11 +1227,14 @@ AND removal_time=0 AND date='{event_date}';
             res_status = "⬜️"
 
         SQL(
-            f"""
-UPDATE events SET status='{res_status}' 
-WHERE user_id={chat_id} AND event_id={event_id} 
-AND date='{event_date}';
+            """
+UPDATE events
+   SET status = ?
+ WHERE user_id = ? AND 
+       event_id = ? AND 
+       date = ?;
 """,
+            params=(res_status, chat_id, event_id, event_date),
             commit=True,
         )
 
@@ -1188,10 +1254,15 @@ AND date='{event_date}';
         try:
             text, status = SQL(
                 f"""
-SELECT text, status FROM events
-WHERE user_id={chat_id} AND event_id={event_id} AND date='{event_date}' AND
-removal_time{"!" if back_to_bin == "bin" else ""}=0;
-"""
+SELECT text,
+       status
+  FROM events
+ WHERE user_id = ? AND 
+       event_id = ? AND 
+       date = ? AND 
+       removal_time {"!" if back_to_bin == "bin" else ""}= 0;
+""",
+                params=(chat_id, event_id, event_date),
             )[0]
         except IndexError as e:
             logging.info(
@@ -1253,18 +1324,25 @@ removal_time{"!" if back_to_bin == "bin" else ""}=0;
                 settings.user_status in (1, 2) or is_admin_id(chat_id)
             ) and mode == "to_bin":
                 SQL(
-                    f"""
-UPDATE events SET removal_time=DATE() 
-WHERE user_id={chat_id} AND date='{event_date}' AND event_id={event_id};
+                    """
+UPDATE events
+   SET removal_time = DATE() 
+ WHERE user_id = ? AND 
+       date = ? AND 
+       event_id = ?;
 """,
+                    params=(chat_id, event_date, event_id),
                     commit=True,
                 )
             else:
                 SQL(
-                    f"""
-DELETE FROM events 
-WHERE user_id={chat_id} AND date='{event_date}' AND event_id={event_id};
+                    """
+DELETE FROM events
+      WHERE user_id = ? AND 
+            date = ? AND 
+            event_id = ?;
 """,
+                    params=(chat_id, event_date, event_id),
                     commit=True,
                 )
         except Error as e:
@@ -1440,8 +1518,31 @@ WHERE user_id={chat_id} AND date='{event_date}' AND event_id={event_id};
         if isinstance(par_val, str):
             par_val = f"'{par_val}'"
 
+        # TODO par_name проверять из словаря
+        if par_name not in [
+            "user_id",
+            "userinfo",
+            "registration_date",
+            "lang",
+            "sub_urls",
+            "city",
+            "timezone",
+            "direction",
+            "user_status",
+            "notifications",
+            "notifications_time",
+            "user_max_event_id",
+            "add_event_date",
+        ]:
+            return
+
         SQL(
-            f"UPDATE settings SET {par_name}={par_val} WHERE user_id={chat_id};",
+            f"""
+UPDATE settings
+   SET {par_name} = ?
+ WHERE user_id = ?;
+""",
+            params=(par_val, chat_id),
             commit=True,
         )
 
@@ -1527,9 +1628,12 @@ WHERE user_id={chat_id} AND date='{event_date}' AND event_id={event_id};
 
     elif call_data == "clean_bin":
         SQL(
-            f"""
-DELETE FROM events WHERE user_id={chat_id} AND removal_time!=0;
+            """
+DELETE FROM events
+      WHERE user_id = ? AND 
+            removal_time != 0;
 """,
+            params=(chat_id,),
             commit=True,
         )
         callback_handler(
@@ -1548,13 +1652,23 @@ def clear_state(chat_id: int | str):
     Очищает состояние приёма сообщения у пользователя и изменяет сообщение по id из add_event_date
     """
     add_event_date = SQL(
-        f"SELECT add_event_date FROM settings WHERE user_id={chat_id};"
+        """
+SELECT add_event_date
+  FROM settings
+ WHERE user_id = ?;
+""",
+        params=(chat_id,)
     )[0][0]
 
     if add_event_date:
         msg_date, message_id = add_event_date.split(",")
         SQL(
-            f"UPDATE settings SET add_event_date=0 WHERE user_id={chat_id};",
+            """
+UPDATE settings
+   SET add_event_date = 0
+ WHERE user_id = ?;
+""",
+            params=(chat_id,),
             commit=True,
         )
         callback_handler(

@@ -1,7 +1,6 @@
 from calendar import isleap
 from datetime import datetime, timedelta
 
-import config
 from lang import get_translate
 from user_settings import UserSettings
 

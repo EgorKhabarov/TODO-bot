@@ -144,11 +144,16 @@ def processing_edit_message(message: Message):
 
     try:  # Уменьшится ли длинна события
         len_old_event, tag_len_less = SQL(
-            f"""
-SELECT LENGTH(text), {len(text)} < LENGTH(text) FROM events
-WHERE user_id={chat_id} AND event_id='{event_id}'
-AND date='{event_date}' AND removal_time=0;
-"""
+            """
+SELECT LENGTH(text),
+       LENGTH(text) > ?
+  FROM events
+ WHERE user_id = ? AND 
+       event_id = ? AND 
+       date = ? AND 
+       removal_time = 0;
+""",
+            params=(len(text), chat_id, event_id, event_date)
         )[0]
     except ValueError:
         return  # Этого события нет
@@ -250,7 +255,12 @@ def processing_edit_city_message(message: Message):
 
 def add_event_func(msg) -> int:
     add_event_date = SQL(
-        f"SELECT add_event_date FROM settings WHERE user_id={msg.chat.id};"
+        """
+SELECT add_event_date
+  FROM settings
+ WHERE user_id = ?;
+""",
+        params=(msg.chat.id,)
     )
     return add_event_date[0][0] if add_event_date else 0
 
@@ -273,7 +283,12 @@ def add_event(message: Message):
     settings.log("send", "add event")
 
     new_event_date = SQL(
-        f"SELECT add_event_date FROM settings WHERE user_id={chat_id};"
+        """
+SELECT add_event_date
+  FROM settings
+ WHERE user_id = ?;
+""",
+        params=(chat_id,)
     )[0][0].split(",")[0]
 
     # Если сообщение команда, то проигнорировать

@@ -173,10 +173,10 @@ def deleted(
     WHERE = f"user_id={chat_id} AND removal_time!=0"
     # Удаляем события старше 30 дней
     SQL(
-        f"""
+        """
 DELETE FROM events
-WHERE removal_time!=0 AND 
-(julianday('now') - julianday(removal_time) > 30);
+      WHERE removal_time != 0 AND 
+            (julianday('now') - julianday(removal_time) > 30);
 """,
         commit=True,
     )
@@ -240,7 +240,7 @@ def daily_message(
     Изменить страницу:
         today_message(settings=settings, chat_id=chat_id, date=date, id_list=id_list, page=page)
     """
-    WHERE = f"user_id={chat_id} AND removal_time=0 AND date='{date}'"
+    WHERE = f"user_id = {chat_id} AND date = '{date}' AND removal_time = 0"
 
     new_date = convert_date_format(date)
     if 1980 < (new_date - timedelta(days=1)).year < 3000:
@@ -295,10 +295,11 @@ def daily_message(
         x[0]
         for x in SQL(
             f"""
+-- Кнопка повторяющихся событий
 SELECT DISTINCT date
-FROM events 
-WHERE user_id={chat_id} AND removal_time=0 
-AND 
+  FROM events
+ WHERE user_id = :user_id AND 
+       removal_time = 0 AND
 (
     ( -- Каждый год
         (
@@ -308,12 +309,12 @@ AND
             OR
             status LIKE '%📆%'
         )
-        AND date LIKE '{date[:-5]}.____'
+        AND date LIKE :y_date
     )
     OR
     ( -- Каждый месяц
         status LIKE '%📅%'
-        AND date LIKE '{date[:2]}.__.____'
+        AND date LIKE :m_date
     )
     OR
     ( -- Каждую неделю
@@ -327,7 +328,8 @@ AND
         status LIKE '%📬%'
     )
 );
-"""
+""",
+            params={"user_id": chat_id, "y_date": f"{date[:-5]}.____", "m_date": f"{date[:2]}.__.____"}
         )
         if x[0] != date
     ]
@@ -478,20 +480,18 @@ AND
                         generated.send(chat_id=user_id)
                     if not from_command:
                         SQL(
-                            f"""
-UPDATE events 
-SET status=REPLACE(status, '🔔', '🔕')
-WHERE status LIKE '%🔔%'
-AND date='{now_time_strftime(settings.timezone)}';
+                            """
+UPDATE events
+   SET status = REPLACE(status, '🔔', '🔕') 
+ WHERE status LIKE '%🔔%' AND 
+       date = ?;
 """,
+                            params=(now_time_strftime(settings.timezone),),
                             commit=True,
                         )
                     logging.info("Ok")
                 except ApiTelegramException:
                     logging.info("Error")
-
-                if not from_command:
-                    logging.info("\n")
 
 
 def recurring(
@@ -514,7 +514,7 @@ def recurring(
         recurring(settings=settings, date=date, chat_id=chat_id, id_list=id_list, page=page)
     """
     WHERE = f"""
-user_id={chat_id} AND removal_time=0
+user_id = {chat_id} AND removal_time = 0
 AND 
 (
     ( -- Каждый год

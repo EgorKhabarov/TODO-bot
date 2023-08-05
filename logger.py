@@ -1,7 +1,10 @@
 import logging
 
+import config
+
+
 logging.basicConfig(
-    filename="bot.log",
+    filename=config.LOG_FILE,
     format="%(asctime)s %(filename)s:%(lineno)d %(levelname)s %(message)s",
     datefmt="[%Y-%m-%d %H:%M:%S]",
     level=logging.INFO,

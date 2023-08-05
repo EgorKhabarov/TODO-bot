@@ -44,23 +44,31 @@ class UserSettings:
         """
         Возвращает список из настроек для пользователя self.user_id
         """
-        query = f"""
-SELECT lang, sub_urls, city, timezone, direction,
-user_status, notifications, notifications_time
-FROM settings WHERE user_id={self.user_id};
+        query = """
+SELECT lang,
+       sub_urls,
+       city,
+       timezone,
+       direction,
+       user_status,
+       notifications,
+       notifications_time
+  FROM settings
+ WHERE user_id = ?;
 """
         try:
-            return SQL(query)[0]
+            return SQL(query, params=(self.user_id,))[0]
         except (Error, IndexError):
             logging.info(f"Добавляю нового пользователя ({self.user_id})")
             SQL(
-                f"""
+                """
 INSERT INTO settings (user_id)
-VALUES ({self.user_id});
+VALUES (?);
 """,
+                params=(self.user_id,),
                 commit=True,
             )
-        return SQL(query)[0]
+        return SQL(query, params=(self.user_id,))[0]
 
     def log(self, action: str, text: str):
         text = text.replace("\n", "\\n")
@@ -79,10 +87,10 @@ VALUES ({self.user_id});
             )
         )
         SQL(
-            f"""
-UPDATE settings 
-SET userinfo=?
-WHERE user_id=?;
+            """
+UPDATE settings
+   SET userinfo = ?
+ WHERE user_id = ?;
 """,
             params=(chat_info, self.user_id),
             commit=True,

@@ -115,8 +115,8 @@ def markdown(text: str, statuses: str, sub_url: bool | int = False) -> str:
     # Сокращаем несколько подряд переносов строки
     text = re.sub(r"\n(\n*)\n", "\n⠀\n", text)
 
-    if ("🔗" in statuses and "❌🔗" not in statuses) or (
-        sub_url and ("💻" not in statuses and "❌🔗" not in statuses)
+    if ("🔗" in statuses and "⛓" not in statuses) or (
+        sub_url and ("💻" not in statuses and "⛓" not in statuses)
     ):
         text = SubUrls(text)
 
@@ -478,3 +478,4 @@ def write_table_to_str(
             file.write(template.format(*row))
         file.write("\n")
     file.write(sep)
+    file.seek(0)

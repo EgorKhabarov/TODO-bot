@@ -12,7 +12,7 @@ from bot import bot
 from lang import get_translate
 from utils import markdown
 from db.sql_utils import sqlite_format_date, pagination
-from time_utils import now_time_strftime, convert_date_format, DayInfo
+from time_utils import now_time_strftime, DayInfo
 from user_settings import UserSettings
 
 
@@ -29,10 +29,10 @@ class Event:
     """
 
     event_id: int
-    date: str = "now"
+    date: str = "now_time"
     text: str = ""
     status: str = ""
-    removal_time: str = ""
+    removal_time: str = "0"
     adding_time: str = ""
     recent_changes_time: str = ""
 
@@ -76,12 +76,18 @@ class MessageGenerator:
                 Event(*event)
                 for event in SQL(
                     f"""
-SELECT event_id, date, text, status,
-removal_time, adding_time, recent_changes_time
-FROM events 
-WHERE event_id IN ({data[0]}) AND ({WHERE})
-ORDER BY {sqlite_format_date("date")} {direction};
-"""
+SELECT event_id,
+       date,
+       text,
+       status,
+       removal_time,
+       adding_time,
+       recent_changes_time
+  FROM events
+ WHERE event_id IN ({data[0]}) AND 
+       ({WHERE}) 
+ ORDER BY {sqlite_format_date("date")} {direction};
+""",
                 )
             ]
 
@@ -127,12 +133,18 @@ ORDER BY {sqlite_format_date("date")} {direction};
                 Event(*event)
                 for event in SQL(
                     f"""
-SELECT event_id, date, text, status,
-removal_time, adding_time, recent_changes_time
-FROM events
-WHERE event_id IN ({', '.join(values)}) AND ({WHERE})
-ORDER BY {sqlite_format_date('date')} {self._settings.direction};
-"""
+SELECT event_id,
+       date,
+       text,
+       status,
+       removal_time,
+       adding_time,
+       recent_changes_time
+  FROM events
+ WHERE event_id IN ({', '.join(values)}) AND 
+       ({WHERE}) 
+ ORDER BY {sqlite_format_date('date')} {self._settings.direction};
+""",
                 )
             ]
         except Error as e:

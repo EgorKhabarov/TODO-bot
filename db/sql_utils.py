@@ -5,12 +5,18 @@ import logging
 from db.db import SQL
 
 
-def sqlite_format_date(_column, _quotes="", _sep="-"):
-    """SUBSTR({column}, 7, 4) || '{sep}' || SUBSTR({column}, 4, 2) || '{sep}' || SUBSTR({column}, 1, 2)"""
+def sqlite_format_date(_column):
+    """
+    Столбец sql базы данных превращает из формата
+    dd.mm.yyyy в yyyy.mm.dd в виде sql выражения
+
+    :param _column: Столбец для превращения.
+    :return: sql выражение
+    """
     return f"""
-SUBSTR({_quotes}{_column}{_quotes}, 7, 4) || '{_sep}' || 
-SUBSTR({_quotes}{_column}{_quotes}, 4, 2) || '{_sep}' || 
-SUBSTR({_quotes}{_column}{_quotes}, 1, 2)"""
+SUBSTR({_column}, 7, 4) || '-' || 
+SUBSTR({_column}, 4, 2) || '-' || 
+SUBSTR({_column}, 1, 2)"""
 
 
 def sqlite_format_date2(_date):
@@ -24,34 +30,37 @@ def create_event(user_id: int, date: str, text: str) -> bool:
     """
     try:
         SQL(
-            f"""
+            """
 INSERT INTO events (event_id, user_id, date, text, adding_time)
 VALUES (
   COALESCE(
     (
       SELECT user_max_event_id
       FROM settings
-      WHERE user_id = {user_id}
+      WHERE user_id = :user_id
     ),
     1
   ),
-  {user_id}, '{date}', '{text}', DATETIME()
+  :user_id, :date, :text, DATETIME()
 );
 """,
+            params={"user_id": user_id, "date": date, "text": text},
             commit=True,
         )
         SQL(
-            f"""
+            """
 UPDATE settings
-SET user_max_event_id = user_max_event_id + 1
-WHERE user_id = {user_id};
+   SET user_max_event_id = user_max_event_id + 1
+ WHERE user_id = ?;
 """,
+            params=(user_id,),
             commit=True,
         )
         return True
     except Error as e:
         logging.info(
-            f'[sql_utils.py -> create_event] Error "{e}"  arg: {user_id=}, {date=}, {text=}'
+            f'[sql_utils.py -> create_event] Error "{e}"  '
+            f'arg: {user_id=}, {date=}, {text=}'
         )
         return False
 
@@ -64,11 +73,12 @@ def pagination(
 ) -> list[str]:
     data = SQL(
         f"""
-SELECT event_id, LENGTH(text)
-FROM events
-WHERE {WHERE}
-ORDER BY {sqlite_format_date('date')} {direction}
-LIMIT 400;
+SELECT event_id,
+       LENGTH(text) 
+  FROM events
+ WHERE {WHERE}
+ ORDER BY {sqlite_format_date('date')} {direction}
+ LIMIT 400;
 """
     )
     _result = []

@@ -81,10 +81,14 @@ def create_monthly_calendar_keyboard(
     has_events = [
         x[0]
         for x in SQL(
-            f"""
-SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as INT) FROM events
-WHERE user_id={chat_id} AND removal_time=0 AND date LIKE '__.{MM:0>2}.{YY}';
-"""
+            """
+SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT) 
+  FROM events
+ WHERE user_id = ? AND 
+       removal_time = 0 AND 
+       date LIKE ?;
+""",
+            params=(chat_id, f"__.{MM:0>2}.{YY}")
         )
     ]
 
@@ -92,18 +96,18 @@ WHERE user_id={chat_id} AND removal_time=0 AND date LIKE '__.{MM:0>2}.{YY}';
     every_year_or_month = [
         x[0]
         for x in SQL(
-            f"""
-SELECT DISTINCT CAST(SUBSTR(date, 1, 2) as INT) FROM events
-WHERE user_id={chat_id} AND removal_time=0
-AND
-(
-    (
-        (status LIKE '%🎉%' OR status LIKE '%🎊%' OR status LIKE '%📆%')
-        AND SUBSTR(date, 4, 2)='{MM:0>2}'
-    )
-    OR status LIKE '%📅%'
-);
-"""
+            """
+SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT) 
+  FROM events
+ WHERE user_id = ? AND 
+       removal_time = 0 AND 
+       ( ( (status LIKE '%🎉%' OR 
+            status LIKE '%🎊%' OR 
+            status LIKE '%📆%') AND 
+           SUBSTR(date, 4, 2) = ?) OR 
+         status LIKE '%📅%');
+""",
+            params=(chat_id, f"{MM:0>2}")
         )
     ]
 
@@ -112,11 +116,13 @@ AND
         6 if x[0] == -1 else x[0]
         for x in SQL(
             f"""
-SELECT DISTINCT CAST(
-    strftime('%w', {sqlite_format_date('date')})-1 as INT
-) FROM events
-WHERE user_id={chat_id} AND removal_time=0 AND status LIKE '%🗞%';
-"""
+SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT) 
+  FROM events
+ WHERE user_id = ? AND 
+       removal_time = 0 AND 
+       status LIKE '%🗞%';
+""",
+            params=(chat_id,)
         )
     ]
 
@@ -169,10 +175,14 @@ def create_yearly_calendar_keyboard(
     month_list = [
         x[0]
         for x in SQL(
-            f"""
-SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM events
-WHERE user_id={chat_id} AND date LIKE '__.__.{YY}' AND removal_time=0;
-"""
+            """
+SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT) 
+  FROM events
+ WHERE user_id = ? AND 
+       date LIKE ? AND 
+       removal_time = 0;
+""",
+            params=(chat_id, f"__.__.{YY}")
         )
     ]
 
@@ -180,11 +190,16 @@ WHERE user_id={chat_id} AND date LIKE '__.__.{YY}' AND removal_time=0;
     every_year = [
         x[0]
         for x in SQL(
-            f"""
-SELECT DISTINCT CAST(SUBSTR(date, 4, 2) as INT) FROM events
-WHERE user_id={chat_id} AND removal_time=0
-AND (status LIKE '%🎉%' OR status LIKE '%🎊%' OR status LIKE '%📆%');
-"""
+            """
+SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT) 
+  FROM events
+ WHERE user_id = ? AND 
+       removal_time = 0 AND 
+       (status LIKE '%🎉%' OR 
+        status LIKE '%🎊%' OR 
+        status LIKE '%📆%');
+""",
+            params=(chat_id,)
         )
     ]
 
@@ -192,10 +207,15 @@ AND (status LIKE '%🎉%' OR status LIKE '%🎊%' OR status LIKE '%📆%');
     every_month = [
         x[0]
         for x in SQL(
-            f"""
-SELECT date FROM events
-WHERE user_id={chat_id} AND removal_time=0 AND status LIKE '%📅%' LIMIT 1;
-"""
+            """
+SELECT date
+  FROM events
+ WHERE user_id = ? AND 
+       removal_time = 0 AND 
+       status LIKE '%📅%'
+ LIMIT 1;
+""",
+            params=(chat_id, )
         )
     ]
 

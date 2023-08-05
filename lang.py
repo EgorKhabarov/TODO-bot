@@ -355,14 +355,12 @@ Visibility <b>{}</b>m""",
     },
     "status_home_page": {
         "ru": {
-            "⬜️ Без статуса                        ": None,
             "🗂 Важность                           ": "status page 1",
             "🗂 Разное                             ": "status page 2",
             "🗂 Эффекты                            ": "status page 3",
             # "🗂 Пользовательские                   ": "status page 4",
         },
         "en": {
-            "⬜️ No Status                          ": None,
             "🗂 Importance                         ": "status page 1",
             "🗂 Miscellaneous                      ": "status page 2",
             "🗂 Effects                            ": "status page 3",
@@ -486,7 +484,7 @@ Visibility <b>{}</b>m""",
             ),
             (
                 "🔗 Ссылка                             ",
-                "❌🔗 Без сокращения ссылок           ",
+                "⛓ Без сокращения ссылок           ",
             ),
             # ("🔒 Защита от изменений и удаления      ",),
             ("🔔 Включить уведомление               ",),
@@ -511,7 +509,7 @@ Visibility <b>{}</b>m""",
             ),
             (
                 "🔗 Link                               ",
-                "❌🔗 No link shortening               ",
+                "⛓ No link shortening               ",
             ),
             # ("🔒 Change and deletion protection     ",),
             ("🔔 Enable notification                ",),
@@ -832,7 +830,7 @@ In some types of messages, there are buttons to modify or delete events. If ther
 Вот полный список несовместимых статусов:
 "🔗" и "💻"
 "🪞" и "💻"
-"🔗" и "❌🔗"
+"🔗" и "⛓"
 "🧮" и "🗒"
 
 <b>Эффекты на статусах применяются только на отображении событий.</b> Сам текст события не меняется.
@@ -862,7 +860,7 @@ They cannot be placed together on the same event.
 Here is the complete list of incompatible statuses:
 "🔗" and "💻"
 "🪞" and "💻"
-"🔗" and "❌🔗"
+"🔗" and "⛓"
 "🧮" and "🗒"
 
 <b>Effects on statuses are only applied to the event display.</b> The text of the event itself remains unchanged.

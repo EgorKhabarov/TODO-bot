@@ -1,3 +1,4 @@
+from calendar import monthcalendar
 from io import BytesIO
 
 from PIL import Image, ImageFont
@@ -50,12 +51,6 @@ limits = {
         "max_symbol_all": 200000,
     },
 }
-limits["ban"], limits["default"], limits["premium"], limits["admin"] = (
-    limits[-1],
-    limits[0],
-    limits[1],
-    limits[2],
-)
 
 
 def is_exceeded_limit(
@@ -74,7 +69,7 @@ def is_exceeded_limit(
         limit_symbol_year,
         limit_event_all,
         limit_symbol_all,
-    ) = SQL(SqlQueries.get_limits(user_id, date))[0]
+    ) = SqlQueries.get_limits(user_id, date)
 
     inf = float("inf")  # Бесконечность
     user_limits = limits[settings.user_status]
@@ -191,7 +186,7 @@ def create_image(
         limit_symbol_year,
         limit_event_all,
         limit_symbol_all,
-    ) = SQL(SqlQueries.get_limits(user_id, date, removal_time_equals_0=True))[0]
+    ) = SqlQueries.get_limits(user_id, date)
     (
         event_day,
         symbol_day,
@@ -241,17 +236,18 @@ def create_image(
         (390, 766),
     )
 
-    draw.rectangle(((800, 139), (1355, 956)), outline="#000000", width=5)
+    draw.rectangle(((800, 139), (1350, 956)), outline="#000000", width=5)
 
-    text = "..."
-    font = ImageFont.truetype("fonts/arial.ttf", 30)
-    text_width, text_height = [
-        wh // 2 for wh in draw.textbbox((0, 0), text=text, font=font)[2:]
-    ]
-    draw.text((1073 - text_width, 551 - text_height), text, fill="black", font=font)
+    # text = "..."
+    # font = ImageFont.truetype("fonts/arial.ttf", 30)
+    # text_width, text_height = [
+    #     wh // 2 for wh in draw.textbbox((0, 0), text=text, font=font)[2:]
+    # ]
+    # draw.text((1073 - text_width, 551 - text_height), text, fill="black", font=font)
 
     # Временно обрезаем всё лишнее.
     image = image.crop((94, 114, 694, 981))
+    # yearcalendar = [monthcalendar(year, m) for m in range(1, 13)]
 
     buffer = BytesIO()
     image.save(buffer, format="png")
