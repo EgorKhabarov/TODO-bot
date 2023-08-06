@@ -876,13 +876,13 @@ Here is the complete list of incompatible statuses:
 
 По умолчанию у обычного пользователя доступны следующие лимиты:
 
-20 событий в день,
-4000 символов в день,
-75 событий в месяц,
-10000 символов в месяц,
-500 событий в год,
-80000 символов в год.
-Максимальный <b>общий</b> лимит для обычного пользователя составляет 500 событий и 100000 символов.
+<b>20</b> событий в день,
+<b>4000</b> символов в день,
+<b>75</b> событий в месяц,
+<b>10000</b> символов в месяц,
+<b>500</b> событий в год,
+<b>80000</b> символов в год.
+Максимальный <b>общий</b> лимит для обычного пользователя составляет <b>500</b> событий и <b>100000</b> символов.
 
 Если вы превысите лимиты, вы не сможете добавлять новые события и добавлять новый текст к событиям. Чтобы освободить место под новые события, вы можете удалять старые события или сократить их текст.
 
@@ -895,13 +895,13 @@ For different types of users, there are different limits on using the bot. These
 
 By default, regular users have the following limits:
 
-20 events per day
-4000 characters per day
-75 events per month
-10000 characters per month
-500 events per year
-80000 characters per year
-The maximum <b>general</b> limit for a normal user is 500 events and 100000 characters.
+<b>20</b> events per day
+<b>4000</b> characters per day
+<b>75</b> events per month
+<b>10000</b> characters per month
+<b>500</b> events per year
+<b>80000</b> characters per year
+The maximum <b>general</b> limit for a normal user is <b>500</b> events and <b>100000</b> characters.
 
 If you exceed the limits, you will not be able to add new events and add new text to events. To make room for new events, you can delete old events or shorten their text.
 
