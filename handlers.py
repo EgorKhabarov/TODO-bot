@@ -1520,8 +1520,6 @@ DELETE FROM events
 
     elif call_data.startswith("settings"):
         par_name, par_val = call_data.split(" ", maxsplit=2)[1:]
-        if isinstance(par_val, str):
-            par_val = f"'{par_val}'"
 
         # TODO par_name проверять из словаря
         if par_name not in [

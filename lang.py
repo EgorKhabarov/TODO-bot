@@ -716,7 +716,7 @@ Visibility <b>{}</b>m""",
             """
 Добро пожаловать в раздел помощи.
 Ниже вы можете выбрать кнопку с темой, чтобы прочитать подробнее.
-Кнопки с текстом помечаются смайликом 📄. Папка для кнопок помечается 📁. Вернуться назад из папки можно нажав  🔙.
+Кнопки с текстом помечаются эмодзи 📄. Папка для кнопок помечается 📁. Вернуться назад из папки можно нажав  🔙.
 """,
             [
                 {k + (callbackTab * 20): v}
@@ -793,21 +793,21 @@ Select a topic button to read more.
 
 Событие - это текстовая заметка на определенную дату. Каждое событие помечается уникальным номером (id) и может иметь свой статус. По умолчанию статус устанавливается как "⬜️". Статус можно изменить с помощью кнопки "🚩" в сообщении на день.
 
-В некоторых видах сообщений есть кнопки для изменения или удаления событий. Если событий в сообщении несколько, то такие кнопки предлагают выбрать конкретное событие. <b>Если событие одно, то они сразу выбирают его.</b>
+В сообщении на день есть кнопки для изменения или удаления событий. Если событий в сообщении несколько, то такие кнопки предлагают выбрать конкретное. <b>Если событие одно, то кнопки сразу выбирают его.</b>
 """,
         "en": """
 <u><b>Events</b></u>
 
 An event is a textual note for a specific date. Each event is marked with a unique identifier (id) and can have its own status. By default, the status is set to "⬜️". The status can be changed using the "🚩" button in the message for a day.
 
-In some types of messages, there are buttons to modify or delete events. If there are multiple events in a message, these buttons offer the option to select a specific event. <b>If there is only one event, they automatically select it.</b>
+The message for the day has buttons for changing or deleting events. If there are several events in the message, then such buttons offer to select a specific one. <b>If there is only one event, then the buttons select it immediately.</b>
 """,
     },
     "help Statuses": {
         "ru": """
 <u><b>Статусы</b></u>
 
-Статус - это один или несколько смайликов для пометки события или добавления разных эффектов.
+Статус - это один или несколько эмодзи для пометки события или добавления разных эффектов.
 Статусы разделяются на три группы: "Важность", "Разное" и "Эффекты".
 
 Важность
@@ -821,19 +821,20 @@ In some types of messages, there are buttons to modify or delete events. If ther
 
 
 Статусы "🗒" (Список) и "🧮" (Нумерованный список) размечают каждую строку своими эмодзи.
-Если поставить "-- " перед строкой, то на этой строке такая размета применяться не будет.
+Если поставить "-- " перед строкой, то на этой строке такая разметка применяться не будет.
 
 <b>На событии может быть максимум 5 статусов.</b>
 
 Существуют несовместимые статусы.
 Их нельзя поместить вместе на одном событии.
+Если у вас стоит одно событие из пары, то поставить второе вы не сможете.
 Вот полный список несовместимых статусов:
-"🔗" и "💻"
-"🪞" и "💻"
-"🔗" и "⛓"
-"🧮" и "🗒"
+"🔗" (Ссылка) и "💻" (Код)
+"🪞" (Скрыто) и "💻" (Код)
+"🔗" (Ссылка) и "⛓" (Без сокращения ссылой)
+"🧮" (Нумерованный список) и "🗒" (Список)
 
-<b>Эффекты на статусах применяются только на отображении событий.</b> Сам текст события не меняется.
+<b>Эффекты на статусах применяются только на отображении событий в сообщении.</b> Сам текст события не меняется.
 """,
         "en": """
 <u><b>Statuses</b></u>
@@ -857,13 +858,14 @@ If you put "--" in front of a line, then this markup will not be applied on this
 
 There are incompatible statuses.
 They cannot be placed together on the same event.
+If you have one event out of a pair, then you will not be able to put the second one.
 Here is the complete list of incompatible statuses:
-"🔗" and "💻"
-"🪞" and "💻"
-"🔗" and "⛓"
-"🧮" and "🗒"
+"🔗" (Link) and "💻" (Code)
+"🪞" (Hidden) and "💻" (Code)
+"🔗" (Link) and "⛓" (No link abbreviation)
+"🧮" (Numbered list) and "🗒" (List)
 
-<b>Effects on statuses are only applied to the event display.</b> The text of the event itself remains unchanged.
+<b>Effects on statuses are applied only on the display of events in the message.</b> The text of the event itself does not change.
 """,
     },
     "help Limits": {
@@ -880,11 +882,11 @@ Here is the complete list of incompatible statuses:
 10000 символов в месяц,
 500 событий в год,
 80000 символов в год.
-Максимальный лимиты для обычного пользователя составляет 500 событий и 100000 символов.
+Максимальный <b>общий</b> лимит для обычного пользователя составляет 500 событий и 100000 символов.
 
-Если вы превысите лимиты, вы не сможете добавлять новые события и добавлять новый текст к событиям. Чтобы освободить место под новые события, вы можете удалять старые события или сокращать их текст.
+Если вы превысите лимиты, вы не сможете добавлять новые события и добавлять новый текст к событиям. Чтобы освободить место под новые события, вы можете удалять старые события или сократить их текст.
 
-# TODO В будущем будет добавлена команда для просмотра своих лимитов
+Посмотреть свои лимиты можно командой /account
 """,
         "en": """
 <u><b>Limits</b></u>
@@ -899,11 +901,11 @@ By default, regular users have the following limits:
 10000 characters per month
 500 events per year
 80000 characters per year
-The maximum limits for regular users are 500 events and 100000 characters.
+The maximum <b>general</b> limit for a normal user is 500 events and 100000 characters.
 
-If you exceed the limits, you will not be able to add new events or add new text to existing events. To free up space for new events, you can delete old events or shorten their text.
+If you exceed the limits, you will not be able to add new events and add new text to events. To make room for new events, you can delete old events or shorten their text.
 
-# TODO In the future, a command will be added to view your limits.
+You can view your limits with the /account command
 """,
     },
     "help Calendar": {
@@ -911,7 +913,7 @@ If you exceed the limits, you will not be able to add new events or add new text
 <u>Виды сообщений > <b>Календарь</b></u>
 
 Вы можете выбрать дату, нажав на кнопку с номером дня.
-Кнопками внизу вы можете изменить год и месяц.
+Кнопками внизу вы можете выбрать год и месяц.
 Кнопкой "⟳" можно вернуться к текущей дате и выбрать текущий день.
 
 При нажатии кнопки с датой в первом ряду вы попадете в список месяцев.
@@ -926,9 +928,9 @@ If you exceed the limits, you will not be able to add new events or add new text
         "en": """
 <u>Types of messages > <b>Calendar</b></u>
 
-You can select a date by clicking on the button with the day number.
-At the bottom, you can change the year and month using the buttons.
-The "⟳" button allows you to return to the current date and select the current day.
+You can select a date by clicking on the day number button.
+You can select the year and month using the buttons below.
+With the "⟳" button, you can return to the current date and select the current day.
 
 When you click on a date button in the first row, you will enter the list of months.
 There, you can choose a month within the selected year.
@@ -946,9 +948,9 @@ Here are the meanings of the symbol notations:
 
 Сообщение отображает события на один день.
 
-Статусы в сообщении располагаются через одну пустую строку. Перед самим текстом события размещается строка с информацией о событии по такому шаблону:
-&lt;Порядковый номер в сообщении>.&lt;id события>.&lt;Статусы, перечисленные через запятую>
-Например: "1.1.⬜️"
+Статусы в сообщении располагаются через одну пустую строку. Перед самим текстом события размещается строка с информацией о событии.
+Например: <pre>1.3.⬜️</pre>
+Тут 1 это порядковый номер событий в сообщении, 3 это id события, а ⬜️ это статусы, перечисленные через запятую.
 
 Если событий на эту дату становится больше 10, то остальные события размещаются на других страницах. Максимум 10 событий на одну страницу. Кнопки переключения страниц появляются под кнопками управления и пронумерованы номерами страниц.
 
@@ -972,9 +974,9 @@ Here are the meanings of the symbol notations:
 
 The message displays events for a single day.
 
-The statuses in the message are separated by one empty line. Before the actual event text, there is a line containing information about the event in the following format:
-&lt;Ordinal number in the message>.&lt;event id>.&lt;Statuses, listed separated by commas>
-For example: "1.1.⬜️"
+Statuses in the message are located through one empty line. Before the event text itself, a line with information about the event.
+For example: <pre>1.3.⬜️</pre>
+Here 1 is the sequence number of the events in the message, 3 is the event id, and ⬜️ are the statuses separated by commas.
 
 If the number of events for this date exceeds 10, the remaining events are placed on other pages. A maximum of 10 events per page. Page navigation buttons are displayed below the control buttons and are numbered accordingly.
 
@@ -1074,7 +1076,7 @@ Called by the command /deleted.
 Бот ищет по вхождению слова в текст, дату и статус.
 Он выдаёт все события, в которых есть совпадения.
 
-Например, запрос "<code>#03.05. Музыка</code>" выдаст все события, в которых дата 3 мая и они содержат слово "Музыка".
+Например, запрос <code>#03.05. Музыка</code> выдаст все события, в которых дата 3 мая и они содержат слово "Музыка".
 
 # TODO Планируется расширение возможностей поисковых запросов.
 """,
@@ -1089,7 +1091,7 @@ You can search for events by sending a message to the bot using the following te
 The bot searches based on word occurrences in the text, date, and status.
 It returns all events that have matches.
 
-For example, the request "<code>#03.05. Music</code>" will return all events that have the date 3rd May and contain the word "Music".
+For example, the request <code>#03.05. Music</code> will return all events that have the date 3rd May and contain the word "Music".
 
 # TODO Expanding the capabilities of search queries is planned.
 """,
