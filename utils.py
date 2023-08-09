@@ -1,10 +1,10 @@
 import re
-from io import StringIO
 from time import time
+from io import StringIO
 from typing import Any, Literal
+from urllib.parse import urlparse
 from textwrap import wrap as textwrap
 from datetime import timedelta, datetime, timezone
-from urllib.parse import urlparse
 
 import requests
 from requests import ConnectionError
@@ -13,10 +13,11 @@ from telebot.types import Message, CallbackQuery
 
 import config
 import logging
-from db.db import SQL
 from lang import get_translate
 from time_utils import DayInfo
-from user_settings import UserSettings
+from todoapi.api import User
+from todoapi.utils import is_admin_id
+from todoapi.types import db, UserSettings
 
 
 def to_html_escaping(text: str) -> str:
@@ -380,15 +381,12 @@ def fetch_forecast(settings: UserSettings, city: str) -> str:
         )
     return result
 
-
-def is_admin_id(chat_id: int) -> bool:
+def is_secure_chat(message: Message):
     """
-    Проверка на админа
-    Админом могут быть только люди, чьи id записаны в config.admin_id
+    Безопасный ли чат для админских команд.
+    Чат должен быть приватным.
     """
-    # or (int(SQL(f"SELECT user_status FROM settings
-    # WHERE user_id={chat_id};")[0][0]) == 2)
-    return chat_id in config.admin_id
+    return is_admin_id(message.chat.id) and message.chat.type == "private"
 
 
 def poke_link() -> None:
@@ -415,7 +413,7 @@ def write_table_to_str(
     table = [
         list(str(column) for column in row)
         for row in (
-            SQL(query, commit=commit, column_names=True) if not table else table
+            db.execute(query, commit=commit, column_names=True) if not table else table
         )
     ]
 
@@ -492,11 +490,13 @@ def check_user(func):
         else:
             return
 
-        settings = UserSettings(chat_id)
+        with db.connection(), db.cursor():
+            user = User(chat_id)
 
-        if settings.user_status == -1 and not is_admin_id(chat_id):
-            return
+            if user.settings.user_status == -1 and not is_admin_id(chat_id):
+                return
 
-        return func(x, settings)
+            res = func(x, user)
+        return res
 
     return wrapper

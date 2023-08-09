@@ -1,6 +1,5 @@
 from sqlite3 import Error
-
-from db.db import SQL
+from todoapi.types import db
 
 
 def create_tables() -> None:
@@ -8,9 +7,10 @@ def create_tables() -> None:
     Создание нужных таблиц
     # ALTER TABLE table ADD COLUMN new_column TEXT
     """
-    try:
-        SQL(
-            """
+    with db.connection(), db.cursor():
+        try:
+            db.execute(
+                """
 SELECT event_id,
        user_id,
        date,
@@ -22,11 +22,11 @@ SELECT event_id,
   FROM events
  LIMIT 1;
 """
-        )
-    except Error as e:
-        if str(e) == "no such table: events":
-            SQL(
-                """
+            )
+        except Error as e:
+            if str(e) == "no such table: events":
+                db.execute(
+                    """
 CREATE TABLE events (
     user_id             INT  NOT NULL,
     event_id            INT  NOT NULL,
@@ -42,10 +42,10 @@ CREATE TABLE events (
     )
 );
 """,
-                commit=True,
-            )
-            SQL(
-                """
+                    commit=True,
+                )
+                db.execute(
+                    """
 CREATE TRIGGER trigger_recent_changes_time
          AFTER UPDATE OF date,
                          text,
@@ -58,14 +58,14 @@ BEGIN
      WHERE event_id = NEW.event_id;
 END;
 """,
-                commit=True,
-            )
-        else:
-            quit(f"{e}")
+                    commit=True,
+                )
+            else:
+                quit(f"{e}")
 
-    try:
-        SQL(
-            """
+        try:
+            db.execute(
+                """
 SELECT user_id,
        userinfo,
        registration_date,
@@ -82,11 +82,11 @@ SELECT user_id,
   FROM settings
  LIMIT 1;
 """
-        )
-    except Error as e:
-        if str(e) == "no such table: settings":
-            SQL(
-                """
+            )
+        except Error as e:
+            if str(e) == "no such table: settings":
+                db.execute(
+                    """
 CREATE TABLE settings (
     user_id            INT  NOT NULL
                             UNIQUE ON CONFLICT ROLLBACK,
@@ -108,7 +108,7 @@ CREATE TABLE settings (
     add_event_date     INT  DEFAULT (0) 
 );
 """,
-                commit=True,
-            )
-        else:
-            quit(f"{e}")
+                    commit=True,
+                )
+            else:
+                quit(f"{e}")

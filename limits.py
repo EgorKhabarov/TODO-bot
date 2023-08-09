@@ -5,86 +5,7 @@ from PIL.ImageDraw import Draw
 
 from lang import get_translate
 from time_utils import now_time
-from db.db import SqlQueries
-from user_settings import UserSettings
-
-limits = {
-    -1: {
-        "max_event_day": 0,
-        "max_symbol_day": 0,
-        "max_event_month": 0,
-        "max_symbol_month": 0,
-        "max_event_year": 0,
-        "max_symbol_year": 0,
-        "max_event_all": 0,
-        "max_symbol_all": 0,
-    },
-    0: {
-        "max_event_day": 20,
-        "max_symbol_day": 4000,
-        "max_event_month": 75,
-        "max_symbol_month": 10000,
-        "max_event_year": 500,
-        "max_symbol_year": 80000,
-        "max_event_all": 500,
-        "max_symbol_all": 100000,
-    },
-    1: {
-        "max_event_day": 40,
-        "max_symbol_day": 8000,
-        "max_event_month": 100,
-        "max_symbol_month": 15000,
-        "max_event_year": 750,
-        "max_symbol_year": 100000,
-        "max_event_all": 900,
-        "max_symbol_all": 150000,
-    },
-    2: {
-        "max_event_day": 60,
-        "max_symbol_day": 20000,
-        "max_event_month": 200,
-        "max_symbol_month": 50000,
-        "max_event_year": 1000,
-        "max_symbol_year": 120000,
-        "max_event_all": 2000,
-        "max_symbol_all": 200000,
-    },
-}
-
-
-def is_exceeded_limit(
-    settings: UserSettings, date: str, *, event_count: int = 0, symbol_count: int = 0
-) -> bool:
-    """
-    Возвращает True если был превышен лимит на день, на месяц, на год и на всё сразу
-    """
-    user_id = settings.user_id
-    (
-        limit_event_day,
-        limit_symbol_day,
-        limit_event_month,
-        limit_symbol_month,
-        limit_event_year,
-        limit_symbol_year,
-        limit_event_all,
-        limit_symbol_all,
-    ) = SqlQueries.get_limits(user_id, date)
-
-    inf = float("inf")  # Бесконечность
-    user_limits = limits[settings.user_status]
-
-    # Если хоть один лимит нарушен, то возвращает False
-    # Если лимит отсутствует, то он бесконечный
-    return (
-        limit_event_day + event_count >= (user_limits["max_event_day"] or inf)
-        or limit_symbol_day + symbol_count >= (user_limits["max_symbol_day"] or inf)
-        or limit_event_month + event_count >= (user_limits["max_event_month"] or inf)
-        or limit_symbol_month + symbol_count >= (user_limits["max_symbol_month"] or inf)
-        or limit_event_year + event_count >= (user_limits["max_event_year"] or inf)
-        or limit_symbol_year + symbol_count >= (user_limits["max_symbol_year"] or inf)
-        or limit_event_all + event_count >= (user_limits["max_event_all"] or inf)
-        or limit_symbol_all + symbol_count >= (user_limits["max_symbol_all"] or inf)
-    )
+from todoapi.types import UserSettings, Limit, limits
 
 
 def _semicircle(title: str, val: int, y: int) -> Image:
@@ -175,7 +96,8 @@ def create_image(
         font=font,
     )
 
-    user_id, date = settings.user_id, f"{day:0>2}.{month:0>2}.{year}"
+    date = f"{day:0>2}.{month:0>2}.{year}"
+    limit = Limit(settings.user_id, settings.user_status, date)
     (
         limit_event_day,
         limit_symbol_day,
@@ -185,7 +107,16 @@ def create_image(
         limit_symbol_year,
         limit_event_all,
         limit_symbol_all,
-    ) = SqlQueries.get_limits(user_id, date)
+    ) = (
+        limit.limit_event_day,
+        limit.limit_symbol_day,
+        limit.limit_event_month,
+        limit.limit_symbol_month,
+        limit.limit_event_year,
+        limit.limit_symbol_year,
+        limit.limit_event_all,
+        limit.limit_symbol_all,
+    )
     (
         event_day,
         symbol_day,

@@ -1,5 +1,4 @@
 import re
-import csv
 from io import StringIO
 from time import sleep
 from sqlite3 import Error
@@ -7,7 +6,6 @@ from sqlite3 import Error
 from telebot.apihelper import ApiTelegramException
 from telebot.types import (
     Message,
-    InputMediaDocument,
     InputFile,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
@@ -15,28 +13,12 @@ from telebot.types import (
 
 import config
 import logging
-from db.db import SQL
 from lang import get_translate
 from bot import bot, set_bot_commands
+from message_generator import NoEventMessage
 from bot_actions import delete_message_action, press_back_action, update_message_action, re_date
-from limits import is_exceeded_limit
-from messages.message_generator import NoEventMessage
-from user_settings import UserSettings
-from time_utils import (
-    now_time_strftime,
-    now_time,
-    DayInfo,
-    new_time_calendar,
-)
-from buttons_utils import (
-    create_monthly_calendar_keyboard,
-    generate_buttons,
-    delmarkup,
-    edit_button_attrs,
-    databasemarkup,
-    backmarkup,
-    create_yearly_calendar_keyboard,
-)
+from time_utils import now_time_strftime, now_time, DayInfo, new_time_calendar
+from buttons_utils import create_monthly_calendar_keyboard, generate_buttons, delmarkup, edit_button_attrs, backmarkup, create_yearly_calendar_keyboard
 from bot_messages import (
     search_message,
     week_event_list_message,
@@ -50,29 +32,26 @@ from bot_messages import (
     monthly_calendar_message,
     account_message,
 )
-from utils import (
-    is_admin_id,
-    fetch_weather,
-    fetch_forecast,
-    to_html_escaping,
-    remove_html_escaping,
-    write_table_to_str,
-    markdown,
-    Cooldown,
-)
+from utils import fetch_weather, fetch_forecast, to_html_escaping, remove_html_escaping, write_table_to_str, markdown, Cooldown, is_secure_chat
+from todoapi.api import User
+from todoapi.types import db, UserSettings
+from todoapi.utils import is_admin_id, is_premium_user
 
 CSVCooldown = Cooldown(30 * 60, {})
 re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
 
 
 def command_handler(
-    settings: UserSettings, chat_id: int, message_text: str, message: Message
+    user: User, message: Message
 ) -> None:
     """
     Отвечает за реакцию бота на команды
     Метод message.text.startswith("")
     используется и для групп (в них сообщение приходит в формате /command{bot.username})
     """
+    settings: UserSettings = user.settings
+    chat_id, message_text = message.chat.id, message.text
+
     if message_text.startswith("/calendar"):
         generated = monthly_calendar_message(settings, chat_id)
         generated.send(chat_id)
@@ -85,7 +64,7 @@ def command_handler(
         generated.send(chat_id)
 
     elif message_text.startswith("/deleted"):
-        if settings.user_status in (1, 2) or is_admin_id(chat_id):
+        if is_premium_user(user):
             generated = trash_can_message(settings=settings, chat_id=chat_id)
             generated.send(chat_id=chat_id)
         else:
@@ -173,11 +152,7 @@ def command_handler(
             except ApiTelegramException:  # message is not modified
                 pass
 
-    elif (
-        message_text.startswith("/sqlite")
-        and is_admin_id(chat_id)
-        and message.chat.type == "private"
-    ):
+    elif message_text.startswith("/sqlite") and is_secure_chat(message):
         bot.send_chat_action(chat_id=chat_id, action="upload_document")
 
         try:
@@ -185,60 +160,47 @@ def command_handler(
                 bot.send_document(
                     chat_id=chat_id,
                     document=file,
-                    caption=f"{now_time_strftime(settings.timezone)}",
-                    reply_markup=databasemarkup,
+                    caption=now_time_strftime(settings.timezone),
                 )
         except ApiTelegramException:
             bot.send_message(chat_id=chat_id, text="Отправить файл не получилось")
 
-    elif (
-        message_text.startswith("/files")
-        and is_admin_id(chat_id)
-        and message.chat.type == "private"
-    ):
-        bot.send_chat_action(chat_id=chat_id, action="upload_document")
-        tag_log = True if message_text.endswith(" +log") else False
+    elif message_text.startswith("/zip") and is_secure_chat(message):
+        generated = NoEventMessage(
+            get_translate("soon", settings.lang),
+            delmarkup
+        )
+        generated.send(chat_id)
+        # bot.send_chat_action(chat_id=chat_id, action="upload_document")
+        # try:
+        #     with (
+        #         open(config.LOG_FILE, "rb") if tag_log else _() as log_file,
+        #         open("config.py", "rb") as config_file,
+        #         open("lang.py", "rb") as lang_file,
+        #         open("func.py", "rb") as func_file,
+        #         open("main.py", "rb") as main_file,
+        #         open(config.DATABASE_PATH, "rb") as db_file,
+        #     ):
+        #         bot.send_media_group(
+        #             chat_id=chat_id,
+        #             media=[
+        #                 InputMediaDocument(log_file, caption="Файл лога")
+        #                 if tag_log
+        #                 else None,
+        #                 InputMediaDocument(config_file, caption="Файл настроек"),
+        #                 InputMediaDocument(lang_file, caption="Языковой файл"),
+        #                 InputMediaDocument(func_file, caption="Файл с функциями"),
+        #                 InputMediaDocument(main_file, caption="Основной файл"),
+        #                 InputMediaDocument(
+        #                     db_file,
+        #                     caption=f"База данных\n\nВерсия от {config.__version__}",
+        #                 ),
+        #             ],
+        #         )
+        # except ApiTelegramException:
+        #     bot.send_message(chat_id=chat_id, text="Отправить файл не получилось")
 
-        class _:
-            def __enter__(self):
-                pass
-
-            def __exit__(self, exc_type, exc_val, exc_tb):
-                pass
-
-        try:
-            with (
-                open(config.LOG_FILE, "rb") if tag_log else _() as log_file,
-                open("config.py", "rb") as config_file,
-                open("lang.py", "rb") as lang_file,
-                open("func.py", "rb") as func_file,
-                open("main.py", "rb") as main_file,
-                open(config.DATABASE_PATH, "rb") as db_file,
-            ):
-                bot.send_media_group(
-                    chat_id=chat_id,
-                    media=[
-                        InputMediaDocument(log_file, caption="Файл лога")
-                        if tag_log
-                        else None,
-                        InputMediaDocument(config_file, caption="Файл настроек"),
-                        InputMediaDocument(lang_file, caption="Языковой файл"),
-                        InputMediaDocument(func_file, caption="Файл с функциями"),
-                        InputMediaDocument(main_file, caption="Основной файл"),
-                        InputMediaDocument(
-                            db_file,
-                            caption=f"База данных\n\nВерсия от {config.__version__}",
-                        ),
-                    ],
-                )
-        except ApiTelegramException:
-            bot.send_message(chat_id=chat_id, text="Отправить файл не получилось")
-
-    elif (
-        message_text.startswith("/SQL ")
-        and is_admin_id(chat_id)
-        and message.chat.type == "private"
-    ):
+    elif message_text.startswith("/SQL ") and is_secure_chat(message):
         bot.send_chat_action(chat_id=chat_id, action="upload_document")
         # Выполнение запроса от админа к базе данных и красивый вывод результатов
         query = message_text[5:].strip()
@@ -267,112 +229,54 @@ def command_handler(
         notifications_message(user_id_list=[chat_id], from_command=True)
 
     elif message_text.startswith("/save_to_csv"):
-        response, t = CSVCooldown.check(key=chat_id, update_dict=False)
+        response, error_text = user.export_data(
+            f"ToDoList {message.from_user.username} "
+            f"({now_time_strftime(settings.timezone)}).csv"
+        )
 
         if response:
             bot.send_chat_action(chat_id=chat_id, action="upload_document")
-            file = StringIO()
-            file.name = f"ToDoList {message.from_user.username} ({now_time_strftime(settings.timezone)}).csv"
-            table = SQL(
-                """
-SELECT event_id,
-       date,
-       text,
-       status,
-       removal_time,
-       adding_time,
-       recent_changes_time
-  FROM events
- WHERE user_id = ? AND 
-       removal_time = 0;
-""",
-                params=(chat_id,),
-                column_names=True,
-            )
-            file_writer = csv.writer(file)
-            [
-                file_writer.writerows(
-                    [
-                        [
-                            str(event_id),
-                            event_date,
-                            remove_html_escaping(event_text),
-                            event_status,
-                            event_removal_time,
-                            event_adding_time,
-                            event_recent_changes_time,
-                        ]
-                    ]
-                )
-                for (
-                    event_id,
-                    event_date,
-                    event_text,
-                    event_status,
-                    event_removal_time,
-                    event_adding_time,
-                    event_recent_changes_time,
-                ) in table
-            ]
 
-            file.seek(0)
             try:
-                bot.send_document(chat_id=chat_id, document=InputFile(file))
+                bot.send_document(chat_id=chat_id, document=InputFile(response))
             except ApiTelegramException as e:
-                logging.info(
-                    f'[handlers.py -> command_handler -> "/save_to_csv"] ApiTelegramException "{e}"'
-                )
-                bot.send_message(
-                    chat_id=chat_id,
-                    text=get_translate("file_is_too_big", settings.lang),
-                )
+                logging.info(f'save_to_csv ApiTelegramException "{e}"')
+                big_file_translate = get_translate("file_is_too_big", settings.lang)
+                bot.send_message(chat_id=chat_id, text=big_file_translate)
         else:
+            export_error = get_translate("export_csv", settings.lang)
             bot.send_message(
                 chat_id=chat_id,
-                text=get_translate("export_csv", settings.lang).format(t=t // 60),
+                text=export_error.format(t=error_text.split(" ")[1]),
             )
 
     elif message_text.startswith("/version"):
         bot.send_message(chat_id=chat_id, text=f"Version {config.__version__}")
 
-    elif (
-        message_text.startswith("/setuserstatus")
-        and is_admin_id(chat_id)
-        and message.chat.type == "private"
-    ):
-        if len(message_text.split(" ")) == 3:
-            user_id, user_status = [int(i) for i in message_text.split(" ")[1:]]
+    elif message_text.startswith("/setuserstatus") and is_secure_chat(message):
+        message_text = message_text.removeprefix("/setuserstatus ")
+        res = re.compile(r"\A(\d+) (-1|0|1|2)\Z").findall(message_text)
+        if res:
+            user_id, user_status = [int(x) for x in res[0]]
 
-            try:
-                if user_status not in (-1, 0, 1, 2):
-                    raise ValueError
+            response, error_text = user.set_user_status(user_id, user_status)
 
-                SQL(
-                    """
-UPDATE settings
-   SET user_status = ?
- WHERE user_id = ?;
-""",
-                    params=(user_status, user_id),
-                    commit=True,
-                )
+            match error_text:
+                case "":
+                    text = f"Успешно изменено\n{user_id} -> {user_status}"
+                case "User Not Exist":
+                    text = "Пользователь не найден."
+                case "Invalid status":
+                    text = "Неверный status\nstatus должен быть в (-1, 0, 1, 2)"
+                case "Not Enough Authority":
+                    text = "Недостаточно прав."
+                case "Cannot be reduced in admin rights":
+                    text = "Нельзя понизить администратора."
+                case _:
+                    text = f'Ошибка базы данных: "{error_text}"'
 
-                if not set_bot_commands(
-                    user_id, user_status, UserSettings(user_id).lang
-                ):
-                    raise KeyError
-            except IndexError:  # Если user_id не существует
-                text = "Ошибка: id не существует"
-            except Error as e:  # Ошибка sqlite3
-                text = f'Ошибка базы данных: "{e}"'
-            except ApiTelegramException as e:
-                text = f'Ошибка telegram api: "{e}"'
-            except KeyError:
-                text = "Ошибка user_status"
-            except ValueError:
-                text = "Неверный status\nstatus должен быть в (-1, 0, 1, 2)"
-            else:
-                text = f"Успешно изменено\n{user_id} -> {user_status}"
+            if not set_bot_commands(user_id, user_status, UserSettings(user_id).lang):
+                text = "Ошибка при обновлении команд."
         else:
             text = """
 SyntaxError
@@ -386,11 +290,7 @@ SyntaxError
 
         bot.reply_to(message=message, text=text)
 
-    elif (
-        message_text.startswith("/idinfo ")
-        and is_admin_id(chat_id)
-        and message.chat.type == "private"
-    ):
+    elif message_text.startswith("/idinfo ") and is_secure_chat(message):
         if len(message_text.split(" ")) == 2:
             user_id = int(message_text.removeprefix("/idinfo "))
             _settings = UserSettings(user_id)
@@ -426,18 +326,10 @@ SyntaxError
 """
         bot.reply_to(message=message, text=text)
 
-    elif (
-        message_text.startswith("/idinfo")
-        and is_admin_id(chat_id)
-        and message.chat.type == "private"
-    ):
+    elif message_text.startswith("/idinfo") and is_secure_chat(message):
         try:
-            command_handler(
-                settings=settings,
-                chat_id=chat_id,
-                message_text="/SQL SELECT user_id as chat_id FROM settings;",
-                message=message,
-            )
+            message.text = "/SQL SELECT user_id as chat_id FROM settings;"
+            command_handler(user, message)
         except ApiTelegramException:
             pass
 
@@ -445,37 +337,43 @@ SyntaxError
         NoEventMessage(f"Your id <code>{chat_id}</code>").reply(message)
 
     elif message_text.startswith("/deleteuser") and is_admin_id(chat_id):
-        if len(message_text.split(" ")) == 2:
-            user_id = int(message_text.removeprefix("/deleteuser "))
-            if not is_admin_id(user_id):
-                try:
-                    # TODO присылать sql файл для восстановления
-                    SQL(
-                        """
-DELETE FROM events
-      WHERE user_id = ?;
-""",
-                        params=(user_id,),
-                        commit=True,
-                    )
-                    SQL(
-                        """
-DELETE FROM settings
-      WHERE user_id = ?;
-""",
-                        params=(user_id,),
-                        commit=True,
-                    )
-                except Error as e:
-                    text = f'Ошибка базы данных: "{e}"'
-                else:
+        message_text = message_text.removeprefix("/deleteuser ")
+        res = re.compile(r"(\d+)").findall(message_text)
+        response = None
+
+        if res:
+            user_id = int(res[0])
+            response, error_text = user.delete_user(user_id)
+
+            match error_text:
+                case "":
                     text = "Пользователь успешно удалён"
-            else:
-                text = f"Это id админа\n<code>/setuserstatus {user_id} 0</code>"
+                case "User Not Exist":
+                    text = "Пользователь не найден."
+                case "Not Enough Authority":
+                    text = "Недостаточно прав."
+                case "Unable To Remove Administrator":
+                    text = ("Нельзя удалить администратора.\n"
+                            "<code>/setuserstatus {user_id} 0</code>")
+                case "Error":
+                    text = "Не получилось получить csv файл."
+                case _:
+                    text = "Ошибка при удалении."
         else:
             text = "SyntaxError\n/deleteuser {id}"
 
-        bot.reply_to(message=message, text=text)
+        try:
+            if response:
+                bot.send_document(
+                    chat_id,
+                    InputFile(response),
+                    message.message_id,
+                    text,
+                )
+            else:
+                bot.reply_to(message=message, text=text)
+        except ApiTelegramException:
+            pass
 
     elif message_text.startswith("/account"):
         account_message(settings, chat_id, message_text)
@@ -519,6 +417,7 @@ DELETE FROM settings
 
 
 def callback_handler(
+    user: User,
     settings: UserSettings,
     chat_id: int,
     message_id: int,
@@ -533,7 +432,6 @@ def callback_handler(
     "/calendar" - Изменить сообщение на календарь дней
     "back" -
     "message_del" - Пытается удалить сообщение. При ошибке шлёт сообщение с просьбой выдать права.
-    "set database" - Нужно быть админом. Шлёт свою базу данных и заменяет её на бд из сообщения.
     "confirm change" - Подтвердить изменение текста события.
     "select event edit" - Если событий несколько, то предлагает выбрать конкретное для изменения текста.
     "select event status" - Если событий несколько, то предлагает выбрать конкретное для изменения статуса.
@@ -559,17 +457,18 @@ def callback_handler(
     r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z" - Вызвать сообщение с текущей датой.
     "update" - Обновить сообщение в зависимости от типа. Поддерживает сообщения типа поиск, week_event_list, корзина, сообщение с датой.
     """
+
     if call_data == "event_add":
         clear_state(chat_id)
         date = message_text[:10]
 
         # Проверяем будет ли превышен лимит для пользователя, если добавить 1 событие с 1 символом
-        if is_exceeded_limit(settings, date, event_count=1, symbol_count=1):
+        if user.check_limit(date, event_count=1, symbol_count=1):
             text = get_translate("exceeded_limit", settings.lang)
             bot.answer_callback_query(call_id, text, True)
             return
 
-        SQL(
+        db.execute(
             """
 UPDATE settings
    SET add_event_date = ?
@@ -595,42 +494,13 @@ UPDATE settings
     elif call_data == "message_del":
         delete_message_action(settings, chat_id, message_id, message)
 
-    elif call_data == "set database" and is_admin_id(chat_id):
-        try:
-            with open(config.DATABASE_PATH, "rb") as file:
-                text = (
-                    f"{now_time_strftime(settings.timezone)}\n"
-                    f"На данный момент база выглядит так."
-                )
-                bot.send_document(
-                    chat_id=chat_id,
-                    document=file,
-                    caption=text,
-                    reply_markup=databasemarkup,
-                )
-        except ApiTelegramException:
-            bot.send_message(chat_id, "Отправить файл не получилось...")
-            return
-
-        try:
-            file_info = bot.get_file(message.document.file_id)
-            downloaded_file = bot.download_file(file_info.file_path)
-
-            with open(f"{message.document.file_name}", "wb") as new_file:
-                new_file.write(downloaded_file)
-
-            bot.reply_to(message, "Файл записан")
-        except ApiTelegramException:
-            bot.send_message(chat_id, "Скачать или записать файл не получилось...")
-            return
-
     elif call_data == "confirm change":
         first_line, _, raw_text = message_text.split("\n", maxsplit=3)
         text = to_html_escaping(raw_text)  # Получаем изменённый текст
         msg_date, event_id = first_line.split(" ", maxsplit=2)[:2]
 
         try:
-            SQL(
+            db.execute(
                 """
 UPDATE events
    SET text = ?,
@@ -653,6 +523,7 @@ UPDATE events
         update_message_action(settings, chat_id, message_id, message_text)
 
     elif call_data.startswith("select event "):
+        # TODO переписать с использованием функции parse_message
         # action: Literal["edit", "status", "delete", "delete bin", "recover bin", "open"]
         action = call_data[13:]
 
@@ -672,18 +543,8 @@ UPDATE events
 
             if action.endswith("bin"):
                 event_id = events_list[0].split(".", maxsplit=4)[-2]
-            try:
-                SQL(
-                    f"""
-SELECT text
-  FROM events
- WHERE event_id = ? AND 
-       user_id = ?
-       {"AND removal_time != 0" if action.endswith("bin") else ""};
-""",
-                    params=(event_id, chat_id),
-                )[0][0]
-            except IndexError:  # Если этого события не существует
+
+            if not user.check_event(event_id, action.endswith("bin")):
                 update_message_action(settings, chat_id, message_id, message_text)
                 return
 
@@ -701,6 +562,7 @@ SELECT text
                     new_call_data = f"{event_date}"  # "select event open"
 
                 callback_handler(
+                    user=user,
                     settings=settings,
                     chat_id=chat_id,
                     message_id=message_id,
@@ -715,23 +577,15 @@ SELECT text
         for event in events_list:
             # Парсим данные
             if action.endswith("bin") or message_text.startswith("🔍 "):
-                event_id = event.split(".", maxsplit=4)[-2]
+                event_id = int(event.split(".", maxsplit=4)[-2])
             else:
-                event_id = event.split(".", maxsplit=2)[-2]
+                event_id = int(event.split(".", maxsplit=2)[-2])
 
             # Проверяем существование события
-            try:
-                event_text = SQL(
-                    f"""
-SELECT text
-  FROM events
- WHERE event_id = ? AND 
-       user_id = ? AND
-       removal_time {"!" if action.endswith("bin") else ""}= 0;
-""",
-                    params=(event_id, chat_id),
-                )[0][0]
-            except IndexError:
+            response, error_text = user.get_event(event_id, action.endswith("bin"))
+            if response:
+                event_text = response.text
+            else:
                 continue
 
             if action == "edit":
@@ -830,43 +684,15 @@ SELECT text
 
     elif call_data.startswith("recover"):
         event_date, event_id = call_data.split(maxsplit=2)[1:]
-
-        try:
-            event_len = SQL(
-                """
-SELECT LENGTH(text) 
-  FROM events
- WHERE user_id = ? AND 
-       event_id = ? AND 
-       date = ? AND 
-       removal_time != 0;
-""",
-                params=(chat_id, event_id, event_date),
-            )[0][0]
-        except IndexError:
+        event_id = int(event_id)
+        response, error_text = user.recover_event(event_id)
+        if error_text:
             error = get_translate("error", settings.lang)
             bot.answer_callback_query(call_id, error, True)
             return  # такого события нет
 
-        if is_exceeded_limit(
-            settings, event_date, event_count=1, symbol_count=event_len
-        ):
-            exceeded_limit = get_translate("exceeded_limit", settings.lang)
-            bot.answer_callback_query(call_id, exceeded_limit, True)
-            return
-
-        SQL(
-            """
-UPDATE events
-   SET removal_time = 0
- WHERE user_id = ? AND 
-       event_id = ? AND 
-       date = ?;
-""",
-            params=(chat_id, event_id, event_date),
-            commit=True,
-        )
         callback_handler(
+            user=user,
             settings=settings,
             chat_id=chat_id,
             message_id=message_id,
@@ -886,7 +712,7 @@ UPDATE events
 
         # Проверяем наличие события
         try:  # Если события нет, то обновляем сообщение
-            text, status = SQL(
+            text, status = db.execute(
                 """
 SELECT text,
        status
@@ -967,79 +793,53 @@ SELECT text,
 
     elif call_data.startswith("status set"):
         new_status, event_id, event_date = call_data.split()[2:]
+        event_id = int(event_id)
 
-        try:  # Если события нет, то обновляем сообщение
-            text, old_status = SQL(
-                """
-SELECT text,
-       status
-  FROM events
- WHERE user_id = ? AND 
-       event_id = ? AND 
-       removal_time = 0 AND 
-       date = ?;
-""",
-                params=(chat_id, event_id, event_date),
-            )[0]
-        except IndexError:
+        # Если события нет, то обновляем сообщение
+        response, error_text = user.get_event(event_id)
+
+        if not response:
             press_back_action(settings, call_data, chat_id, message_id, message_text)
             return
+
+        old_status = response.status
 
         if new_status == "⬜️" == old_status:
             press_back_action(settings, call_data, chat_id, message_id, message_text)
             return
 
-        elif new_status in old_status:
-            text = get_translate("status_already_posted", settings.lang)
-            bot.answer_callback_query(call_id, text, True)
 
-        elif len(old_status.split(",")) > 4 and new_status != "⬜️":
-            text = get_translate("more_5_statuses", settings.lang)
-            bot.answer_callback_query(call_id, text, True)
-
-        # Убираем конфликтующие статусы
-        elif ("🔗" in old_status or "💻" in old_status) and new_status in ("🔗", "💻"):
-            text = get_translate("conflict_statuses", settings.lang) + " 🔗, 💻"
-            bot.answer_callback_query(call_id, text, True)
-
-        elif ("🪞" in old_status or "💻" in old_status) and new_status in ("🪞", "💻"):
-            text = get_translate("conflict_statuses", settings.lang) + " 🪞, 💻"
-            bot.answer_callback_query(call_id, text, True)
-
-        elif ("🔗" in old_status or "⛓" in old_status) and new_status in ("🔗", "⛓"):
-            text = get_translate("conflict_statuses", settings.lang) + " 🔗, ⛓"
-            bot.answer_callback_query(call_id, text, True)
-
-        elif ("🧮" in old_status or "🗒" in old_status) and new_status in ("🧮", "🗒"):
-            text = get_translate("conflict_statuses", settings.lang) + " 🧮, 🗒"
-            bot.answer_callback_query(call_id, text, True)
-
+        if old_status == "⬜️":
+            res_status = new_status
+        
+        elif new_status == "⬜️":
+            res_status = "⬜️"
+        
         else:
-            if old_status == "⬜️":
-                res_status = new_status
+            res_status = f"{old_status},{new_status}"
 
-            elif new_status == "⬜️":
-                res_status = "⬜️"
+        response, error_text = user.set_status(event_id, res_status)
 
-            else:
-                res_status = f"{old_status},{new_status}"
+        match error_text:
+            case "":
+                text = ""
+            case "Status Conflict":
+                text = get_translate("conflict_statuses", settings.lang)
+            case "Status Length Exceeded":
+                text = get_translate("more_5_statuses", settings.lang)
+            case "Status Repeats":
+                text = get_translate("status_already_posted", settings.lang)
+            case _:
+                text = get_translate("error", settings.lang)
 
-            SQL(
-                """
-UPDATE events
-   SET status = ?
- WHERE user_id = ? AND 
-       event_id = ? AND 
-       date = ?;
-""",
-                params=(res_status, chat_id, event_id, event_date),
-                commit=True,
-            )
+        if text:
+            bot.answer_callback_query(call_id, text, True)
 
         if new_status == "⬜️":
             press_back_action(settings, call_data, chat_id, message_id, message_text)
         else:
             callback_handler(
+                user=user,
                 settings=settings,
                 chat_id=chat_id,
                 message_id=message_id,
@@ -1051,25 +851,18 @@ UPDATE events
 
     elif call_data.startswith("status delete"):
         status, event_id, event_date = call_data.split()[2:]
+        event_id = int(event_id)
 
-        try:  # Если события нет, то обновляем сообщение
-            text, old_status = SQL(
-                """
-SELECT text,
-       status
-  FROM events
- WHERE user_id = ? AND 
-       event_id = ? AND 
-       removal_time = 0 AND 
-       date = ?;
-""",
-                params=(chat_id, event_id, event_date),
-            )[0]
-        except IndexError:
+        # Если события нет, то обновляем сообщение
+        response, error_text = user.get_event(event_id)
+
+        if not response:
             press_back_action(settings, call_data, chat_id, message_id, message_text)
             return
 
-        if status == "⬜️":
+        text, old_status = response.text, response.status
+
+        if status == "⬜️" or old_status == "⬜️":
             return
 
         res_status = (
@@ -1081,19 +874,10 @@ SELECT text,
         if not res_status:
             res_status = "⬜️"
 
-        SQL(
-            """
-UPDATE events
-   SET status = ?
- WHERE user_id = ? AND 
-       event_id = ? AND 
-       date = ?;
-""",
-            params=(res_status, chat_id, event_id, event_date),
-            commit=True,
-        )
+        user.set_status(event_id, res_status)
 
         callback_handler(
+            user=user,
             settings=settings,
             chat_id=chat_id,
             message_id=message_id,
@@ -1105,30 +889,18 @@ UPDATE events
 
     elif call_data.startswith("before del "):
         event_date, event_id, back_to_bin = call_data.split()[2:]
+        event_id = int(event_id)
 
-        try:
-            text, status = SQL(
-                f"""
-SELECT text,
-       status
-  FROM events
- WHERE user_id = ? AND 
-       event_id = ? AND 
-       date = ? AND 
-       removal_time {"!" if back_to_bin == "bin" else ""}= 0;
-""",
-                params=(chat_id, event_id, event_date),
-            )[0]
-        except IndexError:
-            # Проверяем на случай отсутствия call_id
-            try:
-                error = get_translate("error", settings.lang)
-                bot.answer_callback_query(call_id, error)
-                press_back_action(settings, call_data, chat_id, message_id, message_text)
-            except ApiTelegramException:
-                pass
+        # Если события нет, то обновляем сообщение
+        response, error_text = user.get_event(event_id, back_to_bin == "bin")
 
+        if not response:
+            error = get_translate("error", settings.lang)
+            bot.answer_callback_query(call_id, error)
+            press_back_action(settings, call_data, chat_id, message_id, message_text)
             return 1
+
+        text, status = response.text, response.status
 
         delete_permanently = get_translate("delete_permanently", settings.lang)
         trash_bin = get_translate("trash_bin", settings.lang)
@@ -1160,42 +932,23 @@ SELECT text,
             else ""
         )
         text = (
-            f"<b>{event_date}.{event_id}.</b>{status} <u><i>{day.str_date}  {day.week_date}</i> {day.relatively_date}</u>\n"
+            f"<b>{event_date}.{event_id}.</b>{status} <u><i>{day.str_date}  "
+            f"{day.week_date}</i> {day.relatively_date}</u>\n"
             f"<b>{sure_text}:</b>\n{text[:3800]}\n\n{end_text}"
         )
         bot.edit_message_text(text, chat_id, message_id, reply_markup=predelmarkup)
 
     elif call_data.startswith("del "):
         event_date, event_id, where, mode = call_data.split(maxsplit=4)[1:]
+        event_id = int(event_id)
 
-        try:
-            if (
-                settings.user_status in (1, 2) or is_admin_id(chat_id)
-            ) and mode == "to_bin":
-                SQL(
-                    """
-UPDATE events
-   SET removal_time = DATE() 
- WHERE user_id = ? AND 
-       date = ? AND 
-       event_id = ?;
-""",
-                    params=(chat_id, event_date, event_id),
-                    commit=True,
-                )
-            else:
-                SQL(
-                    """
-DELETE FROM events
-      WHERE user_id = ? AND 
-            date = ? AND 
-            event_id = ?;
-""",
-                    params=(chat_id, event_date, event_id),
-                    commit=True,
-                )
-        except Error as e:
-            logging.info(f'[handlers.py -> callback_handler -> "del"] Error "{e}"')
+        to_bin = mode == "to_bin" and (
+            settings.user_status in (1, 2) or is_admin_id(chat_id)
+        )
+
+        response, error_text = user.delete_event(event_id, to_bin)
+
+        if not response:
             error = get_translate("error", settings.lang)
             bot.answer_callback_query(call_id, error)
 
@@ -1317,6 +1070,7 @@ DELETE FROM events
                 )
             except ApiTelegramException:  # Сообщение не изменено
                 callback_handler(
+                    user=user,
                     settings=settings,
                     chat_id=chat_id,
                     message_id=message_id,
@@ -1375,15 +1129,7 @@ DELETE FROM events
         ]:
             return
 
-        SQL(
-            f"""
-UPDATE settings
-   SET {par_name} = ?
- WHERE user_id = ?;
-""",
-            params=(par_val, chat_id),
-            commit=True,
-        )
+        user.set_settings(**{par_name: par_val})
 
         settings = UserSettings(chat_id)
         set_bot_commands(chat_id, settings.user_status, settings.lang)
@@ -1424,15 +1170,12 @@ UPDATE settings
             bot.answer_callback_query(call_id, text)
 
     elif call_data == "clean_bin":
-        SQL(
-            """
-DELETE FROM events
-      WHERE user_id = ? AND 
-            removal_time != 0;
-""",
-            params=(chat_id,),
-            commit=True,
-        )
+        res = user.clear_basket()[0]
+        if not res:
+            error = get_translate("error", settings.lang)
+            bot.answer_callback_query(call_id, error)
+            return
+
         update_message_action(settings, chat_id, message_id, message_text)
 
 
@@ -1440,7 +1183,7 @@ def clear_state(chat_id: int | str):
     """
     Очищает состояние приёма сообщения у пользователя и изменяет сообщение по id из add_event_date
     """
-    add_event_date = SQL(
+    add_event_date = db.execute(
         """
 SELECT add_event_date
   FROM settings
@@ -1451,7 +1194,7 @@ SELECT add_event_date
 
     if add_event_date:
         msg_date, message_id = add_event_date.split(",")
-        SQL(
+        db.execute(
             """
 UPDATE settings
    SET add_event_date = 0
@@ -1461,4 +1204,3 @@ UPDATE settings
             commit=True,
         )
         update_message_action(UserSettings(chat_id), chat_id, message_id, msg_date)
-

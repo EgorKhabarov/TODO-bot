@@ -2,9 +2,9 @@ from calendar import monthcalendar
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from db.db import SQL
+from todoapi.types import db
 from lang import get_translate
-from db.sql_utils import sqlite_format_date
+from sql_utils import sqlite_format_date
 from time_utils import new_time_calendar, year_info, now_time
 
 
@@ -80,7 +80,7 @@ def create_monthly_calendar_keyboard(
     # Дни в которые есть события
     has_events = [
         x[0]
-        for x in SQL(
+        for x in db.execute(
             """
 SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT) 
   FROM events
@@ -95,7 +95,7 @@ SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT)
     # Дни рождения, праздники и каждый год или месяц
     every_year_or_month = [
         x[0]
-        for x in SQL(
+        for x in db.execute(
             """
 SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT) 
   FROM events
@@ -114,7 +114,7 @@ SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT)
     # Каждую неделю
     every_week = [
         6 if x[0] == -1 else x[0]
-        for x in SQL(
+        for x in db.execute(
             f"""
 SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT) 
   FROM events
@@ -174,7 +174,7 @@ def create_yearly_calendar_keyboard(
     # В этом году
     month_list = [
         x[0]
-        for x in SQL(
+        for x in db.execute(
             """
 SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT) 
   FROM events
@@ -189,7 +189,7 @@ SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT)
     # Повторение каждый год
     every_year = [
         x[0]
-        for x in SQL(
+        for x in db.execute(
             """
 SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT) 
   FROM events
@@ -206,7 +206,7 @@ SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT)
     # Повторение каждый месяц
     every_month = [
         x[0]
-        for x in SQL(
+        for x in db.execute(
             """
 SELECT date
   FROM events
@@ -255,6 +255,5 @@ def edit_button_attrs(
 
 backmarkup = generate_buttons([{"🔙": "back"}])
 delmarkup = generate_buttons([{"✖": "message_del"}])
-databasemarkup = generate_buttons([{"Применить базу данных": "set database"}])
 delopenmarkup = generate_buttons([{"✖": "message_del", "↖️": "select event open"}])
 backopenmarkup = generate_buttons([{"🔙": "back", "↖️": "select event open"}])

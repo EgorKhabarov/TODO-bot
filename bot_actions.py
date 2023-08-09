@@ -5,16 +5,10 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import Message
 
 from bot import bot
-from bot_messages import (
-    trash_can_message,
-    search_message,
-    daily_message,
-    week_event_list_message,
-)
+from bot_messages import trash_can_message, search_message, daily_message, week_event_list_message
 from buttons_utils import delmarkup, create_monthly_calendar_keyboard
-from db.db import SQL
+from todoapi.types import db, UserSettings
 from lang import get_translate
-from user_settings import UserSettings
 from utils import to_html_escaping
 
 
@@ -28,7 +22,7 @@ def delete_message_action(settings: UserSettings, chat_id: int, message_id: int,
         bot.reply_to(message, get_admin_rules, reply_markup=delmarkup)
 
 def press_back_action(settings: UserSettings, call_data: str, chat_id: int, message_id: int, message_text: str):
-    add_event_date = SQL(
+    add_event_date = db.execute(
         """
 SELECT add_event_date
 FROM settings
@@ -40,7 +34,7 @@ WHERE user_id = ?;
     if add_event_date:
         add_event_message_id = add_event_date.split(",")[1]
         if int(message_id) == int(add_event_message_id):
-            SQL(
+            db.execute(
                 """
 UPDATE settings
 SET add_event_date = 0

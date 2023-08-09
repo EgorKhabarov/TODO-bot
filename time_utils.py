@@ -2,7 +2,7 @@ from calendar import isleap
 from datetime import datetime, timedelta
 
 from lang import get_translate
-from user_settings import UserSettings
+from todoapi.types import UserSettings
 
 
 def now_time(user_timezone: int = 0) -> datetime:

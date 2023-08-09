@@ -1,40 +1,17 @@
 from copy import deepcopy
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-from sqlite3 import Error
 from typing import Literal
+from sqlite3 import Error
+from datetime import datetime, timedelta
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 
 import logging
-from db.db import SQL
 from bot import bot
-from lang import get_translate
 from utils import markdown
-from db.sql_utils import sqlite_format_date, pagination
+from lang import get_translate
+from sql_utils import sqlite_format_date, pagination
 from time_utils import now_time_strftime, DayInfo
-from user_settings import UserSettings
-
-
-@dataclass
-class Event:
-    """
-    event_id: int
-    date: str = "now"
-    text: str = ""
-    status: str = ""
-    removal_time: str = ""
-    adding_time: str = ""
-    recent_changes_time: str = ""
-    """
-
-    event_id: int
-    date: str = "now_time"
-    text: str = ""
-    status: str = ""
-    removal_time: str = "0"
-    adding_time: str = ""
-    recent_changes_time: str = ""
+from todoapi.types import db, UserSettings, Event
 
 
 class EventMessageGenerator:
@@ -74,7 +51,7 @@ class EventMessageGenerator:
         if data:
             first_message = [
                 Event(*event)
-                for event in SQL(
+                for event in db.execute(
                     f"""
 SELECT event_id,
        date,
@@ -131,7 +108,7 @@ SELECT event_id,
         try:
             res = [
                 Event(*event)
-                for event in SQL(
+                for event in db.execute(
                     f"""
 SELECT event_id,
        date,

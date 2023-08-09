@@ -532,8 +532,8 @@ Visibility <b>{}</b>m""",
         "en": "You can not put more than 5 statuses",
     },
     "conflict_statuses": {
-        "ru": "Эти статусы конфликтуют друг с другом",
-        "en": "These statuses conflict with each other",
+        "ru": "Cтатусы конфликтуют друг с другом.",
+        "en": "Statuses conflict with each other.",
     },
     "are_you_sure": {
         "ru": "Вы уверены что хотите удалить",
@@ -702,10 +702,6 @@ Visibility <b>{}</b>m""",
             "Total events",
             "Total symbols",
         ),
-    },
-    "": {
-        "ru": "",
-        "en": "",
     },
     "help title": {
         "ru": "📚 Помощь 📚",
@@ -1111,6 +1107,14 @@ Notifications are disabled by default.
 You can enable and customize the notification time in the settings (/settings).
 The bot notifies about important "🟥" events, events with recurring status ("📬", "📅", "🗞", "📆"), and events with the status "🔔".
 """,
+    },
+    "soon": {
+        "ru": "Скоро",
+        "en": "Soon",
+    },
+    "": {
+        "ru": "",
+        "en": "",
     },
 }
 

@@ -1,24 +1,23 @@
 import logging
 
 from telebot import TeleBot
-from telebot.apihelper import ApiTelegramException
 from telebot.types import BotCommandScopeChat
+from telebot.apihelper import ApiTelegramException
 
 import config
 from lang import get_translate
 from utils import is_admin_id
 
 
-class Bot(TeleBot):
-    def __init__(self, token: str):
-        super().__init__(token)
-        self.me = self.get_me()
-        self.id = self.me.id
-        self.username = self.me.username
+bot = TeleBot(config.BOT_TOKEN)
 
-        self.parse_mode = "html"
-        self.disable_web_page_preview = True
-        self.protect_content = False
+bot.me = bot.get_me()
+bot.id = bot.me.id
+bot.username = bot.me.username
+
+bot.parse_mode = "html"
+bot.disable_web_page_preview = True
+bot.protect_content = False
 
 def bot_log_info():
     bot_dict = bot.me.to_dict()
@@ -79,6 +78,3 @@ def set_bot_commands(chat_id: int, user_status: int, lang: str) -> bool:
             f'[bot.py -> set_bot_commands -> "|"] (ApiTelegramException, KeyError) "{e}"'
         )
         return False
-
-
-bot = Bot(config.BOT_TOKEN)

@@ -2,16 +2,18 @@ import os
 
 from dotenv import load_dotenv
 
+from todoapi.config import DATABASE_PATH
+
+
 load_dotenv()
 
+DATABASE_PATH = DATABASE_PATH
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
-DATABASE_PATH = os.getenv("DATABASE_PATH", "database.sqlite3")
 LOG_FILE = os.getenv("LOG_FILE", "bot.log")
 POKE_LINK = int(os.getenv("POKE_LINK", 0))
 LINK = os.getenv("LINK")
 
-admin_id = (1563866138,)
 NOTIFICATIONS = True
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -34,7 +36,7 @@ COMMANDS = (
     "today",
     "sqlite",
     "account",
-    "files",
+    "zip",
     "SQL",
     "save_to_csv",
     "setuserstatus",

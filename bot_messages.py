@@ -5,23 +5,16 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 import logging
-from db.db import SQL
-from lang import get_translate
 from bot import bot
+from lang import get_translate
 from limits import create_image
 from utils import remove_html_escaping
-from db.sql_utils import sqlite_format_date, sqlite_format_date2
+from sql_utils import sqlite_format_date2
+from message_generator import EventMessageGenerator, NoEventMessage
 from time_utils import convert_date_format, now_time, now_time_strftime
-from user_settings import UserSettings
-from messages.message_generator import EventMessageGenerator, NoEventMessage
-from buttons_utils import (
-    delmarkup,
-    delopenmarkup,
-    generate_buttons,
-    edit_button_attrs,
-    backopenmarkup,
-    create_monthly_calendar_keyboard,
-)
+from buttons_utils import delmarkup, delopenmarkup, generate_buttons, edit_button_attrs, backopenmarkup, create_monthly_calendar_keyboard
+from todoapi.types import db, UserSettings
+from todoapi.utils import sqlite_format_date
 
 
 backslash_n = "\n"  # Для использования внутри f строк
@@ -184,7 +177,7 @@ def trash_can_message(
     """
     WHERE = f"user_id = {chat_id} AND removal_time != 0"
     # Удаляем события старше 30 дней
-    SQL(
+    db.execute(
         """
 DELETE FROM events
       WHERE removal_time != 0 AND 
@@ -313,7 +306,7 @@ def daily_message(
     # Добавить дополнительную кнопку для дней в которых есть праздники
     daylist = [
         x[0]
-        for x in SQL(
+        for x in db.execute(
             f"""
 -- Кнопка повторяющихся событий
 SELECT DISTINCT date
@@ -391,10 +384,11 @@ def notifications_message(
     """
     if not user_id_list:
         n_time = now_time()
-        user_id_list = [
-            int(user_id)
-            for user in SQL(
-                """
+        with db.connection(), db.cursor():
+            user_id_list = [
+                int(user_id)
+                for user in db.execute(
+                    """
 SELECT GROUP_CONCAT(user_id, ',') AS user_id_list
   FROM settings
  WHERE notifications = 1 AND 
@@ -402,11 +396,11 @@ SELECT GROUP_CONCAT(user_id, ',') AS user_id_list
        ((CAST(SUBSTR(notifications_time, 1, 2) AS INT) - timezone + 24) % 24) = ? AND 
        CAST(SUBSTR(notifications_time, 4, 2) AS INT) = ?;
 """,
-                params=(n_time.hour, n_time.minute),
-            )
-            if user[0]
-            for user_id in user[0].split(",")
-        ]  # [('id1,id2,id3',)] -> [id1, id2, id3]
+                    params=(n_time.hour, n_time.minute),
+                )
+                if user[0]
+                for user_id in user[0].split(",")
+            ]  # [('id1,id2,id3',)] -> [id1, id2, id3]
 
     for user_id in user_id_list:
         settings = UserSettings(user_id)
@@ -505,7 +499,7 @@ AND
                     else:
                         generated.send(chat_id=user_id)
                     if not from_command:
-                        SQL(
+                        db.execute(
                             """
 UPDATE events
    SET status = REPLACE(status, '🔔', '🔕') 

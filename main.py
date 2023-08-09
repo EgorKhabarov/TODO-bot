@@ -6,26 +6,18 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import CallbackQuery, Message, BotCommandScopeDefault
 
 import config
-from db.db import SQL
 from logger import logging
 from lang import get_translate
 from bot import bot, bot_log_info
-from db.sql_utils import create_event
-from limits import is_exceeded_limit
-from db.db_creator import create_tables
-from user_settings import UserSettings
 from time_utils import now_time, DayInfo
-from bot_messages import search_message, notifications_message
 from bot_actions import delete_message_action
 from buttons_utils import generate_buttons, delmarkup
+from bot_messages import search_message, notifications_message
 from handlers import command_handler, callback_handler, clear_state
-from utils import (
-    to_html_escaping,
-    poke_link,
-    remove_html_escaping,
-    html_to_markdown,
-    check_user,
-)
+from utils import to_html_escaping, poke_link, remove_html_escaping, html_to_markdown, check_user
+from todoapi.api import User
+from todoapi.types import UserSettings, db
+from todoapi.db_creator import create_tables
 
 create_tables()
 
@@ -40,30 +32,29 @@ re_edit_message = re.compile(r"\A@\w{5,32} event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d
 
 @bot.message_handler(commands=[*config.COMMANDS])
 @check_user
-def message_handler(message: Message, settings: UserSettings):
+def message_handler(message: Message, user: User):
     """
     Ловит команды от пользователей
     """
-    chat_id, message_text = message.chat.id, message.text
+    user.settings.log("send", message.text)
 
-    settings.log("send", message_text)
-
-    command_handler(settings, chat_id, message_text, message)
+    command_handler(user, message)
 
 
 @bot.callback_query_handler(func=lambda call: True)
 @check_user
-def callback_query_handler(call: CallbackQuery, settings: UserSettings):
+def callback_query_handler(call: CallbackQuery, user: User):
     """
     Ловит нажатия на кнопки
     """
-    chat_id = call.message.chat.id
+    settings: UserSettings = user.settings
 
     settings.log("pressed", call.data)
 
     callback_handler(
+        user=user,
         settings=settings,
-        chat_id=chat_id,
+        chat_id=call.message.chat.id,
         message_id=call.message.message_id,
         message_text=call.message.text,
         call_data=call.data,
@@ -74,12 +65,13 @@ def callback_query_handler(call: CallbackQuery, settings: UserSettings):
 
 @bot.message_handler(func=lambda m: m.text.startswith("#"))
 @check_user
-def processing_search_message(message: Message, settings: UserSettings):
+def processing_search_message(message: Message, user: User):
     """
     Ловит сообщения поиска
     #   (ИЛИ)
     #!  (И)
     """
+    settings: UserSettings = user.settings
     chat_id = message.chat.id
 
     raw_query = message.text[1:].replace("\n", " ").replace("--", "")
@@ -93,10 +85,11 @@ def processing_search_message(message: Message, settings: UserSettings):
 
 @bot.message_handler(func=lambda m: re_edit_message.search(m.text))
 @check_user
-def processing_edit_message(message: Message, settings: UserSettings):
+def processing_edit_message(message: Message, user: User):
     """
     Ловит сообщения для изменения событий
     """
+    settings: UserSettings = user.settings
     chat_id, edit_message_id = message.chat.id, message.message_id
 
     settings.log("send", "edit event text")
@@ -110,6 +103,7 @@ def processing_edit_message(message: Message, settings: UserSettings):
     if len(message.text.split("\n")) == 1:
         try:
             if callback_handler(
+                user=user,
                 settings=settings,
                 chat_id=chat_id,
                 message_id=message_id,
@@ -139,7 +133,7 @@ def processing_edit_message(message: Message, settings: UserSettings):
     tag_len_max = len(text) > 3800
 
     try:  # Уменьшится ли длинна события
-        len_old_event, tag_len_less = SQL(
+        len_old_event, tag_len_less = db.execute(
             """
 SELECT LENGTH(text),
        LENGTH(text) > ?
@@ -157,9 +151,8 @@ SELECT LENGTH(text),
     # Вычисляем сколько символов добавил пользователь. Если символов стало меньше, то 0.
     added_length = 0 if tag_len_less else len(text) - len_old_event
 
-    tag_limit_exceeded = is_exceeded_limit(
-        settings, event_date, event_count=0, symbol_count=added_length
-    )
+
+    tag_limit_exceeded = user.check_limit(event_date, symbol_count=added_length)
 
     if tag_len_max:
         bot.reply_to(
@@ -211,15 +204,17 @@ SELECT LENGTH(text),
     )
 )
 @check_user
-def processing_edit_city_message(message: Message, settings: UserSettings):
+def processing_edit_city_message(message: Message, user: User):
     """
     Ловит сообщения ответ на сообщение бота с настройками
     Изменение города пользователя
     """
+    settings: UserSettings = user.settings
     chat_id, message_id = message.chat.id, message.message_id
 
     settings.log("send", "edit city")
     callback_handler(
+        user=user,
         settings=settings,
         chat_id=chat_id,
         message_id=message.reply_to_message.message_id,
@@ -233,7 +228,7 @@ def processing_edit_city_message(message: Message, settings: UserSettings):
 
 
 def add_event_func(msg) -> int:
-    add_event_date = SQL(
+    add_event_date = db.execute(
         """
 SELECT add_event_date
   FROM settings
@@ -246,10 +241,11 @@ SELECT add_event_date
 
 @bot.message_handler(func=add_event_func)
 @check_user
-def add_event(message: Message, settings: UserSettings):
+def add_event(message: Message, user: User):
     """
     Ловит сообщение если пользователь хочет добавить событие
     """
+    settings: UserSettings = user.settings
     chat_id, message_id, markdown_text = (
         message.chat.id,
         message.message_id,
@@ -258,7 +254,7 @@ def add_event(message: Message, settings: UserSettings):
 
     settings.log("send", "add event")
 
-    new_event_date = SQL(
+    new_event_date = db.execute(
         """
 SELECT add_event_date
   FROM settings
@@ -277,15 +273,14 @@ SELECT add_event_date
         bot.reply_to(message, message_is_too_long, reply_markup=delmarkup)
         return
 
-    if is_exceeded_limit(
-        settings, new_event_date, event_count=1, symbol_count=len(markdown_text)
-    ):
+
+    if user.check_limit(new_event_date, event_count=1, symbol_count=len(markdown_text)):
         exceeded_limit = get_translate("exceeded_limit", settings.lang)
         bot.reply_to(message, exceeded_limit, reply_markup=delmarkup)
         return
 
     # Пытаемся создать событие
-    if create_event(chat_id, new_event_date, markdown_text):
+    if user.add_event(new_event_date, markdown_text)[0]:
         clear_state(chat_id)
         delete_message_action(settings, chat_id, message_id, message)
     else:
