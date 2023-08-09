@@ -7,30 +7,34 @@ from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
 import logging
 from db.db import SQL
 from lang import get_translate
+from bot import bot
+from limits import create_image
 from utils import remove_html_escaping
 from db.sql_utils import sqlite_format_date, sqlite_format_date2
 from time_utils import convert_date_format, now_time, now_time_strftime
 from user_settings import UserSettings
-from messages.message_generator import MessageGenerator
+from messages.message_generator import EventMessageGenerator, NoEventMessage
 from buttons_utils import (
     delmarkup,
     delopenmarkup,
     generate_buttons,
     edit_button_attrs,
     backopenmarkup,
+    create_monthly_calendar_keyboard,
 )
 
 
 backslash_n = "\n"  # Для использования внутри f строк
+re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
 
 
-def search(
+def search_message(
     settings: UserSettings,
     chat_id: int,
     query: str,
     id_list: list | tuple[str] = tuple(),
     page: int | str = 1,
-) -> MessageGenerator:
+) -> EventMessageGenerator:
     """
     :param settings: settings
     :param chat_id: chat_id
@@ -58,7 +62,7 @@ def search(
     translate_page = get_translate("page", settings.lang)
 
     if not re.match(r"\S", query):
-        generated = MessageGenerator(settings, reply_markup=delmarkup)
+        generated = EventMessageGenerator(settings, reply_markup=delmarkup)
         generated.format(
             title=f"🔍 {translate_search} {query}:\n",
             if_empty=get_translate("request_empty", settings.lang),
@@ -79,7 +83,7 @@ def search(
     )
     WHERE = f"(user_id = {chat_id} AND removal_time = 0) AND ({splitquery})"
 
-    generated = MessageGenerator(settings, reply_markup=delopenmarkup)
+    generated = EventMessageGenerator(settings, reply_markup=delopenmarkup)
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
@@ -95,12 +99,12 @@ def search(
     return generated
 
 
-def week_event_list(
+def week_event_list_message(
     settings: UserSettings,
     chat_id: int,
     id_list: list | tuple[str] = tuple(),
     page: int | str = 1,
-) -> MessageGenerator:
+) -> EventMessageGenerator:
     """
     :param settings: settings
     :param chat_id: chat_id
@@ -143,7 +147,7 @@ def week_event_list(
     )
     """
 
-    generated = MessageGenerator(settings, reply_markup=delmarkup)
+    generated = EventMessageGenerator(settings, reply_markup=delmarkup)
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
@@ -161,12 +165,12 @@ def week_event_list(
     return generated
 
 
-def deleted(
+def trash_can_message(
     settings: UserSettings,
     chat_id: int,
     id_list: list | tuple[str] = tuple(),
     page: int | str = 1,
-) -> MessageGenerator:
+) -> EventMessageGenerator:
     """
     :param settings: settings
     :param chat_id: chat_id
@@ -196,7 +200,7 @@ DELETE FROM events
     page_translate = get_translate("page", settings.lang)
     message_empty_translate = get_translate("message_empty", settings.lang)
 
-    generated = MessageGenerator(
+    generated = EventMessageGenerator(
         settings,
         reply_markup=generate_buttons(
             [
@@ -235,7 +239,7 @@ def daily_message(
     id_list: list | tuple[str] = tuple(),
     page: int | str = 1,
     message_id: int = None,
-) -> MessageGenerator:
+) -> EventMessageGenerator:
     """
     :param settings: settings
     :param chat_id: chat_id
@@ -270,10 +274,15 @@ def daily_message(
                 "🚩": "select event status",
                 "🗑": "select event delete",
             },
-            {"🔙": "back", "<": yesterday, ">": tomorrow, "🔄": "update"},
+            {
+                "🔙": "back",
+                "<": yesterday,
+                ">": tomorrow,
+                "🔄": "update",
+            },
         ]
     )
-    generated = MessageGenerator(settings, date=date, reply_markup=markup)
+    generated = EventMessageGenerator(settings, date=date, reply_markup=markup)
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
@@ -353,7 +362,7 @@ SELECT DISTINCT date
     return generated
 
 
-def notifications(
+def notifications_message(
     user_id_list: list | tuple[int | str, ...] = None,
     id_list: list | tuple[str] = tuple(),
     page: int | str = 1,
@@ -460,7 +469,7 @@ AND
 )
 """
 
-            generated = MessageGenerator(settings, reply_markup=delmarkup)
+            generated = EventMessageGenerator(settings, reply_markup=delmarkup)
 
             if id_list:
                 generated.get_events(WHERE=WHERE, values=id_list)
@@ -511,7 +520,7 @@ UPDATE events
                     logging.info("Error")
 
 
-def recurring(
+def recurring_events_message(
     settings: UserSettings,
     date: str,
     chat_id: int,
@@ -561,9 +570,7 @@ AND
     )
 )
 """
-    generated = MessageGenerator(
-        settings=settings, date=date, reply_markup=backopenmarkup
-    )
+    generated = EventMessageGenerator(settings, date, reply_markup=backopenmarkup)
 
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
@@ -581,7 +588,7 @@ AND
     return generated
 
 
-def settings_message(settings: UserSettings) -> MessageGenerator:
+def settings_message(settings: UserSettings) -> EventMessageGenerator:
     """
     Ставит настройки для пользователя chat_id
     """
@@ -660,6 +667,66 @@ def settings_message(settings: UserSettings) -> MessageGenerator:
         ]
     )
 
-    generated = MessageGenerator(settings, reply_markup=markup)
+    generated = EventMessageGenerator(settings, reply_markup=markup)
     generated.format(title="", args="", ending=text, if_empty="")
     return generated
+
+
+def start_message(settings: UserSettings) -> NoEventMessage:
+    markup = generate_buttons(
+        [
+            {"/calendar": "/calendar"},
+            {
+                get_translate("add_bot_to_group", settings.lang): {
+                    "url": f"https://t.me/{bot.username}?startgroup=AddGroup"
+                }
+            },
+        ]
+    )
+    text = get_translate("start", settings.lang)
+    generated = NoEventMessage(text, markup)
+    return generated
+
+
+def help_message(settings: UserSettings, path: str = "help page 1") -> NoEventMessage:
+    translate = get_translate(path, settings.lang)
+    title = get_translate("help title", settings.lang)
+
+    if path.startswith("help page"):
+        text, keyboard = translate
+        markup = generate_buttons(keyboard)
+        generated = NoEventMessage(f"{title}\n{text}", markup)
+    else:
+        generated = NoEventMessage(f"{title}\n{translate}")
+
+    return generated
+
+def monthly_calendar_message(settings: UserSettings, chat_id: int) -> NoEventMessage:
+    text = get_translate("choose_date", settings.lang)
+    markup = create_monthly_calendar_keyboard(
+        chat_id, settings.timezone, settings.lang
+    )
+    generated = NoEventMessage(text, markup)
+    return generated
+
+def account_message(settings: UserSettings, chat_id: int, message_text: str) -> None:
+    if message_text == "/account":
+        date = now_time(settings.timezone)
+    else:
+        str_date = message_text[9:]
+        if re_call_data_date.search(str_date):
+            try:
+                date = convert_date_format(str_date)
+            except ValueError:
+                bot.send_message(chat_id, get_translate("error", settings.lang))
+                return
+        else:
+            bot.send_message(chat_id, get_translate("error", settings.lang))
+            return
+
+        if not 1980 < date.year < 3000:
+            bot.send_message(chat_id, get_translate("error", settings.lang))
+            return
+
+    image = create_image(settings, date.year, date.month, date.day)
+    bot.send_photo(chat_id, image, reply_markup=delmarkup)

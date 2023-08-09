@@ -6,127 +6,123 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import CallbackQuery, Message, BotCommandScopeDefault
 
 import config
-from bot import bot
 from db.db import SQL
 from logger import logging
 from lang import get_translate
+from bot import bot, bot_log_info
 from db.sql_utils import create_event
 from limits import is_exceeded_limit
 from db.db_creator import create_tables
 from user_settings import UserSettings
 from time_utils import now_time, DayInfo
-from messages.message_generators import search, notifications
+from bot_messages import search_message, notifications_message
+from bot_actions import delete_message_action
 from buttons_utils import generate_buttons, delmarkup
 from handlers import command_handler, callback_handler, clear_state
 from utils import (
     to_html_escaping,
-    is_admin_id,
     poke_link,
     remove_html_escaping,
     html_to_markdown,
+    check_user,
 )
 
 create_tables()
 
-bot.log_info()
+bot_log_info()
 
 bot.set_my_commands(
     commands=get_translate("0_command_list", "ru"), scope=BotCommandScopeDefault()
 )
 
-re_edit_message = re.compile(r"event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.edit")
+re_edit_message = re.compile(r"\A@\w{5,32} event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.edit(?:\n|\Z)")
 
 
 @bot.message_handler(commands=[*config.COMMANDS])
-def message_handler(message: Message):
+@check_user
+def message_handler(message: Message, settings: UserSettings):
     """
     Ловит команды от пользователей
     """
     chat_id, message_text = message.chat.id, message.text
-    settings = UserSettings(chat_id)
-
-    if settings.user_status == -1 and not is_admin_id(chat_id):
-        return
 
     settings.log("send", message_text)
+
     command_handler(settings, chat_id, message_text, message)
 
 
 @bot.callback_query_handler(func=lambda call: True)
-def callback_query_handler(call: CallbackQuery):
+@check_user
+def callback_query_handler(call: CallbackQuery, settings: UserSettings):
     """
     Ловит нажатия на кнопки
     """
-    chat_id, message_id, call_data, message_text = (
-        call.message.chat.id,
-        call.message.message_id,
-        call.data,
-        call.message.text,
-    )
-    settings = UserSettings(chat_id)
+    chat_id = call.message.chat.id
 
-    if settings.user_status == -1 and not is_admin_id(chat_id):
-        return
-
-    settings.log("pressed", call_data)
-
-    if call.data == "None":
-        return 0
+    settings.log("pressed", call.data)
 
     callback_handler(
         settings=settings,
         chat_id=chat_id,
-        message_id=message_id,
-        message_text=message_text,
-        call_data=call_data,
+        message_id=call.message.message_id,
+        message_text=call.message.text,
+        call_data=call.data,
         call_id=call.id,
         message=call.message,
     )
 
 
 @bot.message_handler(func=lambda m: m.text.startswith("#"))
-def processing_search_message(message: Message):
+@check_user
+def processing_search_message(message: Message, settings: UserSettings):
     """
     Ловит сообщения поиска
     #   (ИЛИ)
     #!  (И)
     """
     chat_id = message.chat.id
-    settings = UserSettings(user_id=chat_id)
-
-    if settings.user_status == -1 and not is_admin_id(chat_id):
-        return
 
     raw_query = message.text[1:].replace("\n", " ").replace("--", "")
     query = to_html_escaping(raw_query.strip())
+
     settings.log("search", query)
-    generated = search(settings=settings, chat_id=chat_id, query=query)
+
+    generated = search_message(settings=settings, chat_id=chat_id, query=query)
     generated.send(chat_id=chat_id)
 
 
 @bot.message_handler(func=lambda m: re_edit_message.search(m.text))
-def processing_edit_message(message: Message):
+@check_user
+def processing_edit_message(message: Message, settings: UserSettings):
     """
     Ловит сообщения для изменения событий
     """
     chat_id, edit_message_id = message.chat.id, message.message_id
-    settings = UserSettings(chat_id)
-
-    if settings.user_status == -1 and not is_admin_id(chat_id):
-        return
 
     settings.log("send", "edit event text")
 
     markdown_text = html_to_markdown(message.html_text)
 
-    res = re_edit_message.search(markdown_text)[0]
+    event_date, event_id, message_id = re_edit_message.findall(markdown_text)[0]
+    event_id, message_id = int(event_id), int(message_id)
+    text = markdown_text.split("\n", maxsplit=1)[-1].strip("\n")
 
-    event_date, event_id, message_id, text = (
-        str(re.findall(r"\((\d{1,2}\.\d{1,2}\.\d{4}),", res)[0]),
-        int(re.findall(r" (\d+)", res)[0]),
-        int(re.findall(r", (\d+)\)", res)[0]),
-        markdown_text.split("\n", maxsplit=1)[-1].strip("\n"),
-    )
+    if len(message.text.split("\n")) == 1:
+        try:
+            if callback_handler(
+                settings=settings,
+                chat_id=chat_id,
+                message_id=message_id,
+                message_text=f"{event_date}",
+                call_data=f"before del {event_date} {event_id} _",
+                call_id=0,
+                message=message,
+            ):
+                return
+        except ApiTelegramException:
+            pass
+        delete_message_action(settings, chat_id, edit_message_id, message)
+        return
 
     edit_text = remove_html_escaping(markdown_text).split(maxsplit=1)[-1]
     markup = generate_buttons(
@@ -204,14 +200,7 @@ SELECT LENGTH(text),
                 )
                 return
 
-    try:
-        bot.delete_message(chat_id, edit_message_id)
-    except ApiTelegramException:
-        bot.reply_to(
-            message,
-            get_translate("get_admin_rules", settings.lang),
-            reply_markup=delmarkup,
-        )
+    delete_message_action(settings, chat_id, edit_message_id, message)
 
 
 @bot.message_handler(
@@ -221,16 +210,13 @@ SELECT LENGTH(text),
         and m.reply_to_message.from_user.id == bot.id
     )
 )
-def processing_edit_city_message(message: Message):
+@check_user
+def processing_edit_city_message(message: Message, settings: UserSettings):
     """
     Ловит сообщения ответ на сообщение бота с настройками
     Изменение города пользователя
     """
     chat_id, message_id = message.chat.id, message.message_id
-    settings = UserSettings(chat_id)
-
-    if settings.user_status == -1 and not is_admin_id(chat_id):
-        return
 
     settings.log("send", "edit city")
     callback_handler(
@@ -243,14 +229,7 @@ def processing_edit_city_message(message: Message):
         message=message.reply_to_message,
     )
 
-    try:
-        bot.delete_message(chat_id, message_id)
-    except ApiTelegramException:
-        bot.reply_to(
-            message,
-            get_translate("get_admin_rules", settings.lang),
-            reply_markup=delmarkup,
-        )
+    delete_message_action(settings, chat_id, message_id, message)
 
 
 def add_event_func(msg) -> int:
@@ -266,7 +245,8 @@ SELECT add_event_date
 
 
 @bot.message_handler(func=add_event_func)
-def add_event(message: Message):
+@check_user
+def add_event(message: Message, settings: UserSettings):
     """
     Ловит сообщение если пользователь хочет добавить событие
     """
@@ -275,10 +255,6 @@ def add_event(message: Message):
         message.message_id,
         to_html_escaping(html_to_markdown(message.html_text)),
     )  # Экранируем текст
-    settings = UserSettings(chat_id)
-
-    if settings.user_status == -1 and not is_admin_id(chat_id):
-        return
 
     settings.log("send", "add event")
 
@@ -311,20 +287,10 @@ SELECT add_event_date
     # Пытаемся создать событие
     if create_event(chat_id, new_event_date, markdown_text):
         clear_state(chat_id)
-
-        try:
-            bot.delete_message(chat_id, message_id)
-        except ApiTelegramException:
-            # Если в группе у бота нет прав для удаления сообщений
-            bot.reply_to(
-                message,
-                get_translate("get_admin_rules", settings.lang),
-                reply_markup=delmarkup,
-            )
+        delete_message_action(settings, chat_id, message_id, message)
     else:
-        bot.reply_to(
-            message, get_translate("error", settings.lang), reply_markup=delmarkup
-        )
+        error_translate = get_translate("error", settings.lang)
+        bot.reply_to(message, error_translate, reply_markup=delmarkup)
         clear_state(chat_id)
 
 
@@ -335,7 +301,7 @@ def schedule_loop():
         while_time = now_time()
 
         if config.NOTIFICATIONS and while_time.minute in (0, 10, 20, 30, 40, 50):
-            Thread(target=notifications, daemon=True).start()
+            Thread(target=notifications_message, daemon=True).start()
 
         if config.POKE_LINK and while_time.minute in (0, 15, 30, 45):
             if config.LINK:

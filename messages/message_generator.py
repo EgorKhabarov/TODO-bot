@@ -37,7 +37,7 @@ class Event:
     recent_changes_time: str = ""
 
 
-class MessageGenerator:
+class EventMessageGenerator:
     """
     Класс для заполнения и форматирования сообщений по шаблону
     """
@@ -251,9 +251,9 @@ SELECT event_id,
 
     def edit(
         self,
-        *,
         chat_id: int,
         message_id: int,
+        *,
         only_markup: bool = False,
         markup: InlineKeyboardMarkup = None,
     ) -> None:
@@ -262,6 +262,19 @@ SELECT event_id,
         :param message_id: message_id
         :param only_markup: обновить только клавиатуру self.reply_markup
         :param markup: обновить текст self.text и клавиатура markup
+
+
+        bot.edit_message_text(text, chat_id, message_id, reply_markup=self.reply_markup)
+
+        .edit(chat_id, message_id, markup=markup)
+
+        bot.edit_message_reply_markup(self.text, chat_id, message_id, reply_markup=markup)
+
+        .edit(chat_id, message_id, only_markup=True)
+
+        bot.edit_message_text(self.text, chat_id, message_id, reply_markup=self.reply_markup)
+
+        .edit(chat_id, message_id)
         """
         if only_markup:
             bot.edit_message_reply_markup(
@@ -281,3 +294,74 @@ SELECT event_id,
                 text=self.text,
                 reply_markup=self.reply_markup,
             )
+
+
+class NoEventMessage:
+    def __init__(
+        self,
+        text: str,
+        reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup(),
+    ):
+        self.text = text
+        self.reply_markup = reply_markup
+
+    def send(self, chat_id: int) -> Message:
+        return bot.send_message(
+            chat_id=chat_id, text=self.text, reply_markup=self.reply_markup
+        )
+
+    def edit(
+        self,
+        chat_id: int,
+        message_id: int,
+        *,
+        only_markup: bool = False,
+        markup: InlineKeyboardMarkup = None,
+    ) -> None:
+        """
+        :param chat_id: chat_id
+        :param message_id: message_id
+        :param only_markup: обновить только клавиатуру self.reply_markup
+        :param markup: обновить текст self.text и клавиатура markup
+
+
+        bot.edit_message_text(text, chat_id, message_id, reply_markup=self.reply_markup)
+
+        .edit(chat_id, message_id, markup=markup)
+
+        bot.edit_message_reply_markup(self.text, chat_id, message_id, reply_markup=markup)
+
+        .edit(chat_id, message_id, only_markup=True)
+
+        bot.edit_message_text(self.text, chat_id, message_id, reply_markup=self.reply_markup)
+
+        .edit(chat_id, message_id)
+        """
+        if only_markup:
+            bot.edit_message_reply_markup(
+                chat_id=chat_id,
+                message_id=message_id,
+                reply_markup=self.reply_markup,
+            )
+        elif markup is not None:
+            bot.edit_message_text(
+                text=self.text,
+                chat_id=chat_id,
+                message_id=message_id,
+                reply_markup=markup,
+            )
+        else:
+            bot.edit_message_text(
+                text=self.text,
+                chat_id=chat_id,
+                message_id=message_id,
+                reply_markup=self.reply_markup,
+            )
+
+    def reply(self, message):
+        bot.reply_to(
+            message,
+            self.text,
+            reply_markup=self.reply_markup,
+        )
+

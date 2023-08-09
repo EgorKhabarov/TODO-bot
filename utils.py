@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 import requests
 from requests import ConnectionError
 from requests.exceptions import MissingSchema
+from telebot.types import Message, CallbackQuery
 
 import config
 import logging
@@ -479,3 +480,23 @@ def write_table_to_str(
         file.write("\n")
     file.write(sep)
     file.seek(0)
+
+def check_user(func):
+    def wrapper(x: Message | CallbackQuery):
+        if isinstance(x, Message):
+            chat_id = x.chat.id
+        elif isinstance(x, CallbackQuery):
+            chat_id = x.message.chat.id
+            if x.data == "None":
+                return 0
+        else:
+            return
+
+        settings = UserSettings(chat_id)
+
+        if settings.user_status == -1 and not is_admin_id(chat_id):
+            return
+
+        return func(x, settings)
+
+    return wrapper
