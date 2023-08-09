@@ -12,7 +12,14 @@ from utils import remove_html_escaping
 from sql_utils import sqlite_format_date2
 from message_generator import EventMessageGenerator, NoEventMessage
 from time_utils import convert_date_format, now_time, now_time_strftime
-from buttons_utils import delmarkup, delopenmarkup, generate_buttons, edit_button_attrs, backopenmarkup, create_monthly_calendar_keyboard
+from buttons_utils import (
+    delmarkup,
+    delopenmarkup,
+    generate_buttons,
+    edit_button_attrs,
+    backopenmarkup,
+    create_monthly_calendar_keyboard,
+)
 from todoapi.types import db, UserSettings
 from todoapi.utils import sqlite_format_date
 
@@ -595,7 +602,7 @@ def settings_message(settings: UserSettings) -> EventMessageGenerator:
 
     utz = settings.timezone
     str_utz = (
-        f"""{utz} {"🌍" if -2 < int(utz) < 5 else ("🌏" if 4 < int(utz) < 12 else "🌎")}"""
+        f"{utz} {'🌍' if -2 < int(utz) < 5 else ('🌏' if 4 < int(utz) < 12 else '🌎')}"
     )
 
     time_zone_dict = {}
@@ -695,13 +702,13 @@ def help_message(settings: UserSettings, path: str = "help page 1") -> NoEventMe
 
     return generated
 
+
 def monthly_calendar_message(settings: UserSettings, chat_id: int) -> NoEventMessage:
     text = get_translate("choose_date", settings.lang)
-    markup = create_monthly_calendar_keyboard(
-        chat_id, settings.timezone, settings.lang
-    )
+    markup = create_monthly_calendar_keyboard(chat_id, settings.timezone, settings.lang)
     generated = NoEventMessage(text, markup)
     return generated
+
 
 def account_message(settings: UserSettings, chat_id: int, message_text: str) -> None:
     if message_text == "/account":

@@ -381,6 +381,7 @@ def fetch_forecast(settings: UserSettings, city: str) -> str:
         )
     return result
 
+
 def is_secure_chat(message: Message):
     """
     Безопасный ли чат для админских команд.
@@ -478,6 +479,7 @@ def write_table_to_str(
         file.write("\n")
     file.write(sep)
     file.seek(0)
+
 
 def check_user(func):
     def wrapper(x: Message | CallbackQuery):

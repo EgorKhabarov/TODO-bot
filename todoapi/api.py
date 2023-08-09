@@ -88,7 +88,9 @@ SELECT 1
         limit = Limit(self.user_id, self.settings.user_status, date)
         return limit.is_exceeded(event_count=event_count, symbol_count=symbol_count)
 
-    def get_event(self, event_id: int, in_wastebasket: bool = False) -> tuple[bool | Event, str]:
+    def get_event(
+        self, event_id: int, in_wastebasket: bool = False
+    ) -> tuple[bool | Event, str]:
         """
         Получить одно событие
 
@@ -404,7 +406,7 @@ UPDATE events
 
         try:
             db.execute(
-                f"""
+                """
 UPDATE events
    SET removal_time = 0
  WHERE user_id = ? AND 
@@ -520,7 +522,7 @@ DELETE FROM events
             file = StringIO()
             file.name = file_name
             table: list[tuple[int, str, str, str], ...] = db.execute(
-                f"""
+                """
 SELECT event_id,
        date,
        status,
@@ -621,7 +623,9 @@ SELECT event_id,
 UPDATE settings
    SET {}
  WHERE user_id = :user_id;
-""".format(", ".join(f"{update} = :{update}" for update in update_list)),
+""".format(
+                ", ".join(f"{update} = :{update}" for update in update_list)
+            ),
             params={
                 "lang": lang,
                 "city": city,
@@ -639,7 +643,11 @@ UPDATE settings
 
     def delete_user(
         self, user_id: int = None
-    ) -> tuple[bool, str] | tuple[bool, tuple[str, bool | StringIO]] | tuple[bool | StringIO, str]:
+    ) -> (
+        tuple[bool, str]
+        | tuple[bool, tuple[str, bool | StringIO]]
+        | tuple[bool | StringIO, str]
+    ):
         """
         Удалить все данные пользователя.
 
@@ -675,7 +683,7 @@ UPDATE settings
 
         try:
             db.execute(
-                f"""
+                """
 DELETE FROM settings
       WHERE user_id = ?;
 """,
@@ -683,7 +691,7 @@ DELETE FROM settings
                 commit=True,
             )
             db.execute(
-                f"""
+                """
 DELETE FROM events
       WHERE user_id = ?;
 """,
@@ -732,7 +740,7 @@ DELETE FROM events
 
         try:
             db.execute(
-                f"""
+                """
 UPDATE settings
    SET user_status = ?
  WHERE user_id = ?;

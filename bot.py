@@ -19,6 +19,7 @@ bot.parse_mode = "html"
 bot.disable_web_page_preview = True
 bot.protect_content = False
 
+
 def bot_log_info():
     bot_dict = bot.me.to_dict()
     bot_dict.update(
@@ -59,6 +60,7 @@ def bot_log_info():
         + f"+{'-' * max_len}+"
     )
 
+
 def set_bot_commands(chat_id: int, user_status: int, lang: str) -> bool:
     """
     Ставит список команд для пользователя chat_id
@@ -75,6 +77,7 @@ def set_bot_commands(chat_id: int, user_status: int, lang: str) -> bool:
         )
     except (ApiTelegramException, KeyError) as e:
         logging.info(
-            f'[bot.py -> set_bot_commands -> "|"] (ApiTelegramException, KeyError) "{e}"'
+            f'[bot.py -> set_bot_commands -> "|"] '
+            f'(ApiTelegramException, KeyError) "{e}"'
         )
         return False

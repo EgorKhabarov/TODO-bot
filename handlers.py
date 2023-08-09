@@ -16,9 +16,21 @@ import logging
 from lang import get_translate
 from bot import bot, set_bot_commands
 from message_generator import NoEventMessage
-from bot_actions import delete_message_action, press_back_action, update_message_action, re_date
+from bot_actions import (
+    delete_message_action,
+    press_back_action,
+    update_message_action,
+    re_date,
+)
 from time_utils import now_time_strftime, now_time, DayInfo, new_time_calendar
-from buttons_utils import create_monthly_calendar_keyboard, generate_buttons, delmarkup, edit_button_attrs, backmarkup, create_yearly_calendar_keyboard
+from buttons_utils import (
+    create_monthly_calendar_keyboard,
+    generate_buttons,
+    delmarkup,
+    edit_button_attrs,
+    backmarkup,
+    create_yearly_calendar_keyboard,
+)
 from bot_messages import (
     search_message,
     week_event_list_message,
@@ -32,7 +44,16 @@ from bot_messages import (
     monthly_calendar_message,
     account_message,
 )
-from utils import fetch_weather, fetch_forecast, to_html_escaping, remove_html_escaping, write_table_to_str, markdown, Cooldown, is_secure_chat
+from utils import (
+    fetch_weather,
+    fetch_forecast,
+    to_html_escaping,
+    remove_html_escaping,
+    write_table_to_str,
+    markdown,
+    Cooldown,
+    is_secure_chat,
+)
 from todoapi.api import User
 from todoapi.types import db, UserSettings
 from todoapi.utils import is_admin_id, is_premium_user
@@ -41,9 +62,7 @@ CSVCooldown = Cooldown(30 * 60, {})
 re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
 
 
-def command_handler(
-    user: User, message: Message
-) -> None:
+def command_handler(user: User, message: Message) -> None:
     """
     Отвечает за реакцию бота на команды
     Метод message.text.startswith("")
@@ -70,8 +89,7 @@ def command_handler(
         else:
             set_bot_commands(chat_id, settings.user_status, settings.lang)
             generated = NoEventMessage(
-                get_translate("deleted", settings.lang),
-                delmarkup
+                get_translate("deleted", settings.lang), delmarkup
             )
             generated.send(chat_id)
 
@@ -166,10 +184,7 @@ def command_handler(
             bot.send_message(chat_id=chat_id, text="Отправить файл не получилось")
 
     elif message_text.startswith("/zip") and is_secure_chat(message):
-        generated = NoEventMessage(
-            get_translate("soon", settings.lang),
-            delmarkup
-        )
+        generated = NoEventMessage(get_translate("soon", settings.lang), delmarkup)
         generated.send(chat_id)
         # bot.send_chat_action(chat_id=chat_id, action="upload_document")
         # try:
@@ -353,8 +368,10 @@ SyntaxError
                 case "Not Enough Authority":
                     text = "Недостаточно прав."
                 case "Unable To Remove Administrator":
-                    text = ("Нельзя удалить администратора.\n"
-                            "<code>/setuserstatus {user_id} 0</code>")
+                    text = (
+                        "Нельзя удалить администратора.\n"
+                        "<code>/setuserstatus {user_id} 0</code>"
+                    )
                 case "Error":
                     text = "Не получилось получить csv файл."
                 case _:
@@ -808,13 +825,12 @@ SELECT text,
             press_back_action(settings, call_data, chat_id, message_id, message_text)
             return
 
-
         if old_status == "⬜️":
             res_status = new_status
-        
+
         elif new_status == "⬜️":
             res_status = "⬜️"
-        
+
         else:
             res_status = f"{old_status},{new_status}"
 
@@ -952,7 +968,13 @@ SELECT text,
             error = get_translate("error", settings.lang)
             bot.answer_callback_query(call_id, error)
 
-        press_back_action(settings, "back" if where != "bin" else "back bin", chat_id, message_id, message_text)
+        press_back_action(
+            settings,
+            "back" if where != "bin" else "back bin",
+            chat_id,
+            message_id,
+            message_text,
+        )
 
     elif call_data.startswith("|"):  # Список id событий на странице
         page, id_list = call_data.split("|")[1:]
@@ -1181,7 +1203,8 @@ SELECT text,
 
 def clear_state(chat_id: int | str):
     """
-    Очищает состояние приёма сообщения у пользователя и изменяет сообщение по id из add_event_date
+    Очищает состояние приёма сообщения у пользователя
+    и изменяет сообщение по id из add_event_date
     """
     add_event_date = db.execute(
         """

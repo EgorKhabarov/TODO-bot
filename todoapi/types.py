@@ -55,6 +55,7 @@ limits = {
     },
 }
 
+
 class DataBase:
     def __init__(self):
         self.sqlite_connection = None
@@ -73,7 +74,6 @@ class DataBase:
         # self.sqlite_cursor = self.sqlite_connection.cursor()
         yield
         # self.sqlite_cursor.close()
-
 
     def execute(
         self,
@@ -94,7 +94,9 @@ class DataBase:
         """
         self.sqlite_connection = connect(config.DATABASE_PATH)
         self.sqlite_cursor = self.sqlite_connection.cursor()
-        logging.debug("   ", " ".join([line.strip() for line in query.split("\n")]).strip())
+        logging.debug(
+            "   ", " ".join([line.strip() for line in query.split("\n")]).strip()
+        )
 
         self.sqlite_cursor.execute(query, params)
         if commit:
@@ -112,6 +114,7 @@ class Event:
     """
     Событие
     """
+
     def __init__(
         self,
         event_id: int,
@@ -120,7 +123,7 @@ class Event:
         status: str = "⬜️",
         removal_time: str = "0",
         adding_time: str = "",
-        recent_changes_time: str = ""
+        recent_changes_time: str = "",
     ):
         self.event_id = event_id
         self.date = date
@@ -155,7 +158,7 @@ class Event:
                 "adding_time": self.adding_time,
                 "recent_changes_time": self.recent_changes_time,
             },
-            ensure_ascii=False
+            ensure_ascii=False,
         )
 
     def to_dict(self) -> dict:
@@ -170,7 +173,7 @@ class Event:
         }
 
     @staticmethod
-    def de_json(json_string) -> 'Event':
+    def de_json(json_string) -> "Event":
         return Event(**json.loads(json_string))
 
 
@@ -212,7 +215,7 @@ class UserSettings:
         """
         Возвращает список из настроек для пользователя self.user_id
         """
-        query = f"""
+        query = """
 SELECT lang,
        sub_urls,
        city,
@@ -230,7 +233,7 @@ SELECT lang,
         except (Error, IndexError):
             logging.info(f"Добавляю нового пользователя ({self.user_id})")
             db.execute(
-                f"""
+                """
 INSERT INTO settings (user_id)
 VALUES (?);
 """,
@@ -306,7 +309,6 @@ class Limit:
     def is_exceeded(self, *, event_count: int = 0, symbol_count: int = 0) -> bool:
         inf = float("inf")  # Бесконечность
 
-        
         # Если хоть один лимит нарушен, то возвращает False
         # Если лимит отсутствует, то он бесконечный
         return (
@@ -415,9 +417,7 @@ class Cooldown:
         result = True, 0
 
         try:
-            if (
-                localtime := (t - float(self._db[key]))
-            ) < self._time_sec:
+            if (localtime := (t - float(self._db[key]))) < self._time_sec:
                 result = False, int(self._time_sec - int(localtime))
         except KeyError:
             pass
@@ -432,11 +432,3 @@ class Cooldown:
 
 db = DataBase()
 export_cooldown = Cooldown(config.VEDIS_PATH, 30 * 60)
-
-
-
-
-
-
-
-

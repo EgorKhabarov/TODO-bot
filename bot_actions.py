@@ -5,7 +5,12 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import Message
 
 from bot import bot
-from bot_messages import trash_can_message, search_message, daily_message, week_event_list_message
+from bot_messages import (
+    trash_can_message,
+    search_message,
+    daily_message,
+    week_event_list_message,
+)
 from buttons_utils import delmarkup, create_monthly_calendar_keyboard
 from todoapi.types import db, UserSettings
 from lang import get_translate
@@ -14,14 +19,24 @@ from utils import to_html_escaping
 
 re_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}")
 
-def delete_message_action(settings: UserSettings, chat_id: int, message_id: int, message: Message):
+
+def delete_message_action(
+    settings: UserSettings, chat_id: int, message_id: int, message: Message
+):
     try:
         bot.delete_message(chat_id, message_id)
     except ApiTelegramException:
         get_admin_rules = get_translate("get_admin_rules", settings.lang)
         bot.reply_to(message, get_admin_rules, reply_markup=delmarkup)
 
-def press_back_action(settings: UserSettings, call_data: str, chat_id: int, message_id: int, message_text: str):
+
+def press_back_action(
+    settings: UserSettings,
+    call_data: str,
+    chat_id: int,
+    message_id: int,
+    message_text: str,
+):
     add_event_date = db.execute(
         """
 SELECT add_event_date
@@ -76,7 +91,14 @@ WHERE user_id = ?;
             )
             bot.edit_message_text(text, chat_id, message_id, reply_markup=markup)
 
-def update_message_action(settings: UserSettings, chat_id: int, message_id: int, message_text: str, call_id: int = None):
+
+def update_message_action(
+    settings: UserSettings,
+    chat_id: int,
+    message_id: int,
+    message_text: str,
+    call_id: int = None,
+):
     if message_text.startswith("🔍 "):  # Поиск
         first_line = message_text.split("\n", maxsplit=1)[0]
         raw_query = first_line.split(maxsplit=2)[-1][:-1]

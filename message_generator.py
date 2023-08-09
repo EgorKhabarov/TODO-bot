@@ -145,20 +145,32 @@ SELECT event_id,
     ):
         """
         Заполнение сообщения по шаблону
-        \n ⠀
-        \n {date}     - Date                                                                       ["0000.00.00"]
-        \n {strdate}  - String Date                                                                ["0 January"]
-        \n {weekday} - Week Date                                                                   ["Понедельник"]
-        \n {reldate}  - Relatively Date                                                            ["Завтра"]
-        \n ⠀
-        \n {numd}     - Порядковый номер (циферный)                                                ["1 2 3"]
-        \n {nums}     - Порядковый номер (смайлики)                                                ["1 2 3"]
-        \n {event_id} - Event_id                                                                   ["1"]
-        \n {status}   - Status                                                                     ["⬜️"]
-        \n {markdown_text} - оборачивает текст в нужный тег по статусу                             ["<b>"]
-        \n {markdown_text_nourlsub} - оборачивает текст в нужный тег по статусу без сокращения url ["</b>"]
-        \n {text}     - Text                                                                       ["text"]
-        \n {days_before_delete} - Дней до удаления
+
+        {date}     - Date                                                                       ["0000.00.00"]
+
+        {strdate}  - String Date                                                                ["0 January"]
+
+        {weekday} - Week Date                                                                   ["Понедельник"]
+
+        {reldate}  - Relatively Date                                                            ["Завтра"]
+
+
+
+        {numd}     - Порядковый номер (циферный)                                                ["1 2 3"]
+
+        {nums}     - Порядковый номер (смайлики)                                                ["1 2 3"]
+
+        {event_id} - Event_id                                                                   ["1"]
+
+        {status}   - Status                                                                     ["⬜️"]
+
+        {markdown_text} - оборачивает текст в нужный тег по статусу                             ["<b>"]
+
+        {markdown_text_nourlsub} - оборачивает текст в нужный тег по статусу без сокращения url ["</b>"]
+
+        {text}     - Text                                                                       ["text"]
+
+        {days_before_delete} - Дней до удаления
 
         :param title:    Заголовок
         :param args:     Повторяющийся шаблон
@@ -341,4 +353,3 @@ class NoEventMessage:
             self.text,
             reply_markup=self.reply_markup,
         )
-

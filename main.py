@@ -14,7 +14,13 @@ from bot_actions import delete_message_action
 from buttons_utils import generate_buttons, delmarkup
 from bot_messages import search_message, notifications_message
 from handlers import command_handler, callback_handler, clear_state
-from utils import to_html_escaping, poke_link, remove_html_escaping, html_to_markdown, check_user
+from utils import (
+    to_html_escaping,
+    poke_link,
+    remove_html_escaping,
+    html_to_markdown,
+    check_user,
+)
 from todoapi.api import User
 from todoapi.types import UserSettings, db
 from todoapi.db_creator import create_tables
@@ -27,7 +33,9 @@ bot.set_my_commands(
     commands=get_translate("0_command_list", "ru"), scope=BotCommandScopeDefault()
 )
 
-re_edit_message = re.compile(r"\A@\w{5,32} event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.edit(?:\n|\Z)")
+re_edit_message = re.compile(
+    r"\A@\w{5,32} event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.edit(?:\n|\Z)"
+)
 
 
 @bot.message_handler(commands=[*config.COMMANDS])
@@ -151,7 +159,6 @@ SELECT LENGTH(text),
     # Вычисляем сколько символов добавил пользователь. Если символов стало меньше, то 0.
     added_length = 0 if tag_len_less else len(text) - len_old_event
 
-
     tag_limit_exceeded = user.check_limit(event_date, symbol_count=added_length)
 
     if tag_len_max:
@@ -272,7 +279,6 @@ SELECT add_event_date
         message_is_too_long = get_translate("message_is_too_long", settings.lang)
         bot.reply_to(message, message_is_too_long, reply_markup=delmarkup)
         return
-
 
     if user.check_limit(new_event_date, event_count=1, symbol_count=len(markdown_text)):
         exceeded_limit = get_translate("exceeded_limit", settings.lang)

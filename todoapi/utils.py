@@ -47,6 +47,7 @@ def remove_html_escaping(text: str) -> str:
         .replace("&quot;", '"')
     )
 
+
 def sqlite_format_date(_column):
     """
     Столбец sql базы данных превращает из формата
@@ -60,12 +61,14 @@ SUBSTR({_column}, 7, 4) || '-' ||
 SUBSTR({_column}, 4, 2) || '-' ||
 SUBSTR({_column}, 1, 2)"""
 
+
 def is_admin_id(chat_id: int) -> bool:
     """
     Проверка на админа
     Админом могут быть только люди, чьи id записаны в config.admin_id
     """
     return chat_id in config.admin_id
+
 
 def is_premium_user(user) -> bool:
     """
