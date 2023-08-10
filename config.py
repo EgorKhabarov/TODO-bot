@@ -10,7 +10,6 @@ load_dotenv()
 DATABASE_PATH = DATABASE_PATH
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
-LOG_FILE = os.getenv("LOG_FILE", "bot.log")
 POKE_LINK = int(os.getenv("POKE_LINK", 0))
 LINK = os.getenv("LINK")
 
@@ -48,7 +47,7 @@ COMMANDS = (
 callbackTab = "⠀⠀⠀"  # Специальные прозрачные символы для заполнения
 
 
-__version__ = "06.08.2023"
+__version__ = "10.08.2023"
 __autor__ = "EgorKhabarov"
 
 bot_settings = """

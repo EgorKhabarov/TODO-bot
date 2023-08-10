@@ -1,6 +1,6 @@
 import logging
 
-import config
+import todoapi.config as config
 
 
 logging.basicConfig(

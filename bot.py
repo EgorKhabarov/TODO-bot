@@ -5,6 +5,7 @@ from telebot.types import BotCommandScopeChat
 from telebot.apihelper import ApiTelegramException
 
 import config
+import todoapi.config
 from lang import get_translate
 from utils import is_admin_id
 
@@ -25,7 +26,7 @@ def bot_log_info():
     bot_dict.update(
         {
             "database": config.DATABASE_PATH,
-            "log_file": config.LOG_FILE,
+            "log_file": todoapi.config.LOG_FILE,
             "notifications": config.NOTIFICATIONS,
             "__version__": config.__version__,
         }
