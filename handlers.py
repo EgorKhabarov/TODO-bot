@@ -527,7 +527,7 @@ UPDATE events
             event_id = events_list[0].split(".", maxsplit=2)[1]
 
             if action.endswith("bin"):
-                event_id = int(events_list[0].split(".", maxsplit=4)[-2] )
+                event_id = int(events_list[0].split(".", maxsplit=4)[-2])
 
             if not user.check_event(event_id, action.endswith("bin")):
                 update_message_action(settings, chat_id, message_id, message_text)

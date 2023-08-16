@@ -15,20 +15,21 @@ def html_to_markdown(html_text: str) -> str:
     }.items():
         html_text = html_text.replace(k1, v).replace(k2, v)
 
-    def prepare_url(url):
+    def prepare_url(url) -> str:
         url = url.removeprefix("http://").removeprefix("https://")
         url = url.strip().strip("/").strip("\\")
         return f"https://{url}"
 
-    html_text = re.sub(
-        r"<a href=\"(.+?)\">(.+?)(\n*?)</a>",
-        lambda x: "{url}{text}{n}".format(
-            url=prepare_url(x.group(1)),
-            text=f" ({x.group(2).strip()})" if x.group(2).strip() != urlparse(x.group(1)).netloc else "",
-            n=x.group(3),
-        ),
-        html_text,
-    )
+    def replace_url(m: re.Match) -> str:
+        url = prepare_url(m.group(1))
+        pre_text = m.group(2).strip()
+
+        condition = pre_text != urlparse(m.group(1)).netloc
+        text = f" ({pre_text})" if condition else ""
+
+        return f"{url}{text}{m.group(3)}"
+
+    html_text = re.sub(r"<a href=\"(.+?)\">(.+?)(\n*?)</a>", replace_url, html_text)
     return html_text
 
 
