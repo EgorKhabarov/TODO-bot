@@ -182,14 +182,18 @@ SELECT event_id,
         """
 
         def days_before(event_date: str) -> str:
+            """
+
+            :param event_date:
+            :return:
+            """
+            # TODO Написать докстринг
             _date = convert_date_format(event_date)
 
             now_t = now_time(self._settings.timezone)
             now_wd, event_wd = now_t.weekday(), _date.weekday()
             day_diff = abs(now_wd - event_wd)
-            new_t = now_t + timedelta(
-                days=day_diff if now_wd < event_wd else -day_diff
-            )
+            new_t = now_t + timedelta(days=day_diff if now_wd < event_wd else -day_diff)
             _day = DayInfo(self._settings, new_t.strftime("%d.%m.%Y"))
             return f"({_day.relatively_date})"
 
@@ -230,10 +234,18 @@ SELECT event_id,
                         nums=f"{num + 1}️⃣",  # создание смайлика с цифрой
                         event_id=f"{event.event_id}",
                         status=event.status,
-                        markdown_text=markdown(event.text, event.status, self._settings.sub_urls),
+                        markdown_text=markdown(
+                            event.text, event.status, self._settings.sub_urls
+                        ),
                         markdown_text_nourlsub=markdown(event.text, event.status),
-                        days_before=dbd if (dbd := days_before(event.date))[1:-1] != day.relatively_date else "",
-                        days_before_delete="" if event.removal_time else get_translate("deldate", self._settings.lang)(days_before_delete(event.removal_time)),
+                        days_before=dbd
+                        if (dbd := days_before(event.date))[1:-1] != day.relatively_date
+                        else "",
+                        days_before_delete=""
+                        if event.removal_time
+                        else get_translate("deldate", self._settings.lang)(
+                            days_before_delete(event.removal_time)
+                        ),
                         **kwargs,
                         text=event.text,
                     )

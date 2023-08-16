@@ -29,7 +29,6 @@ bot.set_my_commands(
 )
 
 
-
 @bot.message_handler(commands=[*config.COMMANDS])
 @check_user
 def message_handler(message: Message, user: User):

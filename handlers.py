@@ -153,7 +153,9 @@ def command_handler(user: User, message: Message) -> None:
         if len(generated.event_list) == 1:
             event = generated.event_list[0]
             edit_button_attrs(
-                generated.reply_markup, 0, 1,
+                generated.reply_markup,
+                0,
+                1,
                 old="callback_data",
                 new="switch_inline_query_current_chat",
                 val=f"event({event.date}, {event.event_id}, {new_message.message_id}).edit\n"
@@ -223,7 +225,8 @@ def command_handler(user: User, message: Message) -> None:
                 bot.send_message(chat_id=chat_id, text=big_file_translate)
         else:
             export_error = get_translate("export_csv", settings.lang)
-            NoEventMessage(export_error.format(t=error_text.split(" ")[1])).send(chat_id)
+            generated = NoEventMessage(export_error.format(t=error_text.split(" ")[1]))
+            generated.send(chat_id)
 
     elif message_text.startswith("/version"):
         NoEventMessage(f"Version {config.__version__}").send(chat_id)
@@ -357,8 +360,7 @@ SyntaxError
 
     elif message_text.startswith("/commands"):  # TODO перевод
         # /account - Ваш аккаунт (просмотр лимитов)
-        text = (
-            """
+        text = """
 /start - Старт
 /calendar - Календарь
 /today - События на сегодня
@@ -374,9 +376,8 @@ SyntaxError
 /id - Получить свой Telegram id
 
 /commands - Этот список
-"""
-            + (
-                """
+""" + (
+            """
 /version - Версия бота
 /bell - Сообщение с уведомлением
 /sqlite - Бекап базы данных
@@ -386,9 +387,8 @@ SyntaxError
 /setuserstatus {id} {status} - Поставить пользователю id команды для статуса status
 /deleteuser {id} - Удалить пользователя
 """
-                if is_admin_id(chat_id)
-                else ""
-            )
+            if is_admin_id(chat_id)
+            else ""
         )
         NoEventMessage(text).send(chat_id)
 
@@ -874,7 +874,7 @@ UPDATE events
             message_id,
             message_text,
             event_id,
-            back_to_bin == "bin"
+            back_to_bin == "bin",
         )
 
     elif call_data.startswith("del "):
@@ -922,9 +922,13 @@ UPDATE events
             elif re_date.match(message_text):
                 msg_date = re_date.match(message_text)[0]
                 if page.startswith("!"):
-                    generated = recurring_events_message(settings, msg_date, chat_id, id_list, page[1:])
+                    generated = recurring_events_message(
+                        settings, msg_date, chat_id, id_list, page[1:]
+                    )
                 else:
-                    generated = daily_message(settings, chat_id, msg_date, id_list, page, message_id)
+                    generated = daily_message(
+                        settings, chat_id, msg_date, id_list, page, message_id
+                    )
 
                 # Изменяем кнопку изменения текста события на актуальную
                 markup = message.reply_markup
@@ -932,7 +936,9 @@ UPDATE events
                 if len(generated.event_list) == 1:
                     event = generated.event_list[0]
                     edit_button_attrs(
-                        markup, 0, 1,
+                        markup,
+                        0,
+                        1,
                         old="callback_data",
                         new="switch_inline_query_current_chat",
                         val=f"event({event.date}, {event.event_id}, {message_id}).edit\n"
@@ -940,7 +946,9 @@ UPDATE events
                     )
                 else:
                     edit_button_attrs(
-                        markup, 0, 1,
+                        markup,
+                        0,
+                        1,
                         old="switch_inline_query_current_chat",
                         new="callback_data",
                         val="select event edit",
@@ -949,7 +957,9 @@ UPDATE events
                 generated.edit(chat_id, message_id, markup=markup)
 
             elif message_text.startswith("🔔"):  # Будильник
-                notifications_message([chat_id], id_list, page, message_id, message.reply_markup)
+                notifications_message(
+                    [chat_id], id_list, page, message_id, message.reply_markup
+                )
 
         except ApiTelegramException:
             text = get_translate("already_on_this_page", settings.lang)
@@ -996,9 +1006,7 @@ UPDATE events
                 chat_id, settings.timezone, settings.lang, YY_MM
             )
             try:
-                bot.edit_message_reply_markup(
-                    chat_id, message_id, reply_markup=markup
-                )
+                bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
             except (
                 ApiTelegramException
             ):  # Если нажата кнопка ⟳, но сообщение не изменено
@@ -1050,7 +1058,10 @@ UPDATE events
         sleep(0.3)
         if 1980 < year < 3000:
             generated = daily_message(
-                settings, chat_id, call_data, message_id=message_id,
+                settings,
+                chat_id,
+                call_data,
+                message_id=message_id,
             )
             generated.edit(chat_id, message_id)
         else:

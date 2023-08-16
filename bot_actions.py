@@ -19,7 +19,12 @@ from message_generator import NoEventMessage
 from time_utils import DayInfo
 from todoapi.api import User
 from todoapi.types import db, UserSettings
-from todoapi.utils import to_html_escaping, html_to_markdown, remove_html_escaping, is_admin_id
+from todoapi.utils import (
+    to_html_escaping,
+    html_to_markdown,
+    remove_html_escaping,
+    is_admin_id,
+)
 from utils import re_edit_message, highlight_text_difference
 
 re_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}")
@@ -174,7 +179,6 @@ def confirm_changes_message(user: User, message: Message):
         ]
     )
 
-
     # Уменьшится ли длинна события
     event = user.get_event(event_id)[0]
     if not event:
@@ -233,7 +237,7 @@ def before_del_message(
     message_id,
     message_text,
     event_id: int,
-    in_wastebasket: bool = False
+    in_wastebasket: bool = False,
 ):
     settings = user.settings
     # Если события нет, то обновляем сообщение

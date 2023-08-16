@@ -724,5 +724,3 @@ def account_message(settings: UserSettings, chat_id: int, message_text: str) -> 
 
     image = create_image(settings, date.year, date.month, date.day)
     bot.send_photo(chat_id, image, reply_markup=delmarkup)
-
-

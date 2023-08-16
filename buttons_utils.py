@@ -244,6 +244,7 @@ SELECT date
         ]
     )
 
+
 def edit_button_attrs(
     markup: InlineKeyboardMarkup, row: int, column: int, old: str, new: str, val: str
 ) -> None:

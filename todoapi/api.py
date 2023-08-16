@@ -58,9 +58,7 @@ SELECT 1
   FROM settings
  WHERE user_id = ?;
 """,
-                params=(
-                    user_id,
-                ),
+                params=(user_id,),
             )
         )
 

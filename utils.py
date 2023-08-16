@@ -21,10 +21,10 @@ from todoapi.utils import is_admin_id
 from todoapi.types import db, UserSettings
 
 
-
 re_edit_message = re.compile(
     r"\A@\w{5,32} event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.edit(?:\n|\Z)"
 )
+
 
 def markdown(text: str, statuses: str, sub_url: bool | int = False) -> str:
     """
