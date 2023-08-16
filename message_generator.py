@@ -183,11 +183,8 @@ SELECT event_id,
 
         def days_before(event_date: str) -> str:
             """
-
-            :param event_date:
-            :return:
+            В сообщении уведомления показывает через сколько будет повторяющееся событие.
             """
-            # TODO Написать докстринг
             _date = convert_date_format(event_date)
 
             now_t = now_time(self._settings.timezone)

@@ -24,9 +24,7 @@ create_tables()
 
 logging.info(bot_log_info())
 
-bot.set_my_commands(
-    commands=get_translate("0_command_list", "ru"), scope=BotCommandScopeDefault()
-)
+bot.set_my_commands(get_translate("0_command_list", "ru"), BotCommandScopeDefault())
 
 
 @bot.message_handler(commands=[*config.COMMANDS])

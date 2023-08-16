@@ -14,9 +14,9 @@ from telebot.types import Message, CallbackQuery
 
 import config
 import logging
+from todoapi.api import User
 from lang import get_translate
 from time_utils import DayInfo
-from todoapi.api import User
 from todoapi.utils import is_admin_id
 from todoapi.types import db, UserSettings
 
@@ -356,12 +356,11 @@ def write_table_to_str(
     """
     Наполнит файл file строковым представлением таблицы результата SQL(query)
     """
-    table = [
-        list(str(column) for column in row)
-        for row in (
-            db.execute(query, commit=commit, column_names=True) if not table else table
-        )
-    ]
+    if not table:
+        table = [
+            [str(column) for column in row]
+            for row in db.execute(query, commit=commit, column_names=True)
+        ]
 
     # Обрезаем длинные строки до 126 символов (уменьшается размер файла)
     table = [

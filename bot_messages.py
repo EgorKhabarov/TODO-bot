@@ -280,7 +280,7 @@ def daily_message(
             },
         ]
     )
-    generated = EventMessageGenerator(settings, date=date, reply_markup=markup)
+    generated = EventMessageGenerator(settings, date, reply_markup=markup)
 
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
@@ -496,11 +496,9 @@ AND
 
                 try:
                     if id_list:
-                        generated.edit(
-                            chat_id=user_id, message_id=message_id, markup=markup
-                        )
+                        generated.edit(user_id, message_id, markup=markup)
                     else:
-                        generated.send(chat_id=user_id)
+                        generated.send(user_id)
                     if not from_command:
                         db.execute(
                             """
@@ -665,7 +663,7 @@ def settings_message(settings: UserSettings) -> NoEventMessage:
         ]
     )
 
-    return NoEventMessage(text, reply_markup=markup)
+    return NoEventMessage(text, markup)
 
 
 def start_message(settings: UserSettings) -> NoEventMessage:

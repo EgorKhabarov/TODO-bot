@@ -22,6 +22,15 @@ class User:
         self.user_id = int(user_id)
         self.settings: UserSettings = settings or UserSettings(user_id)
 
+    @staticmethod
+    def to_valid_user_id(user_id: str | int) -> int:
+        if isinstance(user_id, int) and user_id > 0:
+            return user_id
+        elif isinstance(user_id, str) and user_id.isdigit():
+            return int(user_id)
+        else:
+            return -1
+
     def check_event(self, event_id: int, in_wastebasket: bool = False) -> bool:
         """
         Возвращает есть ли событие в базе данных
@@ -45,7 +54,8 @@ SELECT 1
             )
         )
 
-    def check_user(self, user_id: int) -> bool:
+    @staticmethod
+    def check_user(user_id: int) -> bool:
         """
         Возвращает есть ли пользователь в базе данных
 

@@ -64,7 +64,10 @@ def create_monthly_calendar_keyboard(
     markup = InlineKeyboardMarkup()
     #  December (12.2022)
     # Пн Вт Ср Чт Пт Сб Вс
-    title = f"{get_translate('months_name', lang)[MM - 1]} ({MM}.{YY}) ({year_info(YY, lang)})"
+    title = (
+        f"{get_translate('months_name', lang)[MM - 1]} "
+        f"({MM}.{YY}) ({year_info(YY, lang)})"
+    )
     markup.row(
         InlineKeyboardButton(
             text=title, callback_data=f"generate calendar months  {YY}"

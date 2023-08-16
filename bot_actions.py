@@ -37,7 +37,7 @@ def delete_message_action(
         bot.delete_message(chat_id, message_id)
     except ApiTelegramException:
         get_admin_rules = get_translate("get_admin_rules", settings.lang)
-        bot.reply_to(message, get_admin_rules, reply_markup=delmarkup)
+        NoEventMessage(get_admin_rules, delmarkup).reply(message)
 
 
 def press_back_action(
@@ -72,15 +72,15 @@ WHERE user_id = ?;
     msg_date = message_text[:10]
 
     if call_data.endswith("bin"):  # Корзина
-        generated = trash_can_message(settings=settings, chat_id=chat_id)
-        generated.edit(chat_id=chat_id, message_id=message_id)
+        generated = trash_can_message(settings, chat_id)
+        generated.edit(chat_id, message_id)
 
     elif message_text.startswith("🔍 "):  # Поиск
         first_line = message_text.split("\n", maxsplit=1)[0]
         raw_query = first_line.split(maxsplit=2)[-1][:-1]
         query = to_html_escaping(raw_query)
-        generated = search_message(settings=settings, chat_id=chat_id, query=query)
-        generated.edit(chat_id=chat_id, message_id=message_id)
+        generated = search_message(settings, chat_id, query)
+        generated.edit(chat_id, message_id)
 
     elif len(msg_date.split(".")) == 3:  # Проверка на дату
         try:  # Пытаемся изменить сообщение
@@ -90,7 +90,7 @@ WHERE user_id = ?;
                 date=msg_date,
                 message_id=message_id,
             )
-            generated.edit(chat_id=chat_id, message_id=message_id)
+            generated.edit(chat_id, message_id)
         except ApiTelegramException:
             # Если сообщение не изменено, то шлём календарь
             # "dd.mm.yyyy" -> [yyyy, mm]
@@ -113,19 +113,17 @@ def update_message_action(
         first_line = message_text.split("\n", maxsplit=1)[0]
         raw_query = first_line.split(maxsplit=2)[-1][:-1]
         query = to_html_escaping(raw_query)
-        generated = search_message(settings=settings, chat_id=chat_id, query=query)
+        generated = search_message(settings, chat_id, query)
 
     elif message_text.startswith("📆"):  # Если /week_event_list
-        generated = week_event_list_message(settings=settings, chat_id=chat_id)
+        generated = week_event_list_message(settings, chat_id)
 
     elif message_text.startswith("🗑"):  # Корзина
         generated = trash_can_message(settings=settings, chat_id=chat_id)
 
     elif re_date.match(message_text) is not None:
         msg_date = re_date.match(message_text)[0]
-        generated = daily_message(
-            settings=settings, chat_id=chat_id, date=msg_date, message_id=message_id
-        )
+        generated = daily_message(settings, chat_id, msg_date, message_id=message_id)
 
     else:
         return
@@ -135,7 +133,7 @@ def update_message_action(
         bot.answer_callback_query(call_id, "...", show_alert=True)
 
     try:
-        generated.edit(chat_id=chat_id, message_id=message_id)
+        generated.edit(chat_id, message_id)
     except ApiTelegramException:
         pass
 
@@ -286,4 +284,4 @@ def before_del_message(
         f"{day.week_date}</i> {day.relatively_date}</u>\n"
         f"<b>{sure_text}:</b>\n{text[:3800]}\n\n{end_text}"
     )
-    bot.edit_message_text(text, chat_id, message_id, reply_markup=predelmarkup)
+    NoEventMessage(text, predelmarkup).edit(chat_id, message_id)

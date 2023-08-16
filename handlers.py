@@ -153,9 +153,9 @@ def command_handler(user: User, message: Message) -> None:
         if len(generated.event_list) == 1:
             event = generated.event_list[0]
             edit_button_attrs(
-                generated.reply_markup,
-                0,
-                1,
+                markup=generated.reply_markup,
+                row=0,
+                column=1,
                 old="callback_data",
                 new="switch_inline_query_current_chat",
                 val=f"event({event.date}, {event.event_id}, {new_message.message_id}).edit\n"
@@ -936,9 +936,9 @@ UPDATE events
                 if len(generated.event_list) == 1:
                     event = generated.event_list[0]
                     edit_button_attrs(
-                        markup,
-                        0,
-                        1,
+                        markup=markup,
+                        row=0,
+                        column=1,
                         old="callback_data",
                         new="switch_inline_query_current_chat",
                         val=f"event({event.date}, {event.event_id}, {message_id}).edit\n"
@@ -946,9 +946,9 @@ UPDATE events
                     )
                 else:
                     edit_button_attrs(
-                        markup,
-                        0,
-                        1,
+                        markup=markup,
+                        row=0,
+                        column=1,
                         old="switch_inline_query_current_chat",
                         new="callback_data",
                         val="select event edit",
