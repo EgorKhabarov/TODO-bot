@@ -1,4 +1,6 @@
 import re
+from urllib.parse import urlparse
+
 import todoapi.config as config
 
 
@@ -19,10 +21,10 @@ def html_to_markdown(html_text: str) -> str:
         return f"https://{url}"
 
     html_text = re.sub(
-        r"<a href=\"(.+?)\">(\S+?)(\n??)</a>",
-        lambda x: " {url} ({text}) {n}".format(  #
+        r"<a href=\"(.+?)\">(.+?)(\n*?)</a>",
+        lambda x: "{url}{text}{n}".format(
             url=prepare_url(x.group(1)),
-            text=x.group(2).strip(),
+            text=f" ({x.group(2).strip()})" if x.group(2).strip() != urlparse(x.group(1)).netloc else "",
             n=x.group(3),
         ),
         html_text,

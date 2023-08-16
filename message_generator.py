@@ -10,7 +10,7 @@ from bot import bot
 from utils import markdown
 from lang import get_translate
 from sql_utils import sqlite_format_date, pagination
-from time_utils import now_time_strftime, DayInfo
+from time_utils import now_time_strftime, DayInfo, convert_date_format, now_time
 from todoapi.types import db, UserSettings, Event
 
 
@@ -172,6 +172,8 @@ SELECT event_id,
 
         {days_before_delete} - Дней до удаления
 
+        {days_before} - (Дней до)
+
         :param title:    Заголовок
         :param args:     Повторяющийся шаблон
         :param ending:   Конец сообщения
@@ -179,13 +181,24 @@ SELECT event_id,
         :return:         message.text
         """
 
-        def days_before_delete(event_deletion_date: str):
+        def days_before(event_date: str) -> str:
+            _date = convert_date_format(event_date)
+
+            now_t = now_time(self._settings.timezone)
+            now_wd, event_wd = now_t.weekday(), _date.weekday()
+            day_diff = abs(now_wd - event_wd)
+            new_t = now_t + timedelta(
+                days=day_diff if now_wd < event_wd else -day_diff
+            )
+            _day = DayInfo(self._settings, new_t.strftime("%d.%m.%Y"))
+            return f"({_day.relatively_date})"
+
+        def days_before_delete(event_deletion_date: str) -> int:
             if event_deletion_date == "0":
                 return 30
             else:
-                d1 = datetime.utcnow() + timedelta(
-                    hours=self._settings.timezone
-                )  # Текущая дата у пользователя
+                # Текущая дата у пользователя
+                d1 = datetime.utcnow() + timedelta(hours=self._settings.timezone)
                 d2 = datetime(*[int(i) for i in event_deletion_date.split("-")])
 
                 return 30 - (d1 - d2).days
@@ -217,13 +230,10 @@ SELECT event_id,
                         nums=f"{num + 1}️⃣",  # создание смайлика с цифрой
                         event_id=f"{event.event_id}",
                         status=event.status,
-                        markdown_text=markdown(
-                            event.text, event.status, self._settings.sub_urls
-                        ),
+                        markdown_text=markdown(event.text, event.status, self._settings.sub_urls),
                         markdown_text_nourlsub=markdown(event.text, event.status),
-                        days_before_delete=get_translate(
-                            "deldate", self._settings.lang
-                        )(days_before_delete(event.removal_time)),
+                        days_before=dbd if (dbd := days_before(event.date))[1:-1] != day.relatively_date else "",
+                        days_before_delete="" if event.removal_time else get_translate("deldate", self._settings.lang)(days_before_delete(event.removal_time)),
                         **kwargs,
                         text=event.text,
                     )

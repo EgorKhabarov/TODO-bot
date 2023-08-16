@@ -1108,9 +1108,9 @@ You can enable and customize the notification time in the settings (/settings).
 The bot notifies about important "🟥" events, events with recurring status ("📬", "📅", "🗞", "📆"), and events with the status "🔔".
 """,
     },
-    "soon": {
-        "ru": "Скоро",
-        "en": "Soon",
+    "restore_to_default": {
+        "ru": "Настройки по умолчанию",
+        "en": "Set default settings",
     },
     "": {
         "ru": "",

@@ -2,10 +2,10 @@ from calendar import monthcalendar
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from todoapi.types import db
 from lang import get_translate
 from sql_utils import sqlite_format_date
 from time_utils import new_time_calendar, year_info, now_time
+from todoapi.types import db
 
 
 def generate_buttons(buttons_data: list[dict]) -> InlineKeyboardMarkup:
@@ -51,7 +51,7 @@ def create_monthly_calendar_keyboard(
     user_timezone: int,
     lang: str,
     YY_MM: list | tuple[int, int] = None,
-) -> InlineKeyboardMarkup():
+) -> InlineKeyboardMarkup:
     """
     Создаёт календарь на месяц и возвращает inline клавиатуру
     param YY_MM: Необязательный аргумент. Если None, то подставит текущую дату.
@@ -167,7 +167,7 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
 
 def create_yearly_calendar_keyboard(
     user_timezone: int, lang: str, chat_id, YY
-) -> InlineKeyboardMarkup():
+) -> InlineKeyboardMarkup:
     """
     Создаёт календарь из месяцев на определённый год и возвращает inline клавиатуру
     """
@@ -243,7 +243,6 @@ SELECT date
             },
         ]
     )
-
 
 def edit_button_attrs(
     markup: InlineKeyboardMarkup, row: int, column: int, old: str, new: str, val: str

@@ -44,14 +44,14 @@ def bot_log_info():
                 f"{k}\n"
                 f"Should be {keylist[k]}\n"
                 f"Actually is {bot_dict[k]}\n\n"
-                f"{config.bot_settings}"
+                f"{config.bot_settings.strip()}"
             )
 
     max_len_left = max(len(k) for k in bot_dict.keys())
     max_len_right = max(len(str(v)) for v in bot_dict.values())
     max_len = max_len_left + max_len_right + 5
 
-    logging.info(
+    return (
         "\n"
         + f"+{'-' * max_len}+\n"
         + "".join(

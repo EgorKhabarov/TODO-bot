@@ -1,14 +1,13 @@
 import re
+import logging
 from datetime import timedelta, datetime
 
 from telebot.apihelper import ApiTelegramException
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-import logging
 from bot import bot
 from lang import get_translate
 from limits import create_image
-from utils import remove_html_escaping
 from sql_utils import sqlite_format_date2
 from message_generator import EventMessageGenerator, NoEventMessage
 from time_utils import convert_date_format, now_time, now_time_strftime
@@ -21,8 +20,7 @@ from buttons_utils import (
     create_monthly_calendar_keyboard,
 )
 from todoapi.types import db, UserSettings
-from todoapi.utils import sqlite_format_date
-
+from todoapi.utils import sqlite_format_date, remove_html_escaping
 
 backslash_n = "\n"  # Для использования внутри f строк
 re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
@@ -117,34 +115,34 @@ def week_event_list_message(
         week_event_list(settings=settings, chat_id=chat_id, id_list=id_list, page=page)
     """
     WHERE = f"""
-    (user_id = {chat_id} AND removal_time = 0) AND (
+(user_id = {chat_id} AND removal_time = 0) AND (
+    (
+        {sqlite_format_date('date')}
+        BETWEEN DATE('now', '{settings.timezone:+} hours')
+            AND DATE('now', '+7 day', '{settings.timezone:+} hours')
+    )
+    OR
+    ( -- Каждый год
         (
-            {sqlite_format_date('date')}
-            BETWEEN DATE('now', '{settings.timezone:+} hours')
-                AND DATE('now', '+7 day', '{settings.timezone:+} hours')
-        ) 
-        OR 
-        ( -- Каждый год
-            (
-                status LIKE '%🎉%' OR status LIKE '%🎊%' OR status LIKE '%📆%'
-            )
-            AND
-            (
-                strftime('%m-%d', {sqlite_format_date('date')})
-                BETWEEN strftime('%m-%d', 'now', '{settings.timezone:+} hours')
-                    AND strftime('%m-%d', 'now', '+7 day', '{settings.timezone:+} hours')
-            )
+            status LIKE '%🎉%' OR status LIKE '%🎊%' OR status LIKE '%📆%'
         )
-        OR
-        ( -- Каждый месяц
-            status LIKE '%📅%'
-            AND SUBSTR(date, 1, 2) 
+        AND
+        (
+            strftime('%m-%d', {sqlite_format_date('date')})
             BETWEEN strftime('%m-%d', 'now', '{settings.timezone:+} hours')
                 AND strftime('%m-%d', 'now', '+7 day', '{settings.timezone:+} hours')
         )
-        OR status LIKE '%🗞%' -- Каждую неделю
-        OR status LIKE '%📬%' -- Каждый день
     )
+    OR
+    ( -- Каждый месяц
+        status LIKE '%📅%'
+        AND SUBSTR(date, 1, 2) 
+        BETWEEN strftime('%m-%d', 'now', '{settings.timezone:+} hours')
+            AND strftime('%m-%d', 'now', '+7 day', '{settings.timezone:+} hours')
+    )
+    OR status LIKE '%🗞%' -- Каждую неделю
+    OR status LIKE '%📬%' -- Каждый день
+)
     """
 
     generated = EventMessageGenerator(settings, reply_markup=delmarkup)
@@ -159,7 +157,7 @@ def week_event_list_message(
         title=f"📆 {get_translate('week_events', settings.lang)} 📆\n"
         f"{f'<b>{translate_page} {page}</b>{backslash_n}' if int(page) > 1 else ''}",
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
-        "{weekday}</i></u> ({reldate})\n{markdown_text}\n",
+        "{weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
         if_empty=get_translate("nothing_found", settings.lang),
     )
     return generated
@@ -275,7 +273,7 @@ def daily_message(
                 "🗑": "select event delete",
             },
             {
-                "🔙": "back",
+                "🔙": "calendar",
                 "<": yesterday,
                 ">": tomorrow,
                 "🔄": "update",
@@ -283,6 +281,7 @@ def daily_message(
         ]
     )
     generated = EventMessageGenerator(settings, date=date, reply_markup=markup)
+
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
@@ -357,8 +356,10 @@ SELECT DISTINCT date
         )
         if x[0] != date
     ]
+
     if daylist:
         generated.reply_markup.row(InlineKeyboardButton("📅", callback_data="recurring"))
+
     return generated
 
 
@@ -422,7 +423,6 @@ SELECT GROUP_CONCAT(user_id, ',') AS user_id_list
             weekdays = [
                 "0" if (w := date.weekday()) == 6 else str(w + 1) for date in dates[1:]
             ]
-            del _now, dates
 
             WHERE = f"""
 user_id = {user_id} AND removal_time = 0
@@ -490,12 +490,8 @@ AND
                         f"{f'<b>{page_translate} {page}</b>{backslash_n}' if int(page) > 1 else ''}"
                     ),
                     args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
-                    "{weekday}</i></u> ({reldate})\n{markdown_text}\n",
+                    "{weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
                     if_empty=get_translate("message_empty", settings.lang),
-                )
-
-                logging.info(
-                    f"[message_generators.py -> notifications] -> {user_id} -> "
                 )
 
                 try:
@@ -516,9 +512,9 @@ UPDATE events
                             params=(now_time_strftime(settings.timezone),),
                             commit=True,
                         )
-                    logging.info("Ok")
+                    logging.info(f"notifications -> {user_id} -> Ok")
                 except ApiTelegramException:
-                    logging.info("Error")
+                    logging.info(f"notifications -> {user_id} -> Error")
 
 
 def recurring_events_message(
@@ -589,7 +585,7 @@ AND
     return generated
 
 
-def settings_message(settings: UserSettings) -> EventMessageGenerator:
+def settings_message(settings: UserSettings) -> NoEventMessage:
     """
     Ставит настройки для пользователя chat_id
     """
@@ -664,13 +660,12 @@ def settings_message(settings: UserSettings) -> EventMessageGenerator:
             },
             time_zone_dict,
             notifications_time,
+            {get_translate("restore_to_default", settings.lang): "restore_to_default"},
             {"✖": "message_del"},
         ]
     )
 
-    generated = EventMessageGenerator(settings, reply_markup=markup)
-    generated.format(title="", args="", ending=text, if_empty="")
-    return generated
+    return NoEventMessage(text, reply_markup=markup)
 
 
 def start_message(settings: UserSettings) -> NoEventMessage:
@@ -685,8 +680,7 @@ def start_message(settings: UserSettings) -> NoEventMessage:
         ]
     )
     text = get_translate("start", settings.lang)
-    generated = NoEventMessage(text, markup)
-    return generated
+    return NoEventMessage(text, markup)
 
 
 def help_message(settings: UserSettings, path: str = "help page 1") -> NoEventMessage:
@@ -706,8 +700,7 @@ def help_message(settings: UserSettings, path: str = "help page 1") -> NoEventMe
 def monthly_calendar_message(settings: UserSettings, chat_id: int) -> NoEventMessage:
     text = get_translate("choose_date", settings.lang)
     markup = create_monthly_calendar_keyboard(chat_id, settings.timezone, settings.lang)
-    generated = NoEventMessage(text, markup)
-    return generated
+    return NoEventMessage(text, markup)
 
 
 def account_message(settings: UserSettings, chat_id: int, message_text: str) -> None:
@@ -731,3 +724,5 @@ def account_message(settings: UserSettings, chat_id: int, message_text: str) -> 
 
     image = create_image(settings, date.year, date.month, date.day)
     bot.send_photo(chat_id, image, reply_markup=delmarkup)
+
+

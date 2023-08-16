@@ -1,7 +1,8 @@
 import re
+import difflib
 from time import time
 from io import StringIO
-from typing import Any, Literal
+from typing import Literal
 from urllib.parse import urlparse
 from textwrap import wrap as textwrap
 from datetime import timedelta, datetime, timezone
@@ -20,51 +21,10 @@ from todoapi.utils import is_admin_id
 from todoapi.types import db, UserSettings
 
 
-def to_html_escaping(text: str) -> str:
-    return (
-        text.replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("'", "&#39;")
-        .replace('"', "&quot;")
-    )
 
-
-def remove_html_escaping(text: str) -> str:
-    return (
-        text.replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&#39;", "'")
-        .replace("&quot;", '"')
-    )
-
-
-def html_to_markdown(html_text: str) -> str:
-    for (k1, k2), v in {
-        ("<i>", "</i>"): "__",
-        ("<b>", "</b>"): "**",
-        ("<s>", "</s>"): "~~",
-        ("<pre>", "</pre>"): "```",
-        ("<code>", "</code>"): "`",
-        ('<span class="tg-spoiler">', "</span>"): "||",
-    }.items():
-        html_text = html_text.replace(k1, v).replace(k2, v)
-
-    def prepare_url(url):
-        url = url.removeprefix("http://").removeprefix("https://")
-        url = url.strip().strip("/").strip("\\")
-        return f"https://{url}"
-
-    html_text = re.sub(
-        r"<a href=\"(.+?)\">(\S+?)(\n??)</a>",
-        lambda x: " {url} ({text}) {n}".format(  #
-            url=prepare_url(x.group(1)),
-            text=x.group(2).strip(),
-            n=x.group(3),
-        ),
-        html_text,
-    )
-    return html_text
-
+re_edit_message = re.compile(
+    r"\A@\w{5,32} event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.edit(?:\n|\Z)"
+)
 
 def markdown(text: str, statuses: str, sub_url: bool | int = False) -> str:
     """
@@ -73,7 +33,20 @@ def markdown(text: str, statuses: str, sub_url: bool | int = False) -> str:
 
     def OrderList(_text: str, num=0) -> str:  # Нумерует каждую строчку
         lst = _text.splitlines()
-        width = len(str(len(lst)))  # Получаем длину отступа чтобы не съезжало
+
+        # Получаем длину отступа чтобы не съезжало
+        width = len(
+            str(
+                len(
+                    list(
+                        line
+                        for line in lst
+                        if not (line.startswith("-- ") or line.startswith("— "))
+                    )
+                )
+            )
+        )
+
         # Заполняем с отступами числа + текст, а если двойной перенос строки то "⠀"
         return "\n".join(
             (
@@ -106,8 +79,14 @@ def markdown(text: str, statuses: str, sub_url: bool | int = False) -> str:
         return f"<span class='tg-spoiler'>{_text}</span>"
 
     def SubUrls(_text: str):
-        def la(url):
-            return f"<a href='{url[0]}'>{urlparse(url[0]).netloc}</a>"
+        def la(m: re.Match):
+            url = re.sub(r"\Ahttp://", "https://", m[0])
+
+            if re.search(r"https://t\.me/\w{5,32}", url):
+                # Если это ссылка на пользователя
+                return f"<a href='{url}'>@{url.removeprefix('https://t.me/')}</a>"
+
+            return f"<a href='{url}'>{urlparse(url).netloc}</a>"
 
         return re.sub(r"(http?s?://[^\"\'\n ]+)", la, _text)  # r"(http?s?://\S+)"
 
@@ -133,40 +112,6 @@ def markdown(text: str, statuses: str, sub_url: bool | int = False) -> str:
             text = Spoiler(text)
 
     return text
-
-
-class Cooldown:
-    """
-    Возвращает True если прошло больше времени
-    MyCooldown = Cooldown(cooldown_time, {})
-    MyCooldown.check(chat_id)
-    """
-
-    def __init__(self, cooldown_time_sec: int, cooldown_dict: dict):
-        self._cooldown_time_sec = cooldown_time_sec
-        self._cooldown_dict = cooldown_dict
-
-    def check(self, key: Any, update_dict=True):
-        """
-        :param key: Ключ по которому проверять словарь
-        :param update_dict: Отвечает за обновление словаря
-        Если True то после каждого обновления время будет обнуляться
-        :return: (bool, int(time_difference))
-        """
-        t1 = time()
-        result = True, 0
-
-        try:
-            if (
-                localtime := (t1 - self._cooldown_dict[str(key)])
-            ) < self._cooldown_time_sec:
-                result = (False, int(self._cooldown_time_sec - int(localtime)))
-        except KeyError:
-            pass
-
-        if update_dict or result[0]:
-            self._cooldown_dict[f"{key}"] = t1
-        return result
 
 
 def rate_limit_requests(requests_count: int = 3, time_sec: int = 60):
@@ -502,3 +447,18 @@ def check_user(func):
         return res
 
     return wrapper
+
+
+def highlight_text_difference(_old_text, _new_text):
+    sequence_matcher = difflib.SequenceMatcher(None, _old_text, _new_text)
+    opcodes = sequence_matcher.get_opcodes()
+
+    result_parts = []
+    for opcode, i1, i2, j1, j2 in opcodes:
+        if opcode in ("insert", "replace"):
+            result_parts.append(f"<u>{_new_text[j1:j2]}</u>")
+        elif opcode == "equal":
+            result_parts.append(_new_text[j1:j2])
+
+    result_text = "".join(result_parts)
+    return result_text

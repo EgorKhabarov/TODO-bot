@@ -95,7 +95,7 @@ class DataBase:
         self.sqlite_connection = connect(config.DATABASE_PATH)
         self.sqlite_cursor = self.sqlite_connection.cursor()
         logging.debug(
-            "   ", " ".join([line.strip() for line in query.split("\n")]).strip()
+            "    " + " ".join([line.strip() for line in query.split("\n")]).strip()
         )
 
         self.sqlite_cursor.execute(query, params)
@@ -272,6 +272,19 @@ UPDATE settings
 
     def to_json(self) -> str:
         return json.dumps(self.__dict__, ensure_ascii=False)
+
+    def to_dict(self) -> dict:
+        return {
+            "user_id": self.user_id,
+            "lang": self.lang,
+            "sub_urls": self.sub_urls,
+            "city": self.city,
+            "timezone": self.timezone,
+            "direction": self.direction,
+            "user_status": self.user_status,
+            "notifications": self.notifications,
+            "notifications_time": self.notifications_time,
+        }
 
 
 class Limit:

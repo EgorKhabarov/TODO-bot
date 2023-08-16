@@ -10,6 +10,7 @@ from todoapi.utils import (
     remove_html_escaping,
     is_admin_id,
     sqlite_format_date,
+    is_premium_user,
 )
 from todoapi.types import Event, UserSettings, Limit, db, export_cooldown
 
@@ -19,9 +20,9 @@ re_date = re.compile(r"\A\d{2}\.\d{2}\.\d{4}\Z")
 class User:
     def __init__(self, user_id: int | str, settings: UserSettings = None):
         self.user_id = int(user_id)
-        self.settings = settings or UserSettings(user_id)
+        self.settings: UserSettings = settings or UserSettings(user_id)
 
-    def check_event(self, event_id, in_wastebasket: bool = False) -> bool:
+    def check_event(self, event_id: int, in_wastebasket: bool = False) -> bool:
         """
         Возвращает есть ли событие в базе данных
 
@@ -44,7 +45,7 @@ SELECT 1
             )
         )
 
-    def check_user(self, user_id) -> bool:
+    def check_user(self, user_id: int) -> bool:
         """
         Возвращает есть ли пользователь в базе данных
 
@@ -58,7 +59,6 @@ SELECT 1
  WHERE user_id = ?;
 """,
                 params=(
-                    self.user_id,
                     user_id,
                 ),
             )
@@ -105,7 +105,7 @@ SELECT 1
 
         (False, "Events Not Found") - Событие не найдено.
         """
-        if 0 >= event_id:
+        if 0 >= int(event_id):
             return False, "Неверный id"
 
         try:
@@ -183,11 +183,11 @@ SELECT event_id,
         except Error as e:
             return False, f"{e}"
 
-    def get_settings(self) -> str:
+    def get_settings(self) -> UserSettings:
         """
         :return: json settings
         """
-        return self.settings.to_json()
+        return self.settings
 
     def add_event(self, date: str, text: str) -> tuple[bool, str]:
         """
@@ -326,7 +326,7 @@ UPDATE events
             return False, "Event Not Found"
 
         try:
-            if self.settings.user_status >= 1 and to_bin:
+            if is_premium_user(self) and to_bin:
                 db.execute(
                     """
 UPDATE events
@@ -569,54 +569,62 @@ SELECT event_id,
         """
         update_list = []
 
-        if lang:
+        if lang is not None:
             if lang not in ("ru", "en"):
                 return False, 'lang must be in ["ru", "en"]'
 
             update_list.append("lang")
+            self.settings.lang = lang
 
-        if sub_urls:
+        if sub_urls is not None:
             if sub_urls not in (0, 1, "0", "1"):
                 return False, "sub_urls must be in [0, 1]"
 
             update_list.append("sub_urls")
+            self.settings.sub_urls = sub_urls
 
-        if city:
+        if city is not None:
             update_list.append("city")
+            self.settings.city = city
 
-        if timezone:
+        if timezone is not None:
             if timezone not in [j for i in range(-11, 12) for j in (i, str(i))]:
                 return False, "timezone must be -12 and less 12"
 
             update_list.append("timezone")
+            self.settings.timezone = timezone
 
-        if direction:
+        if direction is not None:
             if direction not in ("DESC", "ASC"):
                 return False, 'direction must be in ["DESC", "ASC"]'
 
             update_list.append("direction")
+            self.settings.direction = direction
 
-        if user_status:
+        if user_status is not None:
             if user_status not in (-1, 0, 1, 2, "-1", "0", "1", "2"):
                 return False, "user_status must be in [-1, 0, 1, 2]"
 
             update_list.append("user_status")
+            self.settings.user_status = user_status
 
-        if notifications:
-            if notifications not in [0, 1, "0", "1"]:
+        if notifications is not None:
+            if notifications not in (0, 1, "0", "1"):
                 return False, "notifications must be in [0, 1]"
 
             update_list.append("notifications")
+            self.settings.notifications = notifications
 
-        if notifications_time:
+        if notifications_time is not None:
             hour, minute = [int(v) for v in notifications_time.split(":")]
             if not -1 < hour < 13:
                 return False, "hour must be more -1 and less 13"
 
-            if minute not in [0, 10, 20, 30, 40, 50]:
+            if minute not in (0, 10, 20, 30, 40, 50):
                 return False, "minute must be in [0, 10, 20, 30, 40, 50]"
 
             update_list.append("notifications_time")
+            self.settings.notifications_time = notifications_time
 
         db.execute(
             """
