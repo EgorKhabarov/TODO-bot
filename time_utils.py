@@ -83,8 +83,8 @@ class DayInfo:
         x = datetime(x.year, x.month, x.day)
         y = convert_date_format(date)
 
-        day_diff = (y - x).days
-        match day_diff:
+        self.day_diff = (y - x).days
+        match self.day_diff:
             case 0:
                 self.relatively_date = f"{today}"
             case 1:
