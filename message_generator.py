@@ -188,7 +188,7 @@ SELECT event_id,
             _date = convert_date_format(event_date)
             now_t = now_time(self._settings.timezone)
 
-            if event_status in ("🎉", "🎊", "📆", "📅"):
+            if {*event_status.split(",")}.intersection({"🎉", "🎊", "📆", "📅"}):
                 _day = DayInfo(self._settings, f"{_date:%d.{now_t.month:0>2}.{now_t.year}}")
             else:
                 now_wd, event_wd = now_t.weekday(), _date.weekday()
