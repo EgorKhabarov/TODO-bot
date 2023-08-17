@@ -181,17 +181,21 @@ SELECT event_id,
         :return:         message.text
         """
 
-        def days_before(event_date: str) -> str:
+        def days_before(event_date: str, event_status: str = None) -> str:
             """
             В сообщении уведомления показывает через сколько будет повторяющееся событие.
             """
             _date = convert_date_format(event_date)
-
             now_t = now_time(self._settings.timezone)
-            now_wd, event_wd = now_t.weekday(), _date.weekday()
-            day_diff = abs(now_wd - event_wd)
-            new_t = now_t + timedelta(days=day_diff if now_wd < event_wd else -day_diff)
-            _day = DayInfo(self._settings, new_t.strftime("%d.%m.%Y"))
+
+            if event_status in ("🎉", "🎊", "📆", "📅"):
+                _day = DayInfo(self._settings, f"{_date:%d.{now_t.month:0>2}.{now_t.year}}")
+            else:
+                now_wd, event_wd = now_t.weekday(), _date.weekday()
+                day_diff = abs(now_wd - event_wd)
+                new_t = now_t + timedelta(days=day_diff if now_wd < event_wd else -day_diff)
+                _day = DayInfo(self._settings, f"{new_t:%d.%m.%Y}")
+
             return f"({_day.relatively_date})"
 
         def days_before_delete(event_deletion_date: str) -> int:
@@ -236,7 +240,7 @@ SELECT event_id,
                         ),
                         markdown_text_nourlsub=markdown(event.text, event.status),
                         days_before=dbd
-                        if (dbd := days_before(event.date))[1:-1] != day.relatively_date
+                        if (dbd := days_before(event.date, event.status))[1:-1] != day.relatively_date
                         else "",
                         days_before_delete=""
                         if event.removal_time
