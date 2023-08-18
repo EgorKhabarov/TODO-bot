@@ -458,7 +458,9 @@ AND
 )
 """
 
-            generated = EventMessageGenerator(settings, reply_markup=delmarkup, page=page)
+            generated = EventMessageGenerator(
+                settings, reply_markup=delmarkup, page=page
+            )
 
             if id_list:
                 generated.get_events(WHERE=WHERE, values=id_list)
@@ -549,7 +551,9 @@ AND
     )
 )
 """
-    generated = EventMessageGenerator(settings, date, reply_markup=backopenmarkup, page=page)
+    generated = EventMessageGenerator(
+        settings, date, reply_markup=backopenmarkup, page=page
+    )
 
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)

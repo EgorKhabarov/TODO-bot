@@ -195,11 +195,19 @@ SELECT event_id,
             if "📬" in event_status:
                 _day = DayInfo(self._settings, f"{now_t:%d.%m.%Y}")
             elif {*event_status.split(",")}.intersection({"🎉", "🎊", "📆", "📅"}):
-                _day = DayInfo(self._settings, f"{_date:%d.{now_t.month:0>2}.{now_t.year}}")
+                _day = DayInfo(
+                    self._settings, f"{_date:%d.{now_t.month:0>2}.{now_t.year}}"
+                )
             else:
                 now_wd, event_wd = now_t.weekday(), _date.weekday()
-                d = (now_wd + event_wd) if event_wd < now_wd else (now_wd - (7 - event_wd))
-                _day = DayInfo(self._settings, f"{now_t + timedelta(days=d-1):%d.%m.%Y}")
+                d = (
+                    (now_wd + event_wd)
+                    if event_wd < now_wd
+                    else (now_wd - (7 - event_wd))
+                )
+                _day = DayInfo(
+                    self._settings, f"{now_t + timedelta(days=d-1):%d.%m.%Y}"
+                )
 
             return f"({_day.relatively_date})"
 
@@ -252,7 +260,10 @@ SELECT event_id,
                         ),
                         markdown_text_nourlsub=markdown(event.text, event.status),
                         days_before=dbd
-                        if (dbd := days_before(event.date, event.status))[1:-1] != day.relatively_date
+                        if (
+                            (dbd := days_before(event.date, event.status))[1:-1]
+                            != day.relatively_date
+                        )
                         else "",
                         days_before_delete=""
                         if event.removal_time == "0"

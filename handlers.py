@@ -912,7 +912,9 @@ UPDATE events
                 generated.edit(chat_id, message_id, markup=message.reply_markup)
 
             elif message_text.startswith("📆"):  # Если /week_event_list
-                generated = week_event_list_message(settings, chat_id, id_list, int(page))
+                generated = week_event_list_message(
+                    settings, chat_id, id_list, int(page)
+                )
                 generated.edit(chat_id, message_id, markup=message.reply_markup)
 
             elif message_text.startswith("🗑"):  # Корзина
