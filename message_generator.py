@@ -25,6 +25,7 @@ class EventMessageGenerator:
         date: str = "now",
         event_list: tuple | list[Event, ...] = tuple(),
         reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup(),
+        page: int = 0,
     ):
         if date == "now":
             date = now_time_strftime(settings.timezone)
@@ -33,6 +34,8 @@ class EventMessageGenerator:
         self._settings = settings
         self.text = ""
         self.reply_markup = deepcopy(reply_markup)
+        self.page = page
+        self.page_signature_needed = True if page else False
 
     def get_data(
         self,
@@ -81,6 +84,7 @@ SELECT event_id,
                 diapason_list[-1].append((num + 1, d))  # Номер страницы, id
 
             if len(diapason_list[0]) != 1:  # Если страниц больше одной
+                self.page_signature_needed = True
                 for i in range(count_columns - len(diapason_list[-1])):
                     # Заполняем пустые кнопки в последнем ряду до 5
                     diapason_list[-1].append((0, 0))
@@ -220,6 +224,13 @@ SELECT event_id,
             )
             + "\n"
         )
+        if self.page_signature_needed:
+            if self.page == 0:
+                self.page = 1
+            translate_page = get_translate("page", self._settings.lang)
+            format_string += f"<b>{translate_page} {self.page}</b>\n"
+
+        format_string += "\n"
 
         if not self.event_list:
             format_string += if_empty
@@ -244,7 +255,7 @@ SELECT event_id,
                         if (dbd := days_before(event.date, event.status))[1:-1] != day.relatively_date
                         else "",
                         days_before_delete=""
-                        if event.removal_time
+                        if event.removal_time == "0"
                         else get_translate("deldate", self._settings.lang)(
                             days_before_delete(event.removal_time)
                         ),

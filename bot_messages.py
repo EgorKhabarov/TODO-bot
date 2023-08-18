@@ -22,7 +22,6 @@ from buttons_utils import (
 from todoapi.types import db, UserSettings
 from todoapi.utils import sqlite_format_date, remove_html_escaping
 
-backslash_n = "\n"  # Для использования внутри f строк
 re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
 
 
@@ -31,7 +30,7 @@ def search_message(
     chat_id: int,
     query: str,
     id_list: list | tuple[str] = tuple(),
-    page: int | str = 1,
+    page: int | str = 0,
 ) -> EventMessageGenerator:
     """
     :param settings: settings
@@ -57,7 +56,6 @@ def search_message(
     TODO шаблоны для поиска
     """
     translate_search = get_translate("search", settings.lang)
-    translate_page = get_translate("page", settings.lang)
 
     if not re.match(r"\S", query):
         generated = EventMessageGenerator(settings, reply_markup=delmarkup)
@@ -81,14 +79,13 @@ def search_message(
     )
     WHERE = f"(user_id = {chat_id} AND removal_time = 0) AND ({splitquery})"
 
-    generated = EventMessageGenerator(settings, reply_markup=delopenmarkup)
+    generated = EventMessageGenerator(settings, reply_markup=delopenmarkup, page=page)
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
         generated.get_data(WHERE=WHERE, direction=settings.direction)
     generated.format(
-        title=f"🔍 {translate_search} {query}:\n"
-        f"{f'<b>{translate_page} {page}</b>{backslash_n}' if int(page) > 1 else ''}",
+        title=f"🔍 {translate_search} {query}:",
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
         "{weekday}</i></u> ({reldate})\n{markdown_text}\n",
         if_empty=get_translate("nothing_found", settings.lang),
@@ -101,7 +98,7 @@ def week_event_list_message(
     settings: UserSettings,
     chat_id: int,
     id_list: list | tuple[str] = tuple(),
-    page: int | str = 1,
+    page: int | str = 0,
 ) -> EventMessageGenerator:
     """
     :param settings: settings
@@ -145,17 +142,14 @@ def week_event_list_message(
 )
     """
 
-    generated = EventMessageGenerator(settings, reply_markup=delmarkup)
+    generated = EventMessageGenerator(settings, reply_markup=delmarkup, page=page)
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
         generated.get_data(WHERE=WHERE, direction="ASC")
 
-    translate_page = get_translate("page", settings.lang)
-
     generated.format(
-        title=f"📆 {get_translate('week_events', settings.lang)} 📆\n"
-        f"{f'<b>{translate_page} {page}</b>{backslash_n}' if int(page) > 1 else ''}",
+        title=f"📆 {get_translate('week_events', settings.lang)} 📆",
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
         "{weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
         if_empty=get_translate("nothing_found", settings.lang),
@@ -167,7 +161,7 @@ def trash_can_message(
     settings: UserSettings,
     chat_id: int,
     id_list: list | tuple[str] = tuple(),
-    page: int | str = 1,
+    page: int | str = 0,
 ) -> EventMessageGenerator:
     """
     :param settings: settings
@@ -195,25 +189,23 @@ DELETE FROM events
     recover_translate = get_translate("recover", settings.lang)
     clean_bin_translate = get_translate("clean_bin", settings.lang)
     basket_translate = get_translate("basket", settings.lang)
-    page_translate = get_translate("page", settings.lang)
     message_empty_translate = get_translate("message_empty", settings.lang)
 
-    generated = EventMessageGenerator(
-        settings,
-        reply_markup=generate_buttons(
-            [
-                {
-                    "✖": "message_del",
-                    f"❌ {delete_permanently_translate}": "select event delete bin",
-                },
-                {
-                    "🔄": "update",
-                    f"↩️ {recover_translate}": "select event recover bin",
-                },
-                {f"🧹 {clean_bin_translate}": "clean_bin"},
-            ]
-        ),
+    markup = generate_buttons(
+        [
+            {
+                "✖": "message_del",
+                f"❌ {delete_permanently_translate}": "select event delete bin",
+            },
+            {
+                "🔄": "update",
+                f"↩️ {recover_translate}": "select event recover bin",
+            },
+            {f"🧹 {clean_bin_translate}": "clean_bin"},
+        ]
     )
+
+    generated = EventMessageGenerator(settings, reply_markup=markup, page=page)
 
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
@@ -221,8 +213,7 @@ DELETE FROM events
         generated.get_data(WHERE=WHERE, direction=settings.direction)
 
     generated.format(
-        title=f"🗑 {basket_translate} 🗑\n"
-        f"{f'<b>{page_translate} {page}</b>{backslash_n}' if int(page) > 1 else ''}",
+        title=f"🗑 {basket_translate} 🗑",
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
         "{weekday}</i></u> ({days_before_delete})\n{markdown_text}\n",
         if_empty=message_empty_translate,
@@ -235,7 +226,7 @@ def daily_message(
     chat_id: int,
     date: str,
     id_list: list | tuple[str] = tuple(),
-    page: int | str = 1,
+    page: int | str = 0,
     message_id: int = None,
 ) -> EventMessageGenerator:
     """
@@ -280,7 +271,7 @@ def daily_message(
             },
         ]
     )
-    generated = EventMessageGenerator(settings, date, reply_markup=markup)
+    generated = EventMessageGenerator(settings, date, reply_markup=markup, page=page)
 
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
@@ -300,11 +291,8 @@ def daily_message(
             f"{remove_html_escaping(event.text)}",
         )
 
-    translate_page = get_translate("page", settings.lang)
-
     generated.format(
-        title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n"
-        f"{f'<b>{translate_page} {page}</b>{backslash_n}' if int(page) > 1 else ''}",
+        title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})",
         args="<b>{numd}.{event_id}.</b>{status}\n{markdown_text}\n",
         if_empty=get_translate("nodata", settings.lang),
     )
@@ -366,7 +354,7 @@ SELECT DISTINCT date
 def notifications_message(
     user_id_list: list | tuple[int | str, ...] = None,
     id_list: list | tuple[str] = tuple(),
-    page: int | str = 1,
+    page: int | str = 0,
     message_id: int = -1,
     markup: InlineKeyboardMarkup = None,
     from_command: bool = False,
@@ -470,7 +458,7 @@ AND
 )
 """
 
-            generated = EventMessageGenerator(settings, reply_markup=delmarkup)
+            generated = EventMessageGenerator(settings, reply_markup=delmarkup, page=page)
 
             if id_list:
                 generated.get_events(WHERE=WHERE, values=id_list)
@@ -482,13 +470,9 @@ AND
                 # или
                 # Если уведомления вызывали командой (сообщение на команду приходит даже если оно пустое)
                 reminder_translate = get_translate("reminder", settings.lang)
-                page_translate = get_translate("page", settings.lang)
 
                 generated.format(
-                    title=(
-                        f"🔔 {reminder_translate} 🔔\n"
-                        f"{f'<b>{page_translate} {page}</b>{backslash_n}' if int(page) > 1 else ''}"
-                    ),
+                    title=f"🔔 {reminder_translate} 🔔",
                     args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
                     "{weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
                     if_empty=get_translate("message_empty", settings.lang),
@@ -520,7 +504,7 @@ def recurring_events_message(
     date: str,
     chat_id: int,
     id_list: list | tuple[str] = tuple(),
-    page: int | str = 1,
+    page: int | str = 0,
 ):
     """
     :param settings: settings
@@ -565,17 +549,15 @@ AND
     )
 )
 """
-    generated = EventMessageGenerator(settings, date, reply_markup=backopenmarkup)
+    generated = EventMessageGenerator(settings, date, reply_markup=backopenmarkup, page=page)
 
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
         generated.get_data(WHERE=WHERE, direction=settings.direction, prefix="|!")
 
-    translate_page = get_translate("page", settings.lang)
     generated.format(
-        title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n"
-        f"{f'<b>{translate_page} {page}</b>{backslash_n}' if int(page) > 1 else ''}",
+        title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})",
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
         "{weekday}</i></u> ({reldate})\n{markdown_text}\n",
         if_empty=get_translate("nothing_found", settings.lang),

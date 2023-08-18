@@ -908,26 +908,26 @@ UPDATE events
                 first_line = message_text.split("\n", maxsplit=1)[0]
                 raw_query = first_line.split(maxsplit=2)[-1][:-1]
                 query = to_html_escaping(raw_query)
-                generated = search_message(settings, chat_id, query, id_list, page)
+                generated = search_message(settings, chat_id, query, id_list, int(page))
                 generated.edit(chat_id, message_id, markup=message.reply_markup)
 
             elif message_text.startswith("📆"):  # Если /week_event_list
-                generated = week_event_list_message(settings, chat_id, id_list, page)
+                generated = week_event_list_message(settings, chat_id, id_list, int(page))
                 generated.edit(chat_id, message_id, markup=message.reply_markup)
 
             elif message_text.startswith("🗑"):  # Корзина
-                generated = trash_can_message(settings, chat_id, id_list, page)
+                generated = trash_can_message(settings, chat_id, id_list, int(page))
                 generated.edit(chat_id, message_id, markup=message.reply_markup)
 
             elif re_date.match(message_text):
                 msg_date = re_date.match(message_text)[0]
                 if page.startswith("!"):
                     generated = recurring_events_message(
-                        settings, msg_date, chat_id, id_list, page[1:]
+                        settings, msg_date, chat_id, id_list, int(page[1:])
                     )
                 else:
                     generated = daily_message(
-                        settings, chat_id, msg_date, id_list, page, message_id
+                        settings, chat_id, msg_date, id_list, int(page), message_id
                     )
 
                 # Изменяем кнопку изменения текста события на актуальную
@@ -958,7 +958,7 @@ UPDATE events
 
             elif message_text.startswith("🔔"):  # Будильник
                 notifications_message(
-                    [chat_id], id_list, page, message_id, message.reply_markup
+                    [chat_id], id_list, int(page), message_id, message.reply_markup
                 )
 
         except ApiTelegramException:
