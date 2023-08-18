@@ -8,8 +8,8 @@ ICON_VERSION: str = ""
 
 
 def image_generator(icon_size: int, font_path: str, icon_version: str = None) -> Image:
-    image = Image.new("RGB", (icon_size, icon_size), "white")
-    draw = ImageDraw.Draw(image)
+    _image = Image.new("RGB", (icon_size, icon_size), "white")
+    draw = ImageDraw.Draw(_image)
 
     color_gray = (61, 61, 63)
     color_white = (255, 255, 255)
@@ -57,8 +57,9 @@ def image_generator(icon_size: int, font_path: str, icon_version: str = None) ->
         draw.text((510, 300), ICON_VERSION, fill=color_gray, font=font)
         draw.text((490, 280), ICON_VERSION, fill=color_red, font=font)
 
-    return image
+    return _image
 
 
 if __name__ == "__main__":
-    image_generator(ICON_SIZE, FONT_PATH, ICON_VERSION).save(f"{ICON_NAME}.png", "png")
+    image = image_generator(ICON_SIZE, FONT_PATH, ICON_VERSION)
+    image.save(f"{ICON_NAME}.png", "png")

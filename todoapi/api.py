@@ -372,6 +372,8 @@ DELETE FROM events
 
         (False, "Event Not Found") - Событие не найдено.
 
+        (False, "Limit Exceeded") - Лимит превышен.
+
         (False, f"{Error}") - Ошибка sql.
         """
         date_format = re.compile("\d{2}\.\d{2}\.\d{4}")
@@ -379,8 +381,13 @@ DELETE FROM events
         if not date_format.match(date):
             return False, "Invalid Date Format"
 
-        if not self.check_event(event_id):
+        event = self.get_event(event_id)[0]
+
+        if not event:
             return False, "Event Not Found"
+
+        if self.check_limit(date, event_count=1, symbol_count=len(event.text)):
+            return False, "Limit Exceeded"
 
         try:
             db.execute(

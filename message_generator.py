@@ -194,9 +194,8 @@ SELECT event_id,
                 _day = DayInfo(self._settings, f"{_date:%d.{now_t.month:0>2}.{now_t.year}}")
             else:
                 now_wd, event_wd = now_t.weekday(), _date.weekday()
-                day_diff = abs(now_wd - event_wd)
-                new_t = now_t + timedelta(days=day_diff if now_wd < event_wd else -day_diff)
-                _day = DayInfo(self._settings, f"{new_t:%d.%m.%Y}")
+                d = (now_wd + event_wd) if event_wd < now_wd else (now_wd - (7 - event_wd))
+                _day = DayInfo(self._settings, f"{now_t + timedelta(days=d-1):%d.%m.%Y}")
 
             return f"({_day.relatively_date})"
 

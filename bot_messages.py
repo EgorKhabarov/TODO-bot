@@ -296,7 +296,7 @@ def daily_message(
             column=1,
             old="callback_data",
             new="switch_inline_query_current_chat",
-            val=f"event({event.date}, {event.event_id}, {message_id}).edit\n"
+            val=f"event({event.date}, {event.event_id}, {message_id}).text\n"
             f"{remove_html_escaping(event.text)}",
         )
 

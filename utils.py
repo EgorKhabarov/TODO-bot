@@ -22,7 +22,7 @@ from todoapi.types import db, UserSettings
 
 
 re_edit_message = re.compile(
-    r"\A@\w{5,32} event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.edit(?:\n|\Z)"
+    r"\A@\w{5,32} event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.text(?:\n|\Z)"
 )
 
 

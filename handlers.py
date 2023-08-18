@@ -158,7 +158,7 @@ def command_handler(user: User, message: Message) -> None:
                 column=1,
                 old="callback_data",
                 new="switch_inline_query_current_chat",
-                val=f"event({event.date}, {event.event_id}, {new_message.message_id}).edit\n"
+                val=f"event({event.date}, {event.event_id}, {new_message.message_id}).text\n"
                 f"{remove_html_escaping(event.text)}",
             )
 
@@ -577,7 +577,7 @@ UPDATE events
                 markup.row(
                     InlineKeyboardButton(
                         f"{event}{config.callbackTab * 20}",
-                        switch_inline_query_current_chat=f"event({msg_date}, {event_id}, {message.message_id}).edit\n"
+                        switch_inline_query_current_chat=f"event({msg_date}, {event_id}, {message.message_id}).text\n"
                         f"{remove_html_escaping(event_text)}",
                     )
                 )
@@ -941,7 +941,7 @@ UPDATE events
                         column=1,
                         old="callback_data",
                         new="switch_inline_query_current_chat",
-                        val=f"event({event.date}, {event.event_id}, {message_id}).edit\n"
+                        val=f"event({event.date}, {event.event_id}, {message_id}).text\n"
                         f"{remove_html_escaping(event.text)}",
                     )
                 else:
