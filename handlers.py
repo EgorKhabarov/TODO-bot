@@ -477,32 +477,18 @@ UPDATE settings
         press_back_action(settings, call_data, chat_id, message_id, message_text)
 
     elif call_data == "message_del":
-        delete_message_action(settings, chat_id, message_id, message)
+        delete_message_action(settings, message)
 
     elif call_data == "confirm change":
         first_line, _, raw_text = message_text.split("\n", maxsplit=2)
         text = to_html_escaping(raw_text)  # Получаем изменённый текст
-        msg_date, event_id = first_line.split(" ", maxsplit=2)[:2]
+        event_id = first_line.split(" ", maxsplit=2)[1]
 
-        try:
-            db.execute(
-                """
-UPDATE events
-   SET text = ?,
-       recent_changes_time = DATETIME() 
- WHERE user_id = ? AND 
-       event_id = ? AND 
-       date = ?;
-""",
-                params=(text, chat_id, event_id, msg_date),
-                commit=True,
-            )
-        except Error as e:
-            logging.info(
-                f'[handlers.py -> callback_handler -> "confirm change"] Error "{e}"'
-            )
+        response, error_text = user.edit_event(event_id, text)
+        if not response:
+            logging.info(f'user.edit_event "{error_text}"')
             error = get_translate("error", settings.lang)
-            bot.answer_callback_query(call_id, error)
+            bot.answer_callback_query(call_id, error, True)
             return
 
         update_message_action(settings, chat_id, message_id, message_text)
@@ -671,7 +657,8 @@ UPDATE events
         event_date, event_id = call_data.split(maxsplit=2)[1:]
         event_id = int(event_id)
         response, error_text = user.recover_event(event_id)
-        if error_text:
+        if not response:
+            logging.info(f'user.recover_event "{error_text}"')
             error = get_translate("error", settings.lang)
             bot.answer_callback_query(call_id, error, True)
             return  # такого события нет

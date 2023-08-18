@@ -305,8 +305,9 @@ def daily_message(
 -- Кнопка повторяющихся событий
 SELECT DISTINCT date
   FROM events
- WHERE user_id = :user_id AND 
+ WHERE user_id = :user_id AND
        removal_time = 0 AND
+       date != :date AND
 (
     ( -- Каждый год
         (
@@ -327,7 +328,7 @@ SELECT DISTINCT date
     ( -- Каждую неделю
         status LIKE '%🗞%'
         AND
-        strftime('%w', {sqlite_format_date('date')}) = 
+        strftime('%w', {sqlite_format_date('date')}) =
         CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT)
     )
     OR
@@ -338,11 +339,11 @@ SELECT DISTINCT date
 """,
             params={
                 "user_id": chat_id,
+                "date": date,
                 "y_date": f"{date[:-5]}.____",
                 "m_date": f"{date[:2]}.__.____",
             },
         )
-        if x[0] != date
     ]
 
     if daylist:

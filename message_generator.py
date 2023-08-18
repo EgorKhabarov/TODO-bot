@@ -185,7 +185,8 @@ SELECT event_id,
         :return:         message.text
         """
 
-        def days_before(event_date: str, event_status: str = None) -> str:
+        @lambda func: (lambda ed, es: f"({func(ed, es)})")
+        def days_before(event_date: str, event_status: str) -> str:
             """
             В сообщении уведомления показывает через сколько будет повторяющееся событие.
             """
@@ -194,22 +195,24 @@ SELECT event_id,
 
             if "📬" in event_status:
                 _day = DayInfo(self._settings, f"{now_t:%d.%m.%Y}")
+                return _day.relatively_date
+
+            dates = []
+            if "🗞" in event_status:
+                now_wd, event_wd = now_t.weekday(), _date.weekday()
+                next_date = now_t + timedelta(days=(event_wd - now_wd + 7) % 7)
+                dates.append(next_date)
+
             elif {*event_status.split(",")}.intersection({"🎉", "🎊", "📆", "📅"}):
                 _day = DayInfo(
                     self._settings, f"{_date:%d.{now_t.month:0>2}.{now_t.year}}"
                 )
+                if _day.day_diff >= 0:
+                    dates.append(_day.datetime)
             else:
-                now_wd, event_wd = now_t.weekday(), _date.weekday()
-                d = (
-                    (now_wd + event_wd)
-                    if event_wd < now_wd
-                    else (now_wd - (7 - event_wd))
-                )
-                _day = DayInfo(
-                    self._settings, f"{now_t + timedelta(days=d-1):%d.%m.%Y}"
-                )
+                return DayInfo(self._settings, event_date).relatively_date
 
-            return f"({_day.relatively_date})"
+            return DayInfo(self._settings, f"{min(dates):%d.%m.%Y}").relatively_date
 
         def days_before_delete(event_deletion_date: str) -> int:
             if event_deletion_date == "0":

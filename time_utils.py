@@ -83,6 +83,7 @@ class DayInfo:
         x = datetime(x.year, x.month, x.day)
         y = convert_date_format(date)
 
+        self.datetime = y
         self.day_diff = (y - x).days
         match self.day_diff:
             case 0:

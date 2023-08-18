@@ -1,3 +1,4 @@
+import re
 from time import sleep
 from threading import Thread
 
@@ -8,12 +9,17 @@ import config
 from lang import get_translate
 from bot import bot, bot_log_info
 from time_utils import now_time
-from bot_actions import delete_message_action, confirm_changes_message
+from message_generator import NoEventMessage
+from bot_actions import (
+    delete_message_action,
+    confirm_changes_message,
+    update_message_action,
+)
 from buttons_utils import delmarkup
 from bot_messages import search_message, notifications_message, settings_message
 from utils import poke_link, check_user, re_edit_message
 from handlers import command_handler, callback_handler, clear_state
-from todoapi.api import User
+from todoapi.api import User, re_date
 from todoapi.logger import logging
 from todoapi.types import db
 from todoapi.db_creator import create_tables
@@ -87,12 +93,47 @@ def processing_edit_message(message: Message, user: User):
     Ловит сообщения для изменения событий
     """
     settings = user.settings
-    chat_id, edit_message_id = message.chat.id, message.message_id
 
     settings.log("send", "edit event text")
 
     if confirm_changes_message(user, message) is None:
-        delete_message_action(settings, chat_id, edit_message_id, message)
+        delete_message_action(settings, message)
+
+
+re_edit_event_date_message = re.compile(
+    r"\A@\w{5,32} event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.date(?:\n|\Z)"
+)
+
+
+@bot.message_handler(func=lambda m: re_edit_event_date_message.search(m.text))
+@check_user
+def edit_event_date_message(message: Message, user: User):
+    settings = user.settings
+
+    settings.log("send", "edit event date")
+
+    event_date, event_id, message_id = re_edit_event_date_message.findall(message.text)[
+        0
+    ]
+    event_id, message_id = int(event_id), int(message_id)
+    chat_id = message.chat.id
+
+    lines = message.text.split("\n")
+    if (
+        len(lines) != 2
+        or re_date.match(lines[1]) is None
+        or not user.edit_event_date(event_id, lines[1])[0]
+    ):
+        NoEventMessage(get_translate("error", settings.lang)).reply(message)
+        return
+
+    try:
+        update_message_action(settings, chat_id, message_id, lines[1])
+    except ValueError:
+        NoEventMessage(get_translate("error", settings.lang)).reply(message)
+        return
+
+    delete_message_action(settings, message)
 
 
 @bot.message_handler(
@@ -109,12 +150,12 @@ def processing_edit_city_message(message: Message, user: User):
     Изменение города пользователя
     """
     settings = user.settings
-    chat_id, message_id = message.chat.id, message.message_id
+    chat_id = message.chat.id
 
     settings.log("send", "edit city")
 
     if user.set_settings(city=message.text[:25])[0]:
-        delete_message_action(settings, chat_id, message_id, message)
+        delete_message_action(settings, message)
 
     generated = settings_message(settings)
     try:
@@ -142,11 +183,9 @@ def add_event(message: Message, user: User):
     Ловит сообщение если пользователь хочет добавить событие
     """
     settings = user.settings
-    chat_id, message_id, markdown_text = (
-        message.chat.id,
-        message.message_id,
-        to_html_escaping(html_to_markdown(message.html_text)),
-    )  # Экранируем текст
+    chat_id = message.chat.id
+    # Экранируем текст
+    markdown_text = to_html_escaping(html_to_markdown(message.html_text))
 
     settings.log("send", "add event")
 
@@ -177,7 +216,7 @@ SELECT add_event_date
     # Пытаемся создать событие
     if user.add_event(new_event_date, markdown_text)[0]:
         clear_state(chat_id)
-        delete_message_action(settings, chat_id, message_id, message)
+        delete_message_action(settings, message)
     else:
         error_translate = get_translate("error", settings.lang)
         bot.reply_to(message, error_translate, reply_markup=delmarkup)

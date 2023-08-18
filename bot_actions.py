@@ -30,11 +30,9 @@ from utils import re_edit_message, highlight_text_difference
 re_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}")
 
 
-def delete_message_action(
-    settings: UserSettings, chat_id: int, message_id: int, message: Message
-):
+def delete_message_action(settings: UserSettings, message: Message):
     try:
-        bot.delete_message(chat_id, message_id)
+        bot.delete_message(message.chat.id, message.message_id)
     except ApiTelegramException:
         get_admin_rules = get_translate("get_admin_rules", settings.lang)
         NoEventMessage(get_admin_rules, delmarkup).reply(message)
@@ -161,7 +159,7 @@ def confirm_changes_message(user: User, message: Message):
                 return 1
         except ApiTelegramException:
             pass
-        delete_message_action(settings, chat_id, message.message_id, message)
+        delete_message_action(settings, message)
         return 1
 
     # Убираем @bot_username из начала текста
