@@ -365,11 +365,14 @@ def write_table_to_str(
     # Обрезаем длинные строки до 126 символов (уменьшается размер файла)
     table = [
         [
-            "\\n\n".join(
-                textwrap(
-                    column, width=126, replace_whitespace=False, drop_whitespace=True
+            "\n".join(
+                " \\\n".join(
+                    textwrap(
+                        line, width=126, replace_whitespace=False, drop_whitespace=True
+                    )
+                    or " "
                 )
-                or " "
+                for line in column.splitlines()
             )
             for column in row
         ]
