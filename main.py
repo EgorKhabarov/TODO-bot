@@ -101,7 +101,7 @@ def processing_edit_message(message: Message, user: User):
 
 
 re_edit_event_date_message = re.compile(
-    r"\A@\w{5,32} event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.date(?:\n|\Z)"
+    r"\A@\w{5,32} event\((\d+), (\d+)\)\.date(?:\n|\Z)"
 )
 
 
@@ -112,9 +112,7 @@ def edit_event_date_message(message: Message, user: User):
 
     settings.log("send", "edit event date")
 
-    event_date, event_id, message_id = re_edit_event_date_message.findall(message.text)[
-        0
-    ]
+    event_id, message_id = re_edit_event_date_message.findall(message.text)[0]
     event_id, message_id = int(event_id), int(message_id)
     chat_id = message.chat.id
 
