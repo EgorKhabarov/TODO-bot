@@ -34,7 +34,7 @@ from tests.mocks import user_mock, message_mock, bot_mock, db_decorator
         # ("/deleteuser", ""),
         # ("/account", ""),
         # ("/commands", ""),
-    )
+    ),
 )
 def test_bot_interface(command, result):
     message = message_mock(1, command)

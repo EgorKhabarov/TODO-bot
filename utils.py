@@ -3,18 +3,18 @@ import difflib
 from time import time
 from io import StringIO
 from typing import Literal
+from functools import wraps
 from urllib.parse import urlparse
 from textwrap import wrap as textwrap
 from datetime import timedelta, datetime, timezone
 
 import requests
+from telebot.types import Message
 from requests import ConnectionError
 from requests.exceptions import MissingSchema
-from telebot.types import Message, CallbackQuery
 
 import config
 import logging
-from todoapi.api import User
 from lang import get_translate
 from time_utils import DayInfo
 from todoapi.utils import is_admin_id
@@ -114,25 +114,65 @@ def markdown(text: str, statuses: str, sub_url: bool | int = False) -> str:
     return text
 
 
-def rate_limit_requests(requests_count: int = 3, time_sec: int = 60):
+def rate_limit_requests(
+    requests_count: int = 3,
+    time_sec: int = 60,
+    key_path: int | str | tuple[str | int] | set[str | int] = None,
+):
     """
     Возвращает текст ошибки,
     если пользователи вызывали функцию чаще чем 3 раза в 60 секунд.
     """
 
-    def decorator(func):
-        cache = []
+    def get_key(
+        _args: tuple,
+        _kwargs: dict,
+        path: int | str | tuple[str | int] | list[str | int] = None,
+    ):
+        if path is None:
+            path = key_path
 
+        if isinstance(path, int):
+            return _args[path]
+        elif isinstance(path, str):
+            result = None
+            for i, a in enumerate(path.split(".")):
+                result = (_kwargs.get(a) or _args[0]) if i == 0 else getattr(result, a)
+            return result
+
+        elif isinstance(path, tuple):
+            return tuple(get_key(_args, _kwargs, key) for key in path)
+        elif isinstance(path, set):
+            keys = []
+            for key in path:
+                try:
+                    x = get_key(_args, _kwargs, key)
+                    keys.append(x)
+                except AttributeError:
+                    pass
+
+            return " ".join(f"{key}" for key in keys)
+
+    def decorator(func):
+        cache = [] if key_path is None else {}
+
+        @wraps(func)
         def wrapper(*args, **kwargs):
             now = time()
-            cache[:] = [call for call in cache if now - call < time_sec]
-            if len(cache) >= requests_count:
-                wait_time = time_sec - int(now - cache[0])
-                return (
-                    "Погоду запрашивали слишком часто...\n"
-                    f"Подождите ещё {wait_time} секунд"
-                )
-            cache.append(now)
+            key = get_key(args, kwargs)
+
+            if key not in cache and key_path is not None:
+                cache[key] = []
+
+            _cache = cache if key_path is None else cache[key]
+            _cache[:] = [call for call in _cache if now - call < time_sec]
+
+            if len(_cache) >= requests_count:
+                wait_time = time_sec - int(now - _cache[0])
+                return wait_time
+
+            _cache.append(now)
+
             return func(*args, **kwargs)
 
         return wrapper
@@ -151,6 +191,7 @@ def cache_with_ttl(cache_time_sec: int = 60):
     def decorator(func):
         cache = {}
 
+        @wraps(func)
         def wrapper(settings: UserSettings, city: str):
             key = f"{city} {settings.lang}"
             now = time()
@@ -426,29 +467,6 @@ def write_table_to_str(
         file.write("\n")
     file.write(sep)
     file.seek(0)
-
-
-def check_user(func):
-    def wrapper(x: Message | CallbackQuery):
-        if isinstance(x, Message):
-            chat_id = x.chat.id
-        elif isinstance(x, CallbackQuery):
-            chat_id = x.message.chat.id
-            if x.data == "None":
-                return 0
-        else:
-            return
-
-        with db.connection(), db.cursor():
-            user = User(chat_id)
-
-            if user.settings.user_status == -1 and not is_admin_id(chat_id):
-                return
-
-            res = func(x, user)
-        return res
-
-    return wrapper
 
 
 def highlight_text_difference(_old_text, _new_text):

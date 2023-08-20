@@ -1,6 +1,6 @@
 from copy import deepcopy
-from typing import Literal
 from sqlite3 import Error
+from typing import Literal
 from datetime import datetime, timedelta
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
@@ -208,6 +208,15 @@ SELECT event_id,
                 )
                 if _day.day_diff >= 0:
                     dates.append(_day.datetime)
+                else:
+                    month, year = _day.datetime.month, _day.datetime.year
+                    if "📅" in event_status:  # Повторение каждый месяц
+                        if month < 12:
+                            dates.append(_day.datetime.replace(month=month + 1))
+                        else:
+                            dates.append(_day.datetime.replace(year=year + 1, month=1))
+                    elif "📆" in event_status:  # Повторение каждый год
+                        dates.append(_day.datetime.replace(year=year + 1))
             else:
                 return DayInfo(self._settings, event_date).relatively_date
 
@@ -401,3 +410,13 @@ class NoEventMessage:
             self.text,
             reply_markup=self.reply_markup,
         )
+
+
+class CallBackAnswer:
+    def __init__(self, text: str):
+        self.text = text
+
+    def answer(
+        self, call_id: int, show_alert: bool | None = None, url: str | None = None
+    ):
+        bot.answer_callback_query(call_id, self.text, show_alert, url)

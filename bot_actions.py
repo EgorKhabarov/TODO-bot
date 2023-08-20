@@ -8,6 +8,8 @@ from telebot.types import Message
 import config
 from bot import bot
 from lang import get_translate
+from time_utils import DayInfo
+from message_generator import NoEventMessage, CallBackAnswer
 from buttons_utils import delmarkup, create_monthly_calendar_keyboard, generate_buttons
 from bot_messages import (
     trash_can_message,
@@ -15,8 +17,6 @@ from bot_messages import (
     daily_message,
     week_event_list_message,
 )
-from message_generator import NoEventMessage
-from time_utils import DayInfo
 from todoapi.api import User
 from todoapi.types import db, UserSettings
 from todoapi.utils import (
@@ -128,7 +128,7 @@ def update_message_action(
 
     if call_id:
         sleep(0.5)
-        bot.answer_callback_query(call_id, "...", show_alert=True)
+        CallBackAnswer("...").answer(call_id, True)
 
     try:
         generated.edit(chat_id, message_id)
@@ -242,7 +242,7 @@ def before_del_message(
     if not response:
         if call_id:
             error = get_translate("error", settings.lang)
-            bot.answer_callback_query(call_id, error)
+            CallBackAnswer(error).answer(call_id)
         press_back_action(settings, call_data, chat_id, message_id, message_text)
         return 1
 

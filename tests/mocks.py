@@ -15,7 +15,7 @@ def db_decorator(func):
 
             try:
                 func(*args, **kwargs)
-            except:
+            except Error:
                 pass
 
             os.remove(config.DATABASE_PATH)
@@ -23,6 +23,7 @@ def db_decorator(func):
         foo()
 
     return wrapper
+
 
 execute = Mock()
 
@@ -75,6 +76,7 @@ user_mock = Mock(
     settings=settings_mock,
 )
 
+
 def message_mock(message_id: int, text: str, html_text=None) -> Mock:
     if html_text is None:
         html_text = text
@@ -112,40 +114,7 @@ def bot_message(text: str, html_text=None):
 
 
 def session_mock():
-    json_data1 = {
-        "ok": True,
-        "result": {
-            "message_id": 1,
-            "from": {
-                "id": 2,
-                "is_bot": True,
-                "first_name": "botfirstname",
-                "username": "botname",
-            },
-            "chat": {
-                "id": 1,
-                "first_name": "first_name",
-                "last_name": "last_name",
-                "username": "username",
-                "type": "private",
-            },
-            "date": 1690409502,
-            "text": ".",
-        },
-    }
-    json_data2 = {
-        "ok": True,
-        "result": {
-            "id": 2,
-            "is_bot": True,
-            "first_name": "bot_first_name",
-            "username": "botname",
-            "can_join_groups": True,
-            "can_read_all_group_messages": True,
-            "supports_inline_queries": False,
-        },
-    }
-    json_data3 = {
+    json_data = {
         "ok": True,
         "result": {
             "id": 1,
@@ -178,7 +147,7 @@ def session_mock():
     request_mock = Mock()
     session_mock = Mock()
 
-    response_mock.json.return_value = json_data3
+    response_mock.json.return_value = json_data
     request_mock.request.return_value = response_mock
     session_mock.return_value = request_mock
     # Session() == request_mock
@@ -189,17 +158,13 @@ def session_mock():
 def connect_mock(return_value: list[tuple[str | int | bytes]]):
     connect = Mock()
     cursor = Mock()
-    execute = Mock()
-    commit = Mock()
-    fetchall = Mock(return_value=return_value)
-    close = Mock()
 
     connect.return_value = cursor
-    cursor.execute.return_value = execute
-    connect.commit.return_value = commit
-    cursor.fetchall.return_value = fetchall
+    cursor.execute.return_value = Mock()
+    connect.commit.return_value = Mock()
+    cursor.fetchall.return_value = Mock(return_value=return_value)
     cursor.description.return_value = [("",) * len(return_value[0][0])]
-    connect.close.return_value = close
+    connect.close.return_value = Mock()
 
     return connect
 

@@ -1,5 +1,6 @@
 import re
 from time import sleep
+from functools import wraps
 from threading import Thread
 
 from telebot.apihelper import ApiTelegramException
@@ -16,21 +17,52 @@ from bot_actions import (
     update_message_action,
 )
 from buttons_utils import delmarkup
-from bot_messages import search_message, notifications_message, settings_message
-from utils import poke_link, check_user, re_edit_message
+from utils import poke_link, re_edit_message
 from handlers import command_handler, callback_handler, clear_state
-from todoapi.api import User, re_date
-from todoapi.logger import logging
+from bot_messages import search_message, notifications_message, settings_message
 from todoapi.types import db
+from todoapi.logger import logging
+from todoapi.api import User, re_date
 from todoapi.db_creator import create_tables
-from todoapi.utils import to_html_escaping, html_to_markdown
-
+from todoapi.utils import to_html_escaping, html_to_markdown, is_admin_id
 
 create_tables()
 
 logging.info(bot_log_info())
 
 bot.set_my_commands(get_translate("0_command_list", "ru"), BotCommandScopeDefault())
+
+
+def check_user(func):
+    @wraps(func)
+    # @rate_limit_requests(100, 60 * 20, {"x.message.chat.id", "x.chat.id"})
+    def wrapper(x: Message | CallbackQuery):
+        if isinstance(x, Message):
+            chat_id = x.chat.id
+            if (
+                x.chat.type != "private"
+                and x.text.startswith("/")
+                and x.text[1:].split("@")[0].split(" ")[0]
+                and x.text.split("@")[-1].split(" ")[0] != bot.username
+            ):
+                return
+        elif isinstance(x, CallbackQuery):
+            chat_id = x.message.chat.id
+            if x.data == "None":
+                return 0
+        else:
+            return
+
+        with db.connection(), db.cursor():
+            user = User(chat_id)
+
+            if user.settings.user_status == -1 and not is_admin_id(chat_id):
+                return
+
+            res = func(x, user)
+        return res
+
+    return wrapper
 
 
 @bot.message_handler(commands=[*config.COMMANDS])

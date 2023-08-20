@@ -1104,6 +1104,10 @@ The bot notifies about important "🟥" events, events with recurring status ("�
         "ru": "Настройки по умолчанию",
         "en": "Set default settings",
     },
+    "too often": {
+        "ru": "Cлишком часто\nЖдите {} секунд.",
+        "en": "Too often\nWait {} seconds",
+    },
     "": {
         "ru": "",
         "en": "",
