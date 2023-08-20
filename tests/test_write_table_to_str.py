@@ -70,7 +70,6 @@ parameters = pytest.mark.parametrize(
 @patch("todoapi.types.DataBase.execute", execute)
 @parameters
 def test_is_exceeded_limit(mock_sql_return, mock_sql_query, expected_result):
-
     file = StringIO()
     write_table_to_str(file, table=mock_sql_return)
     file.seek(0)

@@ -1010,7 +1010,6 @@ UPDATE settings
     elif call_data.startswith("settings"):
         par_name, par_val = call_data.split(" ", maxsplit=2)[1:]
 
-        # TODO par_name проверять из словаря
         if par_name not in [
             "user_id",
             "userinfo",

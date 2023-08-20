@@ -1,7 +1,31 @@
+import os
+from sqlite3 import Error
 from unittest.mock import Mock
+from unittest import mock
 
+from todoapi import config as config
+from todoapi.db_creator import create_tables
+
+
+def db_decorator(func):
+    def wrapper(*args, **kwargs):
+        @mock.patch("todoapi.config.DATABASE_PATH", "test.sqlite3")
+        def foo():
+            create_tables()
+
+            try:
+                func(*args, **kwargs)
+            except:
+                pass
+
+            os.remove(config.DATABASE_PATH)
+
+        foo()
+
+    return wrapper
 
 execute = Mock()
+
 
 def _bot_mock() -> Mock:
     bot = Mock(id=1, username="bot_username")
@@ -29,6 +53,7 @@ def _bot_mock() -> Mock:
     bot.log_info.return_value = Mock()
     return bot
 
+
 bot_mock = _bot_mock()
 
 settings_mock = Mock(
@@ -44,43 +69,47 @@ settings_mock = Mock(
     direction_sql="DESC",
 )
 
-def user_mock():
-    return Mock(
-        id=1,
-        is_bot=False,
-        first_name="first_name",
-        username="username",
-        last_name="last_name",
-        full_name="first_name last_name",
-    )
 
-chat_mock = Mock(
-    id=1,
-    type="private",
-    title=None,
-    username="username",
-    first_name="first_name",
-    last_name="last_name",
+user_mock = Mock(
+    user_id=1,
+    settings=settings_mock,
 )
 
-def message_mock(message_id, text, html_text=None) -> Mock:
+def message_mock(message_id: int, text: str, html_text=None) -> Mock:
     if html_text is None:
         html_text = text
 
     return Mock(
         message_id=message_id,
-        from_user=user_mock(),
-        chat=chat_mock(),
+        from_user=Mock(
+            id=1,
+            is_bot=False,
+            first_name="first_name",
+            username="username",
+            last_name="last_name",
+            full_name="first_name last_name",
+        ),
+        chat=Mock(
+            id=1,
+            type="private",
+            title=None,
+            username="username",
+            first_name="first_name",
+            last_name="last_name",
+        ),
         content_type="text",
         text=text,
         html_text=html_text,
     )
 
-def user_message(text, html_text=None):
+
+def user_message(text: str, html_text=None):
     return message_mock(1, text, html_text)
 
-def bot_message(text, html_text=None):
+
+def bot_message(text: str, html_text=None):
     return message_mock(2, text, html_text)
+
 
 def session_mock():
     json_data1 = {
@@ -91,18 +120,18 @@ def session_mock():
                 "id": 2,
                 "is_bot": True,
                 "first_name": "botfirstname",
-                "username": "botname"
+                "username": "botname",
             },
             "chat": {
                 "id": 1,
                 "first_name": "first_name",
                 "last_name": "last_name",
                 "username": "username",
-                "type": "private"
+                "type": "private",
             },
             "date": 1690409502,
-            "text": "."
-        }
+            "text": ".",
+        },
     }
     json_data2 = {
         "ok": True,
@@ -113,8 +142,8 @@ def session_mock():
             "username": "botname",
             "can_join_groups": True,
             "can_read_all_group_messages": True,
-            "supports_inline_queries": False
-        }
+            "supports_inline_queries": False,
+        },
     }
     json_data3 = {
         "ok": True,
@@ -131,18 +160,18 @@ def session_mock():
                 "id": 2,
                 "is_bot": True,
                 "first_name": "bot_first_name",
-                "username": "botname"
+                "username": "botname",
             },
             "chat": {
                 "id": 1,
                 "first_name": "first_name",
                 "last_name": "last_name",
                 "username": "username",
-                "type": "private"
+                "type": "private",
             },
             "date": 1690409502,
-            "text": "."
-        }
+            "text": ".",
+        },
     }
 
     response_mock = Mock()
@@ -155,6 +184,7 @@ def session_mock():
     # Session() == request_mock
     # Session().request() == response_mock
     return session_mock
+
 
 def connect_mock(return_value: list[tuple[str | int | bytes]]):
     connect = Mock()
