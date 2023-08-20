@@ -45,7 +45,7 @@ class EventMessageGenerator:
         prefix: str = "|",
     ):
         """
-        Получить [список (кортежей 'строк id',)] по страницам
+        Получить список кортежей строк id по страницам
         """
         data = pagination(
             WHERE=WHERE,
@@ -160,7 +160,7 @@ SELECT event_id,
 
 
 
-        {numd}     - Порядковый номер (циферный)                                                ["1 2 3"]
+        {numd}     - Порядковый номер (циферки)                                                 ["1 2 3"]
 
         {nums}     - Порядковый номер (смайлики)                                                ["1 2 3"]
 
@@ -185,7 +185,6 @@ SELECT event_id,
         :return:         message.text
         """
 
-        @lambda func: (lambda ed, es: f"({func(ed, es)})")
         def days_before(event_date: str, event_status: str) -> str:
             """
             В сообщении уведомления показывает через сколько будет повторяющееся событие.
@@ -262,9 +261,9 @@ SELECT event_id,
                             event.text, event.status, self._settings.sub_urls
                         ),
                         markdown_text_nourlsub=markdown(event.text, event.status),
-                        days_before=dbd
+                        days_before=f"({dbd})"
                         if (
-                            (dbd := days_before(event.date, event.status))[1:-1]
+                            (dbd := days_before(event.date, event.status))
                             != day.relatively_date
                         )
                         else "",
