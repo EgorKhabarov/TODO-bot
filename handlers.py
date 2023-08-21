@@ -552,7 +552,7 @@ UPDATE settings
         markup = InlineKeyboardMarkup()
         for event in events_list:
             # Парсим данные
-            if m := re.findall(r"\A\d{2}\.\d{2}\.\d{4}\.(\d+)\.", events_list[0]):
+            if m := re.findall(r"\A\d{2}\.\d{2}\.\d{4}\.(\d+)\.", event):
                 event_id = m[0]
             else:
                 event_id = int(event.split(".", maxsplit=2)[-2])
