@@ -210,12 +210,14 @@ SELECT event_id,
                     dates.append(_day.datetime)
                 else:
                     month, year = _day.datetime.month, _day.datetime.year
-                    if "📅" in event_status:  # Повторение каждый месяц
+                    # Повторение каждый месяц
+                    if "📅" in event_status:
                         if month < 12:
                             dates.append(_day.datetime.replace(month=month + 1))
                         else:
                             dates.append(_day.datetime.replace(year=year + 1, month=1))
-                    elif "📆" in event_status:  # Повторение каждый год
+                    # Повторение каждый год
+                    elif {*event_status.split(",")}.intersection({"🎉", "🎊", "📆"}):
                         dates.append(_day.datetime.replace(year=year + 1))
             else:
                 return DayInfo(self._settings, event_date).relatively_date
