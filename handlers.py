@@ -51,6 +51,7 @@ from utils import (
     write_table_to_str,
     markdown,
     is_secure_chat,
+    parse_message,
 )
 from todoapi.api import User
 from todoapi.types import db, UserSettings
@@ -186,18 +187,27 @@ def command_handler(user: User, message: Message) -> None:
             NoEventMessage("Отправить файл не получилось").send(chat_id)
 
     elif message_text.startswith("/SQL ") and is_secure_chat(message):
-        bot.send_chat_action(chat_id, "upload_document")
         # Выполнение запроса от админа к базе данных и красивый вывод результатов
         query = message_text[5:].strip()
+
+        if not query.lower().startswith("select"):
+            print(query.lower())
+            bot.send_chat_action(chat_id, "typing")
+            try:
+                db.execute(query, commit=message_text.endswith("\n--commit=True"))
+            except Error as e:
+                NoEventMessage(f'Error "{e}"').reply(message)
+            else:
+                NoEventMessage("ok").reply(message)
+            return
+
+        bot.send_chat_action(chat_id, "upload_document")
+
         file = StringIO()
         file.name = "table.txt"
 
         try:
-            write_table_to_str(
-                file,
-                query=query,
-                commit=message_text.endswith("\n--commit=True"),
-            )
+            write_table_to_str(file, query=query)
         except Error as e:
             bot.reply_to(message, f'[handlers.py -> "/SQL"] Error "{e}"')
         else:
@@ -503,39 +513,34 @@ UPDATE settings
         # action: Literal["edit", "status", "delete", "delete bin", "recover bin", "open"]
         action = call_data[13:]
 
-        events_list = message_text.split("\n\n")[1:]
+        events_list = parse_message(message_text)
+        msg_date = message_text[:10]
 
         # Заглушка если событий нет
-        if events_list[0].startswith("👀") or events_list[0].startswith("🕸"):
+        if len(events_list) == 0:
             no_events = get_translate("no_events_to_interact", settings.lang)
             CallBackAnswer(no_events).answer(call_id, True)
             return
 
-        msg_date = message_text[:10]
-
         # Если событие одно, то оно сразу выбирается
         if len(events_list) == 1:
-            event_id = events_list[0].split(".", maxsplit=2)[1]
-
-            if m := re.findall(r"\A\d{2}\.\d{2}\.\d{4}\.(\d+)\.", events_list[0]):
-                event_id = m[0]
-
-            if not user.check_event(event_id, action.endswith("bin")):
+            event = events_list[0]
+            if not user.check_event(event.event_id, action.endswith("bin")):
                 update_message_action(settings, chat_id, message_id, message_text)
                 return
 
             if action in ("status", "delete", "delete bin", "recover bin", "open"):
-                event_date = events_list[0][:10]
-                if action == "status":
-                    new_call_data = f"status_home_page {event_id} {msg_date}"
-                elif action == "delete":
-                    new_call_data = f"before del {msg_date} {event_id} _"
-                elif action == "delete bin":
-                    new_call_data = f"del {event_date} {event_id} bin delete"
-                elif action == "recover bin":
-                    new_call_data = f"recover {event_date} {event_id}"
-                else:
-                    new_call_data = f"{event_date}"  # "select event open"
+                match action:
+                    case "status":
+                        new_call_data = f"status_home_page {event.event_id} {event.date}"
+                    case "delete":
+                        new_call_data = f"before del {event.date} {event.event_id} _"
+                    case "delete bin":
+                        new_call_data = f"del {event.date} {event.event_id} bin delete"
+                    case  "recover bin":
+                        new_call_data = f"recover {event.date} {event.event_id}"
+                    case _:  # "select event open"
+                        new_call_data = f"{event.date}"
 
                 callback_handler(
                     user=user,
@@ -551,66 +556,49 @@ UPDATE settings
 
         markup = InlineKeyboardMarkup()
         for event in events_list:
-            # Парсим данные
-            if m := re.findall(r"\A\d{2}\.\d{2}\.\d{4}\.(\d+)\.", event):
-                event_id = m[0]
-            else:
-                event_id = int(event.split(".", maxsplit=2)[-2])
-
             # Проверяем существование события
-            response, error_text = user.get_event(event_id, action.endswith("bin"))
+            response = user.get_event(event.event_id, action.endswith("bin"))[0]
             if response:
-                event_text = response.text
+                event.text = response.text
             else:
                 continue
 
+            button_title = (f"{event.date}.{event.event_id}.{event.status} "
+                            f"{event.text}{config.callbackTab * 20}")[:60]
+            button_title2 = (f"{event.event_id}.{event.status} "
+                             f"{event.text}{config.callbackTab * 20}")[:60]
+
             if action == "edit":
-                markup.row(
-                    InlineKeyboardButton(
-                        f"{event}{config.callbackTab * 20}",
-                        switch_inline_query_current_chat=f"event({msg_date}, {event_id}, {message.message_id}).text\n"
-                        f"{remove_html_escaping(event_text)}",
-                    )
+                callback_data = (
+                    f"event({event.date}, {event.event_id}, {message.message_id}).text\n"
+                    f"{remove_html_escaping(event.text)}"
                 )
+                button = InlineKeyboardButton(button_title2, switch_inline_query_current_chat=callback_data)
 
             elif action in ("status", "delete"):  # Действия в обычном дне
-                button_title = event.replace("\n", " ")[:50]
                 if action == "status":
-                    callback_data = f"status_home_page {event_id} {msg_date}"
+                    callback_data = f"status_home_page {event.event_id} {event.date}"
                 else:  # "delete"
-                    callback_data = f"before del {msg_date} {event_id} _"
+                    callback_data = f"before del {event.date} {event.event_id} _"
 
-                markup.row(
-                    InlineKeyboardButton(
-                        f"{button_title}{config.callbackTab * 20}",
-                        callback_data=callback_data,
-                    )
-                )
+                button = InlineKeyboardButton(button_title2, callback_data=callback_data)
 
             elif action in ("delete bin", "recover bin"):  # Действия в корзине
-                event_date = event[:10]
-                button_title = (
-                    event.split(" ", maxsplit=1)[0]
-                    + " "
-                    + event.split("\n", maxsplit=1)[-1][:50]
-                )
                 if action == "delete bin":
-                    callback_data = f"del {event_date} {event_id} bin delete"
+                    callback_data = f"del {event.date} {event.event_id} bin delete"
                 else:  # "recover bin"
-                    callback_data = f"recover {event_date} {event_id}"
+                    callback_data = f"recover {event.date} {event.event_id}"
 
-                markup.row(
-                    InlineKeyboardButton(
-                        f"{button_title}{config.callbackTab * 20}",
-                        callback_data=callback_data,
-                    )
-                )
+                button = InlineKeyboardButton(button_title, callback_data=callback_data)
 
             elif action == "open":
-                event_text = event.split("\n", maxsplit=1)[-1]
-                text = f"{event.split(' ', maxsplit=1)[0]} {event_text}{config.callbackTab * 20}"
-                button = InlineKeyboardButton(text, callback_data=f"{event[:10]}")
-                markup.row(button)
+                callback_data = f"{event.date}"
+                button = InlineKeyboardButton(button_title, callback_data=callback_data)
+
+            else:
+                continue
+
+            markup.row(button)
 
         if not markup.to_dict()["inline_keyboard"]:  # Созданный markup пустой
             update_message_action(settings, chat_id, message_id, message_text)

@@ -18,8 +18,7 @@ import logging
 from lang import get_translate
 from time_utils import DayInfo
 from todoapi.utils import is_admin_id
-from todoapi.types import db, UserSettings
-
+from todoapi.types import db, UserSettings, Event
 
 re_edit_message = re.compile(
     r"\A@\w{5,32} event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.text(?:\n|\Z)"
@@ -482,3 +481,33 @@ def highlight_text_difference(_old_text, _new_text):
 
     result_text = "".join(result_parts)
     return result_text
+
+
+def parse_message(text: str) -> list[Event]:
+    """
+    Парсит сообщение и возвращает список событий
+    """
+    event_list: list[Event] = []
+    msg_date = None
+
+    if m := re.match(r"\A\d{2}\.\d{2}\.\d{4}", text):
+        msg_date = m[0]
+
+    for str_event in text.split("\n\n")[1:]:
+        if m := re.match(r"\A(\d{2}\.\d{2}\.\d{4})\.(\d+)\.(\S{1,3}(?:,\S{1,3}){0,4}) ", str_event):
+            event_date, event_id, event_status = m[1], m[2], m[3]
+        elif m := re.match(r"\A(10|[1-9])\.(\d+)\.(\S{1,3}(?:,\S{1,3}){0,4})", str_event):
+            event_date, event_id, event_status = msg_date, m[2], m[3]
+        else:
+            continue
+
+        event_list.append(
+            Event(
+                event_id=event_id,
+                date=event_date,
+                text=str_event.split("\n", maxsplit=1)[1],
+                status=event_status,
+            )
+        )
+
+    return event_list

@@ -195,14 +195,15 @@ def processing_edit_city_message(message: Message, user: User):
 
 
 def add_event_func(msg) -> int:
-    add_event_date = db.execute(
-        """
+    with db.connection(), db.cursor():
+        add_event_date = db.execute(
+            """
 SELECT add_event_date
   FROM settings
  WHERE user_id = ?;
 """,
-        params=(msg.chat.id,),
-    )
+            params=(msg.chat.id,),
+        )
     return add_event_date[0][0] if add_event_date else 0
 
 

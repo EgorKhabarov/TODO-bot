@@ -128,12 +128,14 @@ def update_message_action(
 
     if call_id:
         sleep(0.5)
-        CallBackAnswer("...").answer(call_id, True)
 
     try:
         generated.edit(chat_id, message_id)
     except ApiTelegramException:
         pass
+
+    if call_id:
+        CallBackAnswer("ok").answer(call_id, True)
 
 
 def confirm_changes_message(user: User, message: Message):
