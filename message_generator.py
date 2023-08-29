@@ -191,34 +191,43 @@ SELECT event_id,
             """
             _date = convert_date_format(event_date)
             now_t = now_time(self._settings.timezone)
+            dates = []
 
+            # Каждый день
             if "📬" in event_status:
                 _day = DayInfo(self._settings, f"{now_t:%d.%m.%Y}")
                 return _day.relatively_date
 
-            dates = []
+            # Каждую неделю
             if "🗞" in event_status:
                 now_wd, event_wd = now_t.weekday(), _date.weekday()
                 next_date = now_t + timedelta(days=(event_wd - now_wd + 7) % 7)
                 dates.append(next_date)
 
-            elif {*event_status.split(",")}.intersection({"🎉", "🎊", "📆", "📅"}):
+            # Каждый месяц
+            elif "📅" in event_status:
                 _day = DayInfo(
-                    self._settings, f"{_date:%d.{now_t.month:0>2}.{now_t.year}}"
+                    self._settings, f"{_date:%d}.{now_t:%m.%Y}"
                 )
+                month, year = _day.datetime.month, _day.datetime.year
                 if _day.day_diff >= 0:
                     dates.append(_day.datetime)
                 else:
-                    month, year = _day.datetime.month, _day.datetime.year
-                    # Повторение каждый месяц
-                    if "📅" in event_status:
-                        if month < 12:
-                            dates.append(_day.datetime.replace(month=month + 1))
-                        else:
-                            dates.append(_day.datetime.replace(year=year + 1, month=1))
-                    # Повторение каждый год
-                    elif {*event_status.split(",")}.intersection({"🎉", "🎊", "📆"}):
-                        dates.append(_day.datetime.replace(year=year + 1))
+                    if month < 12:
+                        dates.append(_day.datetime.replace(month=month + 1))
+                    else:
+                        dates.append(_day.datetime.replace(year=year + 1, month=1))
+
+            # Каждый год
+            elif {*event_status.split(",")}.intersection({"📆", "🎉", "🎊"}):
+                _day = DayInfo(
+                    self._settings, f"{_date:%d.%m}.{now_t:%Y}"
+                )
+                if _day.datetime.date() < now_t.date():
+                    dates.append(_day.datetime.replace(year=now_t.year + 1))
+                else:
+                    dates.append(_day.datetime.replace(year=now_t.year))
+
             else:
                 return DayInfo(self._settings, event_date).relatively_date
 

@@ -7,7 +7,7 @@ from telebot.apihelper import ApiTelegramException
 import config
 import todoapi.config
 from lang import get_translate
-from utils import is_admin_id
+from todoapi.utils import is_admin_id
 
 
 bot = TeleBot(config.BOT_TOKEN)

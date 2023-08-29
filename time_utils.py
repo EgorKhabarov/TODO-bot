@@ -32,7 +32,20 @@ def convert_date_format(date: str) -> datetime:
     Принимает дату в формате dd.mm.yyyy
     Возвращает datetime(year=yyyy, month=mm, day=dd)
     """
-    return datetime(*[int(x) for x in date.split(".")][::-1])
+    day, month, year = [int(x) for x in date.split(".")]
+    try:
+        return datetime(year, month, day)
+    except ValueError as e:
+        # Если дата 29 февраля и год невисокосный, то возвращать 1 апреля.
+        if (
+            f"{e}" == "day is out of range for month"
+            and month == 2
+            and day == 29
+            and not isleap(year)
+        ):
+            return datetime(year, 3, 1)
+        else:
+            raise e
 
 
 def year_info(year: int, lang: str) -> str:

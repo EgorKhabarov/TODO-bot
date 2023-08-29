@@ -17,7 +17,7 @@ from bot_actions import (
     update_message_action,
 )
 from buttons_utils import delmarkup
-from utils import poke_link, re_edit_message
+from utils import poke_link, re_edit_message, rate_limit_requests
 from handlers import command_handler, callback_handler, clear_state
 from bot_messages import search_message, notifications_message, settings_message
 from todoapi.types import db
@@ -35,7 +35,8 @@ bot.set_my_commands(get_translate("0_command_list", "ru"), BotCommandScopeDefaul
 
 def check_user(func):
     @wraps(func)
-    # @rate_limit_requests(100, 60 * 20, {"x.message.chat.id", "x.chat.id"})
+    @rate_limit_requests(200, 60 * 30, {"call.message.chat.id", "message.chat.id"}, send=True)
+    @rate_limit_requests(30, 60, {"call.message.chat.id", "message.chat.id"}, send=True)
     def wrapper(x: Message | CallbackQuery):
         if isinstance(x, Message):
             chat_id = x.chat.id

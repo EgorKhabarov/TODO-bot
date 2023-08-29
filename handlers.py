@@ -123,11 +123,6 @@ def command_handler(user: User, message: Message) -> None:
             else:  # forecast
                 text = get_translate("forecast_invalid_city_name", settings.lang)
 
-        if isinstance(text, int):
-            text = (
-                "Погоду запрашивали слишком часто...\n" f"Подождите ещё {text} секунд"
-            )
-
         generated = NoEventMessage(text, delmarkup)
         generated.send(chat_id)
 

@@ -12,9 +12,11 @@ import requests
 from telebot.types import Message
 from requests import ConnectionError
 from requests.exceptions import MissingSchema
+from telebot.apihelper import ApiTelegramException
 
 import config
 import logging
+from bot import bot
 from lang import get_translate
 from time_utils import DayInfo
 from todoapi.utils import is_admin_id
@@ -117,6 +119,9 @@ def rate_limit_requests(
     requests_count: int = 3,
     time_sec: int = 60,
     key_path: int | str | tuple[str | int] | set[str | int] = None,
+    translate_key: str = "too_many_attempts",
+    send: bool = False,
+    lang: str = "en",
 ):
     """
     Возвращает текст ошибки,
@@ -136,10 +141,14 @@ def rate_limit_requests(
         elif isinstance(path, str):
             result = None
             for i, a in enumerate(path.split(".")):
-                result = (_kwargs.get(a) or _args[0]) if i == 0 else getattr(result, a)
+                a: str
+                if i == 0:
+                    result = _kwargs.get(a) or _args[0]
+                else:
+                    result = result[int(a)] if a.isdigit() else getattr(result, a)
             return result
 
-        elif isinstance(path, tuple):
+        elif isinstance(path, (tuple, list)):
             return tuple(get_key(_args, _kwargs, key) for key in path)
         elif isinstance(path, set):
             keys = []
@@ -168,7 +177,16 @@ def rate_limit_requests(
 
             if len(_cache) >= requests_count:
                 wait_time = time_sec - int(now - _cache[0])
-                return wait_time
+
+                raw_text: str = get_translate(translate_key, get_key(args, kwargs, lang))
+                text = raw_text.format(wait_time)
+                if send:
+                    try:
+                        return bot.send_message(key, text)
+                    except ApiTelegramException:
+                        return
+                else:
+                    return text
 
             _cache.append(now)
 
@@ -206,7 +224,7 @@ def cache_with_ttl(cache_time_sec: int = 60):
 # TODO добавить персональные api ключи для запрашивания погоды
 # TODO декоратор для проверки api ключа у пользователя
 # TODO в зависимости от наличия ключа ставить разные лимиты на запросы
-@rate_limit_requests(4, 60)
+@rate_limit_requests(4, 60, translate_key="too_many_attempts_weather", lang="settings.lang")
 @cache_with_ttl(300)
 def fetch_weather(settings: UserSettings, city: str) -> str:
     """
@@ -287,7 +305,7 @@ def fetch_weather(settings: UserSettings, city: str) -> str:
     )
 
 
-@rate_limit_requests(4, 60)
+@rate_limit_requests(4, 60, translate_key="too_many_attempts_weather", lang="settings.lang")
 @cache_with_ttl(3600)
 def fetch_forecast(settings: UserSettings, city: str) -> str:
     """
@@ -376,14 +394,12 @@ def is_secure_chat(message: Message):
 
 
 def poke_link() -> None:
-    logging.info(f"{config.LINK}")
-
     try:
-        logging.info(f"{requests.get(config.LINK, headers=config.headers).status_code}")
+        requests.get(config.LINK, headers=config.headers)
     except MissingSchema as e:
-        logging.info(f"{e}")
+        logging.error(f"{e}")
     except ConnectionError:
-        logging.info("404")
+        logging.error("404")
 
 
 def write_table_to_str(
