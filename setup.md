@@ -10,7 +10,6 @@ git clone https://github.com/EgorKhabarov/TODO-bot.git .
 ## Linux
 
 ```bash
-cd TODO-bot-master
 mv .env.example .env
 mv .\todoapi\.env.example .\todoapi\.env
 pip install -r requirements.txt
@@ -19,7 +18,6 @@ pip install -r requirements.txt
 ## Windows
 
 ```bash
-cd TODO-bot-master
 move .env.example .env
 move .\todoapi\.env.example .\todoapi\.env
 pip install -r requirements.txt
@@ -29,8 +27,13 @@ pip install -r requirements.txt
 Изменить `.env` в корневой директории.
 
 ```.env
-BOT_TOKEN=Токен телеграм бота у t.me/BotFather
-WEATHER_API_KEY=Получить на home.openweathermap.org/api_keys
-POKE_LINK=Тыкать ли url сервера? (1 или 0)
-LINK=url сервера
+BOT_TOKEN=        # Токен телеграм бота у t.me/BotFather
+WEATHER_API_KEY=  # Получить на home.openweathermap.org/api_keys
+POKE_LINK=        # Тыкать ли url сервера? (1 или 0)
+LINK=             # url сервера
+```
+
+# Запуск
+```bash
+python main.py
 ```
