@@ -109,6 +109,12 @@ class DataBase:
         self.sqlite_connection.close()
         return result
 
+    def __del__(self):
+        if self.sqlite_cursor:
+            self.sqlite_cursor.close()
+        if self.sqlite_connection:
+            self.sqlite_connection.close()
+
 
 class Event:
     """
@@ -247,28 +253,6 @@ VALUES (?);
     def log(self, action: str, text: str):
         text = text.replace("\n", "\\n")
         logging.info(f"[{self.user_id:<10}][{self.user_status}] {action:<7} {text}")
-
-    def update_userinfo(self, bot):
-        chat = bot.get_chat(self.user_id)
-        chat_info = "\n".join(
-            (
-                f"{chat.id=}",
-                f"{chat.type=}",
-                f"{chat.username=}",
-                f"{chat.first_name=}",
-                f"{chat.last_name=}",
-                f"{chat.invite_link=}",
-            )
-        )
-        db.execute(
-            """
-UPDATE settings
-   SET userinfo = ?
- WHERE user_id = ?;
-""",
-            params=(chat_info, self.user_id),
-            commit=True,
-        )
 
     def to_json(self) -> str:
         return json.dumps(self.__dict__, ensure_ascii=False)

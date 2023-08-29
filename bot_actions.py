@@ -34,7 +34,7 @@ def delete_message_action(settings: UserSettings, message: Message):
     try:
         bot.delete_message(message.chat.id, message.message_id)
     except ApiTelegramException:
-        get_admin_rules = get_translate("get_admin_rules", settings.lang)
+        get_admin_rules = get_translate("errors.get_admin_rules", settings.lang)
         NoEventMessage(get_admin_rules, delmarkup).reply(message)
 
 
@@ -93,7 +93,7 @@ WHERE user_id = ?;
             # Если сообщение не изменено, то шлём календарь
             # "dd.mm.yyyy" -> [yyyy, mm]
             YY_MM = [int(x) for x in msg_date.split(".")[1:]][::-1]
-            text = get_translate("choose_date", settings.lang)
+            text = get_translate("select.date", settings.lang)
             markup = create_monthly_calendar_keyboard(
                 chat_id, settings.timezone, settings.lang, YY_MM
             )
@@ -193,10 +193,10 @@ def confirm_changes_message(user: User, message: Message):
     tag_limit_exceeded = user.check_limit(event_date, symbol_count=added_length)
 
     if tag_len_max:
-        translate = get_translate("message_is_too_long", settings.lang)
+        translate = get_translate("errors.message_is_too_long", settings.lang)
         NoEventMessage(translate, markup).reply(message)
     elif tag_limit_exceeded:
-        translate = get_translate("exceeded_limit", settings.lang)
+        translate = get_translate("errors.exceeded_limit", settings.lang)
         NoEventMessage(translate, markup).reply(message)
     else:
         day = DayInfo(settings, event_date)
@@ -243,7 +243,7 @@ def before_del_message(
 
     if not response:
         if call_id:
-            error = get_translate("error", settings.lang)
+            error = get_translate("errors.error", settings.lang)
             CallBackAnswer(error).answer(call_id)
         press_back_action(settings, call_data, chat_id, message_id, message_text)
         return 1

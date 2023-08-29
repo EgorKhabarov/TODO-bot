@@ -30,40 +30,56 @@ create_tables()
 
 logging.info(bot_log_info())
 
-bot.set_my_commands(get_translate("0_command_list", "ru"), BotCommandScopeDefault())
+bot.set_my_commands(get_translate("buttons.commands.0", "ru"), BotCommandScopeDefault())
 
 
 def check_user(func):
     @wraps(func)
-    @rate_limit_requests(
-        200, 60 * 30, {"call.message.chat.id", "message.chat.id"}, send=True
-    )
-    @rate_limit_requests(30, 60, {"call.message.chat.id", "message.chat.id"}, send=True)
-    def wrapper(x: Message | CallbackQuery):
-        if isinstance(x, Message):
-            chat_id = x.chat.id
+    def check_argument(_x: Message | CallbackQuery):
+        if isinstance(_x, Message):
             if (
-                x.chat.type != "private"
-                and x.text.startswith("/")
-                and x.text[1:].split("@")[0].split(" ")[0]
-                and x.text.split("@")[-1].split(" ")[0] != bot.username
+                _x.chat.type != "private"
+                and _x.text.startswith("/")
+                and not re.match(fr"\A/\w+@{re.escape(bot.username)}", _x.text)
             ):
                 return
-        elif isinstance(x, CallbackQuery):
-            chat_id = x.message.chat.id
-            if x.data == "None":
-                return 0
+        elif isinstance(_x, CallbackQuery):
+            if _x.data == "None":
+                return
         else:
             return
 
-        with db.connection(), db.cursor():
-            user = User(chat_id)
-            if user.settings.user_status == -1 and not is_admin_id(chat_id):
+        @rate_limit_requests(
+            200, 60 * 30, {"call.message.chat.id", "message.chat.id"}, send=True
+        )
+        @rate_limit_requests(30, 60, {"call.message.chat.id", "message.chat.id"}, send=True)
+        def wrapper(x: Message | CallbackQuery):
+            if isinstance(x, Message):
+                chat_id = x.chat.id
+                if (
+                    x.chat.type != "private"
+                    and x.text.startswith("/")
+                    and x.text[1:].split("@")[0].split(" ")[0]
+                    and x.text.split("@")[-1].split(" ")[0] != bot.username
+                ):
+                    return
+            elif isinstance(x, CallbackQuery):
+                chat_id = x.message.chat.id
+                if x.data == "None":
+                    return 0
+            else:
                 return
-            res = func(x, user)
-        return res
 
-    return wrapper
+            with db.connection(), db.cursor():
+                user = User(chat_id)
+                if user.settings.user_status == -1 and not is_admin_id(chat_id):
+                    return
+                res = func(x, user)
+            return res
+
+        return wrapper(_x)
+
+    return check_argument
 
 
 @bot.message_handler(commands=[*config.COMMANDS])
@@ -151,13 +167,13 @@ def edit_event_date_message(message: Message, user: User):
         or re_date.match(lines[1]) is None
         or not user.edit_event_date(event_id, lines[1])[0]
     ):
-        NoEventMessage(get_translate("error", settings.lang)).reply(message)
+        NoEventMessage(get_translate("errors.error", settings.lang)).reply(message)
         return
 
     try:
         update_message_action(settings, chat_id, message_id, lines[1])
     except ValueError:
-        NoEventMessage(get_translate("error", settings.lang)).reply(message)
+        NoEventMessage(get_translate("errors.error", settings.lang)).reply(message)
         return
 
     delete_message_action(settings, message)
@@ -232,12 +248,12 @@ SELECT add_event_date
 
     # Если сообщение длиннее 3800 символов, то ошибка
     if len(markdown_text) >= 3800:
-        message_is_too_long = get_translate("message_is_too_long", settings.lang)
+        message_is_too_long = get_translate("errors.message_is_too_long", settings.lang)
         bot.reply_to(message, message_is_too_long, reply_markup=delmarkup)
         return
 
     if user.check_limit(new_event_date, event_count=1, symbol_count=len(markdown_text)):
-        exceeded_limit = get_translate("exceeded_limit", settings.lang)
+        exceeded_limit = get_translate("errors.exceeded_limit", settings.lang)
         bot.reply_to(message, exceeded_limit, reply_markup=delmarkup)
         return
 
@@ -246,7 +262,7 @@ SELECT add_event_date
         clear_state(chat_id)
         delete_message_action(settings, message)
     else:
-        error_translate = get_translate("error", settings.lang)
+        error_translate = get_translate("errors.error", settings.lang)
         bot.reply_to(message, error_translate, reply_markup=delmarkup)
         clear_state(chat_id)
 

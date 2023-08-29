@@ -69,7 +69,7 @@ def set_bot_commands(chat_id: int, user_status: int, lang: str) -> bool:
     if is_admin_id(chat_id) and user_status != -1:
         user_status = 2
 
-    target = f"{user_status}_command_list"
+    target = f"buttons.commands.{user_status}"
 
     try:
         return bot.set_my_commands(

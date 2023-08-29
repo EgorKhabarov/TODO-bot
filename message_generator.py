@@ -253,7 +253,7 @@ SELECT event_id,
         if self.page_signature_needed:
             if self.page == 0:
                 self.page = 1
-            translate_page = get_translate("page", self._settings.lang)
+            translate_page = get_translate("text.page", self._settings.lang)
             format_string += f"<b>{translate_page} {self.page}</b>\n"
 
         format_string += "\n"

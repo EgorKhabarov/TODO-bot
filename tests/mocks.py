@@ -1,26 +1,30 @@
 import os
+from functools import wraps
 from sqlite3 import Error
 from unittest.mock import Mock
 from unittest import mock
 
+import todoapi.types
 from todoapi import config as config
 from todoapi.db_creator import create_tables
 
 
 def db_decorator(func):
+    @wraps(func)
+    @mock.patch("todoapi.config.DATABASE_PATH", "test.sqlite3")
     def wrapper(*args, **kwargs):
-        @mock.patch("todoapi.config.DATABASE_PATH", "test.sqlite3")
-        def foo():
-            create_tables()
+        create_tables()
 
-            try:
-                func(*args, **kwargs)
-            except Error:
-                pass
-
+        exeption = None
+        try:
+            func(*args, **kwargs)
+        except Error as e:
+            exeption = e
+        else:
+            del todoapi.types.db
             os.remove(config.DATABASE_PATH)
-
-        foo()
+        if exeption:
+            raise exeption
 
     return wrapper
 
@@ -63,7 +67,7 @@ settings_mock = Mock(
     sub_urls=1,
     city="Москва",
     timezone=3,
-    direction="⬇️",
+    direction="DESC",
     user_status=0,
     notifications=1,
     notifications_time="09:00",

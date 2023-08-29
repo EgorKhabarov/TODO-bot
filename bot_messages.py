@@ -8,6 +8,7 @@ from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
 from bot import bot
 from lang import get_translate
 from limits import create_image
+from utils import update_userinfo
 from sql_utils import sqlite_format_date2
 from message_generator import EventMessageGenerator, NoEventMessage
 from time_utils import convert_date_format, now_time, now_time_strftime
@@ -55,13 +56,13 @@ def search_message(
         )
     TODO шаблоны для поиска
     """
-    translate_search = get_translate("search", settings.lang)
+    translate_search = get_translate("messages.search", settings.lang)
 
     if not re.match(r"\S", query):
         generated = EventMessageGenerator(settings, reply_markup=delmarkup)
         generated.format(
             title=f"🔍 {translate_search} {query}:\n",
-            if_empty=get_translate("request_empty", settings.lang),
+            if_empty=get_translate("errors.request_empty", settings.lang),
         )
         return generated
 
@@ -88,7 +89,7 @@ def search_message(
         title=f"🔍 {translate_search} {query}:",
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
         "{weekday}</i></u> ({reldate})\n{markdown_text}\n",
-        if_empty=get_translate("nothing_found", settings.lang),
+        if_empty=get_translate("errors.nothing_found", settings.lang),
     )
 
     return generated
@@ -152,7 +153,7 @@ def week_event_list_message(
         title=f"📆 {get_translate('week_events', settings.lang)} 📆",
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
         "{weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
-        if_empty=get_translate("nothing_found", settings.lang),
+        if_empty=get_translate("errors.nothing_found", settings.lang),
     )
     return generated
 
@@ -188,8 +189,8 @@ DELETE FROM events
     delete_permanently_translate = get_translate("delete_permanently", settings.lang)
     recover_translate = get_translate("recover", settings.lang)
     clean_bin_translate = get_translate("clean_bin", settings.lang)
-    basket_translate = get_translate("basket", settings.lang)
-    message_empty_translate = get_translate("message_empty", settings.lang)
+    basket_translate = get_translate("messages.basket", settings.lang)
+    message_empty_translate = get_translate("errors.message_empty", settings.lang)
 
     markup = generate_buttons(
         [
@@ -294,7 +295,7 @@ def daily_message(
     generated.format(
         title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})",
         args="<b>{numd}.{event_id}.</b>{status}\n{markdown_text}\n",
-        if_empty=get_translate("nodata", settings.lang),
+        if_empty=get_translate("errors.nodata", settings.lang),
     )
 
     # Добавить дополнительную кнопку для дней в которых есть праздники
@@ -472,13 +473,13 @@ AND
                 # Если в generated.event_list есть события
                 # или
                 # Если уведомления вызывали командой (сообщение на команду приходит даже если оно пустое)
-                reminder_translate = get_translate("reminder", settings.lang)
+                reminder_translate = get_translate("messages.reminder", settings.lang)
 
                 generated.format(
                     title=f"🔔 {reminder_translate} 🔔",
                     args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
                     "{weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
-                    if_empty=get_translate("message_empty", settings.lang),
+                    if_empty=get_translate("errors.message_empty", settings.lang),
                 )
 
                 try:
@@ -500,6 +501,11 @@ UPDATE events
                     logging.info(f"notifications -> {user_id} -> Ok")
                 except ApiTelegramException:
                     logging.info(f"notifications -> {user_id} -> Error")
+
+            try:
+                update_userinfo(user_id)
+            except ApiTelegramException:
+                pass
 
 
 def recurring_events_message(
@@ -565,7 +571,7 @@ AND
         title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})",
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
         "{weekday}</i></u> ({reldate})\n{markdown_text}\n",
-        if_empty=get_translate("nothing_found", settings.lang),
+        if_empty=get_translate("errors.nothing_found", settings.lang),
     )
     return generated
 
@@ -625,7 +631,7 @@ def settings_message(settings: UserSettings) -> NoEventMessage:
             else f"00:{n_minutes:0>2}"
         )
 
-    text = get_translate("settings", settings.lang).format(
+    text = get_translate("messages.settings", settings.lang).format(
         settings.lang,
         bool(settings.sub_urls),
         settings.city,
@@ -645,7 +651,7 @@ def settings_message(settings: UserSettings) -> NoEventMessage:
             },
             time_zone_dict,
             notifications_time,
-            {get_translate("restore_to_default", settings.lang): "restore_to_default"},
+            {get_translate("text.restore_to_default", settings.lang): "restore_to_default"},
             {"✖": "message_del"},
         ]
     )
@@ -658,21 +664,21 @@ def start_message(settings: UserSettings) -> NoEventMessage:
         [
             {"/calendar": "/calendar"},
             {
-                get_translate("add_bot_to_group", settings.lang): {
+                get_translate("text.add_bot_to_group", settings.lang): {
                     "url": f"https://t.me/{bot.username}?startgroup=AddGroup"
                 }
             },
         ]
     )
-    text = get_translate("start", settings.lang)
+    text = get_translate("messages.start", settings.lang)
     return NoEventMessage(text, markup)
 
 
-def help_message(settings: UserSettings, path: str = "help page 1") -> NoEventMessage:
-    translate = get_translate(path, settings.lang)
-    title = get_translate("help title", settings.lang)
+def help_message(settings: UserSettings, path: str = "page 1") -> NoEventMessage:
+    translate = get_translate(f"messages.help.{path}", settings.lang)
+    title = get_translate("messages.help.title", settings.lang)
 
-    if path.startswith("help page"):
+    if path.startswith("page"):
         text, keyboard = translate
         markup = generate_buttons(keyboard)
         generated = NoEventMessage(f"{title}\n{text}", markup)
@@ -683,7 +689,7 @@ def help_message(settings: UserSettings, path: str = "help page 1") -> NoEventMe
 
 
 def monthly_calendar_message(settings: UserSettings, chat_id: int) -> NoEventMessage:
-    text = get_translate("choose_date", settings.lang)
+    text = get_translate("select.date", settings.lang)
     markup = create_monthly_calendar_keyboard(chat_id, settings.timezone, settings.lang)
     return NoEventMessage(text, markup)
 
@@ -697,14 +703,14 @@ def account_message(settings: UserSettings, chat_id: int, message_text: str) -> 
             try:
                 date = convert_date_format(str_date)
             except ValueError:
-                bot.send_message(chat_id, get_translate("error", settings.lang))
+                bot.send_message(chat_id, get_translate("errors.error", settings.lang))
                 return
         else:
-            bot.send_message(chat_id, get_translate("error", settings.lang))
+            bot.send_message(chat_id, get_translate("errors.error", settings.lang))
             return
 
         if not 1980 < date.year < 3000:
-            bot.send_message(chat_id, get_translate("error", settings.lang))
+            bot.send_message(chat_id, get_translate("errors.error", settings.lang))
             return
 
     image = create_image(settings, date.year, date.month, date.day)

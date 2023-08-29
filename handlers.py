@@ -51,7 +51,7 @@ from utils import (
     write_table_to_str,
     markdown,
     is_secure_chat,
-    parse_message,
+    parse_message, update_userinfo,
 )
 from todoapi.api import User
 from todoapi.types import db, UserSettings
@@ -80,7 +80,7 @@ def command_handler(user: User, message: Message) -> None:
 
     elif message_text.startswith("/start"):
         set_bot_commands(chat_id, settings.user_status, settings.lang)
-        settings.update_userinfo(bot)
+        update_userinfo(chat_id)
 
         generated = start_message(settings)
         generated.send(chat_id)
@@ -92,7 +92,7 @@ def command_handler(user: User, message: Message) -> None:
         else:
             set_bot_commands(chat_id, settings.user_status, settings.lang)
             generated = NoEventMessage(
-                get_translate("deleted", settings.lang), delmarkup
+                get_translate("errors.deleted", settings.lang), delmarkup
             )
             generated.send(chat_id)
 
@@ -119,9 +119,9 @@ def command_handler(user: User, message: Message) -> None:
                 text = fetch_forecast(settings, nowcity)
         except KeyError:
             if message_text.startswith("/weather"):
-                text = get_translate("weather_invalid_city_name", settings.lang)
+                text = get_translate("errors.weather_invalid_city_name", settings.lang)
             else:  # forecast
-                text = get_translate("forecast_invalid_city_name", settings.lang)
+                text = get_translate("errors.forecast_invalid_city_name", settings.lang)
 
         generated = NoEventMessage(text, delmarkup)
         generated.send(chat_id)
@@ -231,10 +231,10 @@ def command_handler(user: User, message: Message) -> None:
                 bot.send_document(chat_id, InputFile(response))
             except ApiTelegramException as e:
                 logging.info(f'save_to_csv ApiTelegramException "{e}"')
-                big_file_translate = get_translate("file_is_too_big", settings.lang)
+                big_file_translate = get_translate("errors.file_is_too_big", settings.lang)
                 bot.send_message(chat_id=chat_id, text=big_file_translate)
         else:
-            export_error = get_translate("export_csv", settings.lang)
+            export_error = get_translate("errors.export", settings.lang)
             generated = NoEventMessage(export_error.format(t=error_text.split(" ")[1]))
             generated.send(chat_id)
 
@@ -451,7 +451,7 @@ def callback_handler(
 
         # Проверяем будет ли превышен лимит для пользователя, если добавить 1 событие с 1 символом
         if user.check_limit(date, event_count=1, symbol_count=1):
-            text = get_translate("exceeded_limit", settings.lang)
+            text = get_translate("errors.exceeded_limit", settings.lang)
             CallBackAnswer(text).answer(call_id, True)
             return
 
@@ -477,7 +477,7 @@ UPDATE settings
 
     elif call_data == "calendar":
         YY_MM = [int(x) for x in message_text[:10].split(".")[1:]][::-1]
-        text = get_translate("choose_date", settings.lang)
+        text = get_translate("select.date", settings.lang)
         markup = create_monthly_calendar_keyboard(
             chat_id, settings.timezone, settings.lang, YY_MM
         )
@@ -497,7 +497,7 @@ UPDATE settings
         response, error_text = user.edit_event(event_id, text)
         if not response:
             logging.info(f'user.edit_event "{error_text}"')
-            error = get_translate("error", settings.lang)
+            error = get_translate("errors.error", settings.lang)
             CallBackAnswer(error).answer(call_id, True)
             return
 
@@ -513,7 +513,7 @@ UPDATE settings
 
         # Заглушка если событий нет
         if len(events_list) == 0:
-            no_events = get_translate("no_events_to_interact", settings.lang)
+            no_events = get_translate("errors.no_events_to_interact", settings.lang)
             CallBackAnswer(no_events).answer(call_id, True)
             return
 
@@ -616,37 +616,37 @@ UPDATE settings
         )
 
         if action == "edit":
-            select_event = get_translate("select_event_to_edit", settings.lang)
+            select_event = get_translate("select.event_to_edit", settings.lang)
             text = f"{msg_date}\n{select_event}"
 
         elif action == "status":
-            select_event = get_translate("select_event_to_change_status", settings.lang)
+            select_event = get_translate("select.event_to_change_status", settings.lang)
             text = f"{msg_date}\n{select_event}"
 
         elif action == "delete":
-            select_event = get_translate("select_event_to_delete", settings.lang)
+            select_event = get_translate("select.event_to_delete", settings.lang)
             text = f"{msg_date}\n{select_event}"
 
         elif action == "delete bin":
-            basket = get_translate("basket", settings.lang)
-            select_event = get_translate("select_event_to_delete", settings.lang)
+            basket = get_translate("messages.basket", settings.lang)
+            select_event = get_translate("select.event_to_delete", settings.lang)
             text = f"{basket}\n{select_event}"
 
         elif action == "recover bin":
-            basket = get_translate("basket", settings.lang)
-            select_event = get_translate("select_event_to_recover", settings.lang)
+            basket = get_translate("messages.basket", settings.lang)
+            select_event = get_translate("select.event_to_recover", settings.lang)
             text = f"{basket}\n{select_event}"
 
         elif message_text.startswith("🔍 "):
             first_line = message_text.split("\n", maxsplit=1)[0]
             raw_query = first_line.split(maxsplit=2)[-1][:-1]
             query = to_html_escaping(raw_query)
-            translate_search = get_translate("search", settings.lang)
-            choose_event = get_translate("choose_event", settings.lang)
+            translate_search = get_translate("messages.search", settings.lang)
+            choose_event = get_translate("select.event", settings.lang)
             text = f"🔍 {translate_search} {query}:\n{choose_event}"
 
         else:
-            choose_event = get_translate("choose_event", settings.lang)
+            choose_event = get_translate("select.event", settings.lang)
             text = f"{msg_date}\n{choose_event}"
 
         bot.edit_message_text(text, chat_id, message_id, reply_markup=markup)
@@ -657,7 +657,7 @@ UPDATE settings
         response, error_text = user.recover_event(event_id)
         if not response:
             logging.info(f'user.recover_event "{error_text}"')
-            error = get_translate("error", settings.lang)
+            error = get_translate("errors.error", settings.lang)
             CallBackAnswer(error).answer(call_id, True)
             return  # такого события нет
 
@@ -697,7 +697,7 @@ UPDATE settings
                     *[
                         {f"{title}{config.callbackTab * 20}": f"{data}"}
                         for title, data in get_translate(
-                            "status page 0", settings.lang
+                            "buttons.status page.0", settings.lang
                         ).items()
                     ],
                     {
@@ -714,7 +714,7 @@ UPDATE settings
                 ]
             )
         else:  # status page
-            buttons_data = get_translate(call_data, settings.lang)
+            buttons_data = get_translate(f"buttons.status page.{call_data.removeprefix('status page ')}", settings.lang)
             markup = generate_buttons(
                 [
                     *[
@@ -744,7 +744,7 @@ UPDATE settings
 
         bot.edit_message_text(
             f"{event_date}\n"
-            f"<b>{get_translate('select_status_to_event', settings.lang)}\n"
+            f"<b>{get_translate('select.status_to_event', settings.lang)}\n"
             f"{event_date}.{event_id}.{status}</b>\n"
             f"{markdown(text, status, settings.sub_urls)}",
             chat_id,
@@ -784,13 +784,13 @@ UPDATE settings
             case "":
                 text = ""
             case "Status Conflict":
-                text = get_translate("conflict_statuses", settings.lang)
+                text = get_translate("errors.conflict_statuses", settings.lang)
             case "Status Length Exceeded":
-                text = get_translate("more_5_statuses", settings.lang)
+                text = get_translate("errors.more_5_statuses", settings.lang)
             case "Status Repeats":
-                text = get_translate("status_already_posted", settings.lang)
+                text = get_translate("errors.status_already_posted", settings.lang)
             case _:
-                text = get_translate("error", settings.lang)
+                text = get_translate("errors.error", settings.lang)
 
         if text:
             CallBackAnswer(text).answer(call_id, True)
@@ -873,7 +873,7 @@ UPDATE settings
         response = user.delete_event(event_id, to_bin)[0]
 
         if not response:
-            error = get_translate("error", settings.lang)
+            error = get_translate("errors.error", settings.lang)
             CallBackAnswer(error).answer(call_id)
 
         press_back_action(
@@ -949,7 +949,7 @@ UPDATE settings
                 )
 
         except ApiTelegramException:
-            text = get_translate("already_on_this_page", settings.lang)
+            text = get_translate("errors.already_on_this_page", settings.lang)
             CallBackAnswer(text).answer(call_id)
 
     elif call_data.startswith("generate calendar months "):
@@ -1058,17 +1058,17 @@ UPDATE settings
 
     elif call_data.startswith("help"):
         try:
-            generated = help_message(settings, call_data)
+            generated = help_message(settings, call_data.removeprefix("help "))
             markup = None if call_data.startswith("help page") else message.reply_markup
             generated.edit(chat_id, message_id, markup=markup)
         except ApiTelegramException:
-            text = get_translate("already_on_this_page", settings.lang)
+            text = get_translate("errors.already_on_this_page", settings.lang)
             CallBackAnswer(text).answer(call_id)
 
     elif call_data == "clean_bin":
         res = user.clear_basket()[0]
         if not res:
-            error = get_translate("error", settings.lang)
+            error = get_translate("errors.error", settings.lang)
             CallBackAnswer(error).answer(call_id)
             return
 

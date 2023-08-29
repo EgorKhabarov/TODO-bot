@@ -119,7 +119,7 @@ def rate_limit_requests(
     requests_count: int = 3,
     time_sec: int = 60,
     key_path: int | str | tuple[str | int] | set[str | int] = None,
-    translate_key: str = "too_many_attempts",
+    translate_key: str = "errors.many_attempts",
     send: bool = False,
     lang: str = "en",
 ):
@@ -227,7 +227,7 @@ def cache_with_ttl(cache_time_sec: int = 60):
 # TODO декоратор для проверки api ключа у пользователя
 # TODO в зависимости от наличия ключа ставить разные лимиты на запросы
 @rate_limit_requests(
-    4, 60, translate_key="too_many_attempts_weather", lang="settings.lang"
+    4, 60, translate_key="errors.many_attempts_weather", lang="settings.lang"
 )
 @cache_with_ttl(300)
 def fetch_weather(settings: UserSettings, city: str) -> str:
@@ -292,7 +292,7 @@ def fetch_weather(settings: UserSettings, city: str) -> str:
     sunset = sunset.split(" ")[-1]
     visibility = weather["visibility"]
 
-    return get_translate("weather", settings.lang).format(
+    return get_translate("messages.weather", settings.lang).format(
         city_name,
         weather_icon,
         weather_description,
@@ -310,7 +310,7 @@ def fetch_weather(settings: UserSettings, city: str) -> str:
 
 
 @rate_limit_requests(
-    4, 60, translate_key="too_many_attempts_weather", lang="settings.lang"
+    4, 60, translate_key="errors.many_attempts_weather", lang="settings.lang"
 )
 @cache_with_ttl(3600)
 def fetch_forecast(settings: UserSettings, city: str) -> str:
@@ -533,3 +533,26 @@ def parse_message(text: str) -> list[Event]:
         )
 
     return event_list
+
+def update_userinfo(chat_id):
+    chat = bot.get_chat(chat_id)
+    chat_info = "\n".join(
+        (
+            f"{chat.id=}",
+            f"{chat.type=}",
+            f"{chat.title=}",
+            f"{chat.username=}",
+            f"{chat.first_name=}",
+            f"{chat.last_name=}",
+            f"{chat.invite_link=}",
+        )
+    )
+    db.execute(
+        """
+UPDATE settings
+   SET userinfo = ?
+ WHERE user_id = ?;
+""",
+        params=(chat_info, chat_id),
+        commit=True,
+    )
