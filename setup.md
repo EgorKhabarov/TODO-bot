@@ -1,7 +1,7 @@
 
 # Установка
 
-```bash
+```shell
 git clone https://github.com/EgorKhabarov/TODO-bot.git .
 ```
 
@@ -9,7 +9,7 @@ git clone https://github.com/EgorKhabarov/TODO-bot.git .
 
 ## Linux
 
-```bash
+```shell
 mv .env.example .env
 mv .\todoapi\.env.example .\todoapi\.env
 pip install -r requirements.txt
@@ -17,7 +17,7 @@ pip install -r requirements.txt
 
 ## Windows
 
-```bash
+```shell
 move .env.example .env
 move .\todoapi\.env.example .\todoapi\.env
 pip install -r requirements.txt
@@ -34,6 +34,6 @@ LINK=             # url сервера
 ```
 
 # Запуск
-```bash
+```shell
 python main.py
 ```
