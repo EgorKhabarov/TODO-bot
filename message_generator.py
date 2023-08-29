@@ -206,9 +206,7 @@ SELECT event_id,
 
             # Каждый месяц
             elif "📅" in event_status:
-                _day = DayInfo(
-                    self._settings, f"{_date:%d}.{now_t:%m.%Y}"
-                )
+                _day = DayInfo(self._settings, f"{_date:%d}.{now_t:%m.%Y}")
                 month, year = _day.datetime.month, _day.datetime.year
                 if _day.day_diff >= 0:
                     dates.append(_day.datetime)
@@ -220,9 +218,7 @@ SELECT event_id,
 
             # Каждый год
             elif {*event_status.split(",")}.intersection({"📆", "🎉", "🎊"}):
-                _day = DayInfo(
-                    self._settings, f"{_date:%d.%m}.{now_t:%Y}"
-                )
+                _day = DayInfo(self._settings, f"{_date:%d.%m}.{now_t:%Y}")
                 if _day.datetime.date() < now_t.date():
                     dates.append(_day.datetime.replace(year=now_t.year + 1))
                 else:

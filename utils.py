@@ -178,7 +178,9 @@ def rate_limit_requests(
             if len(_cache) >= requests_count:
                 wait_time = time_sec - int(now - _cache[0])
 
-                raw_text: str = get_translate(translate_key, get_key(args, kwargs, lang))
+                raw_text: str = get_translate(
+                    translate_key, get_key(args, kwargs, lang)
+                )
                 text = raw_text.format(wait_time)
                 if send:
                     try:
@@ -224,7 +226,9 @@ def cache_with_ttl(cache_time_sec: int = 60):
 # TODO добавить персональные api ключи для запрашивания погоды
 # TODO декоратор для проверки api ключа у пользователя
 # TODO в зависимости от наличия ключа ставить разные лимиты на запросы
-@rate_limit_requests(4, 60, translate_key="too_many_attempts_weather", lang="settings.lang")
+@rate_limit_requests(
+    4, 60, translate_key="too_many_attempts_weather", lang="settings.lang"
+)
 @cache_with_ttl(300)
 def fetch_weather(settings: UserSettings, city: str) -> str:
     """
@@ -305,7 +309,9 @@ def fetch_weather(settings: UserSettings, city: str) -> str:
     )
 
 
-@rate_limit_requests(4, 60, translate_key="too_many_attempts_weather", lang="settings.lang")
+@rate_limit_requests(
+    4, 60, translate_key="too_many_attempts_weather", lang="settings.lang"
+)
 @cache_with_ttl(3600)
 def fetch_forecast(settings: UserSettings, city: str) -> str:
     """
@@ -510,9 +516,13 @@ def parse_message(text: str) -> list[Event]:
         msg_date = m[0]
 
     for str_event in text.split("\n\n")[1:]:
-        if m := re.match(r"\A(\d{2}\.\d{2}\.\d{4})\.(\d+)\.(\S{1,3}(?:,\S{1,3}){0,4}) ", str_event):
+        if m := re.match(
+            r"\A(\d{2}\.\d{2}\.\d{4})\.(\d+)\.(\S{1,3}(?:,\S{1,3}){0,4}) ", str_event
+        ):
             event_date, event_id, event_status = m[1], m[2], m[3]
-        elif m := re.match(r"\A(10|[1-9])\.(\d+)\.(\S{1,3}(?:,\S{1,3}){0,4})", str_event):
+        elif m := re.match(
+            r"\A(10|[1-9])\.(\d+)\.(\S{1,3}(?:,\S{1,3}){0,4})", str_event
+        ):
             event_date, event_id, event_status = msg_date, m[2], m[3]
         else:
             continue

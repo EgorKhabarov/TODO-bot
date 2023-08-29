@@ -35,7 +35,9 @@ bot.set_my_commands(get_translate("0_command_list", "ru"), BotCommandScopeDefaul
 
 def check_user(func):
     @wraps(func)
-    @rate_limit_requests(200, 60 * 30, {"call.message.chat.id", "message.chat.id"}, send=True)
+    @rate_limit_requests(
+        200, 60 * 30, {"call.message.chat.id", "message.chat.id"}, send=True
+    )
     @rate_limit_requests(30, 60, {"call.message.chat.id", "message.chat.id"}, send=True)
     def wrapper(x: Message | CallbackQuery):
         if isinstance(x, Message):

@@ -527,12 +527,14 @@ UPDATE settings
             if action in ("status", "delete", "delete bin", "recover bin", "open"):
                 match action:
                     case "status":
-                        new_call_data = f"status_home_page {event.event_id} {event.date}"
+                        new_call_data = (
+                            f"status_home_page {event.event_id} {event.date}"
+                        )
                     case "delete":
                         new_call_data = f"before del {event.date} {event.event_id} _"
                     case "delete bin":
                         new_call_data = f"del {event.date} {event.event_id} bin delete"
-                    case  "recover bin":
+                    case "recover bin":
                         new_call_data = f"recover {event.date} {event.event_id}"
                     case _:  # "select event open"
                         new_call_data = f"{event.date}"
@@ -558,17 +560,23 @@ UPDATE settings
             else:
                 continue
 
-            button_title = (f"{event.date}.{event.event_id}.{event.status} "
-                            f"{event.text}{config.callbackTab * 20}")[:60]
-            button_title2 = (f"{event.event_id}.{event.status} "
-                             f"{event.text}{config.callbackTab * 20}")[:60]
+            button_title = (
+                f"{event.date}.{event.event_id}.{event.status} "
+                f"{event.text}{config.callbackTab * 20}"
+            )[:60]
+            button_title2 = (
+                f"{event.event_id}.{event.status} "
+                f"{event.text}{config.callbackTab * 20}"
+            )[:60]
 
             if action == "edit":
                 callback_data = (
                     f"event({event.date}, {event.event_id}, {message.message_id}).text\n"
                     f"{remove_html_escaping(event.text)}"
                 )
-                button = InlineKeyboardButton(button_title2, switch_inline_query_current_chat=callback_data)
+                button = InlineKeyboardButton(
+                    button_title2, switch_inline_query_current_chat=callback_data
+                )
 
             elif action in ("status", "delete"):  # Действия в обычном дне
                 if action == "status":
@@ -576,7 +584,9 @@ UPDATE settings
                 else:  # "delete"
                     callback_data = f"before del {event.date} {event.event_id} _"
 
-                button = InlineKeyboardButton(button_title2, callback_data=callback_data)
+                button = InlineKeyboardButton(
+                    button_title2, callback_data=callback_data
+                )
 
             elif action in ("delete bin", "recover bin"):  # Действия в корзине
                 if action == "delete bin":
