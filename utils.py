@@ -352,12 +352,8 @@ def fetch_forecast(settings: UserSettings, city: str) -> str:
     }
 
     citytimezone = timedelta(hours=weather["city"]["timezone"] // 60 // 60)
-    sunrise = str(
-        datetime.utcfromtimestamp(weather["city"]["sunrise"]) + citytimezone
-    ).split(" ")[-1]
-    sunset = str(
-        datetime.utcfromtimestamp(weather["city"]["sunset"]) + citytimezone
-    ).split(" ")[-1]
+    sunrise = datetime.utcfromtimestamp(weather['city']['sunrise']) + citytimezone
+    sunset = datetime.utcfromtimestamp(weather['city']['sunset']) + citytimezone
     result = f"{weather['city']['name']}\n☀ {sunrise}\n🌑 {sunset}"
 
     for hour in weather["list"]:

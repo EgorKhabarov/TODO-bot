@@ -697,7 +697,7 @@ UPDATE settings
                     *[
                         {f"{title}{config.callbackTab * 20}": f"{data}"}
                         for title, data in get_translate(
-                            "status_home_page", settings.lang
+                            "status page 0", settings.lang
                         ).items()
                     ],
                     {

@@ -353,7 +353,7 @@ Visibility <b>{}</b>m""",
         "ru": "Опустошить корзину",
         "en": "Emptify basket",
     },
-    "status_home_page": {
+    "status page 0": {
         "ru": {
             "🗂 Важность                           ": "status page 1",
             "🗂 Разное                             ": "status page 2",

@@ -58,10 +58,8 @@ def check_user(func):
 
         with db.connection(), db.cursor():
             user = User(chat_id)
-
             if user.settings.user_status == -1 and not is_admin_id(chat_id):
                 return
-
             res = func(x, user)
         return res
 
@@ -75,7 +73,6 @@ def message_handler(message: Message, user: User):
     Ловит команды от пользователей
     """
     user.settings.log("send", message.text)
-
     command_handler(user, message)
 
 
@@ -86,9 +83,7 @@ def callback_query_handler(call: CallbackQuery, user: User):
     Ловит нажатия на кнопки
     """
     settings = user.settings
-
     settings.log("pressed", call.data)
-
     callback_handler(
         user=user,
         settings=settings,
@@ -144,7 +139,6 @@ re_edit_event_date_message = re.compile(
 @check_user
 def edit_event_date_message(message: Message, user: User):
     settings = user.settings
-
     settings.log("send", "edit event date")
 
     event_id, message_id = re_edit_event_date_message.findall(message.text)[0]

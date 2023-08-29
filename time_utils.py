@@ -59,9 +59,8 @@ def year_info(year: int, lang: str) -> str:
     else:
         result += get_translate("not_leap", lang)
     result += " "
-    result += ("🐀", "🐂", "🐅", "🐇", "🐲", "🐍", "🐴", "🐐", "🐒", "🐓", "🐕", "🐖")[
-        (year - 4) % 12
-    ]
+    emoji = ("🐀", "🐂", "🐅", "🐇", "🐲", "🐍", "🐴", "🐐", "🐒", "🐓", "🐕", "🐖")
+    result += emoji[(year - 4) % 12]
     return result
 
 

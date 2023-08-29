@@ -77,8 +77,5 @@ def set_bot_commands(chat_id: int, user_status: int, lang: str) -> bool:
             scope=BotCommandScopeChat(chat_id),
         )
     except (ApiTelegramException, KeyError) as e:
-        logging.info(
-            f'[bot.py -> set_bot_commands -> "|"] '
-            f'(ApiTelegramException, KeyError) "{e}"'
-        )
+        logging.info(f'set_bot_commands (ApiTelegramException, KeyError) "{e}"')
         return False

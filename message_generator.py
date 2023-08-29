@@ -275,11 +275,11 @@ SELECT event_id,
                         status=event.status,
                         markdown_text=markdown(
                             event.text, event.status, self._settings.sub_urls
-                        ),
+                        ) if "{markdown_text" in args else "",
                         markdown_text_nourlsub=markdown(event.text, event.status),
                         days_before=f"({dbd})"
                         if (
-                            (dbd := days_before(event.date, event.status))
+                            (dbd := (days_before(event.date, event.status) if "{days_before" in args else ""))
                             != day.relatively_date
                         )
                         else "",
