@@ -109,18 +109,11 @@ class DataBase:
         self.sqlite_connection.close()
         return result
 
-    def __del__(self):
-        if self.sqlite_cursor:
-            self.sqlite_cursor.close()
-        if self.sqlite_connection:
-            self.sqlite_connection.close()
-
 
 class Event:
     """
     Событие
     """
-
     def __init__(
         self,
         event_id: int,

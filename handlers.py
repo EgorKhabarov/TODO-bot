@@ -60,6 +60,7 @@ from todoapi.utils import (
     is_premium_user,
     to_html_escaping,
     remove_html_escaping,
+    is_valid_year,
 )
 
 re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
@@ -961,7 +962,7 @@ UPDATE settings
         else:
             YY = int(year)
 
-        if 1980 <= YY <= 3000:
+        if is_valid_year(YY):
             markup = create_yearly_calendar_keyboard(
                 settings.timezone, settings.lang, chat_id, YY
             )
@@ -988,7 +989,7 @@ UPDATE settings
         else:
             YY_MM = [int(i) for i in call_data.split()[-2:]]
 
-        if 1980 <= YY_MM[0] <= 3000:
+        if is_valid_year(YY_MM[0]):
             markup = create_monthly_calendar_keyboard(
                 chat_id, settings.timezone, settings.lang, YY_MM
             )
@@ -1042,7 +1043,7 @@ UPDATE settings
     elif re_call_data_date.search(call_data):
         year = int(call_data[-4:])
         sleep(0.3)
-        if 1980 < year < 3000:
+        if is_valid_year(year):
             generated = daily_message(
                 settings,
                 chat_id,

@@ -10,7 +10,7 @@ from todoapi.utils import (
     remove_html_escaping,
     is_admin_id,
     sqlite_format_date,
-    is_premium_user,
+    is_premium_user, is_valid_year, to_valid_id
 )
 from todoapi.types import Event, UserSettings, Limit, db, export_cooldown
 
@@ -208,6 +208,8 @@ SELECT event_id,
 
         (False, "Text Is Too Big") - Текст слишком большой.
 
+        (False, "Invalid Date Format") - Формат даты неверный.
+
         (False, "Wrong Date") - Неверная дата.
 
         (False, "Limit Exceeded") - Лимит превышен.
@@ -217,8 +219,10 @@ SELECT event_id,
         if len(text) >= 3800:
             return False, "Text Is Too Big"
 
-        # Неверный формат или не входит в диапазон
-        if not re_date.match(date) or not 1980 < int(date[-4:]) < 3000:
+        if not re_date.match(date):
+            return False, "Invalid Date Format"
+
+        if not is_valid_year(int(date[-4:])):
             return False, "Wrong Date"
 
         if max(self.get_limits(date)) >= 100:
@@ -370,16 +374,19 @@ DELETE FROM events
 
         (False, "Invalid Date Format") - Формат даты неверный.
 
+        (False, "Wrong Date") - Неверная дата.
+
         (False, "Event Not Found") - Событие не найдено.
 
         (False, "Limit Exceeded") - Лимит превышен.
 
         (False, f"{Error}") - Ошибка sql.
         """
-        date_format = re.compile("\d{2}\.\d{2}\.\d{4}")
-
-        if not date_format.match(date):
+        if not re_date.match(date):
             return False, "Invalid Date Format"
+
+        if not is_valid_year(int(date[-4:])):
+            return False, "Wrong Date"
 
         event = self.get_event(event_id)[0]
 

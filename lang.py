@@ -64,12 +64,12 @@ translation = {
         "en": "Are you sure you want to delete",
     },
     "/deleted": {
-        "ru": "<b>Чтобы посмотреть удалённые напишите /deleted</b>",
-        "en": "<b>To see deleted write /deleted</b>",
+        "ru": "<b>Чтобы посмотреть удалённые события напишите /deleted</b>",
+        "en": "<b>To see deleted events write /deleted</b>",
     },
     "are_you_sure_edit": {
         "ru": "Вы точно хотите изменить тест события на: ",
-        "en": "You want to change the event text to:",
+        "en": "Are you sure you want to change the event text to:",
     },
     "deldate": {
         "ru": lambda x: f"<b>{x} {end('ru')(x)} до удаления</b>",
@@ -219,7 +219,6 @@ translation = {
         "ru": "Cобытия в ближайшие 7 дней",
         "en": "Events in the next 7 days",
     },
-
     "text": {
         "page": {
             "ru": "Страница",
@@ -436,7 +435,7 @@ The message for the day has buttons for changing or deleting events. If there ar
 Статусы "🗒" (Список) и "🧮" (Нумерованный список) размечают каждую строку своими эмодзи.
 Если поставить "-- " перед строкой, то на этой строке такая разметка применяться не будет.
 
-<b>На событии может быть максимум 5 статусов.</b>
+<b>Событие может иметь максимум 5 статусов.</b>
 
 Существуют несовместимые статусы.
 Их нельзя поместить вместе на одном событии.
@@ -444,7 +443,7 @@ The message for the day has buttons for changing or deleting events. If there ar
 Вот полный список несовместимых статусов:
 "🔗" (Ссылка) и "💻" (Код)
 "🪞" (Скрыто) и "💻" (Код)
-"🔗" (Ссылка) и "⛓" (Без сокращения ссылой)
+"🔗" (Ссылка) и "⛓" (Без сокращения ссылок)
 "🧮" (Нумерованный список) и "🗒" (Список)
 
 <b>Эффекты на статусах применяются только на отображении событий в сообщении.</b> Сам текст события не меняется.
@@ -462,10 +461,10 @@ Miscellaneous
 └─ Miscellaneous statuses.
 
 Effects
-└─ Statuses that add effects to events.
+└─ Statuses that add effects to the events.
 
 The statuses "🗒" (List) and "🧮" (Numbered list) annotate each line with their emojis.
-If you put "--" in front of a line, then this markup will not be applied on this line.
+If you put "--" in front of a line, then this markup do not apply on this line.
 
 <b>An event can have a maximum of 5 statuses.</b>
 
@@ -516,7 +515,7 @@ By default, regular users have the following limits:
 <b>80000</b> characters per year
 The maximum <b>general</b> limit for a normal user is <b>500</b> events and <b>100000</b> characters.
 
-If you exceed the limits, you will not be able to add new events and add new text to events. To make room for new events, you can delete old events or shorten their text.
+If you exceed the limits, you will not be able to add new events and add new text to events. To make a room for new events, you can delete old events or shorten their text.
 
 You can view your limits with the /account command
 """,
@@ -532,7 +531,7 @@ You can view your limits with the /account command
 При нажатии кнопки с датой в первом ряду вы попадете в список месяцев.
 Там вы сможете выбрать месяц выбранного года.
 
-В календаре существуют специальные обозначения для дней с событиями или сегодняшним числом.
+В календаре существуют специальные обозначения для дней с событиями или с сегодняшним числом.
 Вот значения символов обозначений:
 "#" - Сегодняшний номер дня (отображается в любых месяцах).
 "*" - В этот день есть события.
@@ -545,7 +544,7 @@ You can select a date by clicking on the day number button.
 You can select the year and month using the buttons below.
 With the "⟳" button, you can return to the current date and select the current day.
 
-When you click on a date button in the first row, you will enter the list of months.
+When you click on a date button in the first row, you will see the list of months.
 There, you can choose a month within the selected year.
 
 In the calendar, there are special symbols to indicate days with events or today's date.
@@ -561,9 +560,9 @@ Here are the meanings of the symbol notations:
 
 Сообщение отображает события на один день.
 
-Статусы в сообщении располагаются через одну пустую строку. Перед самим текстом события размещается строка с информацией о событии.
+Перед самим текстом события размещается строка с информацией о событии.
 Например: <pre>1.3.⬜️</pre>
-Тут 1 это порядковый номер событий в сообщении, 3 это id события, а ⬜️ это статусы, перечисленные через запятую.
+Тут 1 это порядковый номер события в сообщении, 3 это id события, а ⬜️ это статусы, перечисленные через запятую.
 
 Если событий на эту дату становится больше 10, то остальные события размещаются на других страницах. Максимум 10 событий на одну страницу. Кнопки переключения страниц появляются под кнопками управления и пронумерованы номерами страниц.
 
@@ -580,18 +579,18 @@ Here are the meanings of the symbol notations:
 🔄 - Обновить сообщение.
 Если у вас есть события с повторяющимися статусами на этот день, то ниже основной клавиатуры и кнопок страниц появится кнопка "📅" для просмотра списка таких событий. Кнопка "↖️" позволяет открыть сообщение на дату этого события.
 
-Для вызова сообщения, вы можете нажать кнопку в календаре или командой /today.
+Для вызова сообщения, вы можете нажать кнопку в календаре или использовать команду /today.
 """,
                 "en": """
 <u>Types of messages > <b>1 day</b></u>
 
 The message displays events for a single day.
 
-Statuses in the message are located through one empty line. Before the event text itself, a line with information about the event.
+The line with information about the event is situated one line higher than the text of the event.
 For example: <pre>1.3.⬜️</pre>
-Here 1 is the sequence number of the events in the message, 3 is the event id, and ⬜️ are the statuses separated by commas.
+Here 1 is the index number of the events in the message, 3 is the event id, and ⬜️ are the statuses separated by commas.
 
-If the number of events for this date exceeds 10, the remaining events are placed on other pages. A maximum of 10 events per page. Page navigation buttons are displayed below the control buttons and are numbered accordingly.
+If the number of events for this date exceeds 10, the remaining events are placed on other pages. There cannot be more than 10 events on one page. Page navigation buttons are displayed below the control buttons and are numbered accordingly.
 
 The order of events in the message can be changed in the settings. By default, events are arranged in ascending order of their id (from small to large).
 
@@ -601,10 +600,10 @@ Control buttons:
 🚩 - Change the event status.
 🗑 - Delete an event.
 🔙 - Go back.
-  &lt;   - Navigate back one day.
-  >   - Navigate forward one day.
+  &lt;   - Navigate one day back.
+  >   - Navigate one day forward.
 🔄 - Refresh the message.
-If you have events with recurring statuses on this day, below the main keyboard and page navigation buttons, there will be a "📅" button to view a list of such events. The "↖️" button allows you to open the message for the date of that event.
+If you have events with recurring statuses on this day, below the main keyboard and page navigation buttons there will be a "📅" button to view a list of such events. The "↖️" button allows you to open the message for the date of that event.
 
 To access the message, you can press the button in the calendar or use the command /today.
 """,
@@ -615,16 +614,12 @@ To access the message, you can press the button in the calendar or use the comma
 
 Отображает события на ближайшие 7 дней.
 
-# TODO Если есть события с одинаковыми статусами, которые попадают в этот промежуток времени, то они включаются в сообщение.
-
 Вызывается командой /week_event_list.
 """,
                 "en": """
 <u>Types of messages > <b>7 days</b></u>
 
 Displays events for the next 7 days.
-
-# TODO If there are events with the same statuses that fall within this time range, they are included in the message.
 
 Called by the command /week_event_list.
 """,
@@ -672,7 +667,7 @@ Regular users can only delete their event permanently.
 Premium users additionally have the option to move the event to the trash.
 <b>Events in the trash are stored for no more than 30 days!</b>
 
-In the trash, there is an option to restore the event to its original date.
+In the trash basket, there is an option to restore the event to its original date.
 
 Called by the command /deleted.
 """,
@@ -701,7 +696,7 @@ You can search for events by sending a message to the bot using the following te
 
 <b>Please note that the search query is case-sensitive!</b>
 
-The bot searches based on word occurrences in the text, date, and status.
+The bot looks for occurrences of the word in the text, date and status.
 It returns all events that have matches.
 
 For example, the request <code>#03.05. Music</code> will return all events that have the date 3rd May and contain the word "Music".
@@ -894,7 +889,7 @@ Visibility <b>{}</b>m""",
                         "🤨 Not sure                           ",
                     ),
                     (
-                        "🟧 Important but not so               ",
+                        "🟧 Not so important                   ",
                         "💡 Idea                                ",
                     ),
                 ),
@@ -1020,7 +1015,7 @@ Visibility <b>{}</b>m""",
         },
         "many_attempts_weather": {
             "ru": "Погоду запрашивали слишком часто. Повторите через {} секунд.",
-            "en": "The weather was asked too often. Retry in {} seconds.",
+            "en": "The weather was requested too often. Retry in {} seconds.",
         },
         "error": {
             "ru": "Произошла ошибка",
@@ -1033,12 +1028,12 @@ Visibility <b>{}</b>m""",
         "export": {
             "ru": "Нельзя так часто экспортировать данные\n"
             "Подождите ещё <b>{t} минут</b>",
-            "en": "You can't export data that often\n"
-            "Please wait another <b>{t} minutes</b>",
+            "en": "You can't export data so often\n"
+            "Please wait <b>{t} minutes</b>",
         },
         "deleted": {
             "ru": "Извините, вам эта команда не доступна",
-            "en": "Sorry, this command is not available to you",
+            "en": "Sorry, this command is not available for you",
         },
         "no_events_to_interact": {
             "ru": "Нет событий для взаимодействия",
@@ -1049,8 +1044,8 @@ Visibility <b>{}</b>m""",
             "en": "You are already on this page",
         },
         "status_already_posted": {
-            "ru": "Cтатус уже стоит на сообщении",
-            "en": "Status is already posted",
+            "ru": "Cтатус уже стоит на событии",
+            "en": "Status is already posted on event",
         },
         "more_5_statuses": {
             "ru": "Нельзя ставить больше 5 статусов",
@@ -1080,7 +1075,7 @@ Visibility <b>{}</b>m""",
         },
         "nothing_found": {
             "ru": "🕸  Ничего не нашлось🕷  🕸",
-            "en": "🕸  Nothing found🕷  🕸",
+            "en": "🕸  Nothing has found🕷  🕸",
         },
         "get_admin_rules": {
             "ru": "Пожалуйста, выдайте боту права администратора, чтобы сохранять чат в чистоте",

@@ -21,7 +21,7 @@ from buttons_utils import (
     create_monthly_calendar_keyboard,
 )
 from todoapi.types import db, UserSettings
-from todoapi.utils import sqlite_format_date, remove_html_escaping
+from todoapi.utils import sqlite_format_date, remove_html_escaping, is_valid_year
 
 re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
 
@@ -246,12 +246,12 @@ def daily_message(
     WHERE = f"user_id = {chat_id} AND date = '{date}' AND removal_time = 0"
 
     new_date = convert_date_format(date)
-    if 1980 < (new_date - timedelta(days=1)).year < 3000:
+    if is_valid_year((new_date - timedelta(days=1)).year):
         yesterday = (new_date - timedelta(days=1)).strftime("%d.%m.%Y")
     else:
         yesterday = "None"
 
-    if 1980 < (new_date + timedelta(days=1)).year < 3000:
+    if is_valid_year((new_date + timedelta(days=1)).year):
         tomorrow = (new_date + timedelta(days=1)).strftime("%d.%m.%Y")
     else:
         tomorrow = "None"
@@ -709,7 +709,7 @@ def account_message(settings: UserSettings, chat_id: int, message_text: str) -> 
             bot.send_message(chat_id, get_translate("errors.error", settings.lang))
             return
 
-        if not 1980 < date.year < 3000:
+        if not is_valid_year(date.year):
             bot.send_message(chat_id, get_translate("errors.error", settings.lang))
             return
 
