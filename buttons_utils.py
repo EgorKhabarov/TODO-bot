@@ -81,19 +81,21 @@ def create_monthly_calendar_keyboard(
     )
 
     # Дни в которые есть события
-    has_events = [
-        x[0]
+    has_events = {
+        x[0]: x[1]
         for x in db.execute(
             """
-SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT) 
+SELECT CAST (SUBSTR(date, 1, 2) AS INT) AS day_number,
+       COUNT(event_id) AS event_count
   FROM events
  WHERE user_id = ? AND 
        removal_time = 0 AND 
-       date LIKE ?;
-""",
+       date LIKE ?
+ GROUP BY day_number;
+    """,
             params=(chat_id, f"__.{MM:0>2}.{YY}"),
         )
-    ]
+    }
 
     # Дни рождения, праздники и каждый год или месяц
     every_year_or_month = [
@@ -139,7 +141,12 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
                 weekbuttons.append(InlineKeyboardButton("  ", callback_data="None"))
             else:
                 tag_today = "#" if day == today else ""
-                tag_event = "*" if day in has_events else ""
+                x = has_events.get(day)
+                tag_event = (
+                    "".join(
+                        calendar_event_count_template[int(ch)] for ch in str(x)
+                    ) if x < 10 else "*"
+                ) if x else ""
                 tag_birthday = (
                     "!" if (day in every_year_or_month or wd in every_week) else ""
                 )
@@ -175,19 +182,21 @@ def create_yearly_calendar_keyboard(
     Создаёт календарь из месяцев на определённый год и возвращает inline клавиатуру
     """
     # В этом году
-    month_list = [
-        x[0]
+    month_list = {
+        x[0]: x[1]
         for x in db.execute(
             """
-SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT) 
+SELECT CAST (SUBSTR(date, 4, 2) AS INT) AS month_number,
+       COUNT(event_id) AS event_count
   FROM events
  WHERE user_id = ? AND 
-       date LIKE ? AND 
-       removal_time = 0;
+       date LIKE ? AND
+       removal_time = 0
+ GROUP BY month_number;
 """,
             params=(chat_id, f"__.__.{YY}"),
         )
-    ]
+    }
 
     # Повторение каждый год
     every_year = [
@@ -230,7 +239,12 @@ SELECT date
         month_buttons.append({})
         for nameM, numm in row:
             tag_today = "#" if numm == now_month else ""
-            tag_event = "*" if numm in month_list else ""
+            x = month_list.get(numm)
+            tag_event = (
+                "".join(
+                    calendar_event_count_template[int(ch)] for ch in str(x)
+                ) if x < 1000 else "*"
+            ) if x else ""
             tag_birthday = "!" if (numm in every_year or every_month) else ""
             month_buttons[-1][
                 f"{tag_today}{nameM}{tag_event}{tag_birthday}"
@@ -256,6 +270,7 @@ def edit_button_attrs(
     button.__setattr__(new, val)
 
 
+calendar_event_count_template = ("⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹")
 backmarkup = generate_buttons([{"🔙": "back"}])
 delmarkup = generate_buttons([{"✖": "message_del"}])
 delopenmarkup = generate_buttons([{"✖": "message_del", "↖️": "select event open"}])
