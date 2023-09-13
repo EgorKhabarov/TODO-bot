@@ -10,5 +10,5 @@ VEDIS_PATH = os.getenv("VEDIS_PATH", r"database\export_cooldown.vedis")
 LOG_FILE = os.getenv("LOG_FILE", r"database\log.log")
 admin_id = (1563866138,)
 
-__version__ = "06.09.2023"
+__version__ = "13.09.2023"
 __autor__ = "EgorKhabarov"
