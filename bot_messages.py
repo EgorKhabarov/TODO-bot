@@ -411,47 +411,41 @@ SELECT GROUP_CONCAT(user_id, ',') AS user_id_list
             ]
             strdates = [date.strftime("%d.%m.%Y") for date in dates]
             weekdays = [
-                "0" if (w := date.weekday()) == 6 else str(w + 1) for date in dates[1:]
+                "0" if (w := date.weekday()) == 6 else str(w + 1) for date in dates[:2]
             ]
 
             WHERE = f"""
 user_id = {user_id} AND removal_time = 0
 AND
 (
-    ( -- На сегодняшние даты
-        (
-            status LIKE '%🔔%'
-            OR
-            status LIKE '%🔕%'
-        )
-        AND date='{strdates[0]}'
-    ) 
+    ( -- На сегодня и +1 день
+        date IN ('{strdates[0]}', '{strdates[1]}')
+    )
     OR
-    ( -- Совпадения сегодня и +1, +2, +3 и +7 дней
-        status LIKE '%🟥%'
-        AND date IN ({", ".join(f"'{date}'" for date in strdates)})
+    ( -- Совпадения на +2, +3 и +7 дней
+        date IN ({", ".join(f"'{date}'" for date in strdates[2:])})
+        AND status NOT LIKE '%🗞%'
     )
     OR
     ( -- Каждый год
-        (
+        SUBSTR(date, 1, 5) IN ({", ".join(f"'{date[:5]}'" for date in strdates)})
+        AND (
             status LIKE '%🎉%'
             OR
             status LIKE '%🎊%'
             OR
             status LIKE '%📆%'
         )
-        AND SUBSTR(date, 1, 5) IN ({", ".join(f"'{date[:5]}'" for date in strdates)})
     )
     OR
     ( -- Каждый месяц
-        status LIKE '%📅%'
-        AND SUBSTR(date, 1, 2) IN ({", ".join(f"'{date[:2]}'" for date in strdates)})
+        SUBSTR(date, 1, 2) IN ({", ".join(f"'{date[:2]}'" for date in strdates)})
+        AND status LIKE '%📅%'
     )
     OR
     ( -- Каждую неделю
-        status LIKE '%🗞%'
-        AND
         strftime('%w', {sqlite_format_date('date')}) IN ({", ".join(f"'{w}'" for w in weekdays)})
+        AND status LIKE '%🗞%'
     )
     OR
     ( -- Каждый день
