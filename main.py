@@ -37,10 +37,21 @@ def check_user(func):
     @wraps(func)
     def check_argument(_x: Message | CallbackQuery):
         if isinstance(_x, Message):
+            msg_check = re.compile(
+                fr"""(?x)(?s)
+\A
+/                               # Команда
+\w+                             # Текст команды
+(@{re.escape(bot.username)}\b)? # Необязательный username бота
+(\s|$)                          # Пробел или окончание строки
+.*                              # Необязательные аргументы команды
+\Z
+"""
+            )
             if (
                 _x.chat.type != "private"
                 and _x.text.startswith("/")
-                and not re.match(fr"\A/\w+@{re.escape(bot.username)}", _x.text)
+                and not msg_check.match(_x.text)
             ):
                 return
         elif isinstance(_x, CallbackQuery):
