@@ -25,6 +25,20 @@ from todoapi.types import db, UserSettings, Event
 re_edit_message = re.compile(
     r"\A@\w{5,32} event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.text(?:\n|\Z)"
 )
+msg_check = re.compile(
+    rf"""(?x)(?s)
+\A
+/                               # Команда
+\w+                             # Текст команды
+(@{re.escape(bot.username)}\b)? # Необязательный username бота
+(\s|$)                          # Пробел или окончание строки
+.*                              # Необязательные аргументы команды
+\Z
+"""
+)
+re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
+re_setuserstatus = re.compile(r"\A(\d+) (-1|0|1|2)\Z")
+re_d = re.compile(r"(\d+)")
 
 
 def markdown(text: str, statuses: str, sub_url: bool | int = False) -> str:

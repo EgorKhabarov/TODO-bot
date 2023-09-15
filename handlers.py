@@ -1,4 +1,3 @@
-import re
 from time import sleep
 from io import StringIO
 from sqlite3 import Error
@@ -54,6 +53,9 @@ from utils import (
     is_secure_chat,
     parse_message,
     update_userinfo,
+    re_setuserstatus,
+    re_d,
+    re_call_data_date,
 )
 from todoapi.api import User
 from todoapi.types import db, UserSettings
@@ -64,8 +66,6 @@ from todoapi.utils import (
     remove_html_escaping,
     is_valid_year,
 )
-
-re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
 
 
 def command_handler(user: User, message: Message) -> None:
@@ -248,7 +248,7 @@ def command_handler(user: User, message: Message) -> None:
 
     elif message_text.startswith("/setuserstatus") and is_secure_chat(message):
         message_text = message_text.removeprefix("/setuserstatus ")
-        res = re.compile(r"\A(\d+) (-1|0|1|2)\Z").findall(message_text)
+        res = re_setuserstatus.findall(message_text)
         if res:
             user_id, user_status = [int(x) for x in res[0]]
 
@@ -331,7 +331,7 @@ SyntaxError
 
     elif message_text.startswith("/deleteuser") and is_admin_id(chat_id):
         message_text = message_text.removeprefix("/deleteuser ")
-        res = re.compile(r"(\d+)").findall(message_text)
+        res = re_d.findall(message_text)
         response = None
 
         if res:

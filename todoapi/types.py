@@ -1,4 +1,3 @@
-import re
 import json
 import logging
 from time import time
@@ -10,7 +9,7 @@ from contextlib import contextmanager
 from vedis import Vedis
 
 import todoapi.config as config
-
+from todoapi.utils import sql_date_pattern
 
 limits = {
     -1: {
@@ -132,14 +131,13 @@ class Event:
         self.removal_time = removal_time
         self.adding_time = adding_time
         self.recent_changes_time = recent_changes_time
-        self._sql_date_pattern = re.compile(r"\d{4}-\d{2}-\d{2}")
 
     def days_before_delete(self) -> int:
         """
         Вычисляет количество дней до удаления события из корзины.
         Если событие уже должно быть удалено, возвращает -1.
         """
-        if self._sql_date_pattern.match(self.removal_time):
+        if sql_date_pattern.match(self.removal_time):
             _d1 = datetime.utcnow()
             _d2 = datetime(*[int(i) for i in self.removal_time.split("-")])
             _days = 30 - (_d1 - _d2).days

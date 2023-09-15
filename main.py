@@ -1,4 +1,3 @@
-import re
 from time import sleep
 from functools import wraps
 from threading import Thread
@@ -15,8 +14,8 @@ from bot_actions import (
     confirm_changes_message,
 )
 from buttons_utils import delmarkup
-from utils import poke_link, re_edit_message, rate_limit_requests
 from handlers import command_handler, callback_handler, clear_state
+from utils import poke_link, re_edit_message, rate_limit_requests, msg_check
 from bot_messages import search_message, notifications_message, settings_message
 from todoapi.types import db
 from todoapi.logger import logging
@@ -35,17 +34,6 @@ def check_user(func):
     @wraps(func)
     def check_argument(_x: Message | CallbackQuery):
         if isinstance(_x, Message):
-            msg_check = re.compile(
-                rf"""(?x)(?s)
-\A
-/                               # Команда
-\w+                             # Текст команды
-(@{re.escape(bot.username)}\b)? # Необязательный username бота
-(\s|$)                          # Пробел или окончание строки
-.*                              # Необязательные аргументы команды
-\Z
-"""
-            )
             if (
                 _x.chat.type != "private"
                 and _x.text.startswith("/")

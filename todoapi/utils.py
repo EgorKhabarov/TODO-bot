@@ -3,6 +3,10 @@ from urllib.parse import urlparse
 
 import todoapi.config as config
 
+re_date = re.compile(r"\A\d{2}\.\d{2}\.\d{4}\Z")
+sql_date_pattern = re.compile(r"\d{4}-\d{2}-\d{2}")
+link_sub = re.compile(r"<a href=\"(.+?)\">(.+?)(\n*?)</a>")
+
 
 def html_to_markdown(html_text: str) -> str:
     for (k1, k2), v in {
@@ -29,7 +33,7 @@ def html_to_markdown(html_text: str) -> str:
 
         return f"{url}{text}{m.group(3)}"
 
-    html_text = re.sub(r"<a href=\"(.+?)\">(.+?)(\n*?)</a>", replace_url, html_text)
+    html_text = link_sub.sub(replace_url, html_text)
     return html_text
 
 

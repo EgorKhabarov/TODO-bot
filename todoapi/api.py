@@ -1,22 +1,20 @@
 import csv
-import re
 from io import StringIO
 from sqlite3 import Error
 from typing import Literal
 
 from todoapi.utils import (
+    remove_html_escaping,
+    sqlite_format_date,
     html_to_markdown,
     to_html_escaping,
-    remove_html_escaping,
-    is_admin_id,
-    sqlite_format_date,
     is_premium_user,
     is_valid_year,
+    is_admin_id,
     to_valid_id,
+    re_date,
 )
 from todoapi.types import Event, UserSettings, Limit, db, export_cooldown
-
-re_date = re.compile(r"\A\d{2}\.\d{2}\.\d{4}\Z")
 
 
 class User:

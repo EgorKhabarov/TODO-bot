@@ -1,4 +1,3 @@
-import re
 import logging
 from datetime import timedelta, datetime
 
@@ -8,8 +7,8 @@ from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
 from bot import bot
 from lang import get_translate
 from limits import create_image
-from utils import update_userinfo
 from sql_utils import sqlite_format_date2
+from utils import update_userinfo, re_call_data_date
 from message_generator import EventMessageGenerator, NoEventMessage
 from time_utils import convert_date_format, now_time, now_time_strftime
 from buttons_utils import (
@@ -22,8 +21,6 @@ from buttons_utils import (
 )
 from todoapi.types import db, UserSettings
 from todoapi.utils import sqlite_format_date, remove_html_escaping, is_valid_year
-
-re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
 
 
 def search_message(
@@ -58,10 +55,10 @@ def search_message(
     """
     translate_search = get_translate("messages.search", settings.lang)
 
-    if not re.match(r"\S", query):
+    if query.isspace():
         generated = EventMessageGenerator(settings, reply_markup=delmarkup)
         generated.format(
-            title=f"🔍 {translate_search} {query}:\n",
+            title=f"🔍 {translate_search} {query.strip()}:\n",
             if_empty=get_translate("errors.request_empty", settings.lang),
         )
         return generated
@@ -72,11 +69,10 @@ def search_message(
     # re_id = re.compile(r"[#\b ]id=(\d{,6})[\b]?")
     # re_status = re.compile(r"[#\b ]status=(\S+)[\b]?")
 
-    querylst = query.replace("\n", " ").split()
     splitquery = " OR ".join(
         f"date LIKE '%{x}%' OR text LIKE '%{x}%' OR "
         f"status LIKE '%{x}%' OR event_id LIKE '%{x}%'"
-        for x in querylst
+        for x in query.replace("\n", " ").strip().split()
     )
     WHERE = f"(user_id = {chat_id} AND removal_time = 0) AND ({splitquery})"
 
