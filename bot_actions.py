@@ -193,7 +193,9 @@ def confirm_changes_message(user: User, message: Message):
     # Вычисляем сколько символов добавил пользователь. Если символов стало меньше, то 0.
     added_length = 0 if tag_len_less else new_event_len - len_old_event
 
-    tag_limit_exceeded = user.check_limit(event_date, symbol_count=added_length)[1] is True
+    tag_limit_exceeded = (
+        user.check_limit(event_date, symbol_count=added_length)[1] is True
+    )
 
     if tag_len_max:
         translate = get_translate("errors.message_is_too_long", settings.lang)
@@ -275,10 +277,12 @@ def before_move_message(
             },
             {
                 f"✏️📅 {edit_date}": "edit_event_date",
-            } if not in_wastebasket else {},
+            }
+            if not in_wastebasket
+            else {},
             {
                 "🔙": "back" if not in_wastebasket else "back bin",
-            }
+            },
         ]
     )
 

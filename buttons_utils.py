@@ -147,10 +147,14 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
                 tag_today = "#" if day == today else ""
                 x = has_events.get(day)
                 tag_event = (
-                    "".join(
-                        calendar_event_count_template[int(ch)] for ch in str(x)
-                    ) if x < 10 else "*"
-                ) if x else ""
+                    (
+                        "".join(calendar_event_count_template[int(ch)] for ch in str(x))
+                        if x < 10
+                        else "*"
+                    )
+                    if x
+                    else ""
+                )
                 tag_birthday = (
                     "!" if (day in every_year_or_month or wd in every_week) else ""
                 )
@@ -256,10 +260,14 @@ SELECT date
             tag_today = "#" if numm == now_month else ""
             x = month_list.get(numm)
             tag_event = (
-                "".join(
-                    calendar_event_count_template[int(ch)] for ch in str(x)
-                ) if x < 1000 else "*"
-            ) if x else ""
+                (
+                    "".join(calendar_event_count_template[int(ch)] for ch in str(x))
+                    if x < 1000
+                    else "*"
+                )
+                if x
+                else ""
+            )
             tag_birthday = "!" if (numm in every_year or every_month) else ""
             month_buttons[-1][
                 f"{tag_today}{nameM}{tag_event}{tag_birthday}"

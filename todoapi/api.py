@@ -10,7 +10,9 @@ from todoapi.utils import (
     remove_html_escaping,
     is_admin_id,
     sqlite_format_date,
-    is_premium_user, is_valid_year, to_valid_id
+    is_premium_user,
+    is_valid_year,
+    to_valid_id,
 )
 from todoapi.types import Event, UserSettings, Limit, db, export_cooldown
 
@@ -22,7 +24,9 @@ class User:
         self.user_id = int(user_id)
         self.settings: UserSettings = settings or UserSettings(user_id)
 
-    def check_event(self, event_id: int, in_wastebasket: bool = False) -> tuple[bool, bool | str]:
+    def check_event(
+        self, event_id: int, in_wastebasket: bool = False
+    ) -> tuple[bool, bool | str]:
         """
         Возвращает есть ли событие в базе данных
 
@@ -54,7 +58,7 @@ SELECT 1
                         event_id,
                     ),
                 )
-            )
+            ),
         )
 
     @staticmethod
@@ -75,7 +79,7 @@ SELECT 1
 """,
                     params=(user_id,),
                 )
-            )
+            ),
         )
 
     def get_limits(
@@ -111,7 +115,9 @@ SELECT 1
             return False, "Wrong Date"
 
         limit = Limit(self.user_id, self.settings.user_status, date)
-        return True, limit.is_exceeded(event_count=event_count, symbol_count=symbol_count)
+        return True, limit.is_exceeded(
+            event_count=event_count, symbol_count=symbol_count
+        )
 
     def get_event(
         self, event_id: int, in_wastebasket: bool = False
@@ -413,7 +419,10 @@ DELETE FROM events
 
         event = api_response[1]
 
-        if self.check_limit(date, event_count=1, symbol_count=len(event.text))[1] is True:
+        if (
+            self.check_limit(date, event_count=1, symbol_count=len(event.text))[1]
+            is True
+        ):
             return False, "Limit Exceeded"
 
         try:

@@ -79,6 +79,7 @@ def is_premium_user(user) -> bool:
     """
     return user.settings.user_status >= 1 or is_admin_id(user.user_id)
 
+
 def to_valid_id(x_id: int | str) -> int:
     """
     Вернёт валидный id.
@@ -88,6 +89,7 @@ def to_valid_id(x_id: int | str) -> int:
         x_id = int(x_id)
 
     return x_id if 0 < x_id else 0
+
 
 def is_valid_year(year: int) -> bool:
     """

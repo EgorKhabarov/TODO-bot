@@ -324,8 +324,6 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 >www.youtube.com</a> <i>instead of full link</i>)
 **<i>Reply to this message with a city name</i>""",
         },
-        "dayly": {
-        },
         "help": {
             "title": {
                 "ru": "📚 Помощь 📚",
@@ -829,7 +827,9 @@ Visibility <b>{}</b>m""",
                     BotCommand("save_to_csv", "Сохранить мои данные в csv"),
                     BotCommand("help", "Помощь"),
                     BotCommand("settings", "Настройки"),
-                    BotCommand("setuserstatus", "{id} {status} Изменить статус пользователя"),
+                    BotCommand(
+                        "setuserstatus", "{id} {status} Изменить статус пользователя"
+                    ),
                     BotCommand("deleteuser", "{id} Удалить пользователя"),
                     BotCommand("commands", "Список команд"),
                 ],
@@ -1014,7 +1014,7 @@ Visibility <b>{}</b>m""",
                     ("📬 Repeat every day                   ",),
                 ),
             },
-        }
+        },
     },
     "errors": {
         "many_attempts": {
@@ -1036,8 +1036,7 @@ Visibility <b>{}</b>m""",
         "export": {
             "ru": "Нельзя так часто экспортировать данные\n"
             "Подождите ещё <b>{t} минут</b>",
-            "en": "You can't export data so often\n"
-            "Please wait <b>{t} minutes</b>",
+            "en": "You can't export data so often\nPlease wait <b>{t} minutes</b>",
         },
         "deleted": {
             "ru": "Извините, вам эта команда не доступна",

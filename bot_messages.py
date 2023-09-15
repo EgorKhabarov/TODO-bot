@@ -645,7 +645,11 @@ def settings_message(settings: UserSettings) -> NoEventMessage:
             },
             time_zone_dict,
             notifications_time,
-            {get_translate("text.restore_to_default", settings.lang): "restore_to_default"},
+            {
+                get_translate(
+                    "text.restore_to_default", settings.lang
+                ): "restore_to_default"
+            },
             {"✖": "message_del"},
         ]
     )
@@ -691,11 +695,7 @@ def monthly_calendar_message(
 ) -> NoEventMessage:
     text = custom_text if custom_text else get_translate("select.date", settings.lang)
     markup = create_monthly_calendar_keyboard(
-        chat_id,
-        settings.timezone,
-        settings.lang,
-        command=command,
-        back=back
+        chat_id, settings.timezone, settings.lang, command=command, back=back
     )
     return NoEventMessage(text, markup)
 

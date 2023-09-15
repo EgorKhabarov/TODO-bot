@@ -52,7 +52,8 @@ from utils import (
     write_table_to_str,
     markdown,
     is_secure_chat,
-    parse_message, update_userinfo,
+    parse_message,
+    update_userinfo,
 )
 from todoapi.api import User
 from todoapi.types import db, UserSettings
@@ -233,7 +234,9 @@ def command_handler(user: User, message: Message) -> None:
                 bot.send_document(chat_id, InputFile(response))
             except ApiTelegramException as e:
                 logging.info(f'save_to_csv ApiTelegramException "{e}"')
-                big_file_translate = get_translate("errors.file_is_too_big", settings.lang)
+                big_file_translate = get_translate(
+                    "errors.file_is_too_big", settings.lang
+                )
                 bot.send_message(chat_id=chat_id, text=big_file_translate)
         else:
             export_error = get_translate("errors.export", settings.lang)
@@ -717,7 +720,10 @@ UPDATE settings
                 ]
             )
         else:  # status page
-            buttons_data = get_translate(f"buttons.status page.{call_data.removeprefix('status page ')}", settings.lang)
+            buttons_data = get_translate(
+                f"buttons.status page.{call_data.removeprefix('status page ')}",
+                settings.lang,
+            )
             markup = generate_buttons(
                 [
                     *[
@@ -1095,9 +1101,16 @@ UPDATE settings
 
     elif call_data.startswith("edit_event_date"):
         if call_data == "edit_event_date":
-            event_date, event_id = message_text[:10], message_text.split(".", maxsplit=4)[-2]
-            event_text = message_text.split("\n", maxsplit=2)[2].rsplit("\n", maxsplit=2)[0]
-            event_status = message_text.split(" ", maxsplit=1)[0].split(".", maxsplit=4)[4]
+            event_date, event_id = (
+                message_text[:10],
+                message_text.split(".", maxsplit=4)[-2],
+            )
+            event_text = message_text.split("\n", maxsplit=2)[2].rsplit(
+                "\n", maxsplit=2
+            )[0]
+            event_status = message_text.split(" ", maxsplit=1)[0].split(
+                ".", maxsplit=4
+            )[4]
             back = event_date
 
             # Error code: 400. Description: Bad Request: BUTTON_DATA_INVALID"
@@ -1108,7 +1121,8 @@ UPDATE settings
                 chat_id,
                 command=f"edit_event_date {event_id}",
                 back=back,
-                custom_text=get_translate("select.new_date", settings.lang) + f":\n<b>{event_date}.{event_id}.</b>{event_status}\n{event_text}"
+                custom_text=get_translate("select.new_date", settings.lang)
+                + f":\n<b>{event_date}.{event_id}.</b>{event_status}\n{event_text}",
             )
             generated.edit(chat_id, message_id)
         else:
@@ -1120,11 +1134,18 @@ UPDATE settings
                     update_message_action(settings, chat_id, message_id, event_date)
                 except ApiTelegramException:
                     pass
-                CallBackAnswer(get_translate("changes_saved", settings.lang)).answer(call_id)
+                CallBackAnswer(
+                    get_translate("changes_saved", settings.lang)
+                ).answer(call_id)
             elif error_text == "Limit Exceeded":
-                CallBackAnswer(get_translate("limit_exceeded", settings.lang)).answer(call_id)
+                CallBackAnswer(
+                    get_translate("limit_exceeded", settings.lang)
+                ).answer(call_id)
             else:
-                CallBackAnswer(get_translate("errors.error", settings.lang)).answer(call_id)
+                CallBackAnswer(
+                    get_translate("errors.error", settings.lang)
+                ).answer(call_id)
+
 
 def clear_state(chat_id: int | str):
     """

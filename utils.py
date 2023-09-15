@@ -352,8 +352,8 @@ def fetch_forecast(settings: UserSettings, city: str) -> str:
     }
 
     citytimezone = timedelta(hours=weather["city"]["timezone"] // 60 // 60)
-    sunrise = datetime.utcfromtimestamp(weather['city']['sunrise']) + citytimezone
-    sunset = datetime.utcfromtimestamp(weather['city']['sunset']) + citytimezone
+    sunrise = datetime.utcfromtimestamp(weather["city"]["sunrise"]) + citytimezone
+    sunset = datetime.utcfromtimestamp(weather["city"]["sunset"]) + citytimezone
     result = f"{weather['city']['name']}\n☀ {sunrise}\n🌑 {sunset}"
 
     for hour in weather["list"]:
@@ -533,6 +533,7 @@ def parse_message(text: str) -> list[Event]:
         )
 
     return event_list
+
 
 def update_userinfo(chat_id):
     chat = bot.get_chat(chat_id)

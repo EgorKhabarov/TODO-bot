@@ -38,7 +38,7 @@ def check_user(func):
     def check_argument(_x: Message | CallbackQuery):
         if isinstance(_x, Message):
             msg_check = re.compile(
-                fr"""(?x)(?s)
+                rf"""(?x)(?s)
 \A
 /                               # Команда
 \w+                             # Текст команды
@@ -63,7 +63,9 @@ def check_user(func):
         @rate_limit_requests(
             200, 60 * 30, {"call.message.chat.id", "message.chat.id"}, send=True
         )
-        @rate_limit_requests(30, 60, {"call.message.chat.id", "message.chat.id"}, send=True)
+        @rate_limit_requests(
+            30, 60, {"call.message.chat.id", "message.chat.id"}, send=True
+        )
         def wrapper(x: Message | CallbackQuery):
             if isinstance(x, Message):
                 chat_id = x.chat.id
@@ -157,39 +159,6 @@ def processing_edit_message(message: Message, user: User):
         delete_message_action(settings, message)
 
 
-re_edit_event_date_message = re.compile(
-    r"\A@\w{5,32} event\((\d+), (\d+)\)\.date(?:\n|\Z)"
-)
-
-
-@bot.message_handler(func=lambda m: re_edit_event_date_message.search(m.text))
-@check_user
-def edit_event_date_message(message: Message, user: User):
-    settings = user.settings
-    settings.log("send", "edit event date")
-
-    event_id, message_id = re_edit_event_date_message.findall(message.text)[0]
-    event_id, message_id = int(event_id), int(message_id)
-    chat_id = message.chat.id
-
-    lines = message.text.split("\n")
-    if (
-        len(lines) != 2
-        or re_date.match(lines[1]) is None
-        or not user.edit_event_date(event_id, lines[1])[0]
-    ):
-        NoEventMessage(get_translate("errors.error", settings.lang)).reply(message)
-        return
-
-    try:
-        update_message_action(settings, chat_id, message_id, lines[1])
-    except ValueError:
-        NoEventMessage(get_translate("errors.error", settings.lang)).reply(message)
-        return
-
-    delete_message_action(settings, message)
-
-
 @bot.message_handler(
     func=lambda m: (
         m.reply_to_message
@@ -263,7 +232,12 @@ SELECT add_event_date
         bot.reply_to(message, message_is_too_long, reply_markup=delmarkup)
         return
 
-    if user.check_limit(new_event_date, event_count=1, symbol_count=len(markdown_text))[1] is True:
+    if (
+        user.check_limit(
+            new_event_date, event_count=1, symbol_count=len(markdown_text)
+        )[1]
+        is True
+    ):
         exceeded_limit = get_translate("errors.exceeded_limit", settings.lang)
         bot.reply_to(message, exceeded_limit, reply_markup=delmarkup)
         return

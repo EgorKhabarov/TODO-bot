@@ -114,6 +114,7 @@ class Event:
     """
     Событие
     """
+
     def __init__(
         self,
         event_id: int,
