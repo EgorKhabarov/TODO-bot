@@ -1134,17 +1134,14 @@ UPDATE settings
                     update_message_action(settings, chat_id, message_id, event_date)
                 except ApiTelegramException:
                     pass
-                CallBackAnswer(
-                    get_translate("changes_saved", settings.lang)
-                ).answer(call_id)
+                text = get_translate("changes_saved", settings.lang)
+                CallBackAnswer(text).answer(call_id)
             elif error_text == "Limit Exceeded":
-                CallBackAnswer(
-                    get_translate("limit_exceeded", settings.lang)
-                ).answer(call_id)
+                text = get_translate("limit_exceeded", settings.lang)
+                CallBackAnswer(text).answer(call_id)
             else:
-                CallBackAnswer(
-                    get_translate("errors.error", settings.lang)
-                ).answer(call_id)
+                text = get_translate("errors.error", settings.lang)
+                CallBackAnswer(text).answer(call_id)
 
 
 def clear_state(chat_id: int | str):
