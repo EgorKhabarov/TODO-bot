@@ -87,6 +87,10 @@ translation = {
         "ru": "Восстановить",
         "en": "Recover",
     },
+    "changes_saved": {
+        "ru": "Изменения сохранены",
+        "en": "Changes saved",
+    },
     "account": {
         "ru": (
             "Событий в день",

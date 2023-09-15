@@ -503,6 +503,7 @@ UPDATE settings
             return
 
         update_message_action(settings, chat_id, message_id, message_text)
+        CallBackAnswer(get_translate("changes_saved", settings.lang)).answer(call_id)
 
     elif call_data.startswith("select event "):
         # TODO переписать с использованием функции parse_message
