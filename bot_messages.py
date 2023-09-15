@@ -196,7 +196,7 @@ DELETE FROM events
         [
             {
                 "✖": "message_del",
-                f"❌ {delete_permanently_translate}": "select event delete bin",
+                f"❌ {delete_permanently_translate}": "select event move bin",
             },
             {
                 "🔄": "update",
@@ -262,7 +262,7 @@ def daily_message(
                 "➕": "event_add",
                 "📝": "select event edit",
                 "🚩": "select event status",
-                "🗑": "select event delete",
+                "🔀": "select event move",
             },
             {
                 "🔙": "calendar",
@@ -682,9 +682,21 @@ def help_message(settings: UserSettings, path: str = "page 1") -> NoEventMessage
     return generated
 
 
-def monthly_calendar_message(settings: UserSettings, chat_id: int) -> NoEventMessage:
-    text = get_translate("select.date", settings.lang)
-    markup = create_monthly_calendar_keyboard(chat_id, settings.timezone, settings.lang)
+def monthly_calendar_message(
+    settings: UserSettings,
+    chat_id: int,
+    command: str | None = None,
+    back: str | None = None,
+    custom_text: str | None = None,
+) -> NoEventMessage:
+    text = custom_text if custom_text else get_translate("select.date", settings.lang)
+    markup = create_monthly_calendar_keyboard(
+        chat_id,
+        settings.timezone,
+        settings.lang,
+        command=command,
+        back=back
+    )
     return NoEventMessage(text, markup)
 
 

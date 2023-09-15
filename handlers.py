@@ -1,7 +1,8 @@
 import re
-from io import StringIO
 from time import sleep
+from io import StringIO
 from sqlite3 import Error
+from ast import literal_eval
 
 from telebot.apihelper import ApiTelegramException
 from telebot.types import (
@@ -22,7 +23,7 @@ from bot_actions import (
     press_back_action,
     update_message_action,
     re_date,
-    before_del_message,
+    before_move_message,
 )
 from buttons_utils import (
     create_monthly_calendar_keyboard,
@@ -424,9 +425,9 @@ def callback_handler(
     "select event edit" - Если событий несколько, то предлагает выбрать конкретное для изменения текста.
     "select event status" - Если событий несколько, то предлагает выбрать конкретное для изменения статуса.
                      Если событие одно, то предлагает сразу для него изменить статус.
-    "select event delete" - Если событий несколько, то предлагает выбрать конкретное для удаления или *перемещение в корзину. *в зависимости от прав пользователя
+    "select event move" - Если событий несколько, то предлагает выбрать конкретное для удаления или *перемещение в корзину. *в зависимости от прав пользователя
                   Если событие одно, то предлагает сразу для него удалить или *переместить в корзину. *в зависимости от прав пользователя
-    "select event delete bin" - Делает то же самое что "select event delete" но после выполнения возвращает сообщение в корзину.
+    "select event move bin" - Делает то же самое что "select event delete" но после выполнения возвращает сообщение в корзину.
     "select event recover bin" -
     "select event open" - Открывает день выбранного события.
     "recover" - Восстанавливает событие из корзины.
@@ -437,8 +438,8 @@ def callback_handler(
     "before del" - Подтверждение удаления события.
     "del" - Удаление события.
     "|" - Меняет страничку.
-    "generate calendar month" -
-    "generate calendar days" -
+    "calendar_y" -
+    "calendar_m" -
     "settings" - par_name, par_val - Изменить значение колонки par_name на par_val и обновить сообщение с новыми настройками
     "recurring" - Вызвать сообщение с повторяющимися событиями. Например, дни рождения за прошлые года.
     "<<<", ">>>" - Изменение на 1 день в сообщении на дату.
@@ -451,7 +452,7 @@ def callback_handler(
         date = message_text[:10]
 
         # Проверяем будет ли превышен лимит для пользователя, если добавить 1 событие с 1 символом
-        if user.check_limit(date, event_count=1, symbol_count=1):
+        if user.check_limit(date, event_count=1, symbol_count=1)[1] is True:
             text = get_translate("errors.exceeded_limit", settings.lang)
             CallBackAnswer(text).answer(call_id, True)
             return
@@ -522,20 +523,20 @@ UPDATE settings
         # Если событие одно, то оно сразу выбирается
         if len(events_list) == 1:
             event = events_list[0]
-            if not user.check_event(event.event_id, action.endswith("bin")):
+            if not user.check_event(event.event_id, action.endswith("bin"))[1]:
                 update_message_action(settings, chat_id, message_id, message_text)
                 return
 
-            if action in ("status", "delete", "delete bin", "recover bin", "open"):
+            if action in ("status", "move", "move bin", "recover bin", "open"):
                 match action:
                     case "status":
                         new_call_data = (
                             f"status_home_page {event.event_id} {event.date}"
                         )
-                    case "delete":
-                        new_call_data = f"before del {event.date} {event.event_id} _"
-                    case "delete bin":
-                        new_call_data = f"del {event.date} {event.event_id} bin delete"
+                    case "move":
+                        new_call_data = f"before move {event.date} {event.event_id} _"
+                    case "move bin":
+                        new_call_data = f"move {event.date} {event.event_id} bin delete"
                     case "recover bin":
                         new_call_data = f"recover {event.date} {event.event_id}"
                     case _:  # "select event open"
@@ -555,13 +556,12 @@ UPDATE settings
 
         markup = InlineKeyboardMarkup()
         for event in events_list:
-            # Проверяем существование события
-            response = user.get_event(event.event_id, action.endswith("bin"))[0]
-            if response:
-                event.text = response.text
-            else:
+            api_response = user.get_event(event.event_id, action.endswith("bin"))
+
+            if not api_response[0]:  # Проверяем существование события
                 continue
 
+            event.text = api_response[1].text
             button_title = (
                 f"{event.date}.{event.event_id}.{event.status} "
                 f"{event.text}{config.callbackTab * 20}"
@@ -580,19 +580,19 @@ UPDATE settings
                     button_title2, switch_inline_query_current_chat=callback_data
                 )
 
-            elif action in ("status", "delete"):  # Действия в обычном дне
+            elif action in ("status", "move"):  # Действия в обычном дне
                 if action == "status":
                     callback_data = f"status_home_page {event.event_id} {event.date}"
                 else:  # "delete"
-                    callback_data = f"before del {event.date} {event.event_id} _"
+                    callback_data = f"before move {event.date} {event.event_id} _"
 
                 button = InlineKeyboardButton(
                     button_title2, callback_data=callback_data
                 )
 
-            elif action in ("delete bin", "recover bin"):  # Действия в корзине
-                if action == "delete bin":
-                    callback_data = f"del {event.date} {event.event_id} bin delete"
+            elif action in ("move bin", "recover bin"):  # Действия в корзине
+                if action == "move bin":
+                    callback_data = f"move {event.date} {event.event_id} bin delete"
                 else:  # "recover bin"
                     callback_data = f"recover {event.date} {event.event_id}"
 
@@ -625,13 +625,13 @@ UPDATE settings
             select_event = get_translate("select.event_to_change_status", settings.lang)
             text = f"{msg_date}\n{select_event}"
 
-        elif action == "delete":
-            select_event = get_translate("select.event_to_delete", settings.lang)
+        elif action == "move":
+            select_event = get_translate("select.event_to_move", settings.lang)
             text = f"{msg_date}\n{select_event}"
 
-        elif action == "delete bin":
+        elif action == "move bin":
             basket = get_translate("messages.basket", settings.lang)
-            select_event = get_translate("select.event_to_delete", settings.lang)
+            select_event = get_translate("select.event_to_move", settings.lang)
             text = f"{basket}\n{select_event}"
 
         elif action == "recover bin":
@@ -683,12 +683,13 @@ UPDATE settings
             event_date, event_id = args[0], args[2].split(".", maxsplit=4)[3]
 
         # Проверяем наличие события
-        event = user.get_event(event_id)[0]
+        api_response = user.get_event(event_id)
 
-        if event is False:  # Если этого события нет
+        if not api_response[0]:  # Если этого события нет
             press_back_action(settings, call_data, chat_id, message_id, message_text)
             return
 
+        event = api_response[1]
         text, status = event.text, event.status
 
         if call_data.startswith("status_home_page"):
@@ -759,13 +760,13 @@ UPDATE settings
         event_id = int(event_id)
 
         # Если события нет, то обновляем сообщение
-        response, error_text = user.get_event(event_id)
+        api_response = user.get_event(event_id)
 
-        if not response:
+        if not api_response[0]:
             press_back_action(settings, call_data, chat_id, message_id, message_text)
             return
 
-        old_status = response.status
+        old_status = api_response[1].status
 
         if new_status == "⬜️" == old_status:
             press_back_action(settings, call_data, chat_id, message_id, message_text)
@@ -816,13 +817,14 @@ UPDATE settings
         event_id = int(event_id)
 
         # Если события нет, то обновляем сообщение
-        response, error_text = user.get_event(event_id)
+        api_response = user.get_event(event_id)
 
-        if not response:
+        if not api_response[0]:
             press_back_action(settings, call_data, chat_id, message_id, message_text)
             return
 
-        text, old_status = response.text, response.status
+        event = api_response[1]
+        text, old_status = event.text, event.status
 
         if status == "⬜️" or old_status == "⬜️":
             return
@@ -849,11 +851,11 @@ UPDATE settings
             message=message,
         )
 
-    elif call_data.startswith("before del "):
+    elif call_data.startswith("before move "):
         event_date, event_id, back_to_bin = call_data.split()[2:]
         event_id = int(event_id)
 
-        before_del_message(
+        before_move_message(
             user,
             call_id,
             call_data,
@@ -864,7 +866,7 @@ UPDATE settings
             back_to_bin == "bin",
         )
 
-    elif call_data.startswith("del "):
+    elif call_data.startswith("move "):
         event_date, event_id, where, mode = call_data.split(maxsplit=4)[1:]
         event_id = int(event_id)
 
@@ -954,18 +956,17 @@ UPDATE settings
             text = get_translate("errors.already_on_this_page", settings.lang)
             CallBackAnswer(text).answer(call_id)
 
-    elif call_data.startswith("generate calendar months "):
+    elif call_data.startswith("calendar_y "):
         sleep(0.5)
-        year = call_data.split()[-1]
+        data: tuple = literal_eval(call_data.removeprefix("calendar_y "))
+        command, back, year = data
 
         if year == "now":
-            YY = now_time(settings.timezone).year
-        else:
-            YY = int(year)
+            year = now_time(settings.timezone).year
 
-        if is_valid_year(YY):
+        if is_valid_year(year):
             markup = create_yearly_calendar_keyboard(
-                settings.timezone, settings.lang, chat_id, YY
+                settings.timezone, settings.lang, chat_id, year, command, back
             )
             try:
                 bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
@@ -983,25 +984,26 @@ UPDATE settings
         else:
             CallBackAnswer("🤔").answer(call_id)
 
-    elif call_data.startswith("generate calendar days "):
+    elif call_data.startswith("calendar_m "):
         sleep(0.5)
-        if call_data.split()[-1] == "now":
-            YY_MM = new_time_calendar(settings.timezone)
-        else:
-            YY_MM = [int(i) for i in call_data.split()[-2:]]
+        data: tuple = literal_eval(call_data.removeprefix("calendar_m "))
+        command, back, date = data
 
-        if is_valid_year(YY_MM[0]):
+        if date == "now":
+            date = new_time_calendar(settings.timezone)
+
+        if is_valid_year(date[0]):
             markup = create_monthly_calendar_keyboard(
-                chat_id, settings.timezone, settings.lang, YY_MM
+                chat_id, settings.timezone, settings.lang, date, command, back
             )
             try:
                 bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
             except (
                 ApiTelegramException
             ):  # Если нажата кнопка ⟳, но сообщение не изменено
-                date = now_time_strftime(settings.timezone)
+                now_date = now_time_strftime(settings.timezone)
                 generated = daily_message(
-                    settings, chat_id, date, message_id=message_id
+                    settings, chat_id, now_date, message_id=message_id
                 )
                 generated.edit(chat_id, message_id)
         else:
@@ -1091,6 +1093,38 @@ UPDATE settings
         sleep(1)
         CallBackAnswer("✅").answer(call_id)
 
+    elif call_data.startswith("edit_event_date"):
+        if call_data == "edit_event_date":
+            event_date, event_id = message_text[:10], message_text.split(".", maxsplit=4)[-2]
+            event_text = message_text.split("\n", maxsplit=2)[2].rsplit("\n", maxsplit=2)[0]
+            event_status = message_text.split(" ", maxsplit=1)[0].split(".", maxsplit=4)[4]
+            back = event_date
+
+            # Error code: 400. Description: Bad Request: BUTTON_DATA_INVALID"
+            # back = f"before del {event_date} {event_id} _"
+
+            generated = monthly_calendar_message(
+                settings,
+                chat_id,
+                command=f"edit_event_date {event_id}",
+                back=back,
+                custom_text=get_translate("select.new_date", settings.lang) + f":\n<b>{event_date}.{event_id}.</b>{event_status}\n{event_text}"
+            )
+            generated.edit(chat_id, message_id)
+        else:
+            # Изменяем дату у события
+            event_id, event_date = call_data.removeprefix("edit_event_date").split()
+            res, error_text = user.edit_event_date(event_id, event_date)
+            if res:
+                try:
+                    update_message_action(settings, chat_id, message_id, event_date)
+                except ApiTelegramException:
+                    pass
+                CallBackAnswer(get_translate("changes_saved", settings.lang)).answer(call_id)
+            elif error_text == "Limit Exceeded":
+                CallBackAnswer(get_translate("limit_exceeded", settings.lang)).answer(call_id)
+            else:
+                CallBackAnswer(get_translate("errors.error", settings.lang)).answer(call_id)
 
 def clear_state(chat_id: int | str):
     """

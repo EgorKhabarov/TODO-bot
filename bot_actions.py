@@ -149,10 +149,10 @@ def confirm_changes_message(user: User, message: Message):
 
     if len(message.text.split("\n")) == 1:
         try:
-            if before_del_message(
+            if before_move_message(
                 user=user,
                 call_id=0,
-                call_data=f"before del {event_date} {event_id} _",
+                call_data=f"before move {event_date} {event_id} _",
                 chat_id=chat_id,
                 message_id=message_id,
                 message_text=f"{event_date}",
@@ -178,9 +178,12 @@ def confirm_changes_message(user: User, message: Message):
     )
 
     # Уменьшится ли длинна события
-    event = user.get_event(event_id)[0]
-    if not event:
+    api_response = user.get_event(event_id)
+
+    if not api_response[0]:
         return 1  # Этого события нет
+
+    event = api_response[1]
 
     new_event_len = len(text)
     len_old_event = len(event.text)
@@ -190,7 +193,7 @@ def confirm_changes_message(user: User, message: Message):
     # Вычисляем сколько символов добавил пользователь. Если символов стало меньше, то 0.
     added_length = 0 if tag_len_less else new_event_len - len_old_event
 
-    tag_limit_exceeded = user.check_limit(event_date, symbol_count=added_length)
+    tag_limit_exceeded = user.check_limit(event_date, symbol_count=added_length)[1] is True
 
     if tag_len_max:
         translate = get_translate("errors.message_is_too_long", settings.lang)
@@ -227,7 +230,7 @@ def confirm_changes_message(user: User, message: Message):
                 return 1
 
 
-def before_del_message(
+def before_move_message(
     user: User,
     call_id: int,
     call_data: str,
@@ -239,41 +242,48 @@ def before_del_message(
 ):
     settings = user.settings
     # Если события нет, то обновляем сообщение
-    response, error_text = user.get_event(event_id, in_wastebasket)
+    api_response = user.get_event(event_id, in_wastebasket)
 
-    if not response:
+    if not api_response[0]:
         if call_id:
             error = get_translate("errors.error", settings.lang)
             CallBackAnswer(error).answer(call_id)
         press_back_action(settings, call_data, chat_id, message_id, message_text)
         return 1
 
-    text, status, event_date = response.text, response.status, response.date
+    event = api_response[1]
+    text, status, event_date = event.text, event.status, event.date
 
     delete_permanently = get_translate("delete_permanently", settings.lang)
     trash_bin = get_translate("trash_bin", settings.lang)
+    edit_date = get_translate("edit_date", settings.lang)
     split_data = call_data.split(maxsplit=1)[-1]
 
     is_wastebasket_available = (
         settings.user_status in (1, 2) and not in_wastebasket
     ) or is_admin_id(chat_id)
 
-    predelmarkup = generate_buttons(
+    pre_delmarkup = generate_buttons(
         [
             {
-                "🔙": "back" if not in_wastebasket else "back bin",
                 f"❌ {delete_permanently}": f"{split_data} delete",
                 **(
                     {f"🗑 {trash_bin}": f"{split_data} to_bin"}
-                    if is_wastebasket_available
+                    if is_wastebasket_available and not in_wastebasket
                     else {}
                 ),
             },
+            {
+                f"✏️📅 {edit_date}": "edit_event_date",
+            } if not in_wastebasket else {},
+            {
+                "🔙": "back" if not in_wastebasket else "back bin",
+            }
         ]
     )
 
     day = DayInfo(settings, event_date)
-    sure_text = get_translate("are_you_sure", settings.lang)
+    what_do_with_event = get_translate("what_do_with_event", settings.lang)
     end_text = (
         get_translate("/deleted", settings.lang)
         if (settings.user_status in (1, 2) or is_admin_id(chat_id))
@@ -282,6 +292,6 @@ def before_del_message(
     text = (
         f"<b>{event_date}.{event_id}.</b>{status} <u><i>{day.str_date}  "
         f"{day.week_date}</i> {day.relatively_date}</u>\n"
-        f"<b>{sure_text}:</b>\n{text[:3800]}\n\n{end_text}"
+        f"<b>{what_do_with_event}:</b>\n{text[:3800]}\n\n{end_text}"
     )
-    NoEventMessage(text, predelmarkup).edit(chat_id, message_id)
+    NoEventMessage(text, pre_delmarkup).edit(chat_id, message_id)

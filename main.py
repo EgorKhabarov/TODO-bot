@@ -263,7 +263,7 @@ SELECT add_event_date
         bot.reply_to(message, message_is_too_long, reply_markup=delmarkup)
         return
 
-    if user.check_limit(new_event_date, event_count=1, symbol_count=len(markdown_text)):
+    if user.check_limit(new_event_date, event_count=1, symbol_count=len(markdown_text))[1] is True:
         exceeded_limit = get_translate("errors.exceeded_limit", settings.lang)
         bot.reply_to(message, exceeded_limit, reply_markup=delmarkup)
         return

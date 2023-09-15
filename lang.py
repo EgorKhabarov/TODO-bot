@@ -59,9 +59,9 @@ translation = {
         "ru": "Опустошить корзину",
         "en": "Emptify basket",
     },
-    "are_you_sure": {
-        "ru": "Вы уверены что хотите удалить",
-        "en": "Are you sure you want to delete",
+    "what_do_with_event": {
+        "ru": "Выберите, что сделать с событием",
+        "en": "Choose what to do with the event",
     },
     "/deleted": {
         "ru": "<b>Чтобы посмотреть удалённые события напишите /deleted</b>",
@@ -82,6 +82,10 @@ translation = {
     "trash_bin": {
         "ru": "В корзину",
         "en": "To trash bin",
+    },
+    "edit_date": {
+        "ru": "Изменить дату",
+        "en": "Edit date",
     },
     "recover": {
         "ru": "Восстановить",
@@ -1069,6 +1073,10 @@ Visibility <b>{}</b>m""",
             "en": "You have exceeded the daily limit.\n"
             "Reduce the number of characters or remove unnecessary events.",
         },
+        "limit_exceeded": {
+            "ru": "Превышен лимит",
+            "en": "Limit exceeded",
+        },
         "message_empty": {
             "ru": "🕸  Здесь пусто🕷  🕸",
             "en": "🕸  It's empty here🕷  🕸",
@@ -1113,9 +1121,9 @@ Visibility <b>{}</b>m""",
             "ru": "Выберите статус для события",
             "en": "Select a status for the event",
         },
-        "event_to_delete": {
-            "ru": "Выберите событие для удаления",
-            "en": "Select an event to delete",
+        "event_to_move": {
+            "ru": "Выберите событие для перемещения",
+            "en": "Select an event to move",
         },
         "event_to_recover": {
             "ru": "Выберите событие для восстановления",
@@ -1128,6 +1136,10 @@ Visibility <b>{}</b>m""",
         "date": {
             "ru": "Выберите дату",
             "en": "Select a date",
+        },
+        "new_date": {
+            "ru": "Выберите новую дату для события",
+            "en": "Select a new date for the event",
         },
     },
 }

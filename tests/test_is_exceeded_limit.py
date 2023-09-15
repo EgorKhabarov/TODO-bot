@@ -23,9 +23,9 @@ def test_is_exceeded_limit(mock_sql_return, expected_result):
     execute.return_value = mock_sql_return
 
     # Пытаемся добавить одно событие
-    result = user.check_limit("01.01.2000", event_count=1)
+    result = user.check_limit("01.01.2000", event_count=1)[1] is True
     assert result is expected_result
 
     # Пытаемся добавить один символ
-    result = user.check_limit("01.01.2000", symbol_count=1)
+    result = user.check_limit("01.01.2000", symbol_count=1)[1] is True
     assert result is expected_result

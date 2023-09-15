@@ -51,11 +51,15 @@ def create_monthly_calendar_keyboard(
     user_timezone: int,
     lang: str,
     YY_MM: list | tuple[int, int] = None,
+    command: str | None = None,
+    back: str | None = None,
 ) -> InlineKeyboardMarkup:
     """
     Создаёт календарь на месяц и возвращает inline клавиатуру
     param YY_MM: Необязательный аргумент. Если None, то подставит текущую дату.
     """
+    command = command.strip() if command else ""
+
     if YY_MM:
         YY, MM = YY_MM
     else:
@@ -70,7 +74,7 @@ def create_monthly_calendar_keyboard(
     )
     markup.row(
         InlineKeyboardButton(
-            text=title, callback_data=f"generate calendar months  {YY}"
+            text=title, callback_data=f"calendar_y ('{command}','{back}',{YY})"
         )
     )
     markup.row(
@@ -153,7 +157,7 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
                 weekbuttons.append(
                     InlineKeyboardButton(
                         f"{tag_today}{day}{tag_event}{tag_birthday}",
-                        callback_data=f"{day:0>2}.{MM:0>2}.{YY}",
+                        callback_data=f"{command} {day:0>2}.{MM:0>2}.{YY}".strip(),
                     )
                 )
         markup.row(*weekbuttons)
@@ -161,26 +165,37 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
     markup.row(
         *[
             InlineKeyboardButton(
-                f"{text}", callback_data=f"generate calendar days {data}"
+                f"{text}", callback_data=f"calendar_m ('{command}','{back}',{data})"
             )
             for text, data in {
-                "<<": f"{YY - 1} {MM}",
-                "<": f"{YY - 1} {12}" if MM == 1 else f"{YY} {MM - 1}",
-                "⟳": "now",
-                ">": f"{YY + 1} {1}" if MM == 12 else f"{YY} {MM + 1}",
-                ">>": f"{YY + 1} {MM}",
+                "<<": f"({YY - 1},{MM})",
+                "<": f"({YY - 1},12)" if MM == 1 else f"({YY},{MM - 1})",
+                "⟳": "'now'",
+                ">": f"({YY + 1},1)" if MM == 12 else f"({YY},{MM + 1})",
+                ">>": f"({YY + 1},{MM})",
             }.items()
         ]
     )
+
+    if back:
+        markup.row(InlineKeyboardButton("🔙", callback_data=back))
+
     return markup
 
 
 def create_yearly_calendar_keyboard(
-    user_timezone: int, lang: str, chat_id, YY
+    user_timezone: int,
+    lang: str,
+    chat_id: int,
+    YY: int,
+    command: str | None = None,
+    back: str | None = None,
 ) -> InlineKeyboardMarkup:
     """
     Создаёт календарь из месяцев на определённый год и возвращает inline клавиатуру
     """
+    command = command.strip() if command else ""
+
     # В этом году
     month_list = {
         x[0]: x[1]
@@ -248,18 +263,23 @@ SELECT date
             tag_birthday = "!" if (numm in every_year or every_month) else ""
             month_buttons[-1][
                 f"{tag_today}{nameM}{tag_event}{tag_birthday}"
-            ] = f"generate calendar days {YY} {numm}"
+            ] = f"calendar_m ('{command}','{back}',({YY},{numm}))"
 
-    return generate_buttons(
+    markup = generate_buttons(
         [
             {f"{YY} ({year_info(YY, lang)})": "None"},
             *month_buttons,
             {
-                text: f"generate calendar months {year}"
-                for text, year in {"<<": YY - 1, "⟳": "now", ">>": YY + 1}.items()
+                text: f"calendar_y ('{command}','{back}',{year})"
+                for text, year in {"<<": YY - 1, "⟳": "'now'", ">>": YY + 1}.items()
             },
         ]
     )
+
+    if back:
+        markup.row(InlineKeyboardButton("🔙", callback_data=back))
+
+    return markup
 
 
 def edit_button_attrs(

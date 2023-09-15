@@ -22,99 +22,116 @@ class User:
         self.user_id = int(user_id)
         self.settings: UserSettings = settings or UserSettings(user_id)
 
-    @staticmethod
-    def to_valid_user_id(user_id: str | int) -> int:
-        if isinstance(user_id, int) and user_id > 0:
-            return user_id
-        elif isinstance(user_id, str) and user_id.isdigit():
-            return int(user_id)
-        else:
-            return -1
-
-    def check_event(self, event_id: int, in_wastebasket: bool = False) -> bool:
+    def check_event(self, event_id: int, in_wastebasket: bool = False) -> tuple[bool, bool | str]:
         """
         Возвращает есть ли событие в базе данных
 
         :param event_id:
         :param in_wastebasket:
         """
-        return bool(
-            db.execute(
-                f"""
+
+        event_id = to_valid_id(event_id)
+
+        if not event_id:
+            return False, ""
+
+        if not isinstance(in_wastebasket, bool):
+            return False, ""
+
+        return (
+            True,
+            bool(
+                db.execute(
+                    f"""
 SELECT 1
   FROM events
  WHERE user_id = ? AND 
        event_id = ?
        {"AND removal_time != 0" if in_wastebasket else ""};
 """,
-                params=(
-                    self.user_id,
-                    event_id,
-                ),
+                    params=(
+                        self.user_id,
+                        event_id,
+                    ),
+                )
             )
         )
 
     @staticmethod
-    def check_user(user_id: int) -> bool:
+    def check_user(user_id: int) -> tuple[bool, bool]:
         """
         Возвращает есть ли пользователь в базе данных
 
         :param user_id:
         """
-        return bool(
-            db.execute(
-                """
+        return (
+            True,
+            bool(
+                db.execute(
+                    """
 SELECT 1
   FROM settings
  WHERE user_id = ?;
 """,
-                params=(user_id,),
+                    params=(user_id,),
+                )
             )
         )
 
     def get_limits(
         self, date: str | None = None
-    ) -> list[int, int, int, int, int, int, int, int]:
+    ) -> tuple[bool, list[int, int, int, int, int, int, int, int]]:
         """
         Возвращает список процентов заполнения лимитов для рисования статистики.
 
         :param date:
         """
         limit = Limit(self.user_id, self.settings.user_status, date)
-        return limit.now_limit_percent()
+        return True, limit.now_limit_percent()
 
     def check_limit(
         self, date: str | None = None, *, event_count: int = 0, symbol_count: int = 0
-    ) -> bool:
+    ) -> tuple[bool, bool | str]:
         """
         Проверить лимит.
 
         :param date:
         :param event_count:
         :param symbol_count:
+
+        "Invalid Date Format" - Формат даты неверный.
+
+        "Wrong Date" - Неверная дата.
         """
+
+        if not re_date.match(date):
+            return False, "Invalid Date Format"
+
+        if not is_valid_year(int(date[-4:])):
+            return False, "Wrong Date"
+
         limit = Limit(self.user_id, self.settings.user_status, date)
-        return limit.is_exceeded(event_count=event_count, symbol_count=symbol_count)
+        return True, limit.is_exceeded(event_count=event_count, symbol_count=symbol_count)
 
     def get_event(
         self, event_id: int, in_wastebasket: bool = False
-    ) -> tuple[bool | Event, str]:
+    ) -> tuple[bool, Event | str]:
         """
         Получить одно событие
 
         :param event_id:
         :param in_wastebasket:
+        :return: tuple[bool | Event, str]
 
-        (event, "") - Успешно.
+        "Wrong id" - Неверный id.
 
-        (False, "Неверный id") - Неверный id.
+        "SQL Error {}" - Ошибка sql.
 
-        (False, f"{Error}") - Ошибка sql.
-
-        (False, "Events Not Found") - Событие не найдено.
+        "Events Not Found" - Событие не найдено.
         """
+
         if 0 >= int(event_id):
-            return False, "Неверный id"
+            return False, "Wrong id"
 
         try:
             raw_event = db.execute(
@@ -134,11 +151,10 @@ SELECT event_id,
                 params=(self.user_id, event_id),
             )
         except Error as e:
-            return False, f"{e}"
+            return False, f"SQL Error {e}"
 
         if raw_event:
-            event = Event(*raw_event[0])
-            return event, ""
+            return True, Event(*raw_event[0])
         else:
             return False, "Events Not Found"
 
@@ -146,7 +162,7 @@ SELECT event_id,
         self,
         events_id: list | tuple[int, ...],
         direction: Literal[-1, 1, "DESC", "ASC"] = -1,
-    ) -> tuple[list[Event] | bool, str]:
+    ) -> tuple[bool, list[Event] | str]:
         """
         Получить события по списку id.
 
@@ -186,14 +202,13 @@ SELECT event_id,
                 ),
                 params=(self.user_id,),
             )
-            events = [Event(*raw_event) for raw_event in raw_events if raw_event]
-            return events, ""
+            return True, [Event(*raw_event) for raw_event in raw_events if raw_event]
         except Error as e:
             return False, f"{e}"
 
     def get_settings(self) -> UserSettings:
         """
-        :return: json settings
+        :return:
         """
         return self.settings
 
@@ -225,7 +240,7 @@ SELECT event_id,
         if not is_valid_year(int(date[-4:])):
             return False, "Wrong Date"
 
-        if max(self.get_limits(date)) >= 100:
+        if max(self.get_limits(date)[1]) >= 100:
             return False, "Limit Exceeded"
 
         try:
@@ -291,15 +306,18 @@ WHERE user_id = ?;
         if len(text) >= 3800:
             return False, "Text Is Too Big"
 
-        event = self.get_event(event_id)[0]
-        if not event:
+        api_response = self.get_event(event_id)
+
+        if not api_response[0]:
             return False, "Event Not Found"
+
+        event = api_response[1]
 
         # Вычисляем количество добавленных символов
         new_symbol_count = (
             0 if len(text) < len(event.text) else len(text) - len(event.text)
         )
-        if self.check_limit(event.date, symbol_count=new_symbol_count):
+        if self.check_limit(event.date, symbol_count=new_symbol_count)[1] is True:
             return False, "Limit Exceeded"
 
         try:
@@ -334,7 +352,7 @@ UPDATE events
 
         (False, f"{e}") - Ошибка sql.
         """
-        if not self.check_event(event_id):
+        if not self.check_event(event_id)[1]:
             return False, "Event Not Found"
 
         try:
@@ -388,12 +406,14 @@ DELETE FROM events
         if not is_valid_year(int(date[-4:])):
             return False, "Wrong Date"
 
-        event = self.get_event(event_id)[0]
+        api_response = self.get_event(event_id)
 
-        if not event:
+        if not api_response[0]:
             return False, "Event Not Found"
 
-        if self.check_limit(date, event_count=1, symbol_count=len(event.text)):
+        event = api_response[1]
+
+        if self.check_limit(date, event_count=1, symbol_count=len(event.text))[1] is True:
             return False, "Limit Exceeded"
 
         try:
@@ -423,7 +443,7 @@ UPDATE events
 
         (False, f"{Error}") - Ошибка sql.
         """
-        if not self.check_event(event_id, True):
+        if not self.check_event(event_id, True)[1]:
             return False, "Event Not Found"
 
         try:
@@ -460,7 +480,7 @@ UPDATE events
 
         (False, f"{Error}") - Ошибка sql.
         """
-        if not self.check_event(event_id):
+        if not self.check_event(event_id)[1]:
             return False, "Event Not Found"
 
         if any(
@@ -703,7 +723,7 @@ UPDATE settings
         if is_admin_id(user_id):
             return False, "Unable To Remove Administrator"
 
-        if not self.check_user(user_id):
+        if not self.check_user(user_id)[1]:
             return False, "User Not Exist"
 
         tmp_user = User(user_id)
@@ -765,7 +785,7 @@ DELETE FROM events
         if is_admin_id(user_id) and status != 2:
             return False, "Cannot be reduced in admin rights"
 
-        if not self.check_user(user_id):
+        if not self.check_user(user_id)[1]:
             return False, "User Not Exist"
 
         try:
