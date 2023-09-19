@@ -513,7 +513,6 @@ UPDATE settings
         CallBackAnswer(get_translate("changes_saved", settings.lang)).answer(call_id)
 
     elif call_data.startswith("select event "):
-        # TODO переписать с использованием функции parse_message
         # action: Literal["edit", "status", "delete", "delete bin", "recover bin", "open"]
         action = call_data[13:]
 
