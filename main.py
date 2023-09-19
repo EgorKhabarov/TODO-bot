@@ -56,10 +56,9 @@ def check_user(func):
             if isinstance(x, Message):
                 chat_id = x.chat.id
                 if (
-                    x.chat.type != "private"
-                    and x.text.startswith("/")
-                    and x.text[1:].split("@")[0].split(" ")[0]
-                    and x.text.split("@")[-1].split(" ")[0] != bot.username
+                    _x.chat.type != "private"
+                    and _x.text.startswith("/")
+                    and not msg_check.match(_x.text)
                 ):
                     return
             elif isinstance(x, CallbackQuery):
@@ -195,7 +194,7 @@ def add_event(message: Message, user: User):
     settings = user.settings
     chat_id = message.chat.id
     # Экранируем текст
-    markdown_text = to_html_escaping(html_to_markdown(message.html_text))
+    markdown_text = html_to_markdown(message.html_text)
 
     settings.log("send", "add event")
 
@@ -209,7 +208,7 @@ SELECT add_event_date
     )[0][0].split(",")[0]
 
     # Если сообщение команда, то проигнорировать
-    if markdown_text.split("@")[0][1:] in config.COMMANDS:
+    if markdown_text.split()[0].split("@")[0][1:] in config.COMMANDS:
         return
 
     # Если сообщение длиннее 3800 символов, то ошибка
@@ -230,12 +229,12 @@ SELECT add_event_date
 
     # Пытаемся создать событие
     if user.add_event(new_event_date, markdown_text)[0]:
-        clear_state(chat_id)
         delete_message_action(settings, message)
     else:
         error_translate = get_translate("errors.error", settings.lang)
         bot.reply_to(message, error_translate, reply_markup=delmarkup)
-        clear_state(chat_id)
+
+    clear_state(chat_id)
 
 
 def schedule_loop():
@@ -247,7 +246,7 @@ def schedule_loop():
         if config.NOTIFICATIONS and while_time.minute in (0, 10, 20, 30, 40, 50):
             Thread(target=notifications_message, daemon=True).start()
 
-        if config.POKE_LINK and while_time.minute in (0, 15, 30, 45):
+        if config.POKE_LINK and while_time.minute in (0, 10, 20, 30, 40, 50):
             if config.LINK:
                 Thread(target=poke_link, daemon=True).start()
 

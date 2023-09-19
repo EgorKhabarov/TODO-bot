@@ -58,7 +58,8 @@ def create_monthly_calendar_keyboard(
     Создаёт календарь на месяц и возвращает inline клавиатуру
     param YY_MM: Необязательный аргумент. Если None, то подставит текущую дату.
     """
-    command = command.strip() if command else ""
+    command = f"'{command.strip()}'" if command else None
+    back = f"'{back.strip()}'" if back else None
 
     if YY_MM:
         YY, MM = YY_MM
@@ -74,7 +75,7 @@ def create_monthly_calendar_keyboard(
     )
     markup.row(
         InlineKeyboardButton(
-            text=title, callback_data=f"calendar_y ('{command}','{back}',{YY})"
+            text=title, callback_data=f"calendar_y ({command},{back},{YY})"
         )
     )
     markup.row(
@@ -161,7 +162,7 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
                 weekbuttons.append(
                     InlineKeyboardButton(
                         f"{tag_today}{day}{tag_event}{tag_birthday}",
-                        callback_data=f"{command} {day:0>2}.{MM:0>2}.{YY}".strip(),
+                        callback_data=f"{command[1:-1] if command else ''} {day:0>2}.{MM:0>2}.{YY}".strip(),
                     )
                 )
         markup.row(*weekbuttons)
@@ -169,7 +170,7 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
     markup.row(
         *[
             InlineKeyboardButton(
-                f"{text}", callback_data=f"calendar_m ('{command}','{back}',{data})"
+                f"{text}", callback_data=f"calendar_m ({command},{back},{data})"
             )
             for text, data in {
                 "<<": f"({YY - 1},{MM})",
@@ -198,7 +199,8 @@ def create_yearly_calendar_keyboard(
     """
     Создаёт календарь из месяцев на определённый год и возвращает inline клавиатуру
     """
-    command = command.strip() if command else ""
+    command = f"'{command.strip()}'" if command else None
+    back = f"'{back.strip()}'" if back else None
 
     # В этом году
     month_list = {
@@ -271,14 +273,14 @@ SELECT date
             tag_birthday = "!" if (numm in every_year or every_month) else ""
             month_buttons[-1][
                 f"{tag_today}{nameM}{tag_event}{tag_birthday}"
-            ] = f"calendar_m ('{command}','{back}',({YY},{numm}))"
+            ] = f"calendar_m ({command},{back},({YY},{numm}))"
 
     markup = generate_buttons(
         [
             {f"{YY} ({year_info(YY, lang)})": "None"},
             *month_buttons,
             {
-                text: f"calendar_y ('{command}','{back}',{year})"
+                text: f"calendar_y ({command},{back},{year})"
                 for text, year in {"<<": YY - 1, "⟳": "'now'", ">>": YY + 1}.items()
             },
         ]

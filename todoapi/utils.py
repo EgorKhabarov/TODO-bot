@@ -1,3 +1,4 @@
+import html
 import re
 from urllib.parse import urlparse
 
@@ -38,21 +39,11 @@ def html_to_markdown(html_text: str) -> str:
 
 
 def to_html_escaping(text: str) -> str:
-    return (
-        text.replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("'", "&#39;")
-        .replace('"', "&quot;")
-    )
+    return html.escape(text)
 
 
 def remove_html_escaping(text: str) -> str:
-    return (
-        text.replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&#39;", "'")
-        .replace("&quot;", '"')
-    )
+    return html.unescape(text)
 
 
 def sqlite_format_date(_column):

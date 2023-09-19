@@ -21,6 +21,7 @@ class User:
     def __init__(self, user_id: int | str, settings: UserSettings = None):
         self.user_id = int(user_id)
         self.settings: UserSettings = settings or UserSettings(user_id)
+        self.__no_cooldown = False
 
     def check_event(
         self, event_id: int, in_wastebasket: bool = False
@@ -175,10 +176,11 @@ SELECT event_id,
 
         (events, "") - Успешно.
 
-        (False, 'direction must be in [-1, 1, "DESC", "ASC"]') - Неверный direction.
+        'direction must be in [-1, 1, "DESC", "ASC"]' - Неверный direction.
 
-        (False, f"{Error}") - Ошибка sql.
+        "SQL Error {}" - Ошибка sql.
         """
+
         if direction in (-1, 1):
             direction = {-1: "DESC", 1: "ASC"}[direction]
 
@@ -208,7 +210,7 @@ SELECT event_id,
             )
             return True, [Event(*raw_event) for raw_event in raw_events if raw_event]
         except Error as e:
-            return False, f"{e}"
+            return False, f"SQL Error {e}"
 
     def get_settings(self) -> UserSettings:
         """
@@ -223,18 +225,17 @@ SELECT event_id,
         :param date: dd.mm.yyyy
         :param text: text
 
-        (True, "") - Успешно.
+        "Text Is Too Big" - Текст слишком большой.
 
-        (False, "Text Is Too Big") - Текст слишком большой.
+        "Invalid Date Format" - Формат даты неверный.
 
-        (False, "Invalid Date Format") - Формат даты неверный.
+        "Wrong Date" - Неверная дата.
 
-        (False, "Wrong Date") - Неверная дата.
+        "Limit Exceeded" - Лимит превышен.
 
-        (False, "Limit Exceeded") - Лимит превышен.
-
-        (False, f"{Error}") - Ошибка sql.
+        "SQL Error {}" - Ошибка sql.
         """
+
         if len(text) >= 3800:
             return False, "Text Is Too Big"
 
@@ -244,7 +245,8 @@ SELECT event_id,
         if not is_valid_year(int(date[-4:])):
             return False, "Wrong Date"
 
-        if max(self.get_limits(date)[1]) >= 100:
+        if self.check_limit(date, event_count=1)[1]:
+            # max(self.get_limits(date)[1]) >= 100:
             return False, "Limit Exceeded"
 
         try:
@@ -273,7 +275,7 @@ VALUES (
                 params={
                     "user_id": self.user_id,
                     "date": date,
-                    "text": to_html_escaping(html_to_markdown(text)),
+                    "text": html_to_markdown(text),
                 },
                 commit=True,
             )
@@ -288,25 +290,24 @@ WHERE user_id = ?;
             )
             return True, ""
         except Error as e:
-            return False, f"{e}"
+            return False, f"SQL Error {e}"
 
-    def edit_event(self, event_id: int, text: str) -> tuple[bool, str]:
+    def edit_event_text(self, event_id: int, text: str) -> tuple[bool, str]:
         """
         Изменить текст события.
 
         :param event_id:
         :param text:
 
-        (True, "") - Успешно.
+        "Text Is Too Big" - Текст слишком большой.
 
-        (False, "Text Is Too Big") - Текст слишком большой.
+        "Event Not Found" - Событие не найдено.
 
-        (False, "Event Not Found") - Событие не найдено.
+        "Limit Exceeded" - Лимит превышен.
 
-        (False, "Limit Exceeded") - Лимит превышен.
-
-        (False, f"{e}") - Ошибка sql.
+        "SQL Error {}" - Ошибка sql.
         """
+
         if len(text) >= 3800:
             return False, "Text Is Too Big"
 
@@ -318,9 +319,11 @@ WHERE user_id = ?;
         event = api_response[1]
 
         # Вычисляем количество добавленных символов
+        _len_text, _len_event_text = len(text), len(event.text)
         new_symbol_count = (
-            0 if len(text) < len(event.text) else len(text) - len(event.text)
+            0 if _len_text < _len_event_text else _len_text - _len_event_text
         )
+
         if self.check_limit(event.date, symbol_count=new_symbol_count)[1] is True:
             return False, "Limit Exceeded"
 
@@ -341,7 +344,7 @@ UPDATE events
             )
             return True, ""
         except Error as e:
-            return False, f"{e}"
+            return False, f"SQL Error {e}"
 
     def delete_event(self, event_id: int, to_bin: bool = False) -> tuple[bool, str]:
         """
@@ -350,12 +353,11 @@ UPDATE events
         :param event_id:
         :param to_bin:
 
-        (True, "") - Успешно.
+        "Event Not Found" - Событие не найдено.
 
-        (False, "Event Not Found") - Событие не найдено.
-
-        (False, f"{e}") - Ошибка sql.
+        "SQL Error {}" - Ошибка sql.
         """
+
         if not self.check_event(event_id)[1]:
             return False, "Event Not Found"
 
@@ -383,7 +385,7 @@ DELETE FROM events
                 )
             return True, ""
         except Error as e:
-            return False, f"{e}"
+            return False, f"SQL Error {e}"
 
     def edit_event_date(self, event_id: int, date: str) -> tuple[bool, str]:
         """
@@ -392,18 +394,17 @@ DELETE FROM events
         :param event_id:
         :param date:
 
-        (True, "") - Успешно.
+        "Invalid Date Format" - Формат даты неверный.
 
-        (False, "Invalid Date Format") - Формат даты неверный.
+        "Wrong Date" - Неверная дата.
 
-        (False, "Wrong Date") - Неверная дата.
+        "Event Not Found" - Событие не найдено.
 
-        (False, "Event Not Found") - Событие не найдено.
+        "Limit Exceeded" - Лимит превышен.
 
-        (False, "Limit Exceeded") - Лимит превышен.
-
-        (False, f"{Error}") - Ошибка sql.
+        "SQL Error {}" - Ошибка sql.
         """
+
         if not re_date.match(date):
             return False, "Invalid Date Format"
 
@@ -436,7 +437,7 @@ UPDATE events
             )
             return True, ""
         except Error as e:
-            return False, f"{e}"
+            return False, f"SQL Error {e}"
 
     def recover_event(self, event_id: int) -> tuple[bool, str]:
         """
@@ -444,12 +445,11 @@ UPDATE events
 
         :param event_id:
 
-        (True, "") - Успешно.
+        "Event Not Found" - Событие не найдено.
 
-        (False, "Event Not Found") - Событие не найдено.
-
-        (False, f"{Error}") - Ошибка sql.
+        "SQL Error {}" - Ошибка sql.
         """
+
         if not self.check_event(event_id, True)[1]:
             return False, "Event Not Found"
 
@@ -466,27 +466,26 @@ UPDATE events
             )
             return True, ""
         except Error as e:
-            return False, f"{e}"
+            return False, f"SQL Error {e}"
 
-    def set_status(self, event_id: int, status: str = "⬜️") -> tuple[bool, str]:
+    def set_event_status(self, event_id: int, status: str = "⬜️") -> tuple[bool, str]:
         """
         Поставить статус.
 
         :param event_id:
         :param status:
 
-        (True, "") - Успешно.
+        "Event Not Found" - Событие не было найдено.
 
-        (False, "Event Not Found") - Событие не было найдено.
+        "Status Conflict" - В статусах есть конфликты.
 
-        (False, "Status Conflict") - В статусах есть конфликты.
+        "Status Length Exceeded" - Статус слишком большой.
 
-        (False, "Status Length Exceeded") - Статус слишком большой.
+        "Status Repeats" - Статусы повторяются.
 
-        (False, "Status Repeats") - Статусы повторяются.
-
-        (False, f"{Error}") - Ошибка sql.
+        "SQL Error {}" - Ошибка sql.
         """
+
         if not self.check_event(event_id)[1]:
             return False, "Event Not Found"
 
@@ -523,16 +522,15 @@ UPDATE events
             )
             return True, ""
         except Error as e:
-            return False, f"{e}"
+            return False, f"SQL Error {e}"
 
     def clear_basket(self) -> tuple[bool, str]:
         """
         Очистить корзину.
 
-        (True, "") - Успешно.
-
-        (False, f"{Error}") - Ошибка sql.
+        "SQL Error {}" - Ошибка sql.
         """
+
         try:
             db.execute(
                 """
@@ -545,33 +543,40 @@ DELETE FROM events
             )
             return True, ""
         except Error as e:
-            return False, f"{e}"
+            return False, f"SQL Error {e}"
 
     def export_data(
         self, file_name: str, file_format: str = "csv"
-    ) -> tuple[bool | StringIO, str]:
+    ) -> tuple[bool, StringIO | str]:
         """
         Экспортировать в csv.
 
         :param file_name:
         :param file_format:
 
-        (file, "") - Успешно.
+        "Format Is Not Valid" - Невалидный формат файла.
 
-        (False, "Format Is Not Valid") - Невалидный формат.
+        "Wait {t // 60} min" - Слишком часто запрашивали ждите x минут.
 
-        (False, f"Wait {t // 60} min") - Слишком часто запрашивали ждите x минут.
+        "SQL Error {}" - Ошибка sql.
         """
+
         if file_format not in ("csv",):
             return False, "Format Is Not Valid"
 
-        response, t = export_cooldown.check(self.user_id, False)
+        if self.__no_cooldown:
+            response, t = True, 0
+            self.__no_cooldown = False
+        else:
+            response, t = export_cooldown.check(self.user_id, False)
 
         if response:
             file = StringIO()
             file.name = file_name
-            table: list[tuple[int, str, str, str], ...] = db.execute(
-                """
+
+            try:
+                table: list[tuple[int, str, str, str], ...] = db.execute(
+                    """
 SELECT event_id,
        date,
        status,
@@ -580,9 +585,12 @@ SELECT event_id,
  WHERE user_id = ? AND 
        removal_time = 0;
 """,
-                params=(self.user_id,),
-                column_names=True,
-            )
+                    params=(self.user_id,),
+                    column_names=True,
+                )
+            except Error as e:
+                return False, f"SQL Error {e}"
+
             file_writer = csv.writer(file)
             [
                 file_writer.writerows(
@@ -598,7 +606,7 @@ SELECT event_id,
                 for event_id, event_date, event_status, event_text in table
             ]
             file.seek(0)
-            return file, ""
+            return True, file
         else:
             return False, f"Wait {t // 60} min"
 
@@ -615,6 +623,24 @@ SELECT event_id,
     ) -> tuple[bool, str]:
         """
         Установить настройку.
+
+        'lang must be in ["ru", "en"]'
+
+        "sub_urls must be in [0, 1]"
+
+        "timezone must be -12 and less 12"
+
+        'direction must be in ["DESC", "ASC"]'
+
+        "user_status must be in [-1, 0, 1, 2]"
+
+        "notifications must be in [0, 1]"
+
+        "hour must be more -1 and less 13"
+
+        "minute must be in [0, 10, 20, 30, 40, 50]"
+
+        "SQL Error {}" - Ошибка sql.
         """
         update_list = []
 
@@ -675,56 +701,56 @@ SELECT event_id,
             update_list.append("notifications_time")
             self.settings.notifications_time = notifications_time
 
-        db.execute(
-            """
+        try:
+            db.execute(
+                """
 UPDATE settings
    SET {}
  WHERE user_id = :user_id;
 """.format(
-                ", ".join(f"{update} = :{update}" for update in update_list)
-            ),
-            params={
-                "lang": lang,
-                "city": city,
-                "sub_urls": sub_urls,
-                "timezone": timezone,
-                "direction": direction,
-                "user_status": user_status,
-                "notifications": notifications,
-                "notifications_time": notifications_time,
-                "user_id": self.user_id,
-            },
-            commit=True,
-        )
+                    ", ".join(f"{update} = :{update}" for update in update_list)
+                ),
+                params={
+                    "lang": lang,
+                    "city": city,
+                    "sub_urls": sub_urls,
+                    "timezone": timezone,
+                    "direction": direction,
+                    "user_status": user_status,
+                    "notifications": notifications,
+                    "notifications_time": notifications_time,
+                    "user_id": self.user_id,
+                },
+                commit=True,
+            )
+        except Error as e:
+            return False, f"SQL Error {e}"
+
         return True, ""
 
     def delete_user(
         self, user_id: int = None
-    ) -> (
-        tuple[bool, str]
-        | tuple[bool, tuple[str, bool | StringIO]]
-        | tuple[bool | StringIO, str]
-    ):
+    ) -> tuple[bool, StringIO | str | tuple[str, StringIO]]:
         """
         Удалить все данные пользователя.
 
         :param user_id:
 
-        (csv_file, "") - Успешно.
+        "User Not Exist" - Пользователь не существует.
 
-        (False, "User Not Exist") - Пользователь не существует.
+        "Not Enough Authority" - Недостаточно прав.
 
-        (False, "Not Enough Authority") - Недостаточно прав.
+        "Unable To Remove Administrator" - Нельзя удалить администратора.
 
-        (False, "Unable To Remove Administrator") - Нельзя удалить администратора.
+        "CSV Error" - Не получилось получить csv файл.
 
-        (False, "Error") - Не получилось получить csv файл.
-
-        (False, (f"{Error}", csv_file)) - Ошибка при удалении.
+        ("SQL Error {}", csv_file) - Ошибка при удалении.
         """
+        is_self = (user_id is None) or (self.user_id == user_id)
         user_id = user_id or self.user_id
 
-        if is_admin_id(self.user_id):
+        # Когда ты не админ и пытаешься удалить другого человека
+        if not is_admin_id(self.user_id) and not is_self:
             return False, "Not Enough Authority"
 
         if is_admin_id(user_id):
@@ -734,9 +760,13 @@ UPDATE settings
             return False, "User Not Exist"
 
         tmp_user = User(user_id)
-        csv_file = tmp_user.export_data("deleted_user_info.csv")[0]
-        if not csv_file:
-            return False, "Error"
+        tmp_user.no_cooldown = True
+        api_response = tmp_user.export_data("deleted_user_info.csv")
+
+        if not api_response[0]:
+            return False, "CSV Error"
+
+        csv_file = api_response[1]
 
         try:
             db.execute(
@@ -756,9 +786,9 @@ DELETE FROM events
                 commit=True,
             )
         except Error as e:
-            return False, (f"{e}", csv_file)
+            return False, (f"SQL Error {e}", csv_file)
 
-        return csv_file, ""
+        return True, csv_file
 
     def set_user_status(
         self, user_id: int = None, status: Literal[-1, 0, 1, 2] = 0
@@ -769,17 +799,15 @@ DELETE FROM events
         :param user_id:
         :param status:
 
-        (True, "") - Успешно.
+        "User Not Exist" - Пользователь не существует.
 
-        (False, "User Not Exist") - Пользователь не существует.
+        "Not Enough Authority" - Недостаточно прав.
 
-        (False, "Not Enough Authority") - Недостаточно прав.
+        "Invalid status" - Неверный статус.
 
-        (False, "Invalid status") - Неверный статус.
+        "Cannot be reduced in admin rights" - Нельзя понизить администратора.
 
-        (False, "Cannot be reduced in admin rights") - Нельзя понизить администратора.
-
-        (False, f"{Error}") - Ошибка sql.
+        "SQL Error {}" - Ошибка sql.
         """
         user_id = int(user_id or self.user_id)
 
@@ -789,7 +817,7 @@ DELETE FROM events
         if status not in (-1, 0, 1, 2):
             return False, "Invalid status"
 
-        if is_admin_id(user_id) and status != 2:
+        if is_admin_id(user_id):  # TODO Проверить
             return False, "Cannot be reduced in admin rights"
 
         if not self.check_user(user_id)[1]:
@@ -807,7 +835,7 @@ UPDATE settings
             )
             return True, ""
         except Error as e:
-            return False, f"{e}"
+            return False, f"SQL Error {e}"
 
 
 # user = User(1563866138)
@@ -821,34 +849,3 @@ UPDATE settings
 # [print(event.to_json()) for event in user.get_events((1,))]
 # print(user.set_status(1, "🔗,💻"))
 # print(user.set_status(1, "⬜️"))
-
-"""
-```markdown
-|                 |    |
-|-----------------|----|
-| add_event       |    |
-| check_event     |    |
-| check_limit     |    |
-| clear_basket    |    |
-| del_event       |    |
-| delete_user     |    |
-| edit_event      |    |
-| edit_event_date |    |
-| export_data     |    |
-| get_event       |    |
-| get_events      |    |
-| get_limits      |    |
-| get_settings    |    |
-| recover_event   |    |
-| set_settings    |    |
-| set_status      |    |
-| set_user_status |    |
-
-|                 |    |
-|-----------------|----|
-| settings        |    |
-| user_id         |    |
-| db_conn         |    |
-
-```
-"""

@@ -54,7 +54,6 @@ from utils import (
     parse_message,
     update_userinfo,
     re_setuserstatus,
-    re_d,
     re_call_data_date,
 )
 from todoapi.api import User
@@ -222,16 +221,15 @@ def command_handler(user: User, message: Message) -> None:
         notifications_message([chat_id], from_command=True)
 
     elif message_text.startswith("/save_to_csv"):
-        response, error_text = user.export_data(
-            f"ToDoList {message.from_user.username} "
-            f"({now_time_strftime(settings.timezone)}).csv"
+        api_response = user.export_data(
+            f"events_{now_time(settings.timezone).strftime('%Y-%m-%d_%H-%M-%S')}.csv"
         )
 
-        if response:
+        if api_response[0]:
             bot.send_chat_action(chat_id, "upload_document")
 
             try:
-                bot.send_document(chat_id, InputFile(response))
+                bot.send_document(chat_id, InputFile(api_response[1]))
             except ApiTelegramException as e:
                 logging.info(f'save_to_csv ApiTelegramException "{e}"')
                 big_file_translate = get_translate(
@@ -240,7 +238,7 @@ def command_handler(user: User, message: Message) -> None:
                 bot.send_message(chat_id=chat_id, text=big_file_translate)
         else:
             export_error = get_translate("errors.export", settings.lang)
-            generated = NoEventMessage(export_error.format(t=error_text.split(" ")[1]))
+            generated = NoEventMessage(export_error.format(t=api_response[1].split(" ")[1]))
             generated.send(chat_id)
 
     elif message_text.startswith("/version"):
@@ -248,28 +246,32 @@ def command_handler(user: User, message: Message) -> None:
 
     elif message_text.startswith("/setuserstatus") and is_secure_chat(message):
         message_text = message_text.removeprefix("/setuserstatus ")
-        res = re_setuserstatus.findall(message_text)
-        if res:
-            user_id, user_status = [int(x) for x in res[0]]
+        input_id_status = re_setuserstatus.findall(message_text)
+        if input_id_status:
+            user_id, user_status = [int(x) for x in input_id_status[0]]
 
-            response, error_text = user.set_user_status(user_id, user_status)
+            api_response = user.set_user_status(user_id, user_status)
 
-            match error_text:
-                case "":
-                    text = f"Успешно изменено\n{user_id} -> {user_status}"
-                case "User Not Exist":
+            if api_response[0]:
+                text = f"Успешно изменено\n{user_id} -> {user_status}"
+
+                if not set_bot_commands(user_id, user_status, UserSettings(user_id).lang):
+                    text = "Ошибка при обновлении команд."
+            else:
+                error_text = api_response[1]
+
+                if error_text == "User Not Exist":
                     text = "Пользователь не найден."
-                case "Invalid status":
+                elif error_text == "Invalid status":
                     text = "Неверный status\nstatus должен быть в (-1, 0, 1, 2)"
-                case "Not Enough Authority":
+                elif error_text == "Not Enough Authority":
                     text = "Недостаточно прав."
-                case "Cannot be reduced in admin rights":
+                elif error_text == "Cannot be reduced in admin rights":
                     text = "Нельзя понизить администратора."
-                case _:
-                    text = f'Ошибка базы данных: "{error_text}"'
-
-            if not set_bot_commands(user_id, user_status, UserSettings(user_id).lang):
-                text = "Ошибка при обновлении команд."
+                elif error_text.startswith("SQL Error "):
+                    text = f'Ошибка базы данных: "{api_response[1]}"'
+                else:
+                    text = "Ошибка"
         else:
             text = """
 SyntaxError
@@ -330,43 +332,42 @@ SyntaxError
         NoEventMessage(f"Your id <code>{chat_id}</code>").reply(message)
 
     elif message_text.startswith("/deleteuser") and is_admin_id(chat_id):
-        message_text = message_text.removeprefix("/deleteuser ")
-        res = re_d.findall(message_text)
-        response = None
+        user_id = message_text.removeprefix("/deleteuser ").strip()
 
-        if res:
-            user_id = int(res[0])
-            response, error_text = user.delete_user(user_id)
+        if not user_id.isdigit():
+            NoEventMessage("SyntaxError\n/deleteuser {id}").send(chat_id)
+            return
 
-            match error_text:
-                case "":
-                    text = "Пользователь успешно удалён"
-                case "User Not Exist":
-                    text = "Пользователь не найден."
-                case "Not Enough Authority":
-                    text = "Недостаточно прав."
-                case "Unable To Remove Administrator":
-                    text = (
-                        "Нельзя удалить администратора.\n"
-                        "<code>/setuserstatus {user_id} 0</code>"
-                    )
-                case "Error":
-                    text = "Не получилось получить csv файл."
-                case _:
-                    text = "Ошибка при удалении."
+        api_response = user.delete_user(int(user_id))
+
+        if api_response[0]:
+            text = "Пользователь успешно удалён"
+            csv_file = api_response[1]
         else:
-            text = "SyntaxError\n/deleteuser {id}"
+            error_text = api_response[1]
+
+            error_dict = {
+                "User Not Exist": "Пользователь не найден.",
+                "Not Enough Authority": "Недостаточно прав.",
+                "Unable To Remove Administrator": "Нельзя удалить администратора.\n"
+                                                  "<code>/setuserstatus {user_id} 0</code>",
+                "CSV Error": "Не получилось получить csv файл.",
+            }
+            if error_text in error_dict:
+                NoEventMessage(error_dict[error_text]).send(chat_id)
+                return
+
+            text = "Ошибка при удалении."
+            csv_file = api_response[1][1]
+
 
         try:
-            if response:
-                bot.send_document(
-                    chat_id,
-                    InputFile(response),
-                    message.message_id,
-                    text,
-                )
-            else:
-                NoEventMessage(text).reply(message)
+            bot.send_document(
+                chat_id,
+                InputFile(csv_file),
+                message.message_id,
+                text,
+            )
         except ApiTelegramException:
             pass
 
@@ -495,13 +496,12 @@ UPDATE settings
         delete_message_action(settings, message)
 
     elif call_data == "confirm change":
-        first_line, _, raw_text = message_text.split("\n", maxsplit=2)
-        text = to_html_escaping(raw_text)  # Получаем изменённый текст
+        first_line, _, text = message_text.split("\n", maxsplit=2)  # Получаем изменённый текст
         event_id = first_line.split(" ", maxsplit=2)[1]
 
-        response, error_text = user.edit_event(event_id, text)
-        if not response:
-            logging.info(f'user.edit_event "{error_text}"')
+        api_response = user.edit_event_text(event_id, text)
+        if not api_response[0]:
+            logging.info(f'user.edit_event "{api_response[1]}"')
             error = get_translate("errors.error", settings.lang)
             CallBackAnswer(error).answer(call_id, True)
             return
@@ -659,9 +659,8 @@ UPDATE settings
     elif call_data.startswith("recover"):
         event_date, event_id = call_data.split(maxsplit=2)[1:]
         event_id = int(event_id)
-        response, error_text = user.recover_event(event_id)
-        if not response:
-            logging.info(f'user.recover_event "{error_text}"')
+
+        if not user.recover_event(event_id)[0]:
             error = get_translate("errors.error", settings.lang)
             CallBackAnswer(error).answer(call_id, True)
             return  # такого события нет
@@ -787,9 +786,9 @@ UPDATE settings
         else:
             res_status = f"{old_status},{new_status}"
 
-        response, error_text = user.set_status(event_id, res_status)
+        api_response = user.set_event_status(event_id, res_status)
 
-        match error_text:
+        match api_response[1]:
             case "":
                 text = ""
             case "Status Conflict":
@@ -844,7 +843,7 @@ UPDATE settings
         if not res_status:
             res_status = "⬜️"
 
-        user.set_status(event_id, res_status)
+        user.set_event_status(event_id, res_status)
 
         callback_handler(
             user=user,
@@ -880,9 +879,7 @@ UPDATE settings
             settings.user_status in (1, 2) or is_admin_id(chat_id)
         )
 
-        response = user.delete_event(event_id, to_bin)[0]
-
-        if not response:
+        if not user.delete_event(event_id, to_bin)[0]:
             error = get_translate("errors.error", settings.lang)
             CallBackAnswer(error).answer(call_id)
 
@@ -1076,8 +1073,7 @@ UPDATE settings
             CallBackAnswer(text).answer(call_id)
 
     elif call_data == "clean_bin":
-        res = user.clear_basket()[0]
-        if not res:
+        if not user.clear_basket()[0]:
             error = get_translate("errors.error", settings.lang)
             CallBackAnswer(error).answer(call_id)
             return
@@ -1128,15 +1124,15 @@ UPDATE settings
         else:
             # Изменяем дату у события
             event_id, event_date = call_data.removeprefix("edit_event_date").split()
-            res, error_text = user.edit_event_date(event_id, event_date)
-            if res:
+            api_response = user.edit_event_date(event_id, event_date)
+            if api_response[0]:
                 try:
                     update_message_action(settings, chat_id, message_id, event_date)
                 except ApiTelegramException:
                     pass
                 text = get_translate("changes_saved", settings.lang)
                 CallBackAnswer(text).answer(call_id)
-            elif error_text == "Limit Exceeded":
+            elif api_response[1] == "Limit Exceeded":
                 text = get_translate("limit_exceeded", settings.lang)
                 CallBackAnswer(text).answer(call_id)
             else:

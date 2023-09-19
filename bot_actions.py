@@ -107,6 +107,7 @@ def update_message_action(
     message_text: str,
     call_id: int = None,
 ):
+    print(2)
     if message_text.startswith("🔍 "):  # Поиск
         first_line = message_text.split("\n", maxsplit=1)[0]
         raw_query = first_line.split(maxsplit=2)[-1][:-1]
@@ -145,7 +146,10 @@ def confirm_changes_message(user: User, message: Message):
 
     event_date, event_id, message_id = re_edit_message.findall(markdown_text)[0]
     event_id, message_id = int(event_id), int(message_id)
+
     text = markdown_text.split("\n", maxsplit=1)[-1].strip("\n")
+    # Убираем @bot_username из начала текста remove_html_escaping
+    edit_text = remove_html_escaping(markdown_text.split(maxsplit=1)[-1])
 
     if len(message.text.split("\n")) == 1:
         try:
@@ -164,8 +168,6 @@ def confirm_changes_message(user: User, message: Message):
         delete_message_action(settings, message)
         return 1
 
-    # Убираем @bot_username из начала текста
-    edit_text = remove_html_escaping(markdown_text).split(maxsplit=1)[-1]
     markup = generate_buttons(
         [
             {
@@ -205,26 +207,23 @@ def confirm_changes_message(user: User, message: Message):
         NoEventMessage(translate, markup).reply(message)
     else:
         day = DayInfo(settings, event_date)
-        edit_text = remove_html_escaping(markdown_text).split(maxsplit=1)[-1]
+        text_diff = highlight_text_difference(event.text, text)
+        generated = NoEventMessage(
+            f"{event_date} {event_id} <u><i>{day.str_date}  "
+            f"{day.week_date}</i></u> ({day.relatively_date})\n"
+            f"<b>{get_translate('are_you_sure_edit', settings.lang)}</b>\n"
+            f"<i>{text_diff}</i>",
+            reply_markup=generate_buttons(
+                [
+                    {
+                        "🔙": "back",
+                        "📝": {"switch_inline_query_current_chat": edit_text},
+                        "✅": "confirm change",
+                    }
+                ]
+            ),
+        )
         try:
-            text_diff = highlight_text_difference(
-                to_html_escaping(event.text), to_html_escaping(text)
-            )
-            generated = NoEventMessage(
-                f"{event_date} {event_id} <u><i>{day.str_date}  "
-                f"{day.week_date}</i></u> ({day.relatively_date})\n"
-                f"<b>{get_translate('are_you_sure_edit', settings.lang)}</b>\n"
-                f"<i>{text_diff}</i>",
-                reply_markup=generate_buttons(
-                    [
-                        {
-                            "🔙": "back",
-                            "📝": {"switch_inline_query_current_chat": edit_text},
-                            "✅": "confirm change",
-                        }
-                    ]
-                ),
-            )
             generated.edit(chat_id, message_id)
         except ApiTelegramException as e:
             if "message is not modified" not in f"{e}":
