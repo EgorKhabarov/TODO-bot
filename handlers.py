@@ -238,7 +238,9 @@ def command_handler(user: User, message: Message) -> None:
                 bot.send_message(chat_id=chat_id, text=big_file_translate)
         else:
             export_error = get_translate("errors.export", settings.lang)
-            generated = NoEventMessage(export_error.format(t=api_response[1].split(" ")[1]))
+            generated = NoEventMessage(
+                export_error.format(t=api_response[1].split(" ")[1])
+            )
             generated.send(chat_id)
 
     elif message_text.startswith("/version"):
@@ -255,7 +257,9 @@ def command_handler(user: User, message: Message) -> None:
             if api_response[0]:
                 text = f"Успешно изменено\n{user_id} -> {user_status}"
 
-                if not set_bot_commands(user_id, user_status, UserSettings(user_id).lang):
+                if not set_bot_commands(
+                    user_id, user_status, UserSettings(user_id).lang
+                ):
                     text = "Ошибка при обновлении команд."
             else:
                 error_text = api_response[1]
@@ -350,7 +354,7 @@ SyntaxError
                 "User Not Exist": "Пользователь не найден.",
                 "Not Enough Authority": "Недостаточно прав.",
                 "Unable To Remove Administrator": "Нельзя удалить администратора.\n"
-                                                  "<code>/setuserstatus {user_id} 0</code>",
+                "<code>/setuserstatus {user_id} 0</code>",
                 "CSV Error": "Не получилось получить csv файл.",
             }
             if error_text in error_dict:
@@ -359,7 +363,6 @@ SyntaxError
 
             text = "Ошибка при удалении."
             csv_file = api_response[1][1]
-
 
         try:
             bot.send_document(
@@ -496,7 +499,7 @@ UPDATE settings
         delete_message_action(settings, message)
 
     elif call_data == "confirm change":
-        first_line, _, text = message_text.split("\n", maxsplit=2)  # Получаем изменённый текст
+        first_line, _, text = message_text.split("\n", maxsplit=2)
         event_id = first_line.split(" ", maxsplit=2)[1]
 
         api_response = user.edit_event_text(event_id, text)
