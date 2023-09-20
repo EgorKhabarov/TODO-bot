@@ -20,7 +20,7 @@ from buttons_utils import (
     create_monthly_calendar_keyboard,
 )
 from todoapi.types import db, UserSettings
-from todoapi.utils import sqlite_format_date, remove_html_escaping, is_valid_year
+from todoapi.utils import sqlite_format_date, is_valid_year
 
 
 def search_message(
