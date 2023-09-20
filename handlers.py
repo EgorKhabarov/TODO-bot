@@ -16,7 +16,12 @@ import logging
 from lang import get_translate
 from bot import bot, set_bot_commands
 from message_generator import NoEventMessage, CallBackAnswer
-from time_utils import now_time_strftime, now_time, new_time_calendar, convert_date_format
+from time_utils import (
+    now_time_strftime,
+    now_time,
+    new_time_calendar,
+    convert_date_format,
+)
 from bot_actions import (
     delete_message_action,
     press_back_action,
@@ -63,7 +68,8 @@ from todoapi.utils import (
     is_premium_user,
     to_html_escaping,
     remove_html_escaping,
-    is_valid_year, html_to_markdown,
+    is_valid_year,
+    html_to_markdown,
 )
 
 
@@ -688,7 +694,9 @@ UPDATE settings
         api_response = user.get_event(event_id)
 
         if not api_response[0]:  # Если этого события нет
-            press_back_action(settings, call_data, chat_id, message_id, message.html_text)
+            press_back_action(
+                settings, call_data, chat_id, message_id, message.html_text
+            )
             return
 
         event = api_response[1]
@@ -768,13 +776,17 @@ UPDATE settings
         api_response = user.get_event(event_id)
 
         if not api_response[0]:
-            press_back_action(settings, call_data, chat_id, message_id, message.html_text)
+            press_back_action(
+                settings, call_data, chat_id, message_id, message.html_text
+            )
             return
 
         old_status = api_response[1].status
 
         if new_status == "⬜️" == old_status:
-            press_back_action(settings, call_data, chat_id, message_id, message.html_text)
+            press_back_action(
+                settings, call_data, chat_id, message_id, message.html_text
+            )
             return
 
         if old_status == "⬜️":
@@ -804,7 +816,9 @@ UPDATE settings
             CallBackAnswer(text).answer(call_id, True)
 
         if new_status == "⬜️":
-            press_back_action(settings, call_data, chat_id, message_id, message.html_text)
+            press_back_action(
+                settings, call_data, chat_id, message_id, message.html_text
+            )
         else:
             callback_handler(
                 user=user,
@@ -825,7 +839,9 @@ UPDATE settings
         api_response = user.get_event(event_id)
 
         if not api_response[0]:
-            press_back_action(settings, call_data, chat_id, message_id, message.html_text)
+            press_back_action(
+                settings, call_data, chat_id, message_id, message.html_text
+            )
             return
 
         event = api_response[1]
@@ -1101,21 +1117,17 @@ UPDATE settings
                 message_text.split(".", maxsplit=4)[-2],
             )
             event_text = to_html_escaping(
-                message_text
-                .split("\n", maxsplit=2)[2]
-                .rsplit("\n", maxsplit=2)[0]
+                message_text.split("\n", maxsplit=2)[2].rsplit("\n", maxsplit=2)[0]
             )
-            event_status = (
-                message_text
-                .split(" ", maxsplit=1)[0]
-                .split(".", maxsplit=4)[4]
+            event_status = str(
+                message_text.split(" ", maxsplit=1)[0].split(".", maxsplit=4)[4]
             )
 
             # Error code: 400. Description: Bad Request: BUTTON_DATA_INVALID"
             # back = f"before del {event_date} {event_id} _"
             text = (
-                get_translate("select.new_date", settings.lang) +
-                f":\n<b>{event_date}.{event_id}.</b>{event_status}\n{event_text}"
+                get_translate("select.new_date", settings.lang)
+                + f":\n<b>{event_date}.{event_id}.</b>{event_status}\n{event_text}"
             )
 
             dt_event_date = convert_date_format(event_date)
@@ -1125,7 +1137,7 @@ UPDATE settings
                 settings.lang,
                 (dt_event_date.year, dt_event_date.month),
                 f"edit_event_date {event_id}",
-                event_date
+                event_date,
             )
             NoEventMessage(text, markup).edit(chat_id, message_id)
         else:

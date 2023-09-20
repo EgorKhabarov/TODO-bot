@@ -107,7 +107,6 @@ def markdown(text: str, statuses: str, sub_url: bool | int = False) -> str:
     def Code(_text: str):
         return f"<pre>{_text}</pre>"
 
-
     text = to_html_escaping(text)
 
     # Сокращаем несколько подряд переносов строки

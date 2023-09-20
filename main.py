@@ -9,10 +9,7 @@ import config
 from lang import get_translate
 from bot import bot, bot_log_info
 from time_utils import now_time
-from bot_actions import (
-    delete_message_action,
-    confirm_changes_message,
-)
+from bot_actions import delete_message_action, confirm_changes_message
 from buttons_utils import delmarkup
 from handlers import command_handler, callback_handler, clear_state
 from utils import poke_link, re_edit_message, rate_limit_requests, msg_check
@@ -21,7 +18,7 @@ from todoapi.types import db
 from todoapi.logger import logging
 from todoapi.api import User
 from todoapi.db_creator import create_tables
-from todoapi.utils import to_html_escaping, html_to_markdown, is_admin_id, remove_html_escaping
+from todoapi.utils import html_to_markdown, is_admin_id, remove_html_escaping
 
 create_tables()
 
@@ -110,7 +107,9 @@ def callback_query_handler(call: CallbackQuery, user: User):
     )
 
 
-@bot.message_handler(func=lambda m: m.text.startswith("#") and not m.text.startswith("#️⃣"))
+@bot.message_handler(
+    func=lambda m: m.text.startswith("#") and not m.text.startswith("#️⃣")
+)
 @check_user
 def processing_search_message(message: Message, user: User):
     """
