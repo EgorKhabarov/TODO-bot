@@ -16,7 +16,7 @@ import logging
 from lang import get_translate
 from bot import bot, set_bot_commands
 from message_generator import NoEventMessage, CallBackAnswer
-from time_utils import now_time_strftime, now_time, new_time_calendar
+from time_utils import now_time_strftime, now_time, new_time_calendar, convert_date_format
 from bot_actions import (
     delete_message_action,
     press_back_action,
@@ -63,7 +63,7 @@ from todoapi.utils import (
     is_premium_user,
     to_html_escaping,
     remove_html_escaping,
-    is_valid_year,
+    is_valid_year, html_to_markdown,
 )
 
 
@@ -129,8 +129,8 @@ def command_handler(user: User, message: Message) -> None:
         generated.send(chat_id)
 
     elif message_text.startswith("/search"):
-        text = message_text.removeprefix("/search").strip()
-        query = to_html_escaping(text).replace("\n", " ").replace("--", "")
+        text = message.html_text.removeprefix("/search").strip()
+        query = html_to_markdown(text).replace("\n", " ").replace("--", "")
         generated = search_message(settings, chat_id, query)
         generated.send(chat_id)
 
@@ -162,7 +162,7 @@ def command_handler(user: User, message: Message) -> None:
                 old="callback_data",
                 new="switch_inline_query_current_chat",
                 val=f"event({event.date}, {event.event_id}, {new_message.message_id}).text\n"
-                f"{remove_html_escaping(event.text)}",
+                f"{event.text}",
             )
 
             try:
@@ -188,7 +188,6 @@ def command_handler(user: User, message: Message) -> None:
         query = message_text[5:].strip()
 
         if not query.lower().startswith("select"):
-            print(query.lower())
             bot.send_chat_action(chat_id, "typing")
             try:
                 db.execute(query, commit=message_text.endswith("\n--commit=True"))
@@ -493,7 +492,7 @@ UPDATE settings
         NoEventMessage(text, markup).edit(chat_id, message_id)
 
     elif call_data.startswith("back"):
-        press_back_action(settings, call_data, chat_id, message_id, message_text)
+        press_back_action(settings, call_data, chat_id, message_id, message.html_text)
 
     elif call_data == "message_del":
         delete_message_action(settings, message)
@@ -502,14 +501,14 @@ UPDATE settings
         first_line, _, text = message_text.split("\n", maxsplit=2)
         event_id = first_line.split(" ", maxsplit=2)[1]
 
-        api_response = user.edit_event_text(event_id, text)
+        api_response = user.edit_event_text(event_id, html_to_markdown(text))
         if not api_response[0]:
             logging.info(f'user.edit_event "{api_response[1]}"')
             error = get_translate("errors.error", settings.lang)
             CallBackAnswer(error).answer(call_id, True)
             return
 
-        update_message_action(settings, chat_id, message_id, message_text)
+        update_message_action(settings, chat_id, message_id, message.html_text)
         CallBackAnswer(get_translate("changes_saved", settings.lang)).answer(call_id)
 
     elif call_data.startswith("select event "):
@@ -529,7 +528,7 @@ UPDATE settings
         if len(events_list) == 1:
             event = events_list[0]
             if not user.check_event(event.event_id, action.endswith("bin"))[1]:
-                update_message_action(settings, chat_id, message_id, message_text)
+                update_message_action(settings, chat_id, message_id, message.html_text)
                 return
 
             if action in ("status", "move", "move bin", "recover bin", "open"):
@@ -579,7 +578,7 @@ UPDATE settings
             if action == "edit":
                 callback_data = (
                     f"event({event.date}, {event.event_id}, {message.message_id}).text\n"
-                    f"{remove_html_escaping(event.text)}"
+                    f"{event.text}"
                 )
                 button = InlineKeyboardButton(
                     button_title2, switch_inline_query_current_chat=callback_data
@@ -613,7 +612,7 @@ UPDATE settings
             markup.row(button)
 
         if not markup.to_dict()["inline_keyboard"]:  # Созданный markup пустой
-            update_message_action(settings, chat_id, message_id, message_text)
+            update_message_action(settings, chat_id, message_id, message.html_text)
             return
 
         markup.row(
@@ -645,9 +644,8 @@ UPDATE settings
             text = f"{basket}\n{select_event}"
 
         elif message_text.startswith("🔍 "):
-            first_line = message_text.split("\n", maxsplit=1)[0]
-            raw_query = first_line.split(maxsplit=2)[-1][:-1]
-            query = to_html_escaping(raw_query)
+            first_line = html_to_markdown(message.html_text).split("\n", maxsplit=1)[0]
+            query = first_line.split(maxsplit=2)[-1][:-1]
             translate_search = get_translate("messages.search", settings.lang)
             choose_event = get_translate("select.event", settings.lang)
             text = f"🔍 {translate_search} {query}:\n{choose_event}"
@@ -690,7 +688,7 @@ UPDATE settings
         api_response = user.get_event(event_id)
 
         if not api_response[0]:  # Если этого события нет
-            press_back_action(settings, call_data, chat_id, message_id, message_text)
+            press_back_action(settings, call_data, chat_id, message_id, message.html_text)
             return
 
         event = api_response[1]
@@ -770,13 +768,13 @@ UPDATE settings
         api_response = user.get_event(event_id)
 
         if not api_response[0]:
-            press_back_action(settings, call_data, chat_id, message_id, message_text)
+            press_back_action(settings, call_data, chat_id, message_id, message.html_text)
             return
 
         old_status = api_response[1].status
 
         if new_status == "⬜️" == old_status:
-            press_back_action(settings, call_data, chat_id, message_id, message_text)
+            press_back_action(settings, call_data, chat_id, message_id, message.html_text)
             return
 
         if old_status == "⬜️":
@@ -806,7 +804,7 @@ UPDATE settings
             CallBackAnswer(text).answer(call_id, True)
 
         if new_status == "⬜️":
-            press_back_action(settings, call_data, chat_id, message_id, message_text)
+            press_back_action(settings, call_data, chat_id, message_id, message.html_text)
         else:
             callback_handler(
                 user=user,
@@ -827,7 +825,7 @@ UPDATE settings
         api_response = user.get_event(event_id)
 
         if not api_response[0]:
-            press_back_action(settings, call_data, chat_id, message_id, message_text)
+            press_back_action(settings, call_data, chat_id, message_id, message.html_text)
             return
 
         event = api_response[1]
@@ -899,9 +897,9 @@ UPDATE settings
 
         try:
             if message_text.startswith("🔍 "):  # Поиск
-                first_line = message_text.split("\n", maxsplit=1)[0]
+                first_line = message.html_text.split("\n", maxsplit=1)[0]
                 raw_query = first_line.split(maxsplit=2)[-1][:-1]
-                query = to_html_escaping(raw_query)
+                query = html_to_markdown(raw_query)
                 generated = search_message(settings, chat_id, query, id_list, int(page))
                 generated.edit(chat_id, message_id, markup=message.reply_markup)
 
@@ -1003,9 +1001,8 @@ UPDATE settings
             )
             try:
                 bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
-            except (
-                ApiTelegramException
-            ):  # Если нажата кнопка ⟳, но сообщение не изменено
+            except ApiTelegramException:
+                # Если нажата кнопка ⟳, но сообщение не изменено
                 now_date = now_time_strftime(settings.timezone)
                 generated = daily_message(
                     settings, chat_id, now_date, message_id=message_id
@@ -1063,7 +1060,7 @@ UPDATE settings
             CallBackAnswer("🤔").answer(call_id)
 
     elif call_data == "update":
-        update_message_action(settings, chat_id, message_id, message_text, call_id)
+        update_message_action(settings, chat_id, message_id, message.html_text, call_id)
 
     elif call_data.startswith("help"):
         try:
@@ -1080,7 +1077,7 @@ UPDATE settings
             CallBackAnswer(error).answer(call_id)
             return
 
-        update_message_action(settings, chat_id, message_id, message_text)
+        update_message_action(settings, chat_id, message_id, message.html_text)
 
     elif call_data == "restore_to_default":
         user.set_settings("ru", 1, "Москва", 3, "DESC", 0, 0, "08:00")
@@ -1103,26 +1100,34 @@ UPDATE settings
                 message_text[:10],
                 message_text.split(".", maxsplit=4)[-2],
             )
-            event_text = message_text.split("\n", maxsplit=2)[2].rsplit(
-                "\n", maxsplit=2
-            )[0]
-            event_status = message_text.split(" ", maxsplit=1)[0].split(
-                ".", maxsplit=4
-            )[4]
-            back = event_date
+            event_text = to_html_escaping(
+                message_text
+                .split("\n", maxsplit=2)[2]
+                .rsplit("\n", maxsplit=2)[0]
+            )
+            event_status = (
+                message_text
+                .split(" ", maxsplit=1)[0]
+                .split(".", maxsplit=4)[4]
+            )
 
             # Error code: 400. Description: Bad Request: BUTTON_DATA_INVALID"
             # back = f"before del {event_date} {event_id} _"
-
-            generated = monthly_calendar_message(
-                settings,
-                chat_id,
-                command=f"edit_event_date {event_id}",
-                back=back,
-                custom_text=get_translate("select.new_date", settings.lang)
-                + f":\n<b>{event_date}.{event_id}.</b>{event_status}\n{event_text}",
+            text = (
+                get_translate("select.new_date", settings.lang) +
+                f":\n<b>{event_date}.{event_id}.</b>{event_status}\n{event_text}"
             )
-            generated.edit(chat_id, message_id)
+
+            dt_event_date = convert_date_format(event_date)
+            markup = create_monthly_calendar_keyboard(
+                chat_id,
+                settings.timezone,
+                settings.lang,
+                (dt_event_date.year, dt_event_date.month),
+                f"edit_event_date {event_id}",
+                event_date
+            )
+            NoEventMessage(text, markup).edit(chat_id, message_id)
         else:
             # Изменяем дату у события
             event_id, event_date = call_data.removeprefix("edit_event_date").split()

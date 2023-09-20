@@ -6,8 +6,6 @@ from typing import Literal
 from todoapi.utils import (
     remove_html_escaping,
     sqlite_format_date,
-    html_to_markdown,
-    to_html_escaping,
     is_premium_user,
     is_valid_year,
     is_admin_id,
@@ -275,7 +273,7 @@ VALUES (
                 params={
                     "user_id": self.user_id,
                     "date": date,
-                    "text": html_to_markdown(text),
+                    "text": text,
                 },
                 commit=True,
             )
@@ -338,7 +336,7 @@ UPDATE events
                 params={
                     "user_id": self.user_id,
                     "event_id": event_id,
-                    "text": to_html_escaping(html_to_markdown(text)),
+                    "text": text,
                 },
                 commit=True,
             )
@@ -729,7 +727,7 @@ UPDATE settings
         return True, ""
 
     def delete_user(
-        self, user_id: int = None
+        self, user_id: int
     ) -> tuple[bool, StringIO | str | tuple[str, StringIO]]:
         """
         Удалить все данные пользователя.
@@ -746,8 +744,7 @@ UPDATE settings
 
         ("SQL Error {}", csv_file) - Ошибка при удалении.
         """
-        is_self = (user_id is None) or (self.user_id == user_id)
-        user_id = user_id or self.user_id
+        is_self = self.user_id == user_id
 
         # Когда ты не админ и пытаешься удалить другого человека
         if not is_admin_id(self.user_id) and not is_self:
@@ -791,7 +788,7 @@ DELETE FROM events
         return True, csv_file
 
     def set_user_status(
-        self, user_id: int = None, status: Literal[-1, 0, 1, 2] = 0
+        self, user_id: int, status: Literal[-1, 0, 1, 2] = 0
     ) -> tuple[bool, str]:
         """
         Поставить статус пользователю.
@@ -809,16 +806,15 @@ DELETE FROM events
 
         "SQL Error {}" - Ошибка sql.
         """
-        user_id = int(user_id or self.user_id)
 
-        if is_admin_id(self.user_id):
+        if not is_admin_id(self.user_id):
             return False, "Not Enough Authority"
-
-        if status not in (-1, 0, 1, 2):
-            return False, "Invalid status"
 
         if is_admin_id(user_id):  # TODO Проверить
             return False, "Cannot be reduced in admin rights"
+
+        if status not in (-1, 0, 1, 2):
+            return False, "Invalid status"
 
         if not self.check_user(user_id)[1]:
             return False, "User Not Exist"

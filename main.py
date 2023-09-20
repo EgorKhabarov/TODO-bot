@@ -21,7 +21,7 @@ from todoapi.types import db
 from todoapi.logger import logging
 from todoapi.api import User
 from todoapi.db_creator import create_tables
-from todoapi.utils import to_html_escaping, html_to_markdown, is_admin_id
+from todoapi.utils import to_html_escaping, html_to_markdown, is_admin_id, remove_html_escaping
 
 create_tables()
 
@@ -110,7 +110,7 @@ def callback_query_handler(call: CallbackQuery, user: User):
     )
 
 
-@bot.message_handler(func=lambda m: m.text.startswith("#"))
+@bot.message_handler(func=lambda m: m.text.startswith("#") and not m.text.startswith("#️⃣"))
 @check_user
 def processing_search_message(message: Message, user: User):
     """
@@ -121,8 +121,8 @@ def processing_search_message(message: Message, user: User):
     settings = user.settings
     chat_id = message.chat.id
 
-    raw_query = message.text[1:].replace("\n", " ").replace("--", "")
-    query = to_html_escaping(raw_query.strip())
+    raw_query = message.html_text[1:].replace("\n", " ").replace("--", "")
+    query = html_to_markdown(raw_query.strip())
 
     settings.log("search", query)
 
@@ -194,7 +194,7 @@ def add_event(message: Message, user: User):
     settings = user.settings
     chat_id = message.chat.id
     # Экранируем текст
-    markdown_text = html_to_markdown(message.html_text)
+    markdown_text = remove_html_escaping(html_to_markdown(message.html_text))
 
     settings.log("send", "add event")
 

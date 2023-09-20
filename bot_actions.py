@@ -67,7 +67,7 @@ WHERE user_id = ?;
                 commit=True,
             )
 
-    msg_date = message_text[:10]
+    msg_date = message_text.removeprefix("<b>")[:10]
 
     if call_data.endswith("bin"):  # Корзина
         generated = trash_can_message(settings, chat_id)
@@ -76,7 +76,7 @@ WHERE user_id = ?;
     elif message_text.startswith("🔍 "):  # Поиск
         first_line = message_text.split("\n", maxsplit=1)[0]
         raw_query = first_line.split(maxsplit=2)[-1][:-1]
-        query = to_html_escaping(raw_query)
+        query = to_html_escaping(html_to_markdown(raw_query))
         generated = search_message(settings, chat_id, query)
         generated.edit(chat_id, message_id)
 
@@ -107,11 +107,10 @@ def update_message_action(
     message_text: str,
     call_id: int = None,
 ):
-    print(2)
     if message_text.startswith("🔍 "):  # Поиск
         first_line = message_text.split("\n", maxsplit=1)[0]
         raw_query = first_line.split(maxsplit=2)[-1][:-1]
-        query = to_html_escaping(raw_query)
+        query = html_to_markdown(raw_query)
         generated = search_message(settings, chat_id, query)
 
     elif message_text.startswith("📆"):  # Если /week_event_list
@@ -142,14 +141,14 @@ def update_message_action(
 def confirm_changes_message(user: User, message: Message):
     settings = user.settings
     chat_id = message.chat.id
-    markdown_text = html_to_markdown(message.html_text)
+    markdown_text = remove_html_escaping(html_to_markdown(message.html_text))
 
     event_date, event_id, message_id = re_edit_message.findall(markdown_text)[0]
     event_id, message_id = int(event_id), int(message_id)
 
     text = markdown_text.split("\n", maxsplit=1)[-1].strip("\n")
     # Убираем @bot_username из начала текста remove_html_escaping
-    edit_text = remove_html_escaping(markdown_text.split(maxsplit=1)[-1])
+    edit_text = markdown_text.split(maxsplit=1)[-1]
 
     if len(message.text.split("\n")) == 1:
         try:
@@ -207,7 +206,9 @@ def confirm_changes_message(user: User, message: Message):
         NoEventMessage(translate, markup).reply(message)
     else:
         day = DayInfo(settings, event_date)
-        text_diff = highlight_text_difference(event.text, text)
+        text_diff = highlight_text_difference(
+            to_html_escaping(event.text), to_html_escaping(text)
+        )
         generated = NoEventMessage(
             f"{event_date} {event_id} <u><i>{day.str_date}  "
             f"{day.week_date}</i></u> ({day.relatively_date})\n"
@@ -253,7 +254,6 @@ def before_move_message(
         return 1
 
     event = api_response[1]
-    text, status, event_date = event.text, event.status, event.date
 
     delete_permanently = get_translate("delete_permanently", settings.lang)
     trash_bin = get_translate("trash_bin", settings.lang)
@@ -285,7 +285,7 @@ def before_move_message(
         ]
     )
 
-    day = DayInfo(settings, event_date)
+    day = DayInfo(settings, event.date)
     what_do_with_event = get_translate("what_do_with_event", settings.lang)
     end_text = (
         get_translate("/deleted", settings.lang)
@@ -293,8 +293,9 @@ def before_move_message(
         else ""
     )
     text = (
-        f"<b>{event_date}.{event_id}.</b>{status} <u><i>{day.str_date}  "
+        f"<b>{event.date}.{event_id}.</b>{event.status} <u><i>{day.str_date}  "
         f"{day.week_date}</i> {day.relatively_date}</u>\n"
-        f"<b>{what_do_with_event}:</b>\n{text[:3800]}\n\n{end_text}"
+        f"<b>{what_do_with_event}:</b>\n{to_html_escaping(event.text)[:3800]}\n\n"
+        f"{end_text}"
     )
     NoEventMessage(text, pre_delmarkup).edit(chat_id, message_id)

@@ -183,7 +183,7 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
     )
 
     if back:
-        markup.row(InlineKeyboardButton("🔙", callback_data=back))
+        markup.row(InlineKeyboardButton("🔙", callback_data=back[1:-1]))
 
     return markup
 
@@ -287,7 +287,7 @@ SELECT date
     )
 
     if back:
-        markup.row(InlineKeyboardButton("🔙", callback_data=back))
+        markup.row(InlineKeyboardButton("🔙", callback_data=back[1:-1]))
 
     return markup
 

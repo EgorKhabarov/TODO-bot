@@ -19,8 +19,8 @@ import logging
 from bot import bot
 from lang import get_translate
 from time_utils import DayInfo
-from todoapi.utils import is_admin_id
 from todoapi.types import db, UserSettings, Event
+from todoapi.utils import is_admin_id, to_html_escaping
 
 re_edit_message = re.compile(
     r"\A@\w{5,32} event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.text(?:\n|\Z)"
@@ -107,6 +107,9 @@ def markdown(text: str, statuses: str, sub_url: bool | int = False) -> str:
     def Code(_text: str):
         return f"<pre>{_text}</pre>"
 
+
+    text = to_html_escaping(text)
+
     # Сокращаем несколько подряд переносов строки
     text = re.sub(r"\n(\n*)\n", "\n⠀\n", text)
 
@@ -115,15 +118,18 @@ def markdown(text: str, statuses: str, sub_url: bool | int = False) -> str:
     ):
         text = SubUrls(text)
 
-    for status in statuses.split(","):
-        if status == "🗒":
-            text = List(text)
-        if status == "🧮":
-            text = OrderList(text)
-        if status == "💻":
-            text = Code(text)
-        if status == "🪞":
-            text = Spoiler(text)
+    statuses = statuses.split(",")
+
+    if "🗒" in statuses:
+        text = List(text)
+
+    elif "🧮" in statuses:
+        text = OrderList(text)
+
+    if "💻" in statuses:
+        text = Code(text)
+    elif "🪞" in statuses:
+        text = Spoiler(text)
 
     return text
 

@@ -77,10 +77,12 @@ def search_message(
     WHERE = f"(user_id = {chat_id} AND removal_time = 0) AND ({splitquery})"
 
     generated = EventMessageGenerator(settings, reply_markup=delopenmarkup, page=page)
+
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
         generated.get_data(WHERE=WHERE, direction=settings.direction)
+
     generated.format(
         title=f"🔍 {translate_search} {query}:",
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
@@ -276,7 +278,7 @@ def daily_message(
         generated.get_data(WHERE=WHERE, direction=settings.direction)
 
     # Изменяем уже существующий `generated`, если в сообщение событие только одно.
-    if len(generated.event_list) == 1 and message_id:
+    if message_id and len(generated.event_list) == 1:
         event = generated.event_list[0]
         edit_button_attrs(
             markup=generated.reply_markup,
@@ -285,7 +287,7 @@ def daily_message(
             old="callback_data",
             new="switch_inline_query_current_chat",
             val=f"event({event.date}, {event.event_id}, {message_id}).text\n"
-            f"{remove_html_escaping(event.text)}",
+            f"{event.text}",
         )
 
     generated.format(
