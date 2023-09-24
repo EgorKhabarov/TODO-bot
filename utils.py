@@ -40,7 +40,7 @@ re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
 re_setuserstatus = re.compile(r"\A(\d+) (-1|0|1|2)\Z")
 
 
-def markdown(text: str, statuses: str, sub_url: bool | int = False) -> str:
+def markdown(text: str, statuses: str, sub_url: bool = False, theme: int = 0) -> str:
     """
     Добавляем эффекты к событию по статусу
     """
@@ -78,13 +78,15 @@ def markdown(text: str, statuses: str, sub_url: bool | int = False) -> str:
             for line in lst
         )
 
-    def List(_text: str):  # Заменяет \n на :black_small_square: (эмодзи Telegram)
-        _text = "▪️" + _text
+    def List(_text: str):
+        """Заменяет \n на :black_small_square: (эмодзи Telegram)"""
+        point = "▫️" if theme == 1 else "▪️"
+        _text = point + _text
         for old, new in (
-            ("\n", "\n▪️"),
-            ("\n▪️⠀\n", "\n⠀\n"),
-            ("▪️-- ", ""),
-            ("▪️— ", ""),
+            ("\n", f"\n{point}"),
+            (f"\n{point}⠀\n", "\n⠀\n"),
+            (f"{point}-- ", ""),
+            (f"{point}— ", ""),
         ):
             _text = _text.replace(old, new)
         return _text
@@ -369,9 +371,9 @@ def fetch_forecast(settings: UserSettings, city: str) -> str:
         315: "↖️",
     }
 
-    citytimezone = timedelta(hours=weather["city"]["timezone"] // 60 // 60)
-    sunrise = datetime.utcfromtimestamp(weather["city"]["sunrise"]) + citytimezone
-    sunset = datetime.utcfromtimestamp(weather["city"]["sunset"]) + citytimezone
+    city_timezone = timedelta(hours=weather["city"]["timezone"] // 60 // 60)
+    sunrise = datetime.utcfromtimestamp(weather["city"]["sunrise"]) + city_timezone
+    sunset = datetime.utcfromtimestamp(weather["city"]["sunset"]) + city_timezone
     result = f"{weather['city']['name']}\n☀ {sunrise}\n🌑 {sunset}"
 
     for hour in weather["list"]:

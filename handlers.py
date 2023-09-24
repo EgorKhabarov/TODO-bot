@@ -13,8 +13,8 @@ from telebot.types import (
 
 import config
 import logging
-from lang import get_translate
 from bot import bot, set_bot_commands
+from lang import get_translate, get_theme_emoji
 from message_generator import NoEventMessage, CallBackAnswer
 from time_utils import (
     now_time_strftime,
@@ -34,7 +34,6 @@ from buttons_utils import (
     generate_buttons,
     delmarkup,
     edit_button_attrs,
-    backmarkup,
     create_yearly_calendar_keyboard,
 )
 from bot_messages import (
@@ -100,7 +99,7 @@ def command_handler(user: User, message: Message) -> None:
         else:
             set_bot_commands(chat_id, settings.user_status, settings.lang)
             generated = NoEventMessage(
-                get_translate("errors.deleted", settings.lang), delmarkup
+                get_translate("errors.deleted", settings.lang), delmarkup(settings)
             )
             generated.send(chat_id)
 
@@ -131,7 +130,7 @@ def command_handler(user: User, message: Message) -> None:
             else:  # forecast
                 text = get_translate("errors.forecast_invalid_city_name", settings.lang)
 
-        generated = NoEventMessage(text, delmarkup)
+        generated = NoEventMessage(text, delmarkup(settings))
         generated.send(chat_id)
 
     elif message_text.startswith("/search"):
@@ -439,7 +438,7 @@ def callback_handler(
                      Если событие одно, то предлагает сразу для него изменить статус.
     "select event move" - Если событий несколько, то предлагает выбрать конкретное для удаления или *перемещение в корзину. *в зависимости от прав пользователя
                   Если событие одно, то предлагает сразу для него удалить или *переместить в корзину. *в зависимости от прав пользователя
-    "select event move bin" - Делает то же самое что "select event delete" но после выполнения возвращает сообщение в корзину.
+    "select event move bin" - Делает то же самое что и "select event delete", но после выполнения возвращает сообщение в корзину.
     "select event recover bin" -
     "select event open" - Открывает день выбранного события.
     "recover" - Восстанавливает событие из корзины.
@@ -483,6 +482,9 @@ UPDATE settings
         CallBackAnswer(text).answer(call_id)
 
         text = f"{message.html_text}\n\n<b>?.?.</b>⬜\n{text}"
+        backmarkup = generate_buttons(
+            [{get_theme_emoji("back", settings.theme): "back"}]
+        )
         bot.edit_message_text(text, chat_id, message_id, reply_markup=backmarkup)
 
     elif call_data == "/calendar":
@@ -492,9 +494,7 @@ UPDATE settings
     elif call_data == "calendar":
         YY_MM = [int(x) for x in message_text[:10].split(".")[1:]][::-1]
         text = get_translate("select.date", settings.lang)
-        markup = create_monthly_calendar_keyboard(
-            chat_id, settings.timezone, settings.lang, YY_MM
-        )
+        markup = create_monthly_calendar_keyboard(chat_id, settings, YY_MM)
         NoEventMessage(text, markup).edit(chat_id, message_id)
 
     elif call_data.startswith("back"):
@@ -623,7 +623,8 @@ UPDATE settings
 
         markup.row(
             InlineKeyboardButton(
-                "🔙", callback_data="back" if not action.endswith("bin") else "back bin"
+                get_theme_emoji("back", settings.theme),
+                callback_data="back" if not action.endswith("bin") else "back bin",
             )
         )
 
@@ -723,7 +724,7 @@ UPDATE settings
                     }
                     if status != "⬜️"
                     else {},
-                    {"🔙": "back"},
+                    {get_theme_emoji("back", settings.theme): "back"},
                 ]
             )
         else:  # status page
@@ -754,7 +755,11 @@ UPDATE settings
                         }
                         for status_column in buttons_data
                     ],
-                    {"🔙": f"status_home_page {event_id} {event_date}"},
+                    {
+                        get_theme_emoji(
+                            "back", settings.theme
+                        ): f"status_home_page {event_id} {event_date}"
+                    },
                 ]
             )
 
@@ -762,7 +767,7 @@ UPDATE settings
             f"{event_date}\n"
             f"<b>{get_translate('select.status_to_event', settings.lang)}\n"
             f"{event_date}.{event_id}.{status}</b>\n"
-            f"{markdown(text, status, settings.sub_urls)}",
+            f"{markdown(text, status, settings.sub_urls, settings.theme)}",
             chat_id,
             message_id,
             reply_markup=markup,
@@ -985,7 +990,7 @@ UPDATE settings
 
         if is_valid_year(year):
             markup = create_yearly_calendar_keyboard(
-                settings.timezone, settings.lang, chat_id, year, command, back
+                chat_id, settings, year, command, back
             )
             try:
                 bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
@@ -1013,7 +1018,7 @@ UPDATE settings
 
         if is_valid_year(date[0]):
             markup = create_monthly_calendar_keyboard(
-                chat_id, settings.timezone, settings.lang, date, command, back
+                chat_id, settings, date, command, back
             )
             try:
                 bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
@@ -1030,10 +1035,7 @@ UPDATE settings
     elif call_data.startswith("settings"):
         par_name, par_val = call_data.split(" ", maxsplit=2)[1:]
 
-        if par_name not in [
-            "user_id",
-            "userinfo",
-            "registration_date",
+        if par_name not in (
             "lang",
             "sub_urls",
             "city",
@@ -1042,9 +1044,8 @@ UPDATE settings
             "user_status",
             "notifications",
             "notifications_time",
-            "user_max_event_id",
-            "add_event_date",
-        ]:
+            "theme",
+        ):
             return
 
         user.set_settings(**{par_name: par_val})
@@ -1052,6 +1053,7 @@ UPDATE settings
         settings = UserSettings(chat_id)
         set_bot_commands(chat_id, settings.user_status, settings.lang)
         generated = settings_message(settings)
+
         try:
             generated.edit(chat_id, message_id)
         except ApiTelegramException:
@@ -1133,8 +1135,7 @@ UPDATE settings
             dt_event_date = convert_date_format(event_date)
             markup = create_monthly_calendar_keyboard(
                 chat_id,
-                settings.timezone,
-                settings.lang,
+                settings,
                 (dt_event_date.year, dt_event_date.month),
                 f"edit_event_date {event_id}",
                 event_date,

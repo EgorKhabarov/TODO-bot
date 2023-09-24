@@ -177,7 +177,7 @@ def create_image(
 
     # Временно обрезаем всё лишнее.
     image = image.crop((94, 114, 694, 981))
-    # yearcalendar = [monthcalendar(year, m) for m in range(1, 13)]
+    # year_calendar = [monthcalendar(year, m) for m in range(1, 13)]
 
     buffer = BytesIO()
     image.save(buffer, format="png")

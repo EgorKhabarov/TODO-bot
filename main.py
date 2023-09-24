@@ -213,7 +213,7 @@ SELECT add_event_date
     # Если сообщение длиннее 3800 символов, то ошибка
     if len(markdown_text) >= 3800:
         message_is_too_long = get_translate("errors.message_is_too_long", settings.lang)
-        bot.reply_to(message, message_is_too_long, reply_markup=delmarkup)
+        bot.reply_to(message, message_is_too_long, reply_markup=delmarkup(settings))
         return
 
     if (
@@ -223,7 +223,7 @@ SELECT add_event_date
         is True
     ):
         exceeded_limit = get_translate("errors.exceeded_limit", settings.lang)
-        bot.reply_to(message, exceeded_limit, reply_markup=delmarkup)
+        bot.reply_to(message, exceeded_limit, reply_markup=delmarkup(settings))
         return
 
     # Пытаемся создать событие
@@ -231,7 +231,7 @@ SELECT add_event_date
         delete_message_action(settings, message)
     else:
         error_translate = get_translate("errors.error", settings.lang)
-        bot.reply_to(message, error_translate, reply_markup=delmarkup)
+        bot.reply_to(message, error_translate, reply_markup=delmarkup(settings))
 
     clear_state(chat_id)
 

@@ -7,8 +7,8 @@ from telebot.types import Message
 
 import config
 from bot import bot
-from lang import get_translate
 from time_utils import DayInfo
+from lang import get_translate, get_theme_emoji
 from message_generator import NoEventMessage, CallBackAnswer
 from buttons_utils import delmarkup, create_monthly_calendar_keyboard, generate_buttons
 from bot_messages import (
@@ -35,7 +35,7 @@ def delete_message_action(settings: UserSettings, message: Message):
         bot.delete_message(message.chat.id, message.message_id)
     except ApiTelegramException:
         get_admin_rules = get_translate("errors.get_admin_rules", settings.lang)
-        NoEventMessage(get_admin_rules, delmarkup).reply(message)
+        NoEventMessage(get_admin_rules, delmarkup(settings)).reply(message)
 
 
 def press_back_action(
@@ -94,9 +94,7 @@ WHERE user_id = ?;
             # "dd.mm.yyyy" -> [yyyy, mm]
             YY_MM = [int(x) for x in msg_date.split(".")[1:]][::-1]
             text = get_translate("select.date", settings.lang)
-            markup = create_monthly_calendar_keyboard(
-                chat_id, settings.timezone, settings.lang, YY_MM
-            )
+            markup = create_monthly_calendar_keyboard(chat_id, settings, YY_MM)
             NoEventMessage(text, markup).edit(chat_id, message_id)
 
 
@@ -217,7 +215,7 @@ def confirm_changes_message(user: User, message: Message):
             reply_markup=generate_buttons(
                 [
                     {
-                        "🔙": "back",
+                        get_theme_emoji("back", settings.theme): "back",
                         "📝": {"switch_inline_query_current_chat": edit_text},
                         "✅": "confirm change",
                     }
@@ -280,7 +278,9 @@ def before_move_message(
             if not in_wastebasket
             else {},
             {
-                "🔙": "back" if not in_wastebasket else "back bin",
+                get_theme_emoji("back", settings.theme): "back"
+                if not in_wastebasket
+                else "back bin",
             },
         ]
     )

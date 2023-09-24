@@ -78,7 +78,8 @@ SELECT user_id,
        notifications,
        notifications_time,
        user_max_event_id,
-       add_event_date
+       add_event_date,
+       theme
   FROM settings
  LIMIT 1;
 """
@@ -105,7 +106,8 @@ CREATE TABLE settings (
                             CHECK (notifications IN (0, 1)),
     notifications_time TEXT DEFAULT '08:00',
     user_max_event_id  INT  DEFAULT (1),
-    add_event_date     INT  DEFAULT (0) 
+    add_event_date     INT  DEFAULT (0),
+    theme              INT  DEFAULT (0)
 );
 """,
                     commit=True,

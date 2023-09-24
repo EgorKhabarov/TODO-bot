@@ -170,8 +170,6 @@ SELECT event_id,
 
         {markdown_text} - оборачивает текст в нужный тег по статусу                             ["<b>"]
 
-        {markdown_text_nourlsub} - оборачивает текст в нужный тег по статусу без сокращения url ["</b>"]
-
         {text}     - Text                                                                       ["text"]
 
         {days_before_delete} - Дней до удаления
@@ -274,11 +272,13 @@ SELECT event_id,
                         event_id=f"{event.event_id}",
                         status=event.status,
                         markdown_text=markdown(
-                            event.text, event.status, self._settings.sub_urls
+                            event.text,
+                            event.status,
+                            self._settings.sub_urls,
+                            self._settings.theme,
                         )
                         if "{markdown_text" in args
                         else "",
-                        markdown_text_nourlsub=markdown(event.text, event.status),
                         days_before=f"({dbd})"
                         if (
                             (

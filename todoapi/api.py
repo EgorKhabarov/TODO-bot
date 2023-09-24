@@ -618,6 +618,7 @@ SELECT event_id,
         user_status: Literal[-1, 0, 1, 2] = None,
         notifications: Literal[0, 1] = None,
         notifications_time: str = None,
+        theme: int = None,
     ) -> tuple[bool, str]:
         """
         Установить настройку.
@@ -637,6 +638,8 @@ SELECT event_id,
         "hour must be more -1 and less 13"
 
         "minute must be in [0, 10, 20, 30, 40, 50]"
+
+        "theme must be in [0, 1]"
 
         "SQL Error {}" - Ошибка sql.
         """
@@ -699,6 +702,13 @@ SELECT event_id,
             update_list.append("notifications_time")
             self.settings.notifications_time = notifications_time
 
+        if theme is not None:
+            if theme not in (0, 1, "0", "1"):
+                return False, "theme must be in [0, 1]"
+
+            update_list.append("theme")
+            self.settings.theme = int(theme)
+
         try:
             db.execute(
                 """
@@ -711,6 +721,7 @@ UPDATE settings
                 params={
                     "lang": lang,
                     "city": city,
+                    "theme": theme,
                     "sub_urls": sub_urls,
                     "timezone": timezone,
                     "direction": direction,

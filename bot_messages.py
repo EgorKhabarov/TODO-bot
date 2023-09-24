@@ -5,7 +5,7 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot import bot
-from lang import get_translate
+from lang import get_translate, get_theme_emoji
 from limits import create_image
 from sql_utils import sqlite_format_date2
 from utils import update_userinfo, re_call_data_date
@@ -13,10 +13,8 @@ from message_generator import EventMessageGenerator, NoEventMessage
 from time_utils import convert_date_format, now_time, now_time_strftime
 from buttons_utils import (
     delmarkup,
-    delopenmarkup,
     generate_buttons,
     edit_button_attrs,
-    backopenmarkup,
     create_monthly_calendar_keyboard,
 )
 from todoapi.types import db, UserSettings
@@ -56,7 +54,7 @@ def search_message(
     translate_search = get_translate("messages.search", settings.lang)
 
     if query.isspace():
-        generated = EventMessageGenerator(settings, reply_markup=delmarkup)
+        generated = EventMessageGenerator(settings, reply_markup=delmarkup(settings))
         generated.format(
             title=f"🔍 {translate_search} {query.strip()}:\n",
             if_empty=get_translate("errors.request_empty", settings.lang),
@@ -76,6 +74,14 @@ def search_message(
     )
     WHERE = f"(user_id = {chat_id} AND removal_time = 0) AND ({splitquery})"
 
+    delopenmarkup = generate_buttons(
+        [
+            {
+                get_theme_emoji("del", settings.theme): "message_del",
+                "↖️": "select event open",
+            }
+        ]
+    )
     generated = EventMessageGenerator(settings, reply_markup=delopenmarkup, page=page)
 
     if id_list:
@@ -141,7 +147,9 @@ def week_event_list_message(
 )
     """
 
-    generated = EventMessageGenerator(settings, reply_markup=delmarkup, page=page)
+    generated = EventMessageGenerator(
+        settings, reply_markup=delmarkup(settings), page=page
+    )
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
@@ -257,13 +265,13 @@ def daily_message(
     markup = generate_buttons(
         [
             {
-                "➕": "event_add",
+                get_theme_emoji("add", settings.theme): "event_add",
                 "📝": "select event edit",
                 "🚩": "select event status",
                 "🔀": "select event move",
             },
             {
-                "🔙": "calendar",
+                get_theme_emoji("back", settings.theme): "calendar",
                 "<": yesterday,
                 ">": tomorrow,
                 "🔄": "update",
@@ -453,7 +461,7 @@ AND
 """
 
             generated = EventMessageGenerator(
-                settings, reply_markup=delmarkup, page=page
+                settings, reply_markup=delmarkup(settings), page=page
             )
 
             if id_list:
@@ -550,6 +558,9 @@ AND
     )
 )
 """
+    backopenmarkup = generate_buttons(
+        [{get_theme_emoji("back", settings.theme): "back", "↖️": "select event open"}]
+    )
     generated = EventMessageGenerator(
         settings, date, reply_markup=backopenmarkup, page=page
     )
@@ -578,6 +589,7 @@ def settings_message(settings: UserSettings) -> NoEventMessage:
     not_direction_sql = {"DESC": "ASC", "ASC": "DESC"}[settings.direction]
     not_notifications_ = ("🔕", 0) if settings.notifications else ("🔔", 1)
     n_hours, n_minutes = [int(i) for i in settings.notifications_time.split(":")]
+    not_theme = ("⬜️", 0, "⬛️") if settings.theme else ("⬛️", 1, "⬜️")
 
     utz = settings.timezone
     str_utz = (
@@ -632,6 +644,7 @@ def settings_message(settings: UserSettings) -> NoEventMessage:
         {"DESC": "⬇️", "ASC": "⬆️"}[settings.direction],
         "🔔" if settings.notifications else "🔕",
         f"{n_hours:0>2}:{n_minutes:0>2}" if settings.notifications else "",
+        not_theme[2],
     )
     markup = generate_buttons(
         [
@@ -640,6 +653,7 @@ def settings_message(settings: UserSettings) -> NoEventMessage:
                 f"🔗 {bool(settings.sub_urls)}": f"settings sub_urls {not_sub_urls}",
                 f"{not_direction_smile}": f"settings direction {not_direction_sql}",
                 f"{not_notifications_[0]}": f"settings notifications {not_notifications_[1]}",
+                f"{not_theme[0]}": f"settings theme {not_theme[1]}",
             },
             time_zone_dict,
             notifications_time,
@@ -648,7 +662,7 @@ def settings_message(settings: UserSettings) -> NoEventMessage:
                     "text.restore_to_default", settings.lang
                 ): "restore_to_default"
             },
-            {"✖": "message_del"},
+            {get_theme_emoji("del", settings.theme): "message_del"},
         ]
     )
 
@@ -676,6 +690,19 @@ def help_message(settings: UserSettings, path: str = "page 1") -> NoEventMessage
 
     if path.startswith("page"):
         text, keyboard = translate
+        # Изменяем последнюю кнопку
+        last_button: dict = keyboard[-1]
+        k, v = last_button.popitem()
+
+        if k.startswith("✖"):
+            new_k = get_theme_emoji("del", settings.theme) + k.removeprefix("✖")
+        elif k.startswith("🔙"):
+            new_k = get_theme_emoji("back", settings.theme) + k.removeprefix("🔙")
+        else:
+            new_k = k
+
+        last_button[new_k] = v
+
         markup = generate_buttons(keyboard)
         generated = NoEventMessage(f"{title}\n{text}", markup)
     else:
@@ -693,7 +720,7 @@ def monthly_calendar_message(
 ) -> NoEventMessage:
     text = custom_text if custom_text else get_translate("select.date", settings.lang)
     markup = create_monthly_calendar_keyboard(
-        chat_id, settings.timezone, settings.lang, command=command, back=back
+        chat_id, settings, command=command, back=back
     )
     return NoEventMessage(text, markup)
 
@@ -718,4 +745,4 @@ def account_message(settings: UserSettings, chat_id: int, message_text: str) -> 
             return
 
     image = create_image(settings, date.year, date.month, date.day)
-    bot.send_photo(chat_id, image, reply_markup=delmarkup)
+    bot.send_photo(chat_id, image, reply_markup=delmarkup(settings))

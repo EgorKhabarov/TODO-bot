@@ -205,11 +205,12 @@ class UserSettings:
             self.user_status,
             self.notifications,
             self.notifications_time,
+            self.theme,
         ) = self._get_user_settings()
 
     def _get_user_settings(
         self,
-    ) -> tuple[str, int, str, int, str, Literal[-1, 0, 1, 2], int, str]:
+    ) -> tuple[str, int, str, int, str, Literal[-1, 0, 1, 2], int, str, int]:
         """
         Возвращает список из настроек для пользователя self.user_id
         """
@@ -221,7 +222,8 @@ SELECT lang,
        direction,
        user_status,
        notifications,
-       notifications_time
+       notifications_time,
+       theme
   FROM settings
  WHERE user_id = ?;
 """
@@ -260,6 +262,7 @@ VALUES (?);
             "user_status": self.user_status,
             "notifications": self.notifications,
             "notifications_time": self.notifications_time,
+            "theme": self.theme,
         }
 
 

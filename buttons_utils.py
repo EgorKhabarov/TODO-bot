@@ -2,10 +2,10 @@ from calendar import monthcalendar
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from lang import get_translate
 from sql_utils import sqlite_format_date
+from lang import get_translate, get_theme_emoji
 from time_utils import new_time_calendar, year_info, now_time
-from todoapi.types import db
+from todoapi.types import db, UserSettings
 
 
 def generate_buttons(buttons_data: list[dict]) -> InlineKeyboardMarkup:
@@ -48,8 +48,7 @@ def generate_buttons(buttons_data: list[dict]) -> InlineKeyboardMarkup:
 
 def create_monthly_calendar_keyboard(
     chat_id: str | int,
-    user_timezone: int,
-    lang: str,
+    settings: UserSettings,
     YY_MM: list | tuple[int, int] = None,
     command: str | None = None,
     back: str | None = None,
@@ -64,14 +63,14 @@ def create_monthly_calendar_keyboard(
     if YY_MM:
         YY, MM = YY_MM
     else:
-        YY, MM = new_time_calendar(user_timezone)
+        YY, MM = new_time_calendar(settings.timezone)
 
     markup = InlineKeyboardMarkup()
     #  December (12.2022)
     # Пн Вт Ср Чт Пт Сб Вс
     title = (
-        f"{get_translate('months_name', lang)[MM - 1]} "
-        f"({MM}.{YY}) ({year_info(YY, lang)})"
+        f"{get_translate('months_name', settings.lang)[MM - 1]} "
+        f"({MM}.{YY}) ({year_info(YY, settings.lang)})"
     )
     markup.row(
         InlineKeyboardButton(
@@ -81,7 +80,7 @@ def create_monthly_calendar_keyboard(
     markup.row(
         *[
             InlineKeyboardButton(text=week_day, callback_data="None")
-            for week_day in get_translate("week_days_list", lang)
+            for week_day in get_translate("week_days_list", settings.lang)
         ]
     )
 
@@ -137,7 +136,7 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
     ]
 
     # получаем сегодняшнее число
-    today = now_time(user_timezone).day
+    today = now_time(settings.timezone).day
     # получаем список дней
     for weekcalendar in monthcalendar(YY, MM):
         weekbuttons = []
@@ -183,15 +182,18 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
     )
 
     if back:
-        markup.row(InlineKeyboardButton("🔙", callback_data=back[1:-1]))
+        markup.row(
+            InlineKeyboardButton(
+                get_theme_emoji("back", settings.theme), callback_data=back[1:-1]
+            )
+        )
 
     return markup
 
 
 def create_yearly_calendar_keyboard(
-    user_timezone: int,
-    lang: str,
     chat_id: int,
+    settings: UserSettings,
     YY: int,
     command: str | None = None,
     back: str | None = None,
@@ -252,8 +254,8 @@ SELECT date
         )
     ]
 
-    now_month = now_time(user_timezone).month
-    months = get_translate("months_list", lang)
+    now_month = now_time(settings.timezone).month
+    months = get_translate("months_list", settings.lang)
 
     month_buttons = []
     for row in months:
@@ -277,7 +279,7 @@ SELECT date
 
     markup = generate_buttons(
         [
-            {f"{YY} ({year_info(YY, lang)})": "None"},
+            {f"{YY} ({year_info(YY, settings.lang)})": "None"},
             *month_buttons,
             {
                 text: f"calendar_y ({command},{back},{year})"
@@ -287,7 +289,11 @@ SELECT date
     )
 
     if back:
-        markup.row(InlineKeyboardButton("🔙", callback_data=back[1:-1]))
+        markup.row(
+            InlineKeyboardButton(
+                get_theme_emoji("back", settings.theme), callback_data=back[1:-1]
+            )
+        )
 
     return markup
 
@@ -300,8 +306,8 @@ def edit_button_attrs(
     button.__setattr__(new, val)
 
 
+def delmarkup(settings: UserSettings) -> InlineKeyboardMarkup:
+    return generate_buttons([{get_theme_emoji("del", settings.theme): "message_del"}])
+
+
 calendar_event_count_template = ("⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹")
-backmarkup = generate_buttons([{"🔙": "back"}])
-delmarkup = generate_buttons([{"✖": "message_del"}])
-delopenmarkup = generate_buttons([{"✖": "message_del", "↖️": "select event open"}])
-backopenmarkup = generate_buttons([{"🔙": "back", "↖️": "select event open"}])

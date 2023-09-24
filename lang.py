@@ -297,9 +297,13 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 [<u>Уведомления</u>]
 <b>{} {}</b> <i>(🔕 по умолчанию)</i>
 
+[<u>Тема</u>]***
+<b>{}</b> <i>(⬜️ по умолчанию)</i>
+
 *(<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 >www.youtube.com</a> <i>вместо полной ссылки</i>)
-**<i>Ответьте на это сообщение с названием города</i>""",
+**<i>Ответьте на это сообщение с названием города</i>
+***<i>Изменяет тёмные эмоджи на светлые</i>""",
             "en": """⚙️ Settings ⚙️
 
 [<u>Language</u>]
@@ -320,9 +324,13 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 [<u>Notifications</u>]
 <b>{} {}</b> <i>(🔕 by default)</i>
 
+[<u>Theme</u>]***
+<b>{}</b> <i>(⬜️ by default)</i>
+
 *(<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 >www.youtube.com</a> <i>instead of full link</i>)
-**<i>Reply to this message with a city name</i>""",
+**<i>Reply to this message with a city name</i>
+***<i>Changes dark emojis to light ones</i>""",
         },
         "help": {
             "title": {
@@ -648,7 +656,7 @@ Called by the command /week_event_list.
 Called by the command /settings.
 This message allows users to modify their settings.
 
-To change the city, you need to reply to the bot's message containing the city name settings.
+To change the city, you need to reply to the bots message containing the city name settings.
 The city is used for requesting the current weather (/weather) and weather forecast (/forecast).
 
 The time zone is used to determine the user's local time.
@@ -1156,3 +1164,32 @@ def get_translate(target: str, lang_iso_code: str) -> Any:
         return result[lang_iso_code]
     except KeyError:
         return result["en"]
+
+
+def get_theme_emoji(target: str, theme: int) -> str:
+    """
+    back
+
+    add
+    """
+    match target:
+        case "back":
+            match theme:
+                case 1:
+                    return "⬅️"
+                case _:
+                    return "🔙"
+        case "add":
+            match theme:
+                case 1:
+                    return "🞣"
+                case _:
+                    return "➕"
+        case "del":
+            match theme:
+                case 1:
+                    return "✕"
+                case _:
+                    return "✖️"
+
+    return ""
