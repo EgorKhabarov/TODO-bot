@@ -2,7 +2,7 @@ from typing import Any
 
 from telebot.types import BotCommand
 
-from config import callbackTab
+from tgbot.config import callbackTab
 
 
 def end(lang: str):

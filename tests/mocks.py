@@ -4,7 +4,7 @@ from unittest.mock import Mock
 from unittest import mock
 
 from todoapi.types import db
-from todoapi import config as config
+from todoapi import config
 from todoapi.db_creator import create_tables
 
 

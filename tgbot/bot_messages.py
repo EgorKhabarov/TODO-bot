@@ -4,14 +4,14 @@ from datetime import timedelta, datetime
 from telebot.apihelper import ApiTelegramException
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from bot import bot
-from lang import get_translate, get_theme_emoji
-from limits import create_image
-from sql_utils import sqlite_format_date2
-from utils import update_userinfo, re_call_data_date
-from message_generator import EventMessageGenerator, NoEventMessage
-from time_utils import convert_date_format, now_time, now_time_strftime
-from buttons_utils import (
+from tgbot.bot import bot
+from tgbot.limits import create_image
+from tgbot.sql_utils import sqlite_format_date2
+from tgbot.lang import get_translate, get_theme_emoji
+from tgbot.utils import update_userinfo, re_call_data_date
+from tgbot.message_generator import EventMessageGenerator, NoEventMessage
+from tgbot.time_utils import convert_date_format, now_time, now_time_strftime
+from tgbot.buttons_utils import (
     delmarkup,
     generate_buttons,
     edit_button_attrs,

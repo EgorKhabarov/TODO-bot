@@ -2,7 +2,7 @@ from unittest import mock
 
 import pytest
 
-from handlers import command_handler
+from tgbot.handlers import command_handler
 from tests.mocks import user_mock, message_mock, bot_mock, db_decorator
 
 

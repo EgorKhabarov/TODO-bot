@@ -1,3 +1,4 @@
+import logging
 from copy import deepcopy
 from sqlite3 import Error
 from typing import Literal
@@ -5,12 +6,11 @@ from datetime import datetime, timedelta
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 
-import logging
-from bot import bot
-from utils import markdown
-from lang import get_translate
-from sql_utils import sqlite_format_date, pagination
-from time_utils import now_time_strftime, DayInfo, convert_date_format, now_time
+from tgbot.bot import bot
+from tgbot.utils import markdown
+from tgbot.lang import get_translate
+from tgbot.sql_utils import sqlite_format_date, pagination
+from tgbot.time_utils import now_time_strftime, DayInfo, convert_date_format, now_time
 from todoapi.types import db, UserSettings, Event
 
 

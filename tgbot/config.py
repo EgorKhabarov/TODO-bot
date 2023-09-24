@@ -45,7 +45,7 @@ COMMANDS = (
 callbackTab = "⠀⠀⠀"  # Специальные прозрачные символы для заполнения
 
 
-__version__ = "21.09.2023"
+__version__ = "25.09.2023"
 __autor__ = "EgorKhabarov"
 
 bot_settings = """

@@ -1,7 +1,7 @@
 from calendar import isleap
 from datetime import datetime, timedelta
 
-from lang import get_translate
+from tgbot.lang import get_translate
 from todoapi.types import UserSettings
 
 

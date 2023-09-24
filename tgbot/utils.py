@@ -1,5 +1,6 @@
 import re
 import difflib
+import logging
 from time import time
 from io import StringIO
 from typing import Literal
@@ -14,11 +15,10 @@ from requests import ConnectionError
 from requests.exceptions import MissingSchema
 from telebot.apihelper import ApiTelegramException
 
-import config
-import logging
-from bot import bot
-from lang import get_translate
-from time_utils import DayInfo
+from tgbot import config
+from tgbot.bot import bot
+from tgbot.lang import get_translate
+from tgbot.time_utils import DayInfo
 from todoapi.types import db, UserSettings, Event
 from todoapi.utils import is_admin_id, to_html_escaping
 

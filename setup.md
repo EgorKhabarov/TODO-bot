@@ -7,24 +7,27 @@ git clone https://github.com/EgorKhabarov/TODO-bot.git .
 
 # Подготовка
 
-## Linux
+### Linux
 
 ```shell
-mv .env.example .env
-mv .\todoapi\.env.example .\todoapi\.env
-pip install -r requirements.txt
+mv tgbot/.env.example tgbot/.env
 ```
 
-## Windows
+### Windows
 
 ```shell
-move .env.example .env
-move .\todoapi\.env.example .\todoapi\.env
+mv tgbot\.env.example tgbot\.env
+```
+
+# Скачиваем библиотеки
+
+```shell
 pip install -r requirements.txt
 ```
 
 # Настройка
-Изменить `.env` в корневой директории.
+
+Изменить `.env` в директории бота.
 
 ```.env
 BOT_TOKEN=        # Токен телеграм бота у t.me/BotFather
@@ -33,7 +36,16 @@ POKE_LINK=        # Тыкать ли url сервера? (1 или 0)
 LINK=             # url сервера
 ```
 
+```shell
+echo BOT_TOKEN=...>>tgbot\.env
+```
+
+```shell
+echo WEATHER_API_KEY=...>>tgbot\.env
+```
+
 # Запуск
+
 ```shell
 python main.py
 ```

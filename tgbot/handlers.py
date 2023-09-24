@@ -1,3 +1,4 @@
+import logging
 from time import sleep
 from io import StringIO
 from sqlite3 import Error
@@ -11,32 +12,31 @@ from telebot.types import (
     InlineKeyboardButton,
 )
 
-import config
-import logging
-from bot import bot, set_bot_commands
-from lang import get_translate, get_theme_emoji
-from message_generator import NoEventMessage, CallBackAnswer
-from time_utils import (
+from tgbot import config
+from tgbot.bot import bot, set_bot_commands
+from tgbot.lang import get_translate, get_theme_emoji
+from tgbot.message_generator import NoEventMessage, CallBackAnswer
+from tgbot.time_utils import (
     now_time_strftime,
     now_time,
     new_time_calendar,
     convert_date_format,
 )
-from bot_actions import (
+from tgbot.bot_actions import (
     delete_message_action,
     press_back_action,
     update_message_action,
     re_date,
     before_move_message,
 )
-from buttons_utils import (
+from tgbot.buttons_utils import (
     create_monthly_calendar_keyboard,
     generate_buttons,
     delmarkup,
     edit_button_attrs,
     create_yearly_calendar_keyboard,
 )
-from bot_messages import (
+from tgbot.bot_messages import (
     search_message,
     week_event_list_message,
     trash_can_message,
@@ -49,7 +49,7 @@ from bot_messages import (
     monthly_calendar_message,
     account_message,
 )
-from utils import (
+from tgbot.utils import (
     fetch_weather,
     fetch_forecast,
     write_table_to_str,

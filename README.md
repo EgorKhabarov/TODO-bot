@@ -44,7 +44,7 @@ When you click on the button in the calendar with the date, today's date opens.
 
 <img alt="calendar.png" src="images/date.png" style="border-radius: 16px;">
 
-# [Limits](/func.py#L771&L775)
+# [Limits](/todoapi/types.py#L14&L55)
 
 The bot has limits for different user groups.
 
@@ -54,7 +54,7 @@ The bot has limits for different user groups.
 | premium     | 🤷    | 8000                   | 40                 |
 | admin       | -     | ∞                      | ∞                  |
 
-# [Search](/func.py#L684&L704)
+# [Search](/tgbot/bot_messages.py#L24&L99)
 
 The bot has a search by events. You can search with `#query` or `/search query` commands.
 This search tries to find all matches.<br>
@@ -81,7 +81,7 @@ For example `#date=1.2023 status=🎧 youtube.com` to search for all events with
 <details>
 <summary>Commands</summary>
 
-# [Commands](/lang.py#L472)
+# [Commands](/tgbot/config.py#L21&L44)
 | Command          | Description                 |
 |:-----------------|:----------------------------|
 | /start           | Start                       |
@@ -102,9 +102,9 @@ For example `#date=1.2023 status=🎧 youtube.com` to search for all events with
 <details>
 <summary>DataBase</summary>
 
-# [DataBase](/func.py#L93&L125)
+# [DataBase](/todoapi/db_creator.py#L5&L116)
 
-* ### [root](/func.py#L102&L109)
+* ### [events](/todoapi/db_creator.py#L29&L60)
 | name         | data type | default value |
 |:-------------|:----------|:--------------|
 | event_id     | INT       | _NULL_        |
@@ -114,7 +114,7 @@ For example `#date=1.2023 status=🎧 youtube.com` to search for all events with
 | removal_time | INT       | 0             |
 | status       | TEXT      | ⬜️            |
 
-* ### [settings](/func.py#L115&L125)
+* ### [settings](/todoapi/db_creator.py#L90&L112)
 | name              | data type | default value |
 |:------------------|:----------|:--------------|
 | user_id           | INT       | _NULL_        |

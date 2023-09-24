@@ -5,13 +5,14 @@ from time import sleep
 from telebot.apihelper import ApiTelegramException
 from telebot.types import Message
 
-import config
-from bot import bot
-from time_utils import DayInfo
-from lang import get_translate, get_theme_emoji
-from message_generator import NoEventMessage, CallBackAnswer
-from buttons_utils import delmarkup, create_monthly_calendar_keyboard, generate_buttons
-from bot_messages import (
+from tgbot import config
+from tgbot.bot import bot
+from tgbot.time_utils import DayInfo
+from tgbot.lang import get_translate, get_theme_emoji
+from tgbot.utils import re_edit_message, highlight_text_difference
+from tgbot.message_generator import NoEventMessage, CallBackAnswer
+from tgbot.buttons_utils import delmarkup, create_monthly_calendar_keyboard, generate_buttons
+from tgbot.bot_messages import (
     trash_can_message,
     search_message,
     daily_message,
@@ -25,7 +26,6 @@ from todoapi.utils import (
     remove_html_escaping,
     is_admin_id,
 )
-from utils import re_edit_message, highlight_text_difference
 
 re_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}")
 

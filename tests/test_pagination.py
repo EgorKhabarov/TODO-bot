@@ -2,7 +2,7 @@ from unittest import mock
 
 import pytest
 
-from sql_utils import pagination
+from tgbot.sql_utils import pagination
 from tests.mocks import execute
 
 

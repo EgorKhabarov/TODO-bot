@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 
 from tests.mocks import execute
-from utils import write_table_to_str
+from tgbot.utils import write_table_to_str
 
 
 parameters = pytest.mark.parametrize(

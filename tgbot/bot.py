@@ -4,9 +4,9 @@ from telebot import TeleBot
 from telebot.types import BotCommandScopeChat
 from telebot.apihelper import ApiTelegramException
 
-import config
 import todoapi.config
-from lang import get_translate
+from tgbot import config
+from tgbot.lang import get_translate
 from todoapi.utils import is_admin_id
 
 
@@ -32,17 +32,17 @@ def bot_log_info():
         }
     )
 
-    keylist = {
+    key_list = {
         "can_join_groups": "True",
         "can_read_all_group_messages": "True",
         "supports_inline_queries": "False",
     }
 
-    for k, v in keylist.items():
+    for k, v in key_list.items():
         if v != str(bot_dict.get(k)):
             raise AttributeError(
                 f"{k}\n"
-                f"Should be {keylist[k]}\n"
+                f"Should be {key_list[k]}\n"
                 f"Actually is {bot_dict[k]}\n\n"
                 f"{config.bot_settings.strip()}"
             )

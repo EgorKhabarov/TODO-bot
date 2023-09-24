@@ -5,18 +5,18 @@ from threading import Thread
 from telebot.apihelper import ApiTelegramException
 from telebot.types import CallbackQuery, Message, BotCommandScopeDefault
 
-import config
-from lang import get_translate
-from bot import bot, bot_log_info
-from time_utils import now_time
-from bot_actions import delete_message_action, confirm_changes_message
-from buttons_utils import delmarkup
-from handlers import command_handler, callback_handler, clear_state
-from utils import poke_link, re_edit_message, rate_limit_requests, msg_check
-from bot_messages import search_message, notifications_message, settings_message
+from tgbot import config
+from tgbot.lang import get_translate
+from tgbot.bot import bot, bot_log_info
+from tgbot.time_utils import now_time
+from tgbot.bot_actions import delete_message_action, confirm_changes_message
+from tgbot.buttons_utils import delmarkup
+from tgbot.handlers import command_handler, callback_handler, clear_state
+from tgbot.utils import poke_link, re_edit_message, rate_limit_requests, msg_check
+from tgbot.bot_messages import search_message, notifications_message, settings_message
+from todoapi.api import User
 from todoapi.types import db
 from todoapi.logger import logging
-from todoapi.api import User
 from todoapi.db_creator import create_tables
 from todoapi.utils import html_to_markdown, is_admin_id, remove_html_escaping
 

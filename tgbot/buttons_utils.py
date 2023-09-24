@@ -2,9 +2,9 @@ from calendar import monthcalendar
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from sql_utils import sqlite_format_date
-from lang import get_translate, get_theme_emoji
-from time_utils import new_time_calendar, year_info, now_time
+from tgbot.sql_utils import sqlite_format_date
+from tgbot.lang import get_translate, get_theme_emoji
+from tgbot.time_utils import new_time_calendar, year_info, now_time
 from todoapi.types import db, UserSettings
 
 
