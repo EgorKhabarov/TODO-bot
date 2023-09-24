@@ -11,7 +11,11 @@ from tgbot.time_utils import DayInfo
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.utils import re_edit_message, highlight_text_difference
 from tgbot.message_generator import NoEventMessage, CallBackAnswer
-from tgbot.buttons_utils import delmarkup, create_monthly_calendar_keyboard, generate_buttons
+from tgbot.buttons_utils import (
+    delmarkup,
+    create_monthly_calendar_keyboard,
+    generate_buttons,
+)
 from tgbot.bot_messages import (
     trash_can_message,
     search_message,
