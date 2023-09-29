@@ -63,10 +63,6 @@ translation = {
         "ru": "Выберите, что сделать с событием",
         "en": "Choose what to do with the event",
     },
-    "/deleted": {
-        "ru": "<b>Чтобы посмотреть удалённые события напишите /deleted</b>",
-        "en": "<b>To see deleted events write /deleted</b>",
-    },
     "are_you_sure_edit": {
         "ru": "Вы точно хотите изменить тест события на: ",
         "en": "Are you sure you want to change the event text to:",

@@ -291,15 +291,9 @@ def before_move_message(
 
     day = DayInfo(settings, event.date)
     what_do_with_event = get_translate("what_do_with_event", settings.lang)
-    end_text = (
-        get_translate("/deleted", settings.lang)
-        if (settings.user_status in (1, 2) or is_admin_id(chat_id))
-        else ""
-    )
     text = (
         f"<b>{event.date}.{event_id}.</b>{event.status} <u><i>{day.str_date}  "
         f"{day.week_date}</i> {day.relatively_date}</u>\n"
-        f"<b>{what_do_with_event}:</b>\n{to_html_escaping(event.text)[:3800]}\n\n"
-        f"{end_text}"
+        f"<b>{what_do_with_event}:</b>\n{to_html_escaping(event.text)[:3800]}"
     )
     NoEventMessage(text, pre_delmarkup).edit(chat_id, message_id)

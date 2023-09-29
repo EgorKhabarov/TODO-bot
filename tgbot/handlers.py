@@ -1120,7 +1120,7 @@ UPDATE settings
                 message_text.split(".", maxsplit=4)[-2],
             )
             event_text = to_html_escaping(
-                message_text.split("\n", maxsplit=2)[2].rsplit("\n", maxsplit=2)[0]
+                message_text.split("\n", maxsplit=2)[2]
             )
             event_status = str(
                 message_text.split(" ", maxsplit=1)[0].split(".", maxsplit=4)[4]
