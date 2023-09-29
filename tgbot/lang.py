@@ -1058,6 +1058,10 @@ Visibility <b>{}</b>m""",
             "ru": "Вы уже находитесь на этой странице",
             "en": "You are already on this page",
         },
+        "already_on_current_date": {
+            "ru": "Вы уже на текущей дате",
+            "en": "You are already on the current date",
+        },
         "status_already_posted": {
             "ru": "Cтатус уже стоит на событии",
             "en": "Status is already posted on event",

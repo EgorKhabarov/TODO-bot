@@ -803,7 +803,7 @@ UPDATE settings
         else:
             res_status = f"{old_status},{new_status}"
 
-        api_response = user.set_event_status(event_id, res_status)
+        api_response = user.edit_event_status(event_id, res_status)
 
         match api_response[1]:
             case "":
@@ -864,7 +864,7 @@ UPDATE settings
         if not res_status:
             res_status = "⬜️"
 
-        user.set_event_status(event_id, res_status)
+        user.edit_event_status(event_id, res_status)
 
         callback_handler(
             user=user,
@@ -994,17 +994,13 @@ UPDATE settings
             )
             try:
                 bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
-            except ApiTelegramException:  # Сообщение не изменено
-                callback_handler(
-                    user=user,
-                    settings=settings,
-                    chat_id=chat_id,
-                    message_id=message_id,
-                    message_text=message_text,
-                    call_data="/calendar",
-                    call_id=call_id,
-                    message=message,
+            except ApiTelegramException:
+                # Сообщение не изменено
+                date = new_time_calendar(settings.timezone)
+                markup = create_monthly_calendar_keyboard(
+                    chat_id, settings, date, command, back
                 )
+                bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
         else:
             CallBackAnswer("🤔").answer(call_id)
 
@@ -1024,6 +1020,11 @@ UPDATE settings
                 bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
             except ApiTelegramException:
                 # Если нажата кнопка ⟳, но сообщение не изменено
+                if command is not None and back is not None:
+                    text = get_translate("errors.already_on_current_date", settings.lang)
+                    CallBackAnswer(text).answer(call_id)
+                    return
+
                 now_date = now_time_strftime(settings.timezone)
                 generated = daily_message(
                     settings, chat_id, now_date, message_id=message_id

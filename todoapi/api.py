@@ -30,7 +30,7 @@ class User:
         :param event_id:
         :param in_wastebasket:
         """
-
+        # TODO Проверку
         event_id = to_valid_id(event_id)
 
         if not event_id:
@@ -65,6 +65,7 @@ SELECT 1
 
         :param user_id:
         """
+        # TODO Проверить
         return (
             True,
             bool(
@@ -78,17 +79,6 @@ SELECT 1
                 )
             ),
         )
-
-    def get_limits(
-        self, date: str | None = None
-    ) -> tuple[bool, list[int, int, int, int, int, int, int, int]]:
-        """
-        Возвращает список процентов заполнения лимитов для рисования статистики.
-
-        :param date:
-        """
-        limit = Limit(self.user_id, self.settings.user_status, date)
-        return True, limit.now_limit_percent()
 
     def check_limit(
         self, date: str | None = None, *, event_count: int = 0, symbol_count: int = 0
@@ -115,6 +105,97 @@ SELECT 1
         return True, limit.is_exceeded(
             event_count=event_count, symbol_count=symbol_count
         )
+
+    def get_limits(
+        self, date: str | None = None
+    ) -> tuple[bool, list[int, int, int, int, int, int, int, int]]:
+        """
+        Возвращает список процентов заполнения лимитов для рисования статистики.
+
+        :param date:
+        """
+        limit = Limit(self.user_id, self.settings.user_status, date)
+        return True, limit.now_limit_percent()
+
+    def get_settings(self) -> UserSettings:
+        """
+        :return:
+        """
+        return self.settings
+
+    def add_event(self, date: str, text: str) -> tuple[bool, str]:
+        """
+        Добавить событие.
+
+        :param date: dd.mm.yyyy
+        :param text: text
+
+        "Text Is Too Big" - Текст слишком большой.
+
+        "Invalid Date Format" - Формат даты неверный.
+
+        "Wrong Date" - Неверная дата.
+
+        "Limit Exceeded" - Лимит превышен.
+
+        "SQL Error {}" - Ошибка sql.
+        """
+
+        if len(text) >= 3800:
+            return False, "Text Is Too Big"
+
+        if not re_date.match(date):
+            return False, "Invalid Date Format"
+
+        if not is_valid_year(int(date[-4:])):
+            return False, "Wrong Date"
+
+        if self.check_limit(date, event_count=1)[1]:
+            # max(self.get_limits(date)[1]) >= 100:
+            return False, "Limit Exceeded"
+
+        try:
+            db.execute(
+                """
+INSERT INTO events (
+event_id,
+user_id,
+date,
+text
+)
+VALUES (
+    COALESCE(
+        (
+            SELECT user_max_event_id
+              FROM settings
+             WHERE user_id = :user_id
+        ),
+        1
+    ),
+    :user_id,
+    :date,
+    :text
+);
+""",
+                params={
+                    "user_id": self.user_id,
+                    "date": date,
+                    "text": text,
+                },
+                commit=True,
+            )
+            db.execute(
+                """
+UPDATE settings
+SET user_max_event_id = user_max_event_id + 1
+WHERE user_id = ?;
+""",
+                params=(self.user_id,),
+                commit=True,
+            )
+            return True, ""
+        except Error as e:
+            return False, f"SQL Error {e}"
 
     def get_event(
         self, event_id: int, in_wastebasket: bool = False
@@ -210,86 +291,6 @@ SELECT event_id,
         except Error as e:
             return False, f"SQL Error {e}"
 
-    def get_settings(self) -> UserSettings:
-        """
-        :return:
-        """
-        return self.settings
-
-    def add_event(self, date: str, text: str) -> tuple[bool, str]:
-        """
-        Добавить событие.
-
-        :param date: dd.mm.yyyy
-        :param text: text
-
-        "Text Is Too Big" - Текст слишком большой.
-
-        "Invalid Date Format" - Формат даты неверный.
-
-        "Wrong Date" - Неверная дата.
-
-        "Limit Exceeded" - Лимит превышен.
-
-        "SQL Error {}" - Ошибка sql.
-        """
-
-        if len(text) >= 3800:
-            return False, "Text Is Too Big"
-
-        if not re_date.match(date):
-            return False, "Invalid Date Format"
-
-        if not is_valid_year(int(date[-4:])):
-            return False, "Wrong Date"
-
-        if self.check_limit(date, event_count=1)[1]:
-            # max(self.get_limits(date)[1]) >= 100:
-            return False, "Limit Exceeded"
-
-        try:
-            db.execute(
-                """
-INSERT INTO events (
-event_id,
-user_id,
-date,
-text
-)
-VALUES (
-    COALESCE(
-        (
-            SELECT user_max_event_id
-              FROM settings
-             WHERE user_id = :user_id
-        ),
-        1
-    ),
-    :user_id,
-    :date,
-    :text
-);
-""",
-                params={
-                    "user_id": self.user_id,
-                    "date": date,
-                    "text": text,
-                },
-                commit=True,
-            )
-            db.execute(
-                """
-UPDATE settings
-SET user_max_event_id = user_max_event_id + 1
-WHERE user_id = ?;
-""",
-                params=(self.user_id,),
-                commit=True,
-            )
-            return True, ""
-        except Error as e:
-            return False, f"SQL Error {e}"
-
     def edit_event_text(self, event_id: int, text: str) -> tuple[bool, str]:
         """
         Изменить текст события.
@@ -340,47 +341,6 @@ UPDATE events
                 },
                 commit=True,
             )
-            return True, ""
-        except Error as e:
-            return False, f"SQL Error {e}"
-
-    def delete_event(self, event_id: int, to_bin: bool = False) -> tuple[bool, str]:
-        """
-        Удалить событие.
-
-        :param event_id:
-        :param to_bin:
-
-        "Event Not Found" - Событие не найдено.
-
-        "SQL Error {}" - Ошибка sql.
-        """
-
-        if not self.check_event(event_id)[1]:
-            return False, "Event Not Found"
-
-        try:
-            if is_premium_user(self) and to_bin:
-                db.execute(
-                    """
-UPDATE events
-   SET removal_time = DATE() 
- WHERE user_id = ? AND 
-       event_id = ?;
-""",
-                    params=(self.user_id, event_id),
-                    commit=True,
-                )
-            else:
-                db.execute(
-                    """
-DELETE FROM events
-      WHERE user_id = ? AND 
-            event_id = ?;
-""",
-                    params=(self.user_id, event_id),
-                    commit=True,
-                )
             return True, ""
         except Error as e:
             return False, f"SQL Error {e}"
@@ -437,36 +397,7 @@ UPDATE events
         except Error as e:
             return False, f"SQL Error {e}"
 
-    def recover_event(self, event_id: int) -> tuple[bool, str]:
-        """
-        Восстановить событие из корзины.
-
-        :param event_id:
-
-        "Event Not Found" - Событие не найдено.
-
-        "SQL Error {}" - Ошибка sql.
-        """
-
-        if not self.check_event(event_id, True)[1]:
-            return False, "Event Not Found"
-
-        try:
-            db.execute(
-                """
-UPDATE events
-   SET removal_time = 0
- WHERE user_id = ? AND 
-       event_id = ?;
-""",
-                params=(self.user_id, event_id),
-                commit=True,
-            )
-            return True, ""
-        except Error as e:
-            return False, f"SQL Error {e}"
-
-    def set_event_status(self, event_id: int, status: str = "⬜️") -> tuple[bool, str]:
+    def edit_event_status(self, event_id: int, status: str = "⬜️") -> tuple[bool, str]:
         """
         Поставить статус.
 
@@ -516,6 +447,76 @@ UPDATE events
        event_id = ?;
 """,
                 params=(status, self.user_id, event_id),
+                commit=True,
+            )
+            return True, ""
+        except Error as e:
+            return False, f"SQL Error {e}"
+
+    def delete_event(self, event_id: int, to_bin: bool = False) -> tuple[bool, str]:
+        """
+        Удалить событие.
+
+        :param event_id:
+        :param to_bin:
+
+        "Event Not Found" - Событие не найдено.
+
+        "SQL Error {}" - Ошибка sql.
+        """
+
+        if not self.check_event(event_id)[1]:
+            return False, "Event Not Found"
+
+        try:
+            if is_premium_user(self) and to_bin:
+                db.execute(
+                    """
+UPDATE events
+   SET removal_time = DATE() 
+ WHERE user_id = ? AND 
+       event_id = ?;
+""",
+                    params=(self.user_id, event_id),
+                    commit=True,
+                )
+            else:
+                db.execute(
+                    """
+DELETE FROM events
+      WHERE user_id = ? AND 
+            event_id = ?;
+""",
+                    params=(self.user_id, event_id),
+                    commit=True,
+                )
+            return True, ""
+        except Error as e:
+            return False, f"SQL Error {e}"
+
+    def recover_event(self, event_id: int) -> tuple[bool, str]:
+        """
+        Восстановить событие из корзины.
+
+        :param event_id:
+
+        "Event Not Found" - Событие не найдено.
+
+        "SQL Error {}" - Ошибка sql.
+        """
+
+        if not self.check_event(event_id, True)[1]:
+            return False, "Event Not Found"
+
+        try:
+            db.execute(
+                """
+UPDATE events
+   SET removal_time = 0
+ WHERE user_id = ? AND 
+       event_id = ?;
+""",
+                params=(self.user_id, event_id),
                 commit=True,
             )
             return True, ""
