@@ -193,7 +193,17 @@ def add_event(message: Message, user: User):
     settings = user.settings
     chat_id = message.chat.id
     # Экранируем текст
-    markdown_text = remove_html_escaping(html_to_markdown(message.html_text))
+    """
+    Телеграм экранирует html спец символы ('<', '>', '&', ';') только если в сообщении есть выделение.
+
+    Если написать "<b>text</b>" и взять message.html_text, то он вернёт тот же текст.
+
+    Если же написать "<b>text</b> **text**", то message.html_text вернёт "&lt;b&gt;text&lt;/b&gt; **text**"
+    """
+    if message.entities:
+        markdown_text = remove_html_escaping(html_to_markdown(message.html_text))
+    else:
+        markdown_text = message.html_text
 
     settings.log("send", "add event")
 
