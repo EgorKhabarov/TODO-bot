@@ -143,7 +143,11 @@ def update_message_action(
 def confirm_changes_message(user: User, message: Message):
     settings = user.settings
     chat_id = message.chat.id
-    markdown_text = remove_html_escaping(html_to_markdown(message.html_text))
+
+    if message.entities:
+        markdown_text = remove_html_escaping(html_to_markdown(message.html_text))
+    else:
+        markdown_text = message.html_text
 
     event_date, event_id, message_id = re_edit_message.findall(markdown_text)[0]
     event_id, message_id = int(event_id), int(message_id)
