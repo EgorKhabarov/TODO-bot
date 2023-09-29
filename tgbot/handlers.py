@@ -69,6 +69,7 @@ from todoapi.utils import (
     remove_html_escaping,
     is_valid_year,
     html_to_markdown,
+    isdigit,
 )
 
 
@@ -342,7 +343,7 @@ SyntaxError
     elif message_text.startswith("/deleteuser") and is_admin_id(chat_id):
         user_id = message_text.removeprefix("/deleteuser ").strip()
 
-        if not user_id.isdigit():
+        if not isdigit(user_id):
             NoEventMessage("SyntaxError\n/deleteuser {id}").send(chat_id)
             return
 

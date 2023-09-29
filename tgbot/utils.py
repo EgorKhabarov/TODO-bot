@@ -20,7 +20,7 @@ from tgbot.bot import bot
 from tgbot.lang import get_translate
 from tgbot.time_utils import DayInfo
 from todoapi.types import db, UserSettings, Event
-from todoapi.utils import is_admin_id, to_html_escaping
+from todoapi.utils import is_admin_id, to_html_escaping, isdigit
 
 re_edit_message = re.compile(
     r"\A@\w{5,32} event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.text(?:\n|\Z)"
@@ -165,7 +165,7 @@ def rate_limit_requests(
                 if i == 0:
                     result = _kwargs.get(a) or _args[0]
                 else:
-                    result = result[int(a)] if a.isdigit() else getattr(result, a)
+                    result = result[int(a)] if isdigit(a) else getattr(result, a)
             return result
 
         elif isinstance(path, (tuple, list)):
