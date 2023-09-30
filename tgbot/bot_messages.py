@@ -18,7 +18,7 @@ from tgbot.buttons_utils import (
     create_monthly_calendar_keyboard,
 )
 from todoapi.types import db, UserSettings
-from todoapi.utils import sqlite_format_date, is_valid_year
+from todoapi.utils import sqlite_format_date, is_valid_year, to_html_escaping
 
 
 def search_message(
@@ -56,7 +56,7 @@ def search_message(
     if query.isspace():
         generated = EventMessageGenerator(settings, reply_markup=delmarkup(settings))
         generated.format(
-            title=f"🔍 {translate_search} {query.strip()}:\n",
+            title=f"🔍 {translate_search} {to_html_escaping(query.strip())}:\n",
             if_empty=get_translate("errors.request_empty", settings.lang),
         )
         return generated
@@ -90,7 +90,7 @@ def search_message(
         generated.get_data(WHERE=WHERE, direction=settings.direction)
 
     generated.format(
-        title=f"🔍 {translate_search} {query}:",
+        title=f"🔍 {translate_search} {to_html_escaping(query)}:",
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
         "{weekday}</i></u> ({reldate})\n{markdown_text}\n",
         if_empty=get_translate("errors.nothing_found", settings.lang),

@@ -79,8 +79,7 @@ WHERE user_id = ?;
 
     elif message_text.startswith("🔍 "):  # Поиск
         first_line = message_text.split("\n", maxsplit=1)[0]
-        raw_query = first_line.split(maxsplit=2)[-1][:-1]
-        query = to_html_escaping(html_to_markdown(raw_query))
+        query = first_line.split(maxsplit=2)[-1][:-1]
         generated = search_message(settings, chat_id, query)
         generated.edit(chat_id, message_id)
 
@@ -111,8 +110,7 @@ def update_message_action(
 ):
     if message_text.startswith("🔍 "):  # Поиск
         first_line = message_text.split("\n", maxsplit=1)[0]
-        raw_query = first_line.split(maxsplit=2)[-1][:-1]
-        query = html_to_markdown(raw_query)
+        query = first_line.split(maxsplit=2)[-1][:-1]
         generated = search_message(settings, chat_id, query)
 
     elif message_text.startswith("📆"):  # Если /week_event_list

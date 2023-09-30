@@ -120,8 +120,12 @@ def processing_search_message(message: Message, user: User):
     settings = user.settings
     chat_id = message.chat.id
 
-    raw_query = message.html_text[1:].replace("\n", " ").replace("--", "")
-    query = html_to_markdown(raw_query.strip())
+    if message.entities:
+        markdown_text = remove_html_escaping(html_to_markdown(message.html_text))
+    else:
+        markdown_text = message.html_text
+
+    query = markdown_text[1:].replace("\n", " ").replace("--", "").strip()
 
     settings.log("search", query)
 

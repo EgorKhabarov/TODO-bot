@@ -652,11 +652,11 @@ UPDATE settings
             text = f"{basket}\n{select_event}"
 
         elif message_text.startswith("🔍 "):
-            first_line = html_to_markdown(message.html_text).split("\n", maxsplit=1)[0]
+            first_line = message.text.split("\n", maxsplit=1)[0]
             query = first_line.split(maxsplit=2)[-1][:-1]
             translate_search = get_translate("messages.search", settings.lang)
             choose_event = get_translate("select.event", settings.lang)
-            text = f"🔍 {translate_search} {query}:\n{choose_event}"
+            text = f"🔍 {translate_search} {to_html_escaping(query)}:\n{choose_event}"
 
         else:
             choose_event = get_translate("select.event", settings.lang)
@@ -919,9 +919,8 @@ UPDATE settings
 
         try:
             if message_text.startswith("🔍 "):  # Поиск
-                first_line = message.html_text.split("\n", maxsplit=1)[0]
-                raw_query = first_line.split(maxsplit=2)[-1][:-1]
-                query = html_to_markdown(raw_query)
+                first_line = message.text.split("\n", maxsplit=1)[0]
+                query = first_line.split(maxsplit=2)[-1][:-1]
                 generated = search_message(settings, chat_id, query, id_list, int(page))
                 generated.edit(chat_id, message_id, markup=message.reply_markup)
 
