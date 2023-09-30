@@ -213,6 +213,19 @@ def confirm_changes_message(user: User, message: Message):
         text_diff = highlight_text_difference(
             to_html_escaping(event.text), to_html_escaping(text)
         )
+        # Находим пересечения выделений изменений и html экранирования
+        # Костыль для исправления старого экранирования
+        # На случай если в базе данных окажется html экранированный текст
+        text_diff = re.sub(
+            r"&(<(/?)u>)(lt|gt|quot|#39);",
+            lambda m: (
+                f"&{m.group(3)};{m.group(1)}"
+                if m.group(2) == "/" else
+                f"{m.group(1)}&{m.group(3)};"
+            ),
+            text_diff
+        )
+
         generated = NoEventMessage(
             f"{event_date} {event_id} <u><i>{day.str_date}  "
             f"{day.week_date}</i></u> ({day.relatively_date})\n"
