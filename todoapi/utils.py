@@ -39,7 +39,7 @@ def html_to_markdown(html_text: str) -> str:
 
 
 def to_html_escaping(text: str) -> str:
-    return html.escape(text)
+    return html.escape(text, False)
 
 
 def remove_html_escaping(text: str) -> str:
