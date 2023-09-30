@@ -508,7 +508,7 @@ UPDATE settings
         first_line, _, text = message_text.split("\n", maxsplit=2)
         event_id = first_line.split(" ", maxsplit=2)[1]
 
-        api_response = user.edit_event_text(event_id, html_to_markdown(text))
+        api_response = user.edit_event_text(event_id, text)
         if not api_response[0]:
             logging.info(f'user.edit_event "{api_response[1]}"')
             error = get_translate("errors.error", settings.lang)
