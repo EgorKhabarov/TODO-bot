@@ -37,7 +37,7 @@ msg_check = re.compile(
 """
 )
 re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
-re_setuserstatus = re.compile(r"\A(\d+) (-1|0|1|2)\Z")
+re_setuserstatus = re.compile(r"\A(-?\d+) (-1|0|1|2)\Z")
 
 
 def markdown(text: str, statuses: str, sub_url: bool = False, theme: int = 0) -> str:
