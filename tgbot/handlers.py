@@ -21,6 +21,7 @@ from tgbot.time_utils import (
     now_time,
     new_time_calendar,
     convert_date_format,
+    DayInfo,
 )
 from tgbot.bot_actions import (
     delete_message_action,
@@ -167,7 +168,7 @@ def command_handler(user: User, message: Message) -> None:
                 column=1,
                 old="callback_data",
                 new="switch_inline_query_current_chat",
-                val=f"event({event.date}, {event.event_id}, {new_message.message_id}).text\n"
+                val=f"event({event.event_id}, {new_message.message_id}).text\n"
                 f"{event.text}",
             )
 
@@ -584,7 +585,7 @@ UPDATE settings
 
             if action == "edit":
                 callback_data = (
-                    f"event({event.date}, {event.event_id}, {message.message_id}).text\n"
+                    f"event({event.event_id}, {message.message_id}).text\n"
                     f"{event.text}"
                 )
                 button = InlineKeyboardButton(
@@ -956,7 +957,7 @@ UPDATE settings
                         column=1,
                         old="callback_data",
                         new="switch_inline_query_current_chat",
-                        val=f"event({event.date}, {event.event_id}, {message_id}).text\n"
+                        val=f"event({event.event_id}, {message_id}).text\n"
                         f"{remove_html_escaping(event.text)}",
                     )
                 else:
@@ -1051,7 +1052,10 @@ UPDATE settings
         ):
             return
 
-        user.set_settings(**{par_name: par_val})
+        result = user.set_settings(**{par_name: par_val})
+        if not result[0]:
+            CallBackAnswer(get_translate("errors.error", settings.lang)).answer(call_id)
+            logging.info(f"{par_name}={par_name} {result[1]}")
 
         settings = UserSettings(chat_id)
         set_bot_commands(chat_id, settings.user_status, settings.lang)
@@ -1128,9 +1132,13 @@ UPDATE settings
 
             # Error code: 400. Description: Bad Request: BUTTON_DATA_INVALID"
             # back = f"before del {event_date} {event_id} _"
+            day = DayInfo(settings, event_date)
             text = (
                 get_translate("select.new_date", settings.lang)
-                + f":\n<b>{event_date}.{event_id}.</b>{event_status}\n{event_text}"
+                + f":\n<b>{event_date}.{event_id}.</b>{event_status}"
+                + f"  <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})"
+                + f"\n{event_text}"
+
             )
 
             dt_event_date = convert_date_format(event_date)

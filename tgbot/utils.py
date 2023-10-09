@@ -23,7 +23,7 @@ from todoapi.types import db, UserSettings, Event
 from todoapi.utils import is_admin_id, to_html_escaping, isdigit
 
 re_edit_message = re.compile(
-    r"\A@\w{5,32} event\((\d{1,2}\.\d{1,2}\.\d{4}), (\d+), (\d+)\)\.text(?:\n|\Z)"
+    r"\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)"
 )
 msg_check = re.compile(
     rf"""(?x)(?s)
@@ -81,12 +81,14 @@ def markdown(text: str, statuses: str, sub_url: bool = False, theme: int = 0) ->
     def List(_text: str):
         """Заменяет \n на :black_small_square: (эмодзи Telegram)"""
         point = "▫️" if theme == 1 else "▪️"
+        big_point = "◻️" if theme == 1 else "◼️"
         _text = point + _text
         for old, new in (
             ("\n", f"\n{point}"),
             (f"\n{point}⠀\n", "\n⠀\n"),
-            (f"{point}-- ", ""),
-            (f"{point}— ", ""),
+            (f"\n{point}-- ", "\n"),
+            (f"\n{point}— ", "\n"),
+            (f"\n{point}!! ", f"\n{big_point}"),
         ):
             _text = _text.replace(old, new)
         return _text

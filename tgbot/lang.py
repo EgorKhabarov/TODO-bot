@@ -223,6 +223,10 @@ translation = {
         "ru": "Cобытия в ближайшие 7 дней",
         "en": "Events in the next 7 days",
     },
+    "recurring_events": {
+        "ru": "Повторяющиеся события",
+        "en": "Recurring events",
+    },
     "text": {
         "page": {
             "ru": "Страница",

@@ -156,7 +156,7 @@ def week_event_list_message(
         generated.get_data(WHERE=WHERE, direction="ASC")
 
     generated.format(
-        title=f"📆 {get_translate('week_events', settings.lang)} 📆",
+        title=f"📆 {get_translate('week_events', settings.lang)}",
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
         "{weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
         if_empty=get_translate("errors.nothing_found", settings.lang),
@@ -294,7 +294,7 @@ def daily_message(
             column=1,
             old="callback_data",
             new="switch_inline_query_current_chat",
-            val=f"event({event.date}, {event.event_id}, {message_id}).text\n"
+            val=f"event({event.event_id}, {message_id}).text\n"
             f"{event.text}",
         )
 
@@ -571,7 +571,8 @@ AND
         generated.get_data(WHERE=WHERE, direction=settings.direction, prefix="|!")
 
     generated.format(
-        title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})",
+        title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})"
+              + f'\n📅 {get_translate("recurring_events", settings.lang)}',
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
         "{weekday}</i></u> ({reldate})\n{markdown_text}\n",
         if_empty=get_translate("errors.nothing_found", settings.lang),
@@ -613,27 +614,17 @@ def settings_message(settings: UserSettings) -> NoEventMessage:
 
     notifications_time = {}
     if not_notifications_[0] == "🔕":
-        notifications_time["-1h"] = "settings notifications_time {}".format(
-            f"{n_hours-1:0>2}:{n_minutes:0>2}" if n_hours > 0 else f"23:{n_minutes:0>2}"
-        )
-        notifications_time["-10m"] = "settings notifications_time {}".format(
-            f"{n_hours:0>2}:{n_minutes-10:0>2}"
-            if n_minutes > 0
-            else f"{n_hours-1:0>2}:50"
-        )
-        notifications_time[
-            f"{n_hours:0>2}:{n_minutes:0>2} ⏰"
-        ] = "settings notifications_time {}".format("08:00")
-        notifications_time["+10m"] = "settings notifications_time {}".format(
-            f"{n_hours:0>2}:{n_minutes+10:0>2}"
-            if n_minutes < 50
-            else f"{n_hours+1:0>2}:00"
-        )
-        notifications_time["+1h"] = "settings notifications_time {}".format(
-            f"{n_hours+1:0>2}:{n_minutes:0>2}"
-            if n_hours < 23
-            else f"00:{n_minutes:0>2}"
-        )
+        now = datetime(2000, 6, 5, n_hours, n_minutes)
+        notifications_time = {
+            k: f"settings notifications_time {v}"
+            for k, v in {
+                "-1h": f"{now - timedelta(hours=1):%H:%M}",
+                "-10m": f"{now - timedelta(minutes=10):%H:%M}",
+                f"{n_hours:0>2}:{n_minutes:0>2} ⏰": "08:00",
+                "+10m": f"{now + timedelta(minutes=10):%H:%M}",
+                "+1h": f"{now + timedelta(hours=1):%H:%M}",
+            }.items()
+        }
 
     text = get_translate("messages.settings", settings.lang).format(
         settings.lang,

@@ -636,7 +636,7 @@ SELECT event_id,
 
         "notifications must be in [0, 1]"
 
-        "hour must be more -1 and less 13"
+        "hour must be more -1 and less 24"
 
         "minute must be in [0, 10, 20, 30, 40, 50]"
 
@@ -694,8 +694,8 @@ SELECT event_id,
 
         if notifications_time is not None:
             hour, minute = [int(v) for v in notifications_time.split(":")]
-            if not -1 < hour < 13:
-                return False, "hour must be more -1 and less 13"
+            if not -1 < hour < 24:
+                return False, "hour must be more -1 and less 24"
 
             if minute not in (0, 10, 20, 30, 40, 50):
                 return False, "minute must be in [0, 10, 20, 30, 40, 50]"

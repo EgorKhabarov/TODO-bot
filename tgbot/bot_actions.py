@@ -147,8 +147,15 @@ def confirm_changes_message(user: User, message: Message):
     else:
         markdown_text = message.html_text
 
-    event_date, event_id, message_id = re_edit_message.findall(markdown_text)[0]
+    event_id, message_id = re_edit_message.findall(markdown_text)[0]
     event_id, message_id = int(event_id), int(message_id)
+
+    api_response = user.get_event(event_id)
+
+    if not api_response[0]:
+        return 1  # Этого события нет
+
+    event = api_response[1]
 
     text = markdown_text.split("\n", maxsplit=1)[-1].strip("\n")
     # Убираем @bot_username из начала текста remove_html_escaping
@@ -159,10 +166,10 @@ def confirm_changes_message(user: User, message: Message):
             if before_move_message(
                 user=user,
                 call_id=0,
-                call_data=f"before move {event_date} {event_id} _",
+                call_data=f"before move {event.date} {event_id} _",
                 chat_id=chat_id,
                 message_id=message_id,
-                message_text=f"{event_date}",
+                message_text=f"{event.date}",
                 event_id=event_id,
             ):
                 return 1
@@ -183,13 +190,6 @@ def confirm_changes_message(user: User, message: Message):
     )
 
     # Уменьшится ли длинна события
-    api_response = user.get_event(event_id)
-
-    if not api_response[0]:
-        return 1  # Этого события нет
-
-    event = api_response[1]
-
     new_event_len = len(text)
     len_old_event = len(event.text)
     tag_len_max = new_event_len > 3800
@@ -199,7 +199,7 @@ def confirm_changes_message(user: User, message: Message):
     added_length = 0 if tag_len_less else new_event_len - len_old_event
 
     tag_limit_exceeded = (
-        user.check_limit(event_date, symbol_count=added_length)[1] is True
+        user.check_limit(event.date, symbol_count=added_length)[1] is True
     )
 
     if tag_len_max:
@@ -209,7 +209,7 @@ def confirm_changes_message(user: User, message: Message):
         translate = get_translate("errors.exceeded_limit", settings.lang)
         NoEventMessage(translate, markup).reply(message)
     else:
-        day = DayInfo(settings, event_date)
+        day = DayInfo(settings, event.date)
         text_diff = highlight_text_difference(
             to_html_escaping(event.text), to_html_escaping(text)
         )
@@ -227,7 +227,7 @@ def confirm_changes_message(user: User, message: Message):
         )
 
         generated = NoEventMessage(
-            f"{event_date} {event_id} <u><i>{day.str_date}  "
+            f"{event.date} {event_id} <u><i>{day.str_date}  "
             f"{day.week_date}</i></u> ({day.relatively_date})\n"
             f"<b>{get_translate('are_you_sure_edit', settings.lang)}</b>\n"
             f"<i>{text_diff}</i>",

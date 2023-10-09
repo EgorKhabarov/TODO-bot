@@ -264,10 +264,3 @@ def schedule_loop():
                 Thread(target=poke_link, daemon=True).start()
 
         sleep(60)
-
-
-if __name__ == "__main__":
-    if config.NOTIFICATIONS or config.POKE_LINK:
-        Thread(target=schedule_loop, daemon=True).start()
-
-    bot.infinity_polling()
