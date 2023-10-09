@@ -1021,7 +1021,9 @@ UPDATE settings
             except ApiTelegramException:
                 # Если нажата кнопка ⟳, но сообщение не изменено
                 if command is not None and back is not None:
-                    text = get_translate("errors.already_on_current_date", settings.lang)
+                    text = get_translate(
+                        "errors.already_on_current_date", settings.lang
+                    )
                     CallBackAnswer(text).answer(call_id)
                     return
 
@@ -1119,9 +1121,7 @@ UPDATE settings
                 message_text[:10],
                 message_text.split(".", maxsplit=4)[-2],
             )
-            event_text = to_html_escaping(
-                message_text.split("\n", maxsplit=2)[2]
-            )
+            event_text = to_html_escaping(message_text.split("\n", maxsplit=2)[2])
             event_status = str(
                 message_text.split(" ", maxsplit=1)[0].split(".", maxsplit=4)[4]
             )

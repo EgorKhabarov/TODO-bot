@@ -220,10 +220,10 @@ def confirm_changes_message(user: User, message: Message):
             r"&(<(/?)u>)(lt|gt|quot|#39);",
             lambda m: (
                 f"&{m.group(3)};{m.group(1)}"
-                if m.group(2) == "/" else
-                f"{m.group(1)}&{m.group(3)};"
+                if m.group(2) == "/"
+                else f"{m.group(1)}&{m.group(3)};"
             ),
-            text_diff
+            text_diff,
         )
 
         generated = NoEventMessage(

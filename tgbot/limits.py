@@ -37,7 +37,7 @@ def _semicircle(title: str, val: int, y: int) -> Image:
     else:
         bg_color, color = colors["bg r"], colors["r"]
 
-    font = ImageFont.truetype("../fonts/arial.ttf", 30)
+    font = ImageFont.truetype("fonts/arial.ttf", 30)
     image = Image.new("RGB", (291, 202), "#F0F0F0")
     draw = Draw(image)
 
@@ -87,7 +87,7 @@ def create_image(
     image = Image.new("RGB", (1500, 1000), "#F0F0F0")
     draw = Draw(image)
 
-    font = ImageFont.truetype("../fonts/arial.ttf", 100)
+    font = ImageFont.truetype("fonts/arial.ttf", 100)
     text_width, text_height = draw.textsize(text, font=font)
     draw.text(
         (375 * 2 - text_width // 2, 60 - text_height // 2),
