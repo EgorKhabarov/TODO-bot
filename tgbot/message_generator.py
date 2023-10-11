@@ -41,6 +41,7 @@ class EventMessageGenerator:
         self,
         *,
         WHERE: str,
+        column: str = sqlite_format_date("date"),
         direction: Literal["ASC", "DESC"] = "DESC",
         prefix: str = "|",
     ):
@@ -66,7 +67,7 @@ SELECT event_id,
   FROM events
  WHERE event_id IN ({data[0]}) AND 
        ({WHERE}) 
- ORDER BY {sqlite_format_date("date")} {direction};
+ ORDER BY {column} {direction};
 """,
                 )
             ]

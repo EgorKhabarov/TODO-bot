@@ -153,7 +153,12 @@ def week_event_list_message(
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
-        generated.get_data(WHERE=WHERE, direction="ASC")
+        generated.get_data(
+            WHERE=WHERE,
+            column=f"JULIANDAY('{sqlite_format_date('date')}') "
+                   f"- JULIANDAY('{now_time(settings.timezone).strftime('%Y-%m-%d')}')",
+            direction="DESC",
+        )
 
     generated.format(
         title=f"📆 {get_translate('week_events', settings.lang)}",
@@ -467,7 +472,12 @@ AND
             if id_list:
                 generated.get_events(WHERE=WHERE, values=id_list)
             else:
-                generated.get_data(WHERE=WHERE, direction="ASC")
+                generated.get_data(
+                    WHERE=WHERE,
+                    column=f"JULIANDAY('{sqlite_format_date('date')}') "
+                           f"- JULIANDAY('{now_time(settings.timezone).strftime('%Y-%m-%d')}')",
+                    direction="DESC",
+                )
 
             if len(generated.event_list) or from_command:
                 # Если в generated.event_list есть события
