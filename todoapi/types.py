@@ -1,8 +1,8 @@
 import json
 import logging
 from time import time
-from typing import Literal
 from datetime import datetime
+from typing import Literal, Callable
 from sqlite3 import Error, connect
 from contextlib import contextmanager
 
@@ -80,6 +80,7 @@ class DataBase:
         params: tuple | dict = (),
         commit: bool = False,
         column_names: bool = False,
+        func: tuple[str, int, Callable] | None = None
     ) -> list[tuple[int | str | bytes, ...], ...]:
         """
         Выполняет SQL запрос
@@ -89,10 +90,13 @@ class DataBase:
         :param params: Параметры запроса (необязательно)
         :param commit: Нужно ли сохранить изменения? (необязательно, по умолчанию False)
         :param column_names: Названия столбцов вставить в результат.
+        :param func: Оконная функция. (название функции, кол-во аргументов, функция)
         :return: Результат запроса
         """
         self.sqlite_connection = connect(config.DATABASE_PATH)
         self.sqlite_cursor = self.sqlite_connection.cursor()
+        if func:
+            self.sqlite_connection.create_function(*func)
         logging.debug(
             "    " + " ".join([line.strip() for line in query.split("\n")]).strip()
         )

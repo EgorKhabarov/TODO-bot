@@ -7,10 +7,10 @@ from datetime import datetime, timedelta
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 
 from tgbot.bot import bot
-from tgbot.utils import markdown
+from tgbot.utils import markdown, days_before_event
 from tgbot.lang import get_translate
 from tgbot.sql_utils import sqlite_format_date, pagination
-from tgbot.time_utils import now_time_strftime, DayInfo, convert_date_format, now_time
+from tgbot.time_utils import now_time_strftime, DayInfo
 from todoapi.types import db, UserSettings, Event
 
 
@@ -69,6 +69,15 @@ SELECT event_id,
        ({WHERE}) 
  ORDER BY {column} {direction};
 """,
+                    func=(
+                        "DAYS_BEFORE_EVENT",
+                        2,
+                        lambda date, status: days_before_event(
+                            self._settings, date, status
+                        )[0],
+                    )
+                    if "DAYS_BEFORE_EVENT" in column
+                    else None,
                 )
             ]
 
@@ -184,50 +193,6 @@ SELECT event_id,
         :return:         message.text
         """
 
-        def days_before(event_date: str, event_status: str) -> str:
-            """
-            В сообщении уведомления показывает через сколько будет повторяющееся событие.
-            """
-            _date = convert_date_format(event_date)
-            now_t = now_time(self._settings.timezone)
-            dates = []
-
-            # Каждый день
-            if "📬" in event_status:
-                _day = DayInfo(self._settings, f"{now_t:%d.%m.%Y}")
-                return _day.relatively_date
-
-            # Каждую неделю
-            if "🗞" in event_status:
-                now_wd, event_wd = now_t.weekday(), _date.weekday()
-                next_date = now_t + timedelta(days=(event_wd - now_wd + 7) % 7)
-                dates.append(next_date)
-
-            # Каждый месяц
-            elif "📅" in event_status:
-                _day = DayInfo(self._settings, f"{_date:%d}.{now_t:%m.%Y}")
-                month, year = _day.datetime.month, _day.datetime.year
-                if _day.day_diff >= 0:
-                    dates.append(_day.datetime)
-                else:
-                    if month < 12:
-                        dates.append(_day.datetime.replace(month=month + 1))
-                    else:
-                        dates.append(_day.datetime.replace(year=year + 1, month=1))
-
-            # Каждый год
-            elif {*event_status.split(",")}.intersection({"📆", "🎉", "🎊"}):
-                _day = DayInfo(self._settings, f"{_date:%d.%m}.{now_t:%Y}")
-                if _day.datetime.date() < now_t.date():
-                    dates.append(_day.datetime.replace(year=now_t.year + 1))
-                else:
-                    dates.append(_day.datetime.replace(year=now_t.year))
-
-            else:
-                return DayInfo(self._settings, event_date).relatively_date
-
-            return DayInfo(self._settings, f"{min(dates):%d.%m.%Y}").relatively_date
-
         def days_before_delete(event_deletion_date: str) -> int:
             if event_deletion_date == "0":
                 return 30
@@ -280,11 +245,13 @@ SELECT event_id,
                         )
                         if "{markdown_text" in args
                         else "",
-                        days_before=f"({dbd})"
+                        days_before=f"<b>({dbd})</b>"
                         if (
                             (
                                 dbd := (
-                                    days_before(event.date, event.status)
+                                    days_before_event(
+                                        self._settings, event.date, event.status
+                                    )[-1]
                                     if "{days_before" in args
                                     else ""
                                 )

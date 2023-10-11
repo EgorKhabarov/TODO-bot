@@ -18,13 +18,11 @@ from telebot.apihelper import ApiTelegramException
 from tgbot import config
 from tgbot.bot import bot
 from tgbot.lang import get_translate
-from tgbot.time_utils import DayInfo
+from tgbot.time_utils import DayInfo, convert_date_format, now_time
 from todoapi.types import db, UserSettings, Event
 from todoapi.utils import is_admin_id, to_html_escaping, isdigit
 
-re_edit_message = re.compile(
-    r"\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)"
-)
+re_edit_message = re.compile(r"\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)")
 msg_check = re.compile(
     rf"""(?x)(?s)
 \A
@@ -579,3 +577,53 @@ UPDATE settings
         params=(chat_info, chat_id),
         commit=True,
     )
+
+
+def days_before_event(
+    settings: UserSettings, event_date: str, event_status: str
+) -> tuple[int, str, str]:
+    """
+    В сообщении уведомления показывает через сколько будет повторяющееся событие.
+    :return: ('разница в днях', 'дата ближайшего повторения', 'текстовое представление разницы')
+    """
+    _date = convert_date_format(event_date)
+    now_t = now_time(settings.timezone)
+    dates = []
+
+    # Каждый день
+    if "📬" in event_status:
+        day = DayInfo(settings, f"{now_t:%d.%m.%Y}")
+        return day.day_diff, day.date, day.relatively_date
+
+    # Каждую неделю
+    if "🗞" in event_status:
+        now_wd, event_wd = now_t.weekday(), _date.weekday()
+        next_date = now_t + timedelta(days=(event_wd - now_wd + 7) % 7)
+        dates.append(next_date)
+
+    # Каждый месяц
+    elif "📅" in event_status:
+        day = DayInfo(settings, f"{_date:%d}.{now_t:%m.%Y}")
+        month, year = day.datetime.month, day.datetime.year
+        if day.day_diff >= 0:
+            dates.append(day.datetime)
+        else:
+            if month < 12:
+                dates.append(day.datetime.replace(month=month + 1))
+            else:
+                dates.append(day.datetime.replace(year=year + 1, month=1))
+
+    # Каждый год
+    elif {*event_status.split(",")}.intersection({"📆", "🎉", "🎊"}):
+        day = DayInfo(settings, f"{_date:%d.%m}.{now_t:%Y}")
+        if day.datetime.date() < now_t.date():
+            dates.append(day.datetime.replace(year=now_t.year + 1))
+        else:
+            dates.append(day.datetime.replace(year=now_t.year))
+
+    else:
+        day = DayInfo(settings, event_date)
+        return day.day_diff, day.date, day.relatively_date
+
+    day = DayInfo(settings, f"{min(dates):%d.%m.%Y}")
+    return day.day_diff, day.date, day.relatively_date

@@ -139,8 +139,8 @@ def week_event_list_message(
     ( -- Каждый месяц
         status LIKE '%📅%'
         AND SUBSTR(date, 1, 2) 
-        BETWEEN strftime('%m-%d', 'now', '{settings.timezone:+} hours')
-            AND strftime('%m-%d', 'now', '+7 day', '{settings.timezone:+} hours')
+        BETWEEN strftime('%d', 'now', '{settings.timezone:+} hours')
+            AND strftime('%d', 'now', '+7 day', '{settings.timezone:+} hours')
     )
     OR status LIKE '%🗞%' -- Каждую неделю
     OR status LIKE '%📬%' -- Каждый день
@@ -155,9 +155,9 @@ def week_event_list_message(
     else:
         generated.get_data(
             WHERE=WHERE,
-            column=f"JULIANDAY('{sqlite_format_date('date')}') "
-                   f"- JULIANDAY('{now_time(settings.timezone).strftime('%Y-%m-%d')}')",
-            direction="DESC",
+            column="DAYS_BEFORE_EVENT(date, status), "
+            "status LIKE '%📬%', status LIKE '%🗞%',status LIKE '%📅%', status LIKE '%📆%', status LIKE '%🎉%', status LIKE '%🎊%'",
+            direction="ASC",
         )
 
     generated.format(
@@ -299,8 +299,7 @@ def daily_message(
             column=1,
             old="callback_data",
             new="switch_inline_query_current_chat",
-            val=f"event({event.event_id}, {message_id}).text\n"
-            f"{event.text}",
+            val=f"event({event.event_id}, {message_id}).text\n" f"{event.text}",
         )
 
     generated.format(
@@ -439,14 +438,14 @@ AND
     )
     OR
     ( -- Каждый год
-        SUBSTR(date, 1, 5) IN ({", ".join(f"'{date[:5]}'" for date in strdates)})
-        AND (
+        (
             status LIKE '%🎉%'
             OR
             status LIKE '%🎊%'
             OR
             status LIKE '%📆%'
         )
+        AND SUBSTR(date, 1, 5) IN ({", ".join(f"'{date[:5]}'" for date in strdates)})
     )
     OR
     ( -- Каждый месяц
@@ -474,9 +473,9 @@ AND
             else:
                 generated.get_data(
                     WHERE=WHERE,
-                    column=f"JULIANDAY('{sqlite_format_date('date')}') "
-                           f"- JULIANDAY('{now_time(settings.timezone).strftime('%Y-%m-%d')}')",
-                    direction="DESC",
+                    column="DAYS_BEFORE_EVENT(date, status), "
+                    "status LIKE '%📬%', status LIKE '%🗞%',status LIKE '%📅%', status LIKE '%📆%', status LIKE '%🎉%', status LIKE '%🎊%'",
+                    direction="ASC",
                 )
 
             if len(generated.event_list) or from_command:
@@ -582,7 +581,7 @@ AND
 
     generated.format(
         title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})"
-              + f'\n📅 {get_translate("recurring_events", settings.lang)}',
+        + f'\n📅 {get_translate("recurring_events", settings.lang)}',
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
         "{weekday}</i></u> ({reldate})\n{markdown_text}\n",
         if_empty=get_translate("errors.nothing_found", settings.lang),
