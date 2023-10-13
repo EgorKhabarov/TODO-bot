@@ -189,7 +189,12 @@ def command_handler(message: Message) -> None:
 
     elif message_text.startswith("/SQL ") and is_secure_chat(message):
         # Выполнение запроса от админа к базе данных и красивый вывод результатов
-        query = html_to_markdown(message.html_text[5:].strip())
+        if message.entities:
+            markdown_text = html.unescape(html_to_markdown(message.html_text))
+        else:
+            markdown_text = message.html_text
+
+        query = markdown_text[5:].strip()
 
         if not query.lower().startswith("select"):
             bot.send_chat_action(chat_id, "typing")
