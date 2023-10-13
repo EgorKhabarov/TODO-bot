@@ -147,6 +147,7 @@ def processing_edit_message(message: Message):
 @bot.message_handler(
     func=lambda m: (
         m.reply_to_message
+        and m.reply_to_message.text
         and m.reply_to_message.text.startswith("⚙️")
         and m.reply_to_message.from_user.id == bot.id
     )
