@@ -1,11 +1,12 @@
 from io import BytesIO
 
-from PIL import Image, ImageFont
 from PIL.ImageDraw import Draw
+from PIL import Image, ImageFont
 
+from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.time_utils import now_time
-from todoapi.types import UserSettings, Limit, limits
+from todoapi.types import Limit, limits
 
 
 def _semicircle(title: str, val: int, y: int) -> Image:
@@ -72,11 +73,9 @@ def _semicircle(title: str, val: int, y: int) -> Image:
     return image
 
 
-def create_image(
-    settings: UserSettings, year=None, month=None, day=None, text="Account"
-) -> BytesIO:
-    user_info = limits[settings.user_status]
-    now_date = now_time(settings.timezone)
+def create_image(year=None, month=None, day=None, text="Account") -> BytesIO:
+    user_info = limits[request.user.settings.user_status]
+    now_date = now_time()
     if not year:
         year = now_date.year
     if not month:
@@ -97,7 +96,7 @@ def create_image(
     )
 
     date = f"{day:0>2}.{month:0>2}.{year}"
-    limit = Limit(settings.user_id, settings.user_status, date)
+    limit = Limit(request.user.user_id, request.user.settings.user_status, date)
     (
         limit_event_day,
         limit_symbol_day,
@@ -126,7 +125,7 @@ def create_image(
         symbol_year,
         event_all,
         symbol_all,
-    ) = get_translate("account", settings.lang)
+    ) = get_translate("account")
 
     if day:
         image.paste(

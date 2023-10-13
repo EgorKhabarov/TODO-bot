@@ -1,29 +1,30 @@
 from calendar import isleap
 from datetime import datetime, timedelta
 
+from tgbot.request import request
 from tgbot.lang import get_translate
-from todoapi.types import UserSettings
 
 
-def now_time(user_timezone: int = 0) -> datetime:
+def now_time() -> datetime:
     """
     Возвращает datetime.utcnow() с учётом часового пояса пользователя
     """
-    return datetime.utcnow() + timedelta(hours=user_timezone)
+    user = request.user
+    return datetime.utcnow() + timedelta(hours=user.settings.timezone if user else 0)
 
 
-def now_time_strftime(user_timezone: int) -> str:
+def now_time_strftime() -> str:
     """
     Возвращает форматированную ("%d.%m.%Y") функцию now_time()
     """
-    return now_time(user_timezone).strftime("%d.%m.%Y")
+    return now_time().strftime("%d.%m.%Y")
 
 
-def new_time_calendar(user_timezone: int) -> tuple[int, int]:
+def new_time_calendar() -> tuple[int, int]:
     """
     Возвращает [год, месяц]
     """
-    date = now_time(user_timezone)
+    date = now_time()
     return date.year, date.month
 
 
@@ -48,16 +49,16 @@ def convert_date_format(date: str) -> datetime:
             raise e
 
 
-def year_info(year: int, lang: str) -> str:
+def year_info(year: int) -> str:
     """
     Строковая информация про год
     "'имя месяца' ('номер месяца'.'год')('високосный или нет' 'животное этого года')"
     """
     result = ""
     if isleap(year):  # year % 4 == 0 and (year % 100 != 0 or year % 400 == 0):
-        result += get_translate("leap", lang)
+        result += get_translate("leap")
     else:
-        result += get_translate("not_leap", lang)
+        result += get_translate("not_leap")
     result += " "
     emoji = ("🐀", "🐂", "🐅", "🐇", "🐲", "🐍", "🐴", "🐐", "🐒", "🐓", "🐕", "🐖")
     result += emoji[(year - 4) % 12]
@@ -80,7 +81,7 @@ class DayInfo:
     self.relatively_date "через x дней" или "x дней назад"
     """
 
-    def __init__(self, settings: UserSettings, date: str):
+    def __init__(self, date: str):
         (
             today,
             tomorrow,
@@ -90,8 +91,8 @@ class DayInfo:
             after,
             ago,
             Fday,
-        ) = get_translate("relative_date_list", settings.lang)
-        x = now_time(settings.timezone)
+        ) = get_translate("relative_date_list")
+        x = now_time()
         x = datetime(x.year, x.month, x.day)
         y = convert_date_format(date)
 
@@ -113,8 +114,8 @@ class DayInfo:
             case _ as n:
                 self.relatively_date = f"{-n} {Fday(n)} {ago}"
 
-        week_days = get_translate("week_days_list_full", settings.lang)
-        month_list = get_translate("months_name2", settings.lang)
+        week_days = get_translate("week_days_list_full")
+        month_list = get_translate("months_name2")
 
         self.date = date
         self.str_date = f"{y.day} {month_list[y.month - 1]}"

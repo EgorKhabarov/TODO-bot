@@ -3,7 +3,7 @@ from unittest import mock
 import pytest
 
 from todoapi.api import User
-from tests.mocks import settings_mock, execute
+from tests.mocks import execute
 
 
 @mock.patch("todoapi.types.DataBase.execute", execute)
@@ -19,7 +19,7 @@ from tests.mocks import settings_mock, execute
     ],
 )
 def test_is_exceeded_limit(mock_sql_return, expected_result):
-    user = User(1, settings_mock)
+    user = User(1)
     execute.return_value = mock_sql_return
 
     # Пытаемся добавить одно событие

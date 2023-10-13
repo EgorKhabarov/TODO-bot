@@ -1,3 +1,4 @@
+import html
 import logging
 from time import sleep
 from io import StringIO
@@ -13,6 +14,7 @@ from telebot.types import (
 )
 
 from tgbot import config
+from tgbot.request import request
 from tgbot.bot import bot, set_bot_commands
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.message_generator import NoEventMessage, CallBackAnswer
@@ -61,52 +63,47 @@ from tgbot.utils import (
     re_setuserstatus,
     re_call_data_date,
 )
-from todoapi.api import User
 from todoapi.types import db, UserSettings
 from todoapi.utils import (
     is_admin_id,
     is_premium_user,
-    to_html_escaping,
-    remove_html_escaping,
     is_valid_year,
     html_to_markdown,
     isdigit,
 )
 
 
-def command_handler(user: User, message: Message) -> None:
+def command_handler(message: Message) -> None:
     """
     Отвечает за реакцию бота на команды
     Метод message.text.startswith("")
     используется и для групп (в них сообщение приходит в формате /command{bot.username})
     """
-    settings: UserSettings = user.settings
-    chat_id, message_text = message.chat.id, message.text
+    user, chat_id = request.user, request.chat_id
+    settings, message_text = user.settings, message.text
 
     if message_text.startswith("/calendar"):
-        generated = monthly_calendar_message(settings, chat_id)
+        generated = monthly_calendar_message()
         generated.send(chat_id)
 
     elif message_text.startswith("/start"):
-        set_bot_commands(chat_id, settings.user_status, settings.lang)
-        update_userinfo(chat_id)
+        set_bot_commands()
+        update_userinfo()
 
-        generated = start_message(settings)
+        generated = start_message()
         generated.send(chat_id)
 
     elif message_text.startswith("/deleted"):
         if is_premium_user(user):
-            generated = trash_can_message(settings, chat_id)
+            generated = trash_can_message()
             generated.send(chat_id)
         else:
-            set_bot_commands(chat_id, settings.user_status, settings.lang)
-            generated = NoEventMessage(
-                get_translate("errors.deleted", settings.lang), delmarkup(settings)
-            )
+            set_bot_commands()
+            generated = NoEventMessage(get_translate("errors.deleted"), delmarkup())
             generated.send(chat_id)
 
     elif message_text.startswith("/week_event_list"):
-        generated = week_event_list_message(settings, chat_id)
+        generated = week_event_list_message()
         generated.send(chat_id)
 
     elif message_text.startswith("/weather") or message_text.startswith("/forecast"):
@@ -123,22 +120,22 @@ def command_handler(user: User, message: Message) -> None:
 
         try:
             if message_text.startswith("/weather"):
-                text = fetch_weather(settings, nowcity)
+                text = fetch_weather(city=nowcity)
             else:  # forecast
-                text = fetch_forecast(settings, nowcity)
+                text = fetch_forecast(city=nowcity)
         except KeyError:
             if message_text.startswith("/weather"):
-                text = get_translate("errors.weather_invalid_city_name", settings.lang)
+                text = get_translate("errors.weather_invalid_city_name")
             else:  # forecast
-                text = get_translate("errors.forecast_invalid_city_name", settings.lang)
+                text = get_translate("errors.forecast_invalid_city_name")
 
-        generated = NoEventMessage(text, delmarkup(settings))
+        generated = NoEventMessage(text, delmarkup())
         generated.send(chat_id)
 
     elif message_text.startswith("/search"):
         text = message.html_text.removeprefix("/search").strip()
         query = html_to_markdown(text).replace("\n", " ").replace("--", "")
-        generated = search_message(settings, chat_id, query)
+        generated = search_message(query)
         generated.send(chat_id)
 
     elif message_text.startswith("/dice"):
@@ -147,16 +144,16 @@ def command_handler(user: User, message: Message) -> None:
         NoEventMessage(value).send(chat_id)
 
     elif message_text.startswith("/help"):
-        generated = help_message(settings)
+        generated = help_message()
         generated.send(chat_id)
 
     elif message_text.startswith("/settings"):
-        generated = settings_message(settings)
+        generated = settings_message()
         generated.send(chat_id)
 
     elif message_text.startswith("/today"):
-        message_date = now_time_strftime(settings.timezone)
-        generated = daily_message(settings, chat_id, message_date)
+        message_date = now_time_strftime()
+        generated = daily_message(message_date)
         new_message = generated.send(chat_id)
 
         # Изменяем уже существующую клавиатуру если событие в сообщение только одно.
@@ -185,14 +182,14 @@ def command_handler(user: User, message: Message) -> None:
                 bot.send_document(
                     chat_id,
                     file,
-                    caption=now_time_strftime(settings.timezone),
+                    caption=now_time_strftime(),
                 )
         except ApiTelegramException:
             NoEventMessage("Отправить файл не получилось").send(chat_id)
 
     elif message_text.startswith("/SQL ") and is_secure_chat(message):
         # Выполнение запроса от админа к базе данных и красивый вывод результатов
-        query = message_text[5:].strip()
+        query = html_to_markdown(message.html_text[5:].strip())
 
         if not query.lower().startswith("select"):
             bot.send_chat_action(chat_id, "typing")
@@ -228,7 +225,7 @@ def command_handler(user: User, message: Message) -> None:
 
     elif message_text.startswith("/save_to_csv"):
         api_response = user.export_data(
-            f"events_{now_time(settings.timezone).strftime('%Y-%m-%d_%H-%M-%S')}.csv"
+            f"events_{now_time().strftime('%Y-%m-%d_%H-%M-%S')}.csv"
         )
 
         if api_response[0]:
@@ -238,12 +235,10 @@ def command_handler(user: User, message: Message) -> None:
                 bot.send_document(chat_id, InputFile(api_response[1]))
             except ApiTelegramException as e:
                 logging.info(f'save_to_csv ApiTelegramException "{e}"')
-                big_file_translate = get_translate(
-                    "errors.file_is_too_big", settings.lang
-                )
+                big_file_translate = get_translate("errors.file_is_too_big")
                 bot.send_message(chat_id=chat_id, text=big_file_translate)
         else:
-            export_error = get_translate("errors.export", settings.lang)
+            export_error = get_translate("errors.export")
             generated = NoEventMessage(
                 export_error.format(t=api_response[1].split(" ")[1])
             )
@@ -256,12 +251,13 @@ def command_handler(user: User, message: Message) -> None:
         message_text = message_text.removeprefix("/setuserstatus ")
         input_id_status = re_setuserstatus.findall(message_text)
         if input_id_status:
+            # TODO разобраться chat_id или user_id
             user_id, user_status = [int(x) for x in input_id_status[0]]
 
             api_response = user.set_user_status(user_id, user_status)
 
             if api_response[0]:
-                text = f"Успешно изменено\n{user_id} -> {user_status}"
+                text = f"Успешно изменено\n[{user_id}][{user_status}]"
 
                 if not set_bot_commands(
                     user_id, user_status, UserSettings(user_id).lang
@@ -277,7 +273,7 @@ def command_handler(user: User, message: Message) -> None:
                 elif error_text == "Not Enough Authority":
                     text = "Недостаточно прав."
                 elif error_text == "Cannot be reduced in admin rights":
-                    text = "Нельзя понизить администратора."
+                    text = "Нельзя изменить права администратора."
                 elif error_text.startswith("SQL Error "):
                     text = f'Ошибка базы данных: "{api_response[1]}"'
                 else:
@@ -334,7 +330,7 @@ SyntaxError
     elif message_text.startswith("/idinfo") and is_secure_chat(message):
         try:
             message.text = "/SQL SELECT * FROM settings;"
-            command_handler(user, message)
+            command_handler(message)
         except ApiTelegramException:
             pass
 
@@ -381,7 +377,7 @@ SyntaxError
             pass
 
     elif message_text.startswith("/account"):
-        account_message(settings, chat_id, message_text)
+        account_message(message_text)
 
     elif message_text.startswith("/commands"):  # TODO перевод
         # /account - Ваш аккаунт (просмотр лимитов)
@@ -419,9 +415,6 @@ SyntaxError
 
 
 def callback_handler(
-    user: User,
-    settings: UserSettings,
-    chat_id: int,
     message_id: int,
     message_text: str,
     call_data: str,
@@ -459,6 +452,8 @@ def callback_handler(
     r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z" - Вызвать сообщение с текущей датой.
     "update" - Обновить сообщение в зависимости от типа. Поддерживает сообщения типа поиск, week_event_list, корзина, сообщение с датой.
     """
+    user, chat_id = request.user, request.chat_id
+    settings = user.settings
 
     if call_data == "event_add":
         clear_state(chat_id)
@@ -466,7 +461,7 @@ def callback_handler(
 
         # Проверяем будет ли превышен лимит для пользователя, если добавить 1 событие с 1 символом
         if user.check_limit(date, event_count=1, symbol_count=1)[1] is True:
-            text = get_translate("errors.exceeded_limit", settings.lang)
+            text = get_translate("errors.exceeded_limit")
             CallBackAnswer(text).answer(call_id, True)
             return
 
@@ -480,30 +475,28 @@ UPDATE settings
             commit=True,
         )
 
-        text = get_translate("send_event_text", settings.lang)
+        text = get_translate("send_event_text")
         CallBackAnswer(text).answer(call_id)
 
         text = f"{message.html_text}\n\n<b>?.?.</b>⬜\n{text}"
-        backmarkup = generate_buttons(
-            [{get_theme_emoji("back", settings.theme): "back"}]
-        )
+        backmarkup = generate_buttons([{get_theme_emoji("back"): "back"}])
         bot.edit_message_text(text, chat_id, message_id, reply_markup=backmarkup)
 
     elif call_data == "/calendar":
-        generated = monthly_calendar_message(settings, chat_id)
+        generated = monthly_calendar_message()
         generated.edit(chat_id, message_id)
 
     elif call_data == "calendar":
         YY_MM = [int(x) for x in message_text[:10].split(".")[1:]][::-1]
-        text = get_translate("select.date", settings.lang)
-        markup = create_monthly_calendar_keyboard(chat_id, settings, YY_MM)
+        text = get_translate("select.date")
+        markup = create_monthly_calendar_keyboard(YY_MM)
         NoEventMessage(text, markup).edit(chat_id, message_id)
 
     elif call_data.startswith("back"):
-        press_back_action(settings, call_data, chat_id, message_id, message.html_text)
+        press_back_action(call_data, message_id, message.html_text)
 
     elif call_data == "message_del":
-        delete_message_action(settings, message)
+        delete_message_action(message)
 
     elif call_data == "confirm change":
         first_line, _, text = message_text.split("\n", maxsplit=2)
@@ -512,12 +505,12 @@ UPDATE settings
         api_response = user.edit_event_text(event_id, text)
         if not api_response[0]:
             logging.info(f'user.edit_event "{api_response[1]}"')
-            error = get_translate("errors.error", settings.lang)
+            error = get_translate("errors.error")
             CallBackAnswer(error).answer(call_id, True)
             return
 
-        update_message_action(settings, chat_id, message_id, message.html_text)
-        CallBackAnswer(get_translate("changes_saved", settings.lang)).answer(call_id)
+        update_message_action(message_id, message.html_text)
+        CallBackAnswer(get_translate("changes_saved")).answer(call_id)
 
     elif call_data.startswith("select event "):
         # action: Literal["edit", "status", "delete", "delete bin", "recover bin", "open"]
@@ -528,7 +521,7 @@ UPDATE settings
 
         # Заглушка если событий нет
         if len(events_list) == 0:
-            no_events = get_translate("errors.no_events_to_interact", settings.lang)
+            no_events = get_translate("errors.no_events_to_interact")
             CallBackAnswer(no_events).answer(call_id, True)
             return
 
@@ -536,7 +529,7 @@ UPDATE settings
         if len(events_list) == 1:
             event = events_list[0]
             if not user.check_event(event.event_id, action.endswith("bin"))[1]:
-                update_message_action(settings, chat_id, message_id, message.html_text)
+                update_message_action(message_id, message.html_text)
                 return
 
             if action in ("status", "move", "move bin", "recover bin", "open"):
@@ -555,9 +548,6 @@ UPDATE settings
                         new_call_data = f"{event.date}"
 
                 callback_handler(
-                    user=user,
-                    settings=settings,
-                    chat_id=chat_id,
                     message_id=message_id,
                     message_text=message_text,
                     call_data=new_call_data,
@@ -620,47 +610,47 @@ UPDATE settings
             markup.row(button)
 
         if not markup.to_dict()["inline_keyboard"]:  # Созданный markup пустой
-            update_message_action(settings, chat_id, message_id, message.html_text)
+            update_message_action(message_id, message.html_text)
             return
 
         markup.row(
             InlineKeyboardButton(
-                get_theme_emoji("back", settings.theme),
+                get_theme_emoji("back"),
                 callback_data="back" if not action.endswith("bin") else "back bin",
             )
         )
 
         if action == "edit":
-            select_event = get_translate("select.event_to_edit", settings.lang)
+            select_event = get_translate("select.event_to_edit")
             text = f"{msg_date}\n{select_event}"
 
         elif action == "status":
-            select_event = get_translate("select.event_to_change_status", settings.lang)
+            select_event = get_translate("select.event_to_change_status")
             text = f"{msg_date}\n{select_event}"
 
         elif action == "move":
-            select_event = get_translate("select.event_to_move", settings.lang)
+            select_event = get_translate("select.event_to_move")
             text = f"{msg_date}\n{select_event}"
 
         elif action == "move bin":
-            basket = get_translate("messages.basket", settings.lang)
-            select_event = get_translate("select.event_to_move", settings.lang)
+            basket = get_translate("messages.basket")
+            select_event = get_translate("select.event_to_move")
             text = f"{basket}\n{select_event}"
 
         elif action == "recover bin":
-            basket = get_translate("messages.basket", settings.lang)
-            select_event = get_translate("select.event_to_recover", settings.lang)
+            basket = get_translate("messages.basket")
+            select_event = get_translate("select.event_to_recover")
             text = f"{basket}\n{select_event}"
 
         elif message_text.startswith("🔍 "):
             first_line = message.text.split("\n", maxsplit=1)[0]
             query = first_line.split(maxsplit=2)[-1][:-1]
-            translate_search = get_translate("messages.search", settings.lang)
-            choose_event = get_translate("select.event", settings.lang)
-            text = f"🔍 {translate_search} {to_html_escaping(query)}:\n{choose_event}"
+            translate_search = get_translate("messages.search")
+            choose_event = get_translate("select.event")
+            text = f"🔍 {translate_search} {html.escape(query)}:\n{choose_event}"
 
         else:
-            choose_event = get_translate("select.event", settings.lang)
+            choose_event = get_translate("select.event")
             text = f"{msg_date}\n{choose_event}"
 
         bot.edit_message_text(text, chat_id, message_id, reply_markup=markup)
@@ -670,14 +660,11 @@ UPDATE settings
         event_id = int(event_id)
 
         if not user.recover_event(event_id)[0]:
-            error = get_translate("errors.error", settings.lang)
+            error = get_translate("errors.error")
             CallBackAnswer(error).answer(call_id, True)
             return  # такого события нет
 
         callback_handler(
-            user=user,
-            settings=settings,
-            chat_id=chat_id,
             message_id=message_id,
             message_text=message_text,
             call_data="back bin",
@@ -697,9 +684,7 @@ UPDATE settings
         api_response = user.get_event(event_id)
 
         if not api_response[0]:  # Если этого события нет
-            press_back_action(
-                settings, call_data, chat_id, message_id, message.html_text
-            )
+            press_back_action(call_data, message_id, message.html_text)
             return
 
         event = api_response[1]
@@ -713,7 +698,7 @@ UPDATE settings
                     *[
                         {f"{title}{config.callbackTab * 20}": f"{data}"}
                         for title, data in get_translate(
-                            "buttons.status page.0", settings.lang
+                            "buttons.status page.0"
                         ).items()
                     ],
                     {
@@ -726,13 +711,12 @@ UPDATE settings
                     }
                     if status != "⬜️"
                     else {},
-                    {get_theme_emoji("back", settings.theme): "back"},
+                    {get_theme_emoji("back"): "back"},
                 ]
             )
         else:  # status page
             buttons_data = get_translate(
-                f"buttons.status page.{call_data.removeprefix('status page ')}",
-                settings.lang,
+                f"buttons.status page.{call_data.removeprefix('status page ')}"
             )
             markup = generate_buttons(
                 [
@@ -759,7 +743,7 @@ UPDATE settings
                     ],
                     {
                         get_theme_emoji(
-                            "back", settings.theme
+                            "back"
                         ): f"status_home_page {event_id} {event_date}"
                     },
                 ]
@@ -767,9 +751,9 @@ UPDATE settings
 
         bot.edit_message_text(
             f"{event_date}\n"
-            f"<b>{get_translate('select.status_to_event', settings.lang)}\n"
+            f"<b>{get_translate('select.status_to_event')}\n"
             f"{event_date}.{event_id}.{status}</b>\n"
-            f"{markdown(text, status, settings.sub_urls, settings.theme)}",
+            f"{markdown(text, status)}",
             chat_id,
             message_id,
             reply_markup=markup,
@@ -783,17 +767,13 @@ UPDATE settings
         api_response = user.get_event(event_id)
 
         if not api_response[0]:
-            press_back_action(
-                settings, call_data, chat_id, message_id, message.html_text
-            )
+            press_back_action(call_data, message_id, message.html_text)
             return
 
         old_status = api_response[1].status
 
         if new_status == "⬜️" == old_status:
-            press_back_action(
-                settings, call_data, chat_id, message_id, message.html_text
-            )
+            press_back_action(call_data, message_id, message.html_text)
             return
 
         if old_status == "⬜️":
@@ -811,26 +791,21 @@ UPDATE settings
             case "":
                 text = ""
             case "Status Conflict":
-                text = get_translate("errors.conflict_statuses", settings.lang)
+                text = get_translate("errors.conflict_statuses")
             case "Status Length Exceeded":
-                text = get_translate("errors.more_5_statuses", settings.lang)
+                text = get_translate("errors.more_5_statuses")
             case "Status Repeats":
-                text = get_translate("errors.status_already_posted", settings.lang)
+                text = get_translate("errors.status_already_posted")
             case _:
-                text = get_translate("errors.error", settings.lang)
+                text = get_translate("errors.error")
 
         if text:
             CallBackAnswer(text).answer(call_id, True)
 
         if new_status == "⬜️":
-            press_back_action(
-                settings, call_data, chat_id, message_id, message.html_text
-            )
+            press_back_action(call_data, message_id, message.html_text)
         else:
             callback_handler(
-                user=user,
-                settings=settings,
-                chat_id=chat_id,
                 message_id=message_id,
                 message_text=message_text,
                 call_data=f"status_home_page {event_id} {event_date}",
@@ -846,9 +821,7 @@ UPDATE settings
         api_response = user.get_event(event_id)
 
         if not api_response[0]:
-            press_back_action(
-                settings, call_data, chat_id, message_id, message.html_text
-            )
+            press_back_action(call_data, message_id, message.html_text)
             return
 
         event = api_response[1]
@@ -869,9 +842,6 @@ UPDATE settings
         user.edit_event_status(event_id, res_status)
 
         callback_handler(
-            user=user,
-            settings=settings,
-            chat_id=chat_id,
             message_id=message_id,
             message_text=message_text,
             call_data=f"status_home_page {event_id} {event_date}",
@@ -884,10 +854,8 @@ UPDATE settings
         event_id = int(event_id)
 
         before_move_message(
-            user,
             call_id,
             call_data,
-            chat_id,
             message_id,
             message_text,
             event_id,
@@ -903,13 +871,11 @@ UPDATE settings
         )
 
         if not user.delete_event(event_id, to_bin)[0]:
-            error = get_translate("errors.error", settings.lang)
+            error = get_translate("errors.error")
             CallBackAnswer(error).answer(call_id)
 
         press_back_action(
-            settings,
             "back" if where != "bin" else "back bin",
-            chat_id,
             message_id,
             message_text,
         )
@@ -922,29 +888,25 @@ UPDATE settings
             if message_text.startswith("🔍 "):  # Поиск
                 first_line = message.text.split("\n", maxsplit=1)[0]
                 query = first_line.split(maxsplit=2)[-1][:-1]
-                generated = search_message(settings, chat_id, query, id_list, int(page))
+                generated = search_message(query, id_list, int(page))
                 generated.edit(chat_id, message_id, markup=message.reply_markup)
 
             elif message_text.startswith("📆"):  # Если /week_event_list
-                generated = week_event_list_message(
-                    settings, chat_id, id_list, int(page)
-                )
+                generated = week_event_list_message(id_list, int(page))
                 generated.edit(chat_id, message_id, markup=message.reply_markup)
 
             elif message_text.startswith("🗑"):  # Корзина
-                generated = trash_can_message(settings, chat_id, id_list, int(page))
+                generated = trash_can_message(id_list, int(page))
                 generated.edit(chat_id, message_id, markup=message.reply_markup)
 
             elif re_date.match(message_text):
                 msg_date = re_date.match(message_text)[0]
                 if page.startswith("!"):
                     generated = recurring_events_message(
-                        settings, msg_date, chat_id, id_list, int(page[1:])
+                        msg_date, id_list, int(page[1:])
                     )
                 else:
-                    generated = daily_message(
-                        settings, chat_id, msg_date, id_list, int(page), message_id
-                    )
+                    generated = daily_message(msg_date, id_list, int(page), message_id)
 
                 # Изменяем кнопку изменения текста события на актуальную
                 markup = message.reply_markup
@@ -958,7 +920,7 @@ UPDATE settings
                         old="callback_data",
                         new="switch_inline_query_current_chat",
                         val=f"event({event.event_id}, {message_id}).text\n"
-                        f"{remove_html_escaping(event.text)}",
+                        f"{html.unescape(event.text)}",
                     )
                 else:
                     edit_button_attrs(
@@ -978,7 +940,7 @@ UPDATE settings
                 )
 
         except ApiTelegramException:
-            text = get_translate("errors.already_on_this_page", settings.lang)
+            text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
 
     elif call_data.startswith("calendar_y "):
@@ -987,20 +949,16 @@ UPDATE settings
         command, back, year = data
 
         if year == "now":
-            year = now_time(settings.timezone).year
+            year = now_time().year
 
         if is_valid_year(year):
-            markup = create_yearly_calendar_keyboard(
-                chat_id, settings, year, command, back
-            )
+            markup = create_yearly_calendar_keyboard(year, command, back)
             try:
                 bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
             except ApiTelegramException:
                 # Сообщение не изменено
-                date = new_time_calendar(settings.timezone)
-                markup = create_monthly_calendar_keyboard(
-                    chat_id, settings, date, command, back
-                )
+                date = new_time_calendar()
+                markup = create_monthly_calendar_keyboard(date, command, back)
                 bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
         else:
             CallBackAnswer("🤔").answer(call_id)
@@ -1011,27 +969,21 @@ UPDATE settings
         command, back, date = data
 
         if date == "now":
-            date = new_time_calendar(settings.timezone)
+            date = new_time_calendar()
 
         if is_valid_year(date[0]):
-            markup = create_monthly_calendar_keyboard(
-                chat_id, settings, date, command, back
-            )
+            markup = create_monthly_calendar_keyboard(date, command, back)
             try:
                 bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
             except ApiTelegramException:
                 # Если нажата кнопка ⟳, но сообщение не изменено
                 if command is not None and back is not None:
-                    text = get_translate(
-                        "errors.already_on_current_date", settings.lang
-                    )
+                    text = get_translate("errors.already_on_current_date")
                     CallBackAnswer(text).answer(call_id)
                     return
 
-                now_date = now_time_strftime(settings.timezone)
-                generated = daily_message(
-                    settings, chat_id, now_date, message_id=message_id
-                )
+                now_date = now_time_strftime()
+                generated = daily_message(now_date, message_id=message_id)
                 generated.edit(chat_id, message_id)
         else:
             CallBackAnswer("🤔").answer(call_id)
@@ -1054,12 +1006,13 @@ UPDATE settings
 
         result = user.set_settings(**{par_name: par_val})
         if not result[0]:
-            CallBackAnswer(get_translate("errors.error", settings.lang)).answer(call_id)
+            CallBackAnswer(get_translate("errors.error")).answer(call_id)
             logging.info(f"{par_name}={par_name} {result[1]}")
 
         settings = UserSettings(chat_id)
-        set_bot_commands(chat_id, settings.user_status, settings.lang)
-        generated = settings_message(settings)
+        request.user.settings = settings
+        set_bot_commands()
+        generated = settings_message()
 
         try:
             generated.edit(chat_id, message_id)
@@ -1067,50 +1020,45 @@ UPDATE settings
             pass
 
     elif call_data.startswith("recurring"):
-        generated = recurring_events_message(settings, message_text[:10], chat_id)
+        generated = recurring_events_message(message_text[:10])
         generated.edit(chat_id, message_id)
 
     elif re_call_data_date.search(call_data):
         year = int(call_data[-4:])
         sleep(0.3)
         if is_valid_year(year):
-            generated = daily_message(
-                settings,
-                chat_id,
-                call_data,
-                message_id=message_id,
-            )
+            generated = daily_message(call_data, message_id=message_id)
             generated.edit(chat_id, message_id)
         else:
             CallBackAnswer("🤔").answer(call_id)
 
     elif call_data == "update":
-        update_message_action(settings, chat_id, message_id, message.html_text, call_id)
+        update_message_action(message_id, message.html_text, call_id)
 
     elif call_data.startswith("help"):
         try:
-            generated = help_message(settings, call_data.removeprefix("help "))
+            generated = help_message(call_data.removeprefix("help "))
             markup = None if call_data.startswith("help page") else message.reply_markup
             generated.edit(chat_id, message_id, markup=markup)
         except ApiTelegramException:
-            text = get_translate("errors.already_on_this_page", settings.lang)
+            text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
 
     elif call_data == "clean_bin":
         if not user.clear_basket()[0]:
-            error = get_translate("errors.error", settings.lang)
+            error = get_translate("errors.error")
             CallBackAnswer(error).answer(call_id)
             return
 
-        update_message_action(settings, chat_id, message_id, message.html_text)
+        update_message_action(message_id, message.html_text)
 
     elif call_data == "restore_to_default":
         user.set_settings("ru", 1, "Москва", 3, "DESC", 0, 0, "08:00")
 
         if user.settings.lang != settings.lang:
-            set_bot_commands(chat_id, settings.user_status, settings.lang)
+            set_bot_commands()
 
-        generated = settings_message(settings)
+        generated = settings_message()
         try:
             generated.edit(chat_id, message_id)
         except ApiTelegramException:
@@ -1125,26 +1073,23 @@ UPDATE settings
                 message_text[:10],
                 message_text.split(".", maxsplit=4)[-2],
             )
-            event_text = to_html_escaping(message_text.split("\n", maxsplit=2)[2])
+            event_text = html.escape(message_text.split("\n", maxsplit=2)[2])
             event_status = str(
                 message_text.split(" ", maxsplit=1)[0].split(".", maxsplit=4)[4]
             )
 
             # Error code: 400. Description: Bad Request: BUTTON_DATA_INVALID"
             # back = f"before del {event_date} {event_id} _"
-            day = DayInfo(settings, event_date)
+            day = DayInfo(event_date)
             text = (
-                get_translate("select.new_date", settings.lang)
+                get_translate("select.new_date")
                 + f":\n<b>{event_date}.{event_id}.</b>{event_status}"
                 + f"  <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})"
                 + f"\n{event_text}"
-
             )
 
             dt_event_date = convert_date_format(event_date)
             markup = create_monthly_calendar_keyboard(
-                chat_id,
-                settings,
                 (dt_event_date.year, dt_event_date.month),
                 f"edit_event_date {event_id}",
                 event_date,
@@ -1156,16 +1101,16 @@ UPDATE settings
             api_response = user.edit_event_date(event_id, event_date)
             if api_response[0]:
                 try:
-                    update_message_action(settings, chat_id, message_id, event_date)
+                    update_message_action(message_id, event_date)
                 except ApiTelegramException:
                     pass
-                text = get_translate("changes_saved", settings.lang)
+                text = get_translate("changes_saved")
                 CallBackAnswer(text).answer(call_id)
             elif api_response[1] == "Limit Exceeded":
-                text = get_translate("limit_exceeded", settings.lang)
+                text = get_translate("limit_exceeded")
                 CallBackAnswer(text).answer(call_id)
             else:
-                text = get_translate("errors.error", settings.lang)
+                text = get_translate("errors.error")
                 CallBackAnswer(text).answer(call_id)
 
 
@@ -1194,4 +1139,4 @@ UPDATE settings
             params=(chat_id,),
             commit=True,
         )
-        update_message_action(UserSettings(chat_id), chat_id, message_id, msg_date)
+        update_message_action(message_id, msg_date)

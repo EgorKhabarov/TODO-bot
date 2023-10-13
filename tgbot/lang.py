@@ -2,6 +2,7 @@ from typing import Any
 
 from telebot.types import BotCommand
 
+from tgbot.request import request
 from tgbot.config import callbackTab
 
 
@@ -768,6 +769,14 @@ Visibility <b>{}</b>m""",
     },
     "buttons": {
         "commands": {
+            "-1": {
+                "ru": [
+                    BotCommand("_", "Вы забанены"),
+                ],
+                "en": [
+                    BotCommand("_", "You are banned"),
+                ],
+            },
             "0": {
                 "ru": [
                     BotCommand("start", "Старт"),
@@ -1156,7 +1165,7 @@ Visibility <b>{}</b>m""",
 }
 
 
-def get_translate(target: str, lang_iso_code: str) -> Any:
+def get_translate(target: str, lang_iso: str | None = None) -> Any:
     """
     Взять перевод из файла lang.py c нужным языком
     """
@@ -1164,18 +1173,21 @@ def get_translate(target: str, lang_iso_code: str) -> Any:
     for key in target.split("."):
         result = result[key]
 
+    user = request.user
+    lang_iso: str = lang_iso or (user.settings.lang if user else "en")
     try:
-        return result[lang_iso_code]
+        return result[lang_iso]
     except KeyError:
         return result["en"]
 
 
-def get_theme_emoji(target: str, theme: int) -> str:
+def get_theme_emoji(target: str) -> str:
     """
     back
 
     add
     """
+    theme: int = request.user.settings.theme
     match target:
         case "back":
             match theme:

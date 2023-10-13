@@ -1,4 +1,5 @@
 import re
+import html
 import logging
 from time import sleep
 
@@ -7,6 +8,7 @@ from telebot.types import Message
 
 from tgbot import config
 from tgbot.bot import bot
+from tgbot.request import request
 from tgbot.time_utils import DayInfo
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.utils import re_edit_message, highlight_text_difference
@@ -22,33 +24,26 @@ from tgbot.bot_messages import (
     daily_message,
     week_event_list_message,
 )
-from todoapi.api import User
-from todoapi.types import db, UserSettings
-from todoapi.utils import (
-    to_html_escaping,
-    html_to_markdown,
-    remove_html_escaping,
-    is_admin_id,
-)
+from todoapi.types import db
+from todoapi.utils import html_to_markdown, is_admin_id
 
 re_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}")
 
 
-def delete_message_action(settings: UserSettings, message: Message):
+def delete_message_action(message: Message):
     try:
         bot.delete_message(message.chat.id, message.message_id)
     except ApiTelegramException:
-        get_admin_rules = get_translate("errors.get_admin_rules", settings.lang)
-        NoEventMessage(get_admin_rules, delmarkup(settings)).reply(message)
+        get_admin_rules = get_translate("errors.get_admin_rules")
+        NoEventMessage(get_admin_rules, delmarkup()).reply(message)
 
 
 def press_back_action(
-    settings: UserSettings,
     call_data: str,
-    chat_id: int,
     message_id: int,
     message_text: str,
 ):
+    settings, chat_id = request.user.settings, request.chat_id
     add_event_date = db.execute(
         """
 SELECT add_event_date
@@ -74,54 +69,48 @@ WHERE user_id = ?;
     msg_date = message_text.removeprefix("<b>")[:10]
 
     if call_data.endswith("bin"):  # Корзина
-        generated = trash_can_message(settings, chat_id)
+        generated = trash_can_message()
         generated.edit(chat_id, message_id)
 
     elif message_text.startswith("🔍 "):  # Поиск
         first_line = message_text.split("\n", maxsplit=1)[0]
         query = first_line.split(maxsplit=2)[-1][:-1]
-        generated = search_message(settings, chat_id, query)
+        generated = search_message(query)
         generated.edit(chat_id, message_id)
 
     elif len(msg_date.split(".")) == 3:  # Проверка на дату
         try:  # Пытаемся изменить сообщение
-            generated = daily_message(
-                settings=settings,
-                chat_id=chat_id,
-                date=msg_date,
-                message_id=message_id,
-            )
+            generated = daily_message(msg_date, message_id=message_id)
             generated.edit(chat_id, message_id)
         except ApiTelegramException:
             # Если сообщение не изменено, то шлём календарь
             # "dd.mm.yyyy" -> [yyyy, mm]
             YY_MM = [int(x) for x in msg_date.split(".")[1:]][::-1]
-            text = get_translate("select.date", settings.lang)
-            markup = create_monthly_calendar_keyboard(chat_id, settings, YY_MM)
+            text = get_translate("select.date")
+            markup = create_monthly_calendar_keyboard(YY_MM)
             NoEventMessage(text, markup).edit(chat_id, message_id)
 
 
 def update_message_action(
-    settings: UserSettings,
-    chat_id: int,
     message_id: int,
     message_text: str,
     call_id: int = None,
 ):
+    settings, chat_id = request.user.settings, request.chat_id
     if message_text.startswith("🔍 "):  # Поиск
         first_line = message_text.split("\n", maxsplit=1)[0]
         query = first_line.split(maxsplit=2)[-1][:-1]
-        generated = search_message(settings, chat_id, query)
+        generated = search_message(query)
 
     elif message_text.startswith("📆"):  # Если /week_event_list
-        generated = week_event_list_message(settings, chat_id)
+        generated = week_event_list_message()
 
     elif message_text.startswith("🗑"):  # Корзина
-        generated = trash_can_message(settings=settings, chat_id=chat_id)
+        generated = trash_can_message()
 
     elif re_date.match(message_text) is not None:
         msg_date = re_date.match(message_text)[0]
-        generated = daily_message(settings, chat_id, msg_date, message_id=message_id)
+        generated = daily_message(msg_date, message_id=message_id)
 
     else:
         return
@@ -138,12 +127,11 @@ def update_message_action(
         CallBackAnswer("ok").answer(call_id, True)
 
 
-def confirm_changes_message(user: User, message: Message):
-    settings = user.settings
-    chat_id = message.chat.id
+def confirm_changes_message(message: Message):
+    user, chat_id = request.user, request.chat_id
 
     if message.entities:
-        markdown_text = remove_html_escaping(html_to_markdown(message.html_text))
+        markdown_text = html.unescape(html_to_markdown(message.html_text))
     else:
         markdown_text = message.html_text
 
@@ -164,10 +152,8 @@ def confirm_changes_message(user: User, message: Message):
     if len(message.text.split("\n")) == 1:
         try:
             if before_move_message(
-                user=user,
                 call_id=0,
                 call_data=f"before move {event.date} {event_id} _",
-                chat_id=chat_id,
                 message_id=message_id,
                 message_text=f"{event.date}",
                 event_id=event_id,
@@ -175,7 +161,7 @@ def confirm_changes_message(user: User, message: Message):
                 return 1
         except ApiTelegramException:
             pass
-        delete_message_action(settings, message)
+        delete_message_action(message)
         return 1
 
     markup = generate_buttons(
@@ -203,15 +189,15 @@ def confirm_changes_message(user: User, message: Message):
     )
 
     if tag_len_max:
-        translate = get_translate("errors.message_is_too_long", settings.lang)
+        translate = get_translate("errors.message_is_too_long")
         NoEventMessage(translate, markup).reply(message)
     elif tag_limit_exceeded:
-        translate = get_translate("errors.exceeded_limit", settings.lang)
+        translate = get_translate("errors.exceeded_limit")
         NoEventMessage(translate, markup).reply(message)
     else:
-        day = DayInfo(settings, event.date)
+        day = DayInfo(event.date)
         text_diff = highlight_text_difference(
-            to_html_escaping(event.text), to_html_escaping(text)
+            html.escape(event.text), html.escape(text)
         )
         # Находим пересечения выделений изменений и html экранирования
         # Костыль для исправления старого экранирования
@@ -229,12 +215,12 @@ def confirm_changes_message(user: User, message: Message):
         generated = NoEventMessage(
             f"{event.date} {event_id} <u><i>{day.str_date}  "
             f"{day.week_date}</i></u> ({day.relatively_date})\n"
-            f"<b>{get_translate('are_you_sure_edit', settings.lang)}</b>\n"
+            f"<b>{get_translate('are_you_sure_edit')}</b>\n"
             f"<i>{text_diff}</i>",
             reply_markup=generate_buttons(
                 [
                     {
-                        get_theme_emoji("back", settings.theme): "back",
+                        get_theme_emoji("back"): "back",
                         "📝": {"switch_inline_query_current_chat": edit_text},
                         "✅": "confirm change",
                     }
@@ -250,31 +236,30 @@ def confirm_changes_message(user: User, message: Message):
 
 
 def before_move_message(
-    user: User,
     call_id: int,
     call_data: str,
-    chat_id: int,
     message_id,
     message_text,
     event_id: int,
     in_wastebasket: bool = False,
 ):
+    user, chat_id = request.user, request.chat_id
     settings = user.settings
     # Если события нет, то обновляем сообщение
     api_response = user.get_event(event_id, in_wastebasket)
 
     if not api_response[0]:
         if call_id:
-            error = get_translate("errors.error", settings.lang)
+            error = get_translate("errors.error")
             CallBackAnswer(error).answer(call_id)
-        press_back_action(settings, call_data, chat_id, message_id, message_text)
+        press_back_action(call_data, message_id, message_text)
         return 1
 
     event = api_response[1]
 
-    delete_permanently = get_translate("delete_permanently", settings.lang)
-    trash_bin = get_translate("trash_bin", settings.lang)
-    edit_date = get_translate("edit_date", settings.lang)
+    delete_permanently = get_translate("delete_permanently")
+    trash_bin = get_translate("trash_bin")
+    edit_date = get_translate("edit_date")
     split_data = call_data.split(maxsplit=1)[-1]
 
     is_wastebasket_available = (
@@ -297,18 +282,16 @@ def before_move_message(
             if not in_wastebasket
             else {},
             {
-                get_theme_emoji("back", settings.theme): "back"
-                if not in_wastebasket
-                else "back bin",
+                get_theme_emoji("back"): "back" if not in_wastebasket else "back bin",
             },
         ]
     )
 
-    day = DayInfo(settings, event.date)
-    what_do_with_event = get_translate("what_do_with_event", settings.lang)
+    day = DayInfo(event.date)
+    what_do_with_event = get_translate("what_do_with_event")
     text = (
         f"<b>{event.date}.{event_id}.</b>{event.status} <u><i>{day.str_date}  "
         f"{day.week_date}</i> {day.relatively_date}</u>\n"
-        f"<b>{what_do_with_event}:</b>\n{to_html_escaping(event.text)[:3800]}"
+        f"<b>{what_do_with_event}:</b>\n{html.escape(event.text)[:3800]}"
     )
     NoEventMessage(text, pre_delmarkup).edit(chat_id, message_id)

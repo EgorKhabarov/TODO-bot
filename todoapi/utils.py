@@ -1,8 +1,8 @@
-import html
 import re
 from urllib.parse import urlparse
 
 import todoapi.config as config
+
 
 re_date = re.compile(r"\A\d{2}\.\d{2}\.\d{4}\Z")
 sql_date_pattern = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -36,14 +36,6 @@ def html_to_markdown(html_text: str) -> str:
 
     html_text = link_sub.sub(replace_url, html_text)
     return html_text
-
-
-def to_html_escaping(text: str) -> str:
-    return html.escape(text, False)
-
-
-def remove_html_escaping(text: str) -> str:
-    return html.unescape(text)
 
 
 def sqlite_format_date(_column):

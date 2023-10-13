@@ -3,7 +3,7 @@ from unittest import mock
 import pytest
 
 from tgbot.handlers import command_handler
-from tests.mocks import user_mock, message_mock, bot_mock, db_decorator
+from tests.mocks import message_mock, bot_mock, db_decorator
 
 
 @mock.patch("bot.bot", bot_mock)
@@ -38,5 +38,5 @@ from tests.mocks import user_mock, message_mock, bot_mock, db_decorator
 )
 def test_bot_interface(command, result):
     message = message_mock(1, command)
-    command_handler(user_mock, message)
+    command_handler(message)
     assert bot_mock.call_args_list, result

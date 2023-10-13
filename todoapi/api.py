@@ -1,10 +1,12 @@
 import csv
+import html
+import logging
 from io import StringIO
 from sqlite3 import Error
 from typing import Literal
 
+from todoapi.types import Event, UserSettings, Limit, db, export_cooldown
 from todoapi.utils import (
-    remove_html_escaping,
     sqlite_format_date,
     is_premium_user,
     is_valid_year,
@@ -12,13 +14,12 @@ from todoapi.utils import (
     to_valid_id,
     re_date,
 )
-from todoapi.types import Event, UserSettings, Limit, db, export_cooldown
 
 
 class User:
-    def __init__(self, user_id: int | str, settings: UserSettings = None):
+    def __init__(self, user_id: int | str):
         self.user_id = int(user_id)
-        self.settings: UserSettings = settings or UserSettings(user_id)
+        self.settings: UserSettings = UserSettings(user_id)
         self.__no_cooldown = False
 
     def check_event(
@@ -598,7 +599,7 @@ SELECT event_id,
                             str(event_id),
                             event_date,
                             event_status,
-                            remove_html_escaping(event_text),
+                            html.unescape(event_text),
                         ]
                     ]
                 )
@@ -769,10 +770,11 @@ UPDATE settings
             return False, "User Not Exist"
 
         tmp_user = User(user_id)
-        tmp_user.no_cooldown = True
-        api_response = tmp_user.export_data("deleted_user_info.csv")
+        tmp_user.__no_cooldown = True
+        api_response = tmp_user.export_data(f"{user_id}.csv")
 
         if not api_response[0]:
+            logging.info(f"CSV Error {api_response[1]}")
             return False, "CSV Error"
 
         csv_file = api_response[1]
@@ -844,16 +846,3 @@ UPDATE settings
             return True, ""
         except Error as e:
             return False, f"SQL Error {e}"
-
-
-# user = User(1563866138)
-# # [print(i) for i in dir(user)]
-# csv_file = user.export_data("my_data.csv")[0].read()
-# print(csv_file)
-# if csv_file[0]:
-#     print(csv_file[0].read())
-# else:
-#     print(csv_file[-1])
-# [print(event.to_json()) for event in user.get_events((1,))]
-# print(user.set_status(1, "🔗,💻"))
-# print(user.set_status(1, "⬜️"))

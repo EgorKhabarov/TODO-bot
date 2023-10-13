@@ -6,6 +6,7 @@ from telebot.apihelper import ApiTelegramException
 
 import todoapi.config
 from tgbot import config
+from tgbot.request import request
 from tgbot.lang import get_translate
 from todoapi.utils import is_admin_id
 
@@ -62,10 +63,21 @@ def bot_log_info():
     )
 
 
-def set_bot_commands(chat_id: int, user_status: int, lang: str) -> bool:
+def set_bot_commands(
+    chat_id: int | None = None, user_status: int | None = None, lang: str | None = None
+) -> bool:
     """
     Ставит список команд для пользователя chat_id
     """
+    if not chat_id:
+        chat_id = request.chat_id
+
+    if not user_status:
+        user_status = request.user.settings.user_status
+
+    if not lang:
+        lang = request.user.settings.lang
+
     if is_admin_id(chat_id) and user_status != -1:
         user_status = 2
 
@@ -73,8 +85,7 @@ def set_bot_commands(chat_id: int, user_status: int, lang: str) -> bool:
 
     try:
         return bot.set_my_commands(
-            commands=get_translate(target, lang),
-            scope=BotCommandScopeChat(chat_id),
+            get_translate(target, lang), BotCommandScopeChat(chat_id)
         )
     except (ApiTelegramException, KeyError) as e:
         logging.info(f'set_bot_commands (ApiTelegramException, KeyError) "{e}"')

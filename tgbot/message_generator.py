@@ -7,11 +7,12 @@ from datetime import datetime, timedelta
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 
 from tgbot.bot import bot
-from tgbot.utils import markdown, days_before_event
+from tgbot.request import request
 from tgbot.lang import get_translate
+from tgbot.utils import markdown, days_before_event
 from tgbot.sql_utils import sqlite_format_date, pagination
 from tgbot.time_utils import now_time_strftime, DayInfo
-from todoapi.types import db, UserSettings, Event
+from todoapi.types import db, Event
 
 
 class EventMessageGenerator:
@@ -21,17 +22,16 @@ class EventMessageGenerator:
 
     def __init__(
         self,
-        settings: UserSettings,
         date: str = "now",
         event_list: tuple | list[Event, ...] = tuple(),
         reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup(),
         page: int = 0,
     ):
+        self._settings = request.user.settings
         if date == "now":
-            date = now_time_strftime(settings.timezone)
+            date = now_time_strftime()
         self.event_list = event_list
         self._date = date
-        self._settings = settings
         self.text = ""
         self.reply_markup = deepcopy(reply_markup)
         self.page = page
@@ -42,12 +42,14 @@ class EventMessageGenerator:
         *,
         WHERE: str,
         column: str = sqlite_format_date("date"),
-        direction: Literal["ASC", "DESC"] = "DESC",
+        direction: Literal["ASC", "DESC"] | None = None,
         prefix: str = "|",
     ):
         """
         Получить список кортежей строк id по страницам
         """
+        if not direction:
+            direction = request.user.settings.direction
         data = pagination(
             WHERE=WHERE,
             direction=direction,
@@ -72,9 +74,7 @@ SELECT event_id,
                     func=(
                         "DAYS_BEFORE_EVENT",
                         2,
-                        lambda date, status: days_before_event(
-                            self._settings, date, status
-                        )[0],
+                        lambda date, status: days_before_event(date, status)[0],
                     )
                     if "DAYS_BEFORE_EVENT" in column
                     else None,
@@ -203,7 +203,7 @@ SELECT event_id,
 
                 return 30 - (d1 - d2).days
 
-        day = DayInfo(self._settings, self._date)
+        day = DayInfo(self._date)
 
         format_string = (
             title.format(
@@ -217,7 +217,7 @@ SELECT event_id,
         if self.page_signature_needed:
             if self.page == 0:
                 self.page = 1
-            translate_page = get_translate("text.page", self._settings.lang)
+            translate_page = get_translate("text.page")
             format_string += f"<b>{translate_page} {self.page}</b>\n"
 
         format_string += "\n"
@@ -226,7 +226,7 @@ SELECT event_id,
             format_string += if_empty
         else:
             for num, event in enumerate(self.event_list):
-                day = DayInfo(self._settings, event.date)
+                day = DayInfo(event.date)
                 format_string += (
                     args.format(
                         date=day.date,
@@ -237,21 +237,14 @@ SELECT event_id,
                         nums=f"{num + 1}️⃣",  # создание смайлика с цифрой
                         event_id=f"{event.event_id}",
                         status=event.status,
-                        markdown_text=markdown(
-                            event.text,
-                            event.status,
-                            self._settings.sub_urls,
-                            self._settings.theme,
-                        )
+                        markdown_text=markdown(event.text, event.status)
                         if "{markdown_text" in args
                         else "",
                         days_before=f"<b>({dbd})</b>"
                         if (
                             (
                                 dbd := (
-                                    days_before_event(
-                                        self._settings, event.date, event.status
-                                    )[-1]
+                                    days_before_event(event.date, event.status)[-1]
                                     if "{days_before" in args
                                     else ""
                                 )
@@ -261,7 +254,7 @@ SELECT event_id,
                         else "",
                         days_before_delete=""
                         if event.removal_time == "0"
-                        else get_translate("deldate", self._settings.lang)(
+                        else get_translate("deldate")(
                             days_before_delete(event.removal_time)
                         ),
                         **kwargs,

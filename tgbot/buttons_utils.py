@@ -2,10 +2,11 @@ from calendar import monthcalendar
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+from tgbot.request import request
 from tgbot.sql_utils import sqlite_format_date
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.time_utils import new_time_calendar, year_info, now_time
-from todoapi.types import db, UserSettings
+from todoapi.types import db
 
 
 def generate_buttons(buttons_data: list[dict]) -> InlineKeyboardMarkup:
@@ -47,8 +48,6 @@ def generate_buttons(buttons_data: list[dict]) -> InlineKeyboardMarkup:
 
 
 def create_monthly_calendar_keyboard(
-    chat_id: str | int,
-    settings: UserSettings,
     YY_MM: list | tuple[int, int] = None,
     command: str | None = None,
     back: str | None = None,
@@ -57,21 +56,19 @@ def create_monthly_calendar_keyboard(
     Создаёт календарь на месяц и возвращает inline клавиатуру
     param YY_MM: Необязательный аргумент. Если None, то подставит текущую дату.
     """
+    settings, chat_id = request.user.settings, request.chat_id
     command = f"'{command.strip()}'" if command else None
     back = f"'{back.strip()}'" if back else None
 
     if YY_MM:
         YY, MM = YY_MM
     else:
-        YY, MM = new_time_calendar(settings.timezone)
+        YY, MM = new_time_calendar()
 
     markup = InlineKeyboardMarkup()
     #  December (12.2022)
     # Пн Вт Ср Чт Пт Сб Вс
-    title = (
-        f"{get_translate('months_name', settings.lang)[MM - 1]} "
-        f"({MM}.{YY}) ({year_info(YY, settings.lang)})"
-    )
+    title = f"{get_translate('months_name')[MM - 1]} ({MM}.{YY}) ({year_info(YY)})"
     markup.row(
         InlineKeyboardButton(
             text=title, callback_data=f"calendar_y ({command},{back},{YY})"
@@ -80,7 +77,7 @@ def create_monthly_calendar_keyboard(
     markup.row(
         *[
             InlineKeyboardButton(text=week_day, callback_data="None")
-            for week_day in get_translate("week_days_list", settings.lang)
+            for week_day in get_translate("week_days_list")
         ]
     )
 
@@ -136,7 +133,7 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
     ]
 
     # получаем сегодняшнее число
-    today = now_time(settings.timezone).day
+    today = now_time().day
     # получаем список дней
     for weekcalendar in monthcalendar(YY, MM):
         weekbuttons = []
@@ -146,15 +143,7 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
             else:
                 tag_today = "#" if day == today else ""
                 x = has_events.get(day)
-                tag_event = (
-                    (
-                        "".join(calendar_event_count_template[int(ch)] for ch in str(x))
-                        if x < 10
-                        else "*"
-                    )
-                    if x
-                    else ""
-                )
+                tag_event = (number_to_power(x) if x < 10 else "*") if x else ""
                 tag_birthday = (
                     "!" if (day in every_year_or_month or wd in every_week) else ""
                 )
@@ -183,17 +172,13 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
 
     if back:
         markup.row(
-            InlineKeyboardButton(
-                get_theme_emoji("back", settings.theme), callback_data=back[1:-1]
-            )
+            InlineKeyboardButton(get_theme_emoji("back"), callback_data=back[1:-1])
         )
 
     return markup
 
 
 def create_yearly_calendar_keyboard(
-    chat_id: int,
-    settings: UserSettings,
     YY: int,
     command: str | None = None,
     back: str | None = None,
@@ -201,6 +186,7 @@ def create_yearly_calendar_keyboard(
     """
     Создаёт календарь из месяцев на определённый год и возвращает inline клавиатуру
     """
+    chat_id = request.chat_id
     command = f"'{command.strip()}'" if command else None
     back = f"'{back.strip()}'" if back else None
 
@@ -254,8 +240,8 @@ SELECT date
         )
     ]
 
-    now_month = now_time(settings.timezone).month
-    months = get_translate("months_list", settings.lang)
+    now_month = now_time().month
+    months = get_translate("months_list")
 
     month_buttons = []
     for row in months:
@@ -263,15 +249,7 @@ SELECT date
         for nameM, numm in row:
             tag_today = "#" if numm == now_month else ""
             x = month_list.get(numm)
-            tag_event = (
-                (
-                    "".join(calendar_event_count_template[int(ch)] for ch in str(x))
-                    if x < 1000
-                    else "*"
-                )
-                if x
-                else ""
-            )
+            tag_event = (number_to_power(x) if x < 1000 else "*") if x else ""
             tag_birthday = "!" if (numm in every_year or every_month) else ""
             month_buttons[-1][
                 f"{tag_today}{nameM}{tag_event}{tag_birthday}"
@@ -279,7 +257,7 @@ SELECT date
 
     markup = generate_buttons(
         [
-            {f"{YY} ({year_info(YY, settings.lang)})": "None"},
+            {f"{YY} ({year_info(YY)})": "None"},
             *month_buttons,
             {
                 text: f"calendar_y ({command},{back},{year})"
@@ -290,9 +268,7 @@ SELECT date
 
     if back:
         markup.row(
-            InlineKeyboardButton(
-                get_theme_emoji("back", settings.theme), callback_data=back[1:-1]
-            )
+            InlineKeyboardButton(get_theme_emoji("back"), callback_data=back[1:-1])
         )
 
     return markup
@@ -306,8 +282,16 @@ def edit_button_attrs(
     button.__setattr__(new, val)
 
 
-def delmarkup(settings: UserSettings) -> InlineKeyboardMarkup:
-    return generate_buttons([{get_theme_emoji("del", settings.theme): "message_del"}])
+def delmarkup() -> InlineKeyboardMarkup:
+    return generate_buttons([{get_theme_emoji("del"): "message_del"}])
+
+
+def number_to_power(string: str) -> str:
+    """
+    Превратит строку чисел в строку степеней.
+    Например "123" в "¹²³".
+    """
+    return "".join(calendar_event_count_template[int(ch)] for ch in str(string))
 
 
 calendar_event_count_template = ("⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹")

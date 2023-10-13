@@ -1,4 +1,5 @@
 import re
+import html
 import difflib
 import logging
 from time import time
@@ -10,17 +11,18 @@ from textwrap import wrap as textwrap
 from datetime import timedelta, datetime, timezone
 
 import requests
-from telebot.types import Message
 from requests import ConnectionError
 from requests.exceptions import MissingSchema
 from telebot.apihelper import ApiTelegramException
+from telebot.types import Message
 
 from tgbot import config
 from tgbot.bot import bot
+from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.time_utils import DayInfo, convert_date_format, now_time
-from todoapi.types import db, UserSettings, Event
-from todoapi.utils import is_admin_id, to_html_escaping, isdigit
+from todoapi.types import db, Event
+from todoapi.utils import is_admin_id, isdigit
 
 re_edit_message = re.compile(r"\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)")
 msg_check = re.compile(
@@ -38,7 +40,7 @@ re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
 re_setuserstatus = re.compile(r"\A(-?\d+) (-1|0|1|2)\Z")
 
 
-def markdown(text: str, statuses: str, sub_url: bool = False, theme: int = 0) -> str:
+def markdown(text: str, statuses: str) -> str:
     """
     Добавляем эффекты к событию по статусу
     """
@@ -78,8 +80,8 @@ def markdown(text: str, statuses: str, sub_url: bool = False, theme: int = 0) ->
 
     def List(_text: str):
         """Заменяет \n на :black_small_square: (эмодзи Telegram)"""
-        point = "▫️" if theme == 1 else "▪️"
-        big_point = "◻️" if theme == 1 else "◼️"
+        point = "▫️" if request.user.settings.theme == 1 else "▪️"
+        big_point = "◻️" if request.user.settings.theme == 1 else "◼️"
         _text = point + _text
         for old, new in (
             ("\n", f"\n{point}"),
@@ -109,13 +111,13 @@ def markdown(text: str, statuses: str, sub_url: bool = False, theme: int = 0) ->
     def Code(_text: str):
         return f"<pre>{_text}</pre>"
 
-    text = to_html_escaping(text)
+    text = html.escape(text)
 
     # Сокращаем несколько подряд переносов строки
     text = re.sub(r"\n(\n*)\n", "\n⠀\n", text)
 
     if ("🔗" in statuses and "⛓" not in statuses) or (
-        sub_url and ("💻" not in statuses and "⛓" not in statuses)
+        request.user.settings.sub_urls and ("💻" not in statuses and "⛓" not in statuses)
     ):
         text = SubUrls(text)
 
@@ -141,7 +143,6 @@ def rate_limit_requests(
     key_path: int | str | tuple[str | int] | set[str | int] = None,
     translate_key: str = "errors.many_attempts",
     send: bool = False,
-    lang: str = "en",
 ):
     """
     Возвращает текст ошибки,
@@ -198,9 +199,7 @@ def rate_limit_requests(
             if len(_cache) >= requests_count:
                 wait_time = time_sec - int(now - _cache[0])
 
-                raw_text: str = get_translate(
-                    translate_key, get_key(args, kwargs, lang)
-                )
+                raw_text: str = get_translate(translate_key)
                 text = raw_text.format(wait_time)
                 if send:
                     try:
@@ -211,7 +210,6 @@ def rate_limit_requests(
                     return text
 
             _cache.append(now)
-
             return func(*args, **kwargs)
 
         return wrapper
@@ -231,11 +229,11 @@ def cache_with_ttl(cache_time_sec: int = 60):
         cache = {}
 
         @wraps(func)
-        def wrapper(settings: UserSettings, city: str):
-            key = f"{city} {settings.lang}"
+        def wrapper(city: str):
+            key = f"{city} {request.user.settings.lang}"
             now = time()
             if key not in cache or now - cache[key][1] > cache_time_sec:
-                cache[key] = (func(settings, city), now)
+                cache[key] = (func(city), now)
             return cache[key][0]
 
         return wrapper
@@ -246,11 +244,9 @@ def cache_with_ttl(cache_time_sec: int = 60):
 # TODO добавить персональные api ключи для запрашивания погоды
 # TODO декоратор для проверки api ключа у пользователя
 # TODO в зависимости от наличия ключа ставить разные лимиты на запросы
-@rate_limit_requests(
-    4, 60, translate_key="errors.many_attempts_weather", lang="settings.lang"
-)
+@rate_limit_requests(4, 60, translate_key="errors.many_attempts_weather")
 @cache_with_ttl(300)
-def fetch_weather(settings: UserSettings, city: str) -> str:
+def fetch_weather(city: str) -> str:
     """
     Возвращает текущую погоду по городу city
     """
@@ -262,7 +258,7 @@ def fetch_weather(settings: UserSettings, city: str) -> str:
             "APPID": config.WEATHER_API_KEY,
             "q": city,
             "units": "metric",
-            "lang": settings.lang,
+            "lang": request.user.settings.lang,
         },
     ).json()
     weather_icon = weather["weather"][0]["icon"]
@@ -312,7 +308,7 @@ def fetch_weather(settings: UserSettings, city: str) -> str:
     sunset = sunset.split(" ")[-1]
     visibility = weather["visibility"]
 
-    return get_translate("messages.weather", settings.lang).format(
+    return get_translate("messages.weather").format(
         city_name,
         weather_icon,
         weather_description,
@@ -329,11 +325,9 @@ def fetch_weather(settings: UserSettings, city: str) -> str:
     )
 
 
-@rate_limit_requests(
-    4, 60, translate_key="errors.many_attempts_weather", lang="settings.lang"
-)
+@rate_limit_requests(4, 60, translate_key="errors.many_attempts_weather")
 @cache_with_ttl(3600)
-def fetch_forecast(settings: UserSettings, city: str) -> str:
+def fetch_forecast(city: str) -> str:
     """
     Прогноз погоды на 5 дней для города city
     """
@@ -345,7 +339,7 @@ def fetch_forecast(settings: UserSettings, city: str) -> str:
             "APPID": config.WEATHER_API_KEY,
             "q": city,
             "units": "metric",
-            "lang": settings.lang,
+            "lang": request.user.settings.lang,
         },
     ).json()
     dn = {"d": "☀", "n": "🌑"}
@@ -394,7 +388,7 @@ def fetch_forecast(settings: UserSettings, city: str) -> str:
         city_time = hour["dt_txt"].replace("-", ".")[:-3]
         date = ".".join(city_time.split()[0].split(".")[::-1])
         if date not in result:
-            day = DayInfo(settings, date)
+            day = DayInfo(date)
             result += (
                 f"\n\n<b>{date}</b> <u><i>{day.str_date}  "
                 f"{day.week_date}</i></u> ({day.relatively_date})"
@@ -555,7 +549,10 @@ def parse_message(text: str) -> list[Event]:
     return event_list
 
 
-def update_userinfo(chat_id):
+def update_userinfo(chat_id: int | str | None = None):
+    if not chat_id:
+        chat_id = request.chat_id
+
     chat = bot.get_chat(chat_id)
     chat_info = "\n".join(
         (
@@ -579,20 +576,18 @@ UPDATE settings
     )
 
 
-def days_before_event(
-    settings: UserSettings, event_date: str, event_status: str
-) -> tuple[int, str, str]:
+def days_before_event(event_date: str, event_status: str) -> tuple[int, str, str]:
     """
     В сообщении уведомления показывает через сколько будет повторяющееся событие.
     :return: ('разница в днях', 'дата ближайшего повторения', 'текстовое представление разницы')
     """
     _date = convert_date_format(event_date)
-    now_t = now_time(settings.timezone)
+    now_t = now_time()
     dates = []
 
     # Каждый день
     if "📬" in event_status:
-        day = DayInfo(settings, f"{now_t:%d.%m.%Y}")
+        day = DayInfo(f"{now_t:%d.%m.%Y}")
         return day.day_diff, day.date, day.relatively_date
 
     # Каждую неделю
@@ -603,7 +598,7 @@ def days_before_event(
 
     # Каждый месяц
     elif "📅" in event_status:
-        day = DayInfo(settings, f"{_date:%d}.{now_t:%m.%Y}")
+        day = DayInfo(f"{_date:%d}.{now_t:%m.%Y}")
         month, year = day.datetime.month, day.datetime.year
         if day.day_diff >= 0:
             dates.append(day.datetime)
@@ -615,15 +610,15 @@ def days_before_event(
 
     # Каждый год
     elif {*event_status.split(",")}.intersection({"📆", "🎉", "🎊"}):
-        day = DayInfo(settings, f"{_date:%d.%m}.{now_t:%Y}")
+        day = DayInfo(f"{_date:%d.%m}.{now_t:%Y}")
         if day.datetime.date() < now_t.date():
             dates.append(day.datetime.replace(year=now_t.year + 1))
         else:
             dates.append(day.datetime.replace(year=now_t.year))
 
     else:
-        day = DayInfo(settings, event_date)
+        day = DayInfo(event_date)
         return day.day_diff, day.date, day.relatively_date
 
-    day = DayInfo(settings, f"{min(dates):%d.%m.%Y}")
+    day = DayInfo(f"{min(dates):%d.%m.%Y}")
     return day.day_diff, day.date, day.relatively_date

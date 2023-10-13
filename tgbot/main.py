@@ -1,24 +1,28 @@
+import html
+import atexit
 from time import sleep
 from functools import wraps
 from threading import Thread
 
+import requests
 from telebot.apihelper import ApiTelegramException
 from telebot.types import CallbackQuery, Message, BotCommandScopeDefault
 
 from tgbot import config
+from tgbot.request import request
 from tgbot.lang import get_translate
-from tgbot.bot import bot, bot_log_info
 from tgbot.time_utils import now_time
-from tgbot.bot_actions import delete_message_action, confirm_changes_message
+from tgbot.bot import bot, bot_log_info
 from tgbot.buttons_utils import delmarkup
 from tgbot.handlers import command_handler, callback_handler, clear_state
+from tgbot.bot_actions import delete_message_action, confirm_changes_message
 from tgbot.utils import poke_link, re_edit_message, rate_limit_requests, msg_check
 from tgbot.bot_messages import search_message, notifications_message, settings_message
 from todoapi.api import User
 from todoapi.types import db
 from todoapi.logger import logging
 from todoapi.db_creator import create_tables
-from todoapi.utils import html_to_markdown, is_admin_id, remove_html_escaping
+from todoapi.utils import html_to_markdown, is_admin_id
 
 create_tables()
 
@@ -69,7 +73,9 @@ def check_user(func):
                 user = User(chat_id)
                 if user.settings.user_status == -1 and not is_admin_id(chat_id):
                     return
-                res = func(x, user)
+                request.user = user
+                request.chat_id = chat_id
+                res = func(x)
             return res
 
         return wrapper(_x)
@@ -79,26 +85,22 @@ def check_user(func):
 
 @bot.message_handler(commands=[*config.COMMANDS])
 @check_user
-def message_handler(message: Message, user: User):
+def message_handler(message: Message):
     """
     Ловит команды от пользователей
     """
-    user.settings.log("send", message.text)
-    command_handler(user, message)
+    request.user.settings.log("send", html_to_markdown(message.html_text))
+    command_handler(message)
 
 
 @bot.callback_query_handler(func=lambda call: True)
 @check_user
-def callback_query_handler(call: CallbackQuery, user: User):
+def callback_query_handler(call: CallbackQuery):
     """
     Ловит нажатия на кнопки
     """
-    settings = user.settings
-    settings.log("pressed", call.data)
+    request.user.settings.log("pressed", call.data)
     callback_handler(
-        user=user,
-        settings=settings,
-        chat_id=call.message.chat.id,
         message_id=call.message.message_id,
         message_text=call.message.text,
         call_data=call.data,
@@ -111,40 +113,35 @@ def callback_query_handler(call: CallbackQuery, user: User):
     func=lambda m: m.text.startswith("#") and not m.text.startswith("#️⃣")
 )
 @check_user
-def processing_search_message(message: Message, user: User):
+def processing_search_message(message: Message):
     """
     Ловит сообщения поиска
     #   (ИЛИ)
     #!  (И)
     """
-    settings = user.settings
-    chat_id = message.chat.id
-
     if message.entities:
-        markdown_text = remove_html_escaping(html_to_markdown(message.html_text))
+        markdown_text = html.unescape(html_to_markdown(message.html_text))
     else:
         markdown_text = message.html_text
 
     query = markdown_text[1:].replace("\n", " ").replace("--", "").strip()
 
-    settings.log("search", query)
+    request.user.settings.log("search", query)
 
-    generated = search_message(settings=settings, chat_id=chat_id, query=query)
-    generated.send(chat_id=chat_id)
+    generated = search_message(query)
+    generated.send(request.chat_id)
 
 
 @bot.message_handler(func=lambda m: re_edit_message.search(m.text))
 @check_user
-def processing_edit_message(message: Message, user: User):
+def processing_edit_message(message: Message):
     """
     Ловит сообщения для изменения событий
     """
-    settings = user.settings
+    request.user.settings.log("send", "edit event text")
 
-    settings.log("send", "edit event text")
-
-    if confirm_changes_message(user, message) is None:
-        delete_message_action(settings, message)
+    if confirm_changes_message(message) is None:
+        delete_message_action(message)
 
 
 @bot.message_handler(
@@ -155,22 +152,19 @@ def processing_edit_message(message: Message, user: User):
     )
 )
 @check_user
-def processing_edit_city_message(message: Message, user: User):
+def processing_edit_city_message(message: Message):
     """
     Ловит сообщения ответ на сообщение бота с настройками
     Изменение города пользователя
     """
-    settings = user.settings
-    chat_id = message.chat.id
+    request.user.settings.log("send", "edit city")
 
-    settings.log("send", "edit city")
+    if request.user.set_settings(city=message.text[:25])[0]:
+        delete_message_action(message)
 
-    if user.set_settings(city=message.text[:25])[0]:
-        delete_message_action(settings, message)
-
-    generated = settings_message(settings)
+    generated = settings_message()
     try:
-        generated.edit(chat_id, message.reply_to_message.message_id)
+        generated.edit(request.chat_id, message.reply_to_message.message_id)
     except ApiTelegramException:
         pass
 
@@ -190,12 +184,10 @@ SELECT add_event_date
 
 @bot.message_handler(func=add_event_func)
 @check_user
-def add_event(message: Message, user: User):
+def add_event(message: Message):
     """
     Ловит сообщение если пользователь хочет добавить событие
     """
-    settings = user.settings
-    chat_id = message.chat.id
     # Экранируем текст
     """
     Телеграм экранирует html спец символы ('<', '>', '&', ';') только если в сообщении есть выделение.
@@ -205,11 +197,11 @@ def add_event(message: Message, user: User):
     Если же написать "<b>text</b> **text**", то message.html_text вернёт "&lt;b&gt;text&lt;/b&gt; **text**"
     """
     if message.entities:
-        markdown_text = remove_html_escaping(html_to_markdown(message.html_text))
+        markdown_text = html.unescape(html_to_markdown(message.html_text))
     else:
         markdown_text = message.html_text
 
-    settings.log("send", "add event")
+    request.user.settings.log("send", "add event")
 
     new_event_date = db.execute(
         """
@@ -217,7 +209,7 @@ SELECT add_event_date
   FROM settings
  WHERE user_id = ?;
 """,
-        params=(chat_id,),
+        params=(request.chat_id,),
     )[0][0].split(",")[0]
 
     # Если сообщение команда, то проигнорировать
@@ -226,28 +218,28 @@ SELECT add_event_date
 
     # Если сообщение длиннее 3800 символов, то ошибка
     if len(markdown_text) >= 3800:
-        message_is_too_long = get_translate("errors.message_is_too_long", settings.lang)
-        bot.reply_to(message, message_is_too_long, reply_markup=delmarkup(settings))
+        message_is_too_long = get_translate("errors.message_is_too_long")
+        bot.reply_to(message, message_is_too_long, reply_markup=delmarkup())
         return
 
     if (
-        user.check_limit(
+        request.user.check_limit(
             new_event_date, event_count=1, symbol_count=len(markdown_text)
         )[1]
         is True
     ):
-        exceeded_limit = get_translate("errors.exceeded_limit", settings.lang)
-        bot.reply_to(message, exceeded_limit, reply_markup=delmarkup(settings))
+        exceeded_limit = get_translate("errors.exceeded_limit")
+        bot.reply_to(message, exceeded_limit, reply_markup=delmarkup())
         return
 
     # Пытаемся создать событие
-    if user.add_event(new_event_date, markdown_text)[0]:
-        delete_message_action(settings, message)
+    if request.user.add_event(new_event_date, markdown_text)[0]:
+        delete_message_action(message)
     else:
-        error_translate = get_translate("errors.error", settings.lang)
-        bot.reply_to(message, error_translate, reply_markup=delmarkup(settings))
+        error_translate = get_translate("errors.error")
+        bot.reply_to(message, error_translate, reply_markup=delmarkup())
 
-    clear_state(chat_id)
+    clear_state(request.chat_id)
 
 
 def schedule_loop():
@@ -259,8 +251,15 @@ def schedule_loop():
         if config.NOTIFICATIONS and while_time.minute in (0, 10, 20, 30, 40, 50):
             Thread(target=notifications_message, daemon=True).start()
 
-        if config.POKE_LINK and while_time.minute in (0, 10, 20, 30, 40, 50):
-            if config.LINK:
-                Thread(target=poke_link, daemon=True).start()
+        if (
+            config.POKE_LINK
+            and config.LINK
+            and while_time.minute in (0, 10, 20, 30, 40, 50)
+        ):
+            Thread(target=poke_link, daemon=True).start()
 
         sleep(60)
+
+
+if config.POKE_LINK and config.LINK:
+    atexit.register(lambda: requests.get(config.LINK))

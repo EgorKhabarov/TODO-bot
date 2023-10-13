@@ -2,8 +2,8 @@ import json
 import logging
 from time import time
 from datetime import datetime
-from typing import Literal, Callable
 from sqlite3 import Error, connect
+from typing import Literal, Callable
 from contextlib import contextmanager
 
 from vedis import Vedis
@@ -80,7 +80,7 @@ class DataBase:
         params: tuple | dict = (),
         commit: bool = False,
         column_names: bool = False,
-        func: tuple[str, int, Callable] | None = None
+        func: tuple[str, int, Callable] | None = None,
     ) -> list[tuple[int | str | bytes, ...], ...]:
         """
         Выполняет SQL запрос

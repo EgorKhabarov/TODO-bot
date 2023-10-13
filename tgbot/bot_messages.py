@@ -1,3 +1,4 @@
+import html
 import logging
 from datetime import timedelta, datetime
 
@@ -5,6 +6,7 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from tgbot.bot import bot
+from tgbot.request import request
 from tgbot.limits import create_image
 from tgbot.sql_utils import sqlite_format_date2
 from tgbot.lang import get_translate, get_theme_emoji
@@ -17,20 +19,17 @@ from tgbot.buttons_utils import (
     edit_button_attrs,
     create_monthly_calendar_keyboard,
 )
-from todoapi.types import db, UserSettings
-from todoapi.utils import sqlite_format_date, is_valid_year, to_html_escaping
+from todoapi.api import User
+from todoapi.types import db
+from todoapi.utils import sqlite_format_date, is_valid_year
 
 
 def search_message(
-    settings: UserSettings,
-    chat_id: int,
     query: str,
     id_list: list | tuple[str] = tuple(),
     page: int | str = 0,
 ) -> EventMessageGenerator:
     """
-    :param settings: settings
-    :param chat_id: chat_id
     :param query: поисковый запрос
     :param id_list: Список из event_id
     :param page: Номер страницы
@@ -51,13 +50,13 @@ def search_message(
         )
     TODO шаблоны для поиска
     """
-    translate_search = get_translate("messages.search", settings.lang)
+    translate_search = get_translate("messages.search")
 
     if query.isspace():
-        generated = EventMessageGenerator(settings, reply_markup=delmarkup(settings))
+        generated = EventMessageGenerator(reply_markup=delmarkup())
         generated.format(
-            title=f"🔍 {translate_search} {to_html_escaping(query.strip())}:\n",
-            if_empty=get_translate("errors.request_empty", settings.lang),
+            title=f"🔍 {translate_search} {html.escape(query.strip())}:\n",
+            if_empty=get_translate("errors.request_empty"),
         )
         return generated
 
@@ -72,42 +71,38 @@ def search_message(
         f"status LIKE '%{x}%' OR event_id LIKE '%{x}%'"
         for x in query.replace("\n", " ").strip().split()
     )
-    WHERE = f"(user_id = {chat_id} AND removal_time = 0) AND ({splitquery})"
+    WHERE = f"(user_id = {request.chat_id} AND removal_time = 0) AND ({splitquery})"
 
     delopenmarkup = generate_buttons(
         [
             {
-                get_theme_emoji("del", settings.theme): "message_del",
+                get_theme_emoji("del"): "message_del",
                 "↖️": "select event open",
             }
         ]
     )
-    generated = EventMessageGenerator(settings, reply_markup=delopenmarkup, page=page)
+    generated = EventMessageGenerator(reply_markup=delopenmarkup, page=page)
 
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
-        generated.get_data(WHERE=WHERE, direction=settings.direction)
+        generated.get_data(WHERE=WHERE)
 
     generated.format(
-        title=f"🔍 {translate_search} {to_html_escaping(query)}:",
+        title=f"🔍 {translate_search} {html.escape(query)}:",
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
         "{weekday}</i></u> ({reldate})\n{markdown_text}\n",
-        if_empty=get_translate("errors.nothing_found", settings.lang),
+        if_empty=get_translate("errors.nothing_found"),
     )
 
     return generated
 
 
 def week_event_list_message(
-    settings: UserSettings,
-    chat_id: int,
     id_list: list | tuple[str] = tuple(),
     page: int | str = 0,
 ) -> EventMessageGenerator:
     """
-    :param settings: settings
-    :param chat_id: chat_id
     :param id_list: Список из event_id
     :param page: Номер страницы
 
@@ -116,6 +111,7 @@ def week_event_list_message(
     Изменить страницу:
         week_event_list(settings=settings, chat_id=chat_id, id_list=id_list, page=page)
     """
+    settings, chat_id = request.user.settings, request.chat_id
     WHERE = f"""
 (user_id = {chat_id} AND removal_time = 0) AND (
     (
@@ -147,9 +143,7 @@ def week_event_list_message(
 )
     """
 
-    generated = EventMessageGenerator(
-        settings, reply_markup=delmarkup(settings), page=page
-    )
+    generated = EventMessageGenerator(reply_markup=delmarkup(), page=page)
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
@@ -161,23 +155,19 @@ def week_event_list_message(
         )
 
     generated.format(
-        title=f"📆 {get_translate('week_events', settings.lang)}",
+        title=f"📆 {get_translate('week_events')}",
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
         "{weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
-        if_empty=get_translate("errors.nothing_found", settings.lang),
+        if_empty=get_translate("errors.nothing_found"),
     )
     return generated
 
 
 def trash_can_message(
-    settings: UserSettings,
-    chat_id: int,
     id_list: list | tuple[str] = tuple(),
     page: int | str = 0,
 ) -> EventMessageGenerator:
     """
-    :param settings: settings
-    :param chat_id: chat_id
     :param id_list: Список из event_id
     :param page: Номер страницы
 
@@ -186,7 +176,7 @@ def trash_can_message(
     Изменить страницу:
         deleted(settings=settings, chat_id=chat_id, id_list=id_list, page=page)
     """
-    WHERE = f"user_id = {chat_id} AND removal_time != 0"
+    WHERE = f"user_id = {request.chat_id} AND removal_time != 0"
     # Удаляем события старше 30 дней
     db.execute(
         """
@@ -197,11 +187,11 @@ DELETE FROM events
         commit=True,
     )
 
-    delete_permanently_translate = get_translate("delete_permanently", settings.lang)
-    recover_translate = get_translate("recover", settings.lang)
-    clean_bin_translate = get_translate("clean_bin", settings.lang)
-    basket_translate = get_translate("messages.basket", settings.lang)
-    message_empty_translate = get_translate("errors.message_empty", settings.lang)
+    delete_permanently_translate = get_translate("delete_permanently")
+    recover_translate = get_translate("recover")
+    clean_bin_translate = get_translate("clean_bin")
+    basket_translate = get_translate("messages.basket")
+    message_empty_translate = get_translate("errors.message_empty")
 
     markup = generate_buttons(
         [
@@ -217,12 +207,12 @@ DELETE FROM events
         ]
     )
 
-    generated = EventMessageGenerator(settings, reply_markup=markup, page=page)
+    generated = EventMessageGenerator(reply_markup=markup, page=page)
 
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
-        generated.get_data(WHERE=WHERE, direction=settings.direction)
+        generated.get_data(WHERE=WHERE)
 
     generated.format(
         title=f"🗑 {basket_translate} 🗑",
@@ -234,16 +224,12 @@ DELETE FROM events
 
 
 def daily_message(
-    settings: UserSettings,
-    chat_id: int,
     date: str,
     id_list: list | tuple[str] = tuple(),
     page: int | str = 0,
     message_id: int = None,
 ) -> EventMessageGenerator:
     """
-    :param settings: settings
-    :param chat_id: chat_id
     :param date: дата у сообщения
     :param id_list: Список из event_id
     :param page: Номер страницы
@@ -254,7 +240,7 @@ def daily_message(
     Изменить страницу:
         today_message(settings=settings, chat_id=chat_id, date=date, id_list=id_list, page=page)
     """
-    WHERE = f"user_id = {chat_id} AND date = '{date}' AND removal_time = 0"
+    WHERE = f"user_id = {request.chat_id} AND date = '{date}' AND removal_time = 0"
 
     new_date = convert_date_format(date)
     if is_valid_year((new_date - timedelta(days=1)).year):
@@ -270,25 +256,25 @@ def daily_message(
     markup = generate_buttons(
         [
             {
-                get_theme_emoji("add", settings.theme): "event_add",
+                get_theme_emoji("add"): "event_add",
                 "📝": "select event edit",
                 "🚩": "select event status",
                 "🔀": "select event move",
             },
             {
-                get_theme_emoji("back", settings.theme): "calendar",
+                get_theme_emoji("back"): "calendar",
                 "<": yesterday,
                 ">": tomorrow,
                 "🔄": "update",
             },
         ]
     )
-    generated = EventMessageGenerator(settings, date, reply_markup=markup, page=page)
+    generated = EventMessageGenerator(date, reply_markup=markup, page=page)
 
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
-        generated.get_data(WHERE=WHERE, direction=settings.direction)
+        generated.get_data(WHERE=WHERE)
 
     # Изменяем уже существующий `generated`, если в сообщение событие только одно.
     if message_id and len(generated.event_list) == 1:
@@ -305,7 +291,7 @@ def daily_message(
     generated.format(
         title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})",
         args="<b>{numd}.{event_id}.</b>{status}\n{markdown_text}\n",
-        if_empty=get_translate("errors.nodata", settings.lang),
+        if_empty=get_translate("errors.nodata"),
     )
 
     # Добавить дополнительную кнопку для дней в которых есть праздники
@@ -349,7 +335,7 @@ SELECT DISTINCT date
 );
 """,
             params={
-                "user_id": chat_id,
+                "user_id": request.chat_id,
                 "date": date,
                 "y_date": f"{date[:-5]}.____",
                 "m_date": f"{date[:2]}.__.____",
@@ -411,7 +397,9 @@ SELECT GROUP_CONCAT(user_id, ',') AS user_id_list
             ]  # [('id1,id2,id3',)] -> [id1, id2, id3]
 
     for user_id in user_id_list:
-        settings = UserSettings(user_id)
+        request.user = User(user_id)  # TODO авторизация по токену
+        request.chat_id = user_id
+        settings = request.user.settings
 
         if settings.notifications or from_command:
             _now = datetime.utcnow()
@@ -464,9 +452,7 @@ AND
 )
 """
 
-            generated = EventMessageGenerator(
-                settings, reply_markup=delmarkup(settings), page=page
-            )
+            generated = EventMessageGenerator(reply_markup=delmarkup(), page=page)
 
             if id_list:
                 generated.get_events(WHERE=WHERE, values=id_list)
@@ -482,13 +468,13 @@ AND
                 # Если в generated.event_list есть события
                 # или
                 # Если уведомления вызывали командой (сообщение на команду приходит даже если оно пустое)
-                reminder_translate = get_translate("messages.reminder", settings.lang)
+                reminder_translate = get_translate("messages.reminder")
 
                 generated.format(
                     title=f"🔔 {reminder_translate} 🔔",
                     args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
                     "{weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
-                    if_empty=get_translate("errors.message_empty", settings.lang),
+                    if_empty=get_translate("errors.message_empty"),
                 )
 
                 try:
@@ -504,7 +490,7 @@ UPDATE events
  WHERE status LIKE '%🔔%' AND 
        date = ?;
 """,
-                            params=(now_time_strftime(settings.timezone),),
+                            params=(now_time_strftime(),),
                             commit=True,
                         )
                     logging.info(f"notifications -> {user_id} -> Ok")
@@ -512,22 +498,18 @@ UPDATE events
                     logging.info(f"notifications -> {user_id} -> Error")
 
             try:
-                update_userinfo(user_id)
+                update_userinfo()
             except ApiTelegramException:
                 pass
 
 
 def recurring_events_message(
-    settings: UserSettings,
     date: str,
-    chat_id: int,
     id_list: list | tuple[str] = tuple(),
     page: int | str = 0,
 ):
     """
-    :param settings: settings
     :param date: дата у сообщения
-    :param chat_id: chat_id
     :param id_list: Список из event_id
     :param page: Номер страницы
 
@@ -537,7 +519,7 @@ def recurring_events_message(
         recurring(settings=settings, date=date, chat_id=chat_id, id_list=id_list, page=page)
     """
     WHERE = f"""
-user_id = {chat_id} AND removal_time = 0
+user_id = {request.chat_id} AND removal_time = 0
 AND 
 (
     ( -- Каждый год
@@ -568,31 +550,30 @@ AND
 )
 """
     backopenmarkup = generate_buttons(
-        [{get_theme_emoji("back", settings.theme): "back", "↖️": "select event open"}]
+        [{get_theme_emoji("back"): "back", "↖️": "select event open"}]
     )
-    generated = EventMessageGenerator(
-        settings, date, reply_markup=backopenmarkup, page=page
-    )
+    generated = EventMessageGenerator(date, reply_markup=backopenmarkup, page=page)
 
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
-        generated.get_data(WHERE=WHERE, direction=settings.direction, prefix="|!")
+        generated.get_data(WHERE=WHERE, prefix="|!")
 
     generated.format(
         title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})"
-        + f'\n📅 {get_translate("recurring_events", settings.lang)}',
+        + f'\n📅 {get_translate("recurring_events")}',
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
         "{weekday}</i></u> ({reldate})\n{markdown_text}\n",
-        if_empty=get_translate("errors.nothing_found", settings.lang),
+        if_empty=get_translate("errors.nothing_found"),
     )
     return generated
 
 
-def settings_message(settings: UserSettings) -> NoEventMessage:
+def settings_message() -> NoEventMessage:
     """
     Ставит настройки для пользователя chat_id
     """
+    settings = request.user.settings
     not_lang = "ru" if settings.lang == "en" else "en"
     not_sub_urls = 1 if settings.sub_urls == 0 else 0
     not_direction_smile = {"DESC": "⬆️", "ASC": "⬇️"}[settings.direction]
@@ -635,12 +616,12 @@ def settings_message(settings: UserSettings) -> NoEventMessage:
             }.items()
         }
 
-    text = get_translate("messages.settings", settings.lang).format(
+    text = get_translate("messages.settings").format(
         settings.lang,
         bool(settings.sub_urls),
         settings.city,
         str_utz,
-        now_time(settings.timezone).strftime("%H:%M  %d.%m.%Y"),
+        now_time().strftime("%H:%M  %d.%m.%Y"),
         {"DESC": "⬇️", "ASC": "⬆️"}[settings.direction],
         "🔔" if settings.notifications else "🔕",
         f"{n_hours:0>2}:{n_minutes:0>2}" if settings.notifications else "",
@@ -657,36 +638,32 @@ def settings_message(settings: UserSettings) -> NoEventMessage:
             },
             time_zone_dict,
             notifications_time,
-            {
-                get_translate(
-                    "text.restore_to_default", settings.lang
-                ): "restore_to_default"
-            },
-            {get_theme_emoji("del", settings.theme): "message_del"},
+            {get_translate("text.restore_to_default"): "restore_to_default"},
+            {get_theme_emoji("del"): "message_del"},
         ]
     )
 
     return NoEventMessage(text, markup)
 
 
-def start_message(settings: UserSettings) -> NoEventMessage:
+def start_message() -> NoEventMessage:
     markup = generate_buttons(
         [
             {"/calendar": "/calendar"},
             {
-                get_translate("text.add_bot_to_group", settings.lang): {
+                get_translate("text.add_bot_to_group"): {
                     "url": f"https://t.me/{bot.username}?startgroup=AddGroup"
                 }
             },
         ]
     )
-    text = get_translate("messages.start", settings.lang)
+    text = get_translate("messages.start")
     return NoEventMessage(text, markup)
 
 
-def help_message(settings: UserSettings, path: str = "page 1") -> NoEventMessage:
-    translate = get_translate(f"messages.help.{path}", settings.lang)
-    title = get_translate("messages.help.title", settings.lang)
+def help_message(path: str = "page 1") -> NoEventMessage:
+    translate = get_translate(f"messages.help.{path}")
+    title = get_translate("messages.help.title")
 
     if path.startswith("page"):
         text, keyboard = translate
@@ -695,9 +672,9 @@ def help_message(settings: UserSettings, path: str = "page 1") -> NoEventMessage
         k, v = last_button.popitem()
 
         if k.startswith("✖"):
-            new_k = get_theme_emoji("del", settings.theme) + k.removeprefix("✖")
+            new_k = get_theme_emoji("del") + k.removeprefix("✖")
         elif k.startswith("🔙"):
-            new_k = get_theme_emoji("back", settings.theme) + k.removeprefix("🔙")
+            new_k = get_theme_emoji("back") + k.removeprefix("🔙")
         else:
             new_k = k
 
@@ -712,37 +689,34 @@ def help_message(settings: UserSettings, path: str = "page 1") -> NoEventMessage
 
 
 def monthly_calendar_message(
-    settings: UserSettings,
-    chat_id: int,
     command: str | None = None,
     back: str | None = None,
     custom_text: str | None = None,
 ) -> NoEventMessage:
-    text = custom_text if custom_text else get_translate("select.date", settings.lang)
-    markup = create_monthly_calendar_keyboard(
-        chat_id, settings, command=command, back=back
-    )
+    text = custom_text if custom_text else get_translate("select.date")
+    markup = create_monthly_calendar_keyboard(command=command, back=back)
     return NoEventMessage(text, markup)
 
 
-def account_message(settings: UserSettings, chat_id: int, message_text: str) -> None:
+def account_message(message_text: str) -> None:
+    chat_id = request.chat_id
     if message_text == "/account":
-        date = now_time(settings.timezone)
+        date = now_time()
     else:
         str_date = message_text[9:]
         if re_call_data_date.search(str_date):
             try:
                 date = convert_date_format(str_date)
             except ValueError:
-                bot.send_message(chat_id, get_translate("errors.error", settings.lang))
+                bot.send_message(chat_id, get_translate("errors.error"))
                 return
         else:
-            bot.send_message(chat_id, get_translate("errors.error", settings.lang))
+            bot.send_message(chat_id, get_translate("errors.error"))
             return
 
         if not is_valid_year(date.year):
-            bot.send_message(chat_id, get_translate("errors.error", settings.lang))
+            bot.send_message(chat_id, get_translate("errors.error"))
             return
 
-    image = create_image(settings, date.year, date.month, date.day)
-    bot.send_photo(chat_id, image, reply_markup=delmarkup(settings))
+    image = create_image(date.year, date.month, date.day)
+    bot.send_photo(chat_id, image, reply_markup=delmarkup())
