@@ -98,23 +98,23 @@ def create_monthly_calendar_keyboard(
     }
 
     # Дни рождения, праздники и каждый год или месяц
-    every_year_or_month = [
+    every_year_or_month = tuple(
         x[0]
         for x in db.execute(
             queries["select day_number_with_birthdays"],
             params=(chat_id, f"{MM:0>2}"),
         )
-    ]
+    )
 
     # Каждую неделю
     # TODO полноценная настройка every_week_show !
-    every_week = [
+    every_week = tuple(
         6 if x[0] == -1 else x[0]
         for x in db.execute(
             queries["select week_day_number_with_event_every_week"],
             params=(chat_id,),
         )
-    ] if (every_week_show := 0) else []
+    ) if (every_week_show := 0) else ()
 
     # получаем сегодняшнее число
     today = now_time().day
