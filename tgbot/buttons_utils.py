@@ -107,13 +107,14 @@ def create_monthly_calendar_keyboard(
     ]
 
     # Каждую неделю
+    # TODO полноценная настройка every_week_show !
     every_week = [
         6 if x[0] == -1 else x[0]
         for x in db.execute(
             queries["select week_day_number_with_event_every_week"],
             params=(chat_id,),
         )
-    ]
+    ] if (every_week_show := 0) else []
 
     # получаем сегодняшнее число
     today = now_time().day

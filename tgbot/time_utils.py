@@ -65,7 +65,7 @@ def year_info(year: int) -> str:
     return result
 
 
-def get_week_number(YY, MM, DD) -> int:  # TODO добавить номер недели в календари
+def get_week_number(YY, MM, DD) -> int:
     """
     Номер недели по дате
     """
