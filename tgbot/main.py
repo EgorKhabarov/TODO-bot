@@ -9,6 +9,7 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import CallbackQuery, Message, BotCommandScopeDefault
 
 from tgbot import config
+from tgbot.queries import queries
 from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.time_utils import now_time
@@ -172,14 +173,7 @@ def processing_edit_city_message(message: Message):
 
 def add_event_func(msg) -> int:
     with db.connection(), db.cursor():
-        add_event_date = db.execute(
-            """
-SELECT add_event_date
-  FROM settings
- WHERE user_id = ?;
-""",
-            params=(msg.chat.id,),
-        )
+        add_event_date = db.execute(queries["select add_event_date"], (msg.chat.id,))
     return add_event_date[0][0] if add_event_date else 0
 
 
@@ -205,12 +199,7 @@ def add_event(message: Message):
     request.user.settings.log("send", "add event")
 
     new_event_date = db.execute(
-        """
-SELECT add_event_date
-  FROM settings
- WHERE user_id = ?;
-""",
-        params=(request.chat_id,),
+        queries["select add_event_date"], params=(request.chat_id,)
     )[0][0].split(",")[0]
 
     # Если сообщение команда, то проигнорировать

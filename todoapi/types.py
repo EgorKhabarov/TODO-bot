@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from vedis import Vedis
 
 import todoapi.config as config
+from todoapi.queries import queries
 from todoapi.utils import sql_date_pattern
 
 limits = {
@@ -46,7 +47,7 @@ limits = {
         "max_event_day": 60,
         "max_symbol_day": 20000,
         "max_event_month": 200,
-        "max_symbol_month": 50000,
+        "max_symbol_month": 65000,
         "max_event_year": 1000,
         "max_symbol_year": 120000,
         "max_event_all": 2000,
@@ -218,29 +219,14 @@ class UserSettings:
         """
         Возвращает список из настроек для пользователя self.user_id
         """
-        query = """
-SELECT lang,
-       sub_urls,
-       city,
-       timezone,
-       direction,
-       user_status,
-       notifications,
-       notifications_time,
-       theme
-  FROM settings
- WHERE user_id = ?;
-"""
+        query = queries["select settings"]
 
         try:
             return db.execute(query, params=(self.user_id,))[0]
         except (Error, IndexError):
             logging.info(f"Добавляю нового пользователя ({self.user_id})")
             db.execute(
-                """
-INSERT INTO settings (user_id)
-VALUES (?);
-""",
+                queries["insert settings"],
                 params=(self.user_id,),
                 commit=True,
             )
@@ -332,55 +318,7 @@ class Limit:
 
     def get_limits(self):
         return db.execute(
-            """
-SELECT 
-    (
-        SELECT IFNULL(COUNT( * ), 0) 
-          FROM events
-         WHERE user_id = :user_id AND 
-               date = :date
-    ) AS count_today,
-    (
-        SELECT IFNULL(SUM(LENGTH(text)), 0) 
-          FROM events
-         WHERE user_id = :user_id AND 
-               date = :date
-    ) AS sum_length_today,
-    (
-        SELECT IFNULL(COUNT( * ), 0) 
-          FROM events
-         WHERE user_id = :user_id AND 
-               SUBSTR(date, 4, 7) = :date_3
-    ) AS count_month,
-    (
-        SELECT IFNULL(SUM(LENGTH(text)), 0) 
-          FROM events
-         WHERE user_id = :user_id AND 
-               SUBSTR(date, 4, 7) = :date_3
-    ) AS sum_length_month,
-    (
-        SELECT IFNULL(COUNT( * ), 0) 
-          FROM events
-         WHERE user_id = :user_id AND 
-               SUBSTR(date, 7, 4) = :date_6
-    ) AS count_year,
-    (
-        SELECT IFNULL(SUM(LENGTH(text)), 0) 
-          FROM events
-         WHERE user_id = :user_id AND 
-               SUBSTR(date, 7, 4) = :date_6
-    ) AS sum_length_year,
-    (
-        SELECT IFNULL(COUNT( * ), 0) 
-          FROM events
-         WHERE user_id = :user_id
-    ) AS total_count,
-    (
-        SELECT IFNULL(SUM(LENGTH(text)), 0) 
-          FROM events
-         WHERE user_id = :user_id
-    ) AS total_length;
-""",
+            queries["select limits"],
             params={
                 "user_id": self.user_id,
                 "date": self.date,

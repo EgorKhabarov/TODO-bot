@@ -1113,6 +1113,10 @@ Visibility <b>{}</b>m""",
             "ru": "Пожалуйста, выдайте боту права администратора, чтобы сохранять чат в чистоте",
             "en": "Please give the bot admin rights to keep the chat clean",
         },
+        "delete_messages_older_48_h": {
+            "ru": "Из-за ограничений Telegram бот не может удалять сообщения старше 48 часов.",
+            "en": "Due to Telegram restrictions, the bot cannot delete messages older than 48 hours."
+        },
         "weather_invalid_city_name": {
             "ru": "Ошибка. Несуществующее название города.\n"
             "Попробуйте ещё раз /weather {город}",
@@ -1140,6 +1144,10 @@ Visibility <b>{}</b>m""",
         "status_to_event": {
             "ru": "Выберите статус для события",
             "en": "Select a status for the event",
+        },
+        "event_to_open": {
+            "ru": "Выберите событие для открытия",
+            "en": "Select an event to open",
         },
         "event_to_move": {
             "ru": "Выберите событие для перемещения",

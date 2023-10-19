@@ -91,6 +91,15 @@ def markdown(text: str, statuses: str) -> str:
             (f"\n{point}!! ", f"\n{big_point}"),
         ):
             _text = _text.replace(old, new)
+
+        match _text:
+            case x if x.startswith(f"{point}-- "):
+                _text = _text.removeprefix(f"{point}-- ")
+            case x if x.startswith(f"{point}— "):
+                _text = _text.removeprefix(f"{point}— ")
+            case x if x.startswith(f"{big_point}!! "):
+                _text = _text.removeprefix(f"{big_point}!! ")
+
         return _text
 
     def Spoiler(_text: str):
@@ -547,33 +556,6 @@ def parse_message(text: str) -> list[Event]:
         )
 
     return event_list
-
-
-def update_userinfo(chat_id: int | str | None = None):
-    if not chat_id:
-        chat_id = request.chat_id
-
-    chat = bot.get_chat(chat_id)
-    chat_info = "\n".join(
-        (
-            f"{chat.id=}",
-            f"{chat.type=}",
-            f"{chat.title=}",
-            f"{chat.username=}",
-            f"{chat.first_name=}",
-            f"{chat.last_name=}",
-            f"{chat.invite_link=}",
-        )
-    )
-    db.execute(
-        """
-UPDATE settings
-   SET userinfo = ?
- WHERE user_id = ?;
-""",
-        params=(chat_info, chat_id),
-        commit=True,
-    )
 
 
 def days_before_event(event_date: str, event_status: str) -> tuple[int, str, str]:

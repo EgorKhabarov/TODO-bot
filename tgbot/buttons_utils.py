@@ -2,10 +2,10 @@ from calendar import monthcalendar
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+from tgbot.queries import queries
 from tgbot.request import request
-from tgbot.sql_utils import sqlite_format_date
 from tgbot.lang import get_translate, get_theme_emoji
-from tgbot.time_utils import new_time_calendar, year_info, now_time
+from tgbot.time_utils import new_time_calendar, year_info, now_time, get_week_number
 from todoapi.types import db
 
 
@@ -65,10 +65,17 @@ def create_monthly_calendar_keyboard(
     else:
         YY, MM = new_time_calendar()
 
+    row_calendar = monthcalendar(YY, MM)
     markup = InlineKeyboardMarkup()
     #  December (12.2022)
     # Пн Вт Ср Чт Пт Сб Вс
-    title = f"{get_translate('months_name')[MM - 1]} ({MM}.{YY}) ({year_info(YY)})"
+    title = (
+        f"{get_translate('months_name')[MM - 1]} "
+        f"({MM}.{YY}) "
+        f"({year_info(YY)}) "
+        f"({get_week_number(YY, MM, 1)}-"
+        f"{get_week_number(YY, MM, max(row_calendar[-1]))})"
+    )
     markup.row(
         InlineKeyboardButton(
             text=title, callback_data=f"calendar_y ({command},{back},{YY})"
@@ -85,15 +92,7 @@ def create_monthly_calendar_keyboard(
     has_events = {
         x[0]: x[1]
         for x in db.execute(
-            """
-SELECT CAST (SUBSTR(date, 1, 2) AS INT) AS day_number,
-       COUNT(event_id) AS event_count
-  FROM events
- WHERE user_id = ? AND 
-       removal_time = 0 AND 
-       date LIKE ?
- GROUP BY day_number;
-    """,
+            queries["select day_number_with_events"],
             params=(chat_id, f"__.{MM:0>2}.{YY}"),
         )
     }
@@ -102,17 +101,7 @@ SELECT CAST (SUBSTR(date, 1, 2) AS INT) AS day_number,
     every_year_or_month = [
         x[0]
         for x in db.execute(
-            """
-SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT) 
-  FROM events
- WHERE user_id = ? AND 
-       removal_time = 0 AND 
-       ( ( (status LIKE '%🎉%' OR 
-            status LIKE '%🎊%' OR 
-            status LIKE '%📆%') AND 
-           SUBSTR(date, 4, 2) = ?) OR 
-         status LIKE '%📅%');
-""",
+            queries["select day_number_with_birthdays"],
             params=(chat_id, f"{MM:0>2}"),
         )
     ]
@@ -121,13 +110,7 @@ SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT)
     every_week = [
         6 if x[0] == -1 else x[0]
         for x in db.execute(
-            f"""
-SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT) 
-  FROM events
- WHERE user_id = ? AND 
-       removal_time = 0 AND 
-       status LIKE '%🗞%';
-""",
+            queries["select week_day_number_with_event_every_week"],
             params=(chat_id,),
         )
     ]
@@ -135,7 +118,7 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
     # получаем сегодняшнее число
     today = now_time().day
     # получаем список дней
-    for weekcalendar in monthcalendar(YY, MM):
+    for weekcalendar in row_calendar:
         weekbuttons = []
         for wd, day in enumerate(weekcalendar):
             if day == 0:
@@ -194,15 +177,7 @@ def create_yearly_calendar_keyboard(
     month_list = {
         x[0]: x[1]
         for x in db.execute(
-            """
-SELECT CAST (SUBSTR(date, 4, 2) AS INT) AS month_number,
-       COUNT(event_id) AS event_count
-  FROM events
- WHERE user_id = ? AND 
-       date LIKE ? AND
-       removal_time = 0
- GROUP BY month_number;
-""",
+            queries["select month_number_with_events"],
             params=(chat_id, f"__.__.{YY}"),
         )
     }
@@ -211,15 +186,7 @@ SELECT CAST (SUBSTR(date, 4, 2) AS INT) AS month_number,
     every_year = [
         x[0]
         for x in db.execute(
-            """
-SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT) 
-  FROM events
- WHERE user_id = ? AND 
-       removal_time = 0 AND 
-       (status LIKE '%🎉%' OR 
-        status LIKE '%🎊%' OR 
-        status LIKE '%📆%');
-""",
+            queries["select month_number_with_birthdays"],
             params=(chat_id,),
         )
     ]
@@ -228,14 +195,7 @@ SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT)
     every_month = [
         x[0]
         for x in db.execute(
-            """
-SELECT date
-  FROM events
- WHERE user_id = ? AND 
-       removal_time = 0 AND 
-       status LIKE '%📅%'
- LIMIT 1;
-""",
+            queries["select having_event_every_month"],
             params=(chat_id,),
         )
     ]

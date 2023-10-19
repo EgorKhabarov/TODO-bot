@@ -8,6 +8,7 @@ from telebot.types import Message
 
 from tgbot import config
 from tgbot.bot import bot
+from tgbot.queries import queries
 from tgbot.request import request
 from tgbot.time_utils import DayInfo
 from tgbot.lang import get_translate, get_theme_emoji
@@ -30,26 +31,26 @@ from todoapi.utils import html_to_markdown, is_admin_id
 re_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}")
 
 
-def delete_message_action(message: Message):
+def delete_message_action(message: Message) -> None:
     try:
         bot.delete_message(message.chat.id, message.message_id)
-    except ApiTelegramException:
-        get_admin_rules = get_translate("errors.get_admin_rules")
-        NoEventMessage(get_admin_rules, delmarkup()).reply(message)
+    except ApiTelegramException as e:
+        if str(e).endswith("message can't be deleted for everyone"):
+            error_text = get_translate("errors.delete_messages_older_48_h")
+        else:
+            error_text = get_translate("errors.get_admin_rules")
+
+        NoEventMessage(error_text, delmarkup()).reply(message)
 
 
 def press_back_action(
     call_data: str,
     message_id: int,
     message_text: str,
-):
+) -> None:
     settings, chat_id = request.user.settings, request.chat_id
     add_event_date = db.execute(
-        """
-SELECT add_event_date
-FROM settings
-WHERE user_id = ?;
-""",
+        queries["select add_event_date"],
         params=(chat_id,),
     )[0][0]
 
@@ -57,12 +58,8 @@ WHERE user_id = ?;
         add_event_message_id = add_event_date.split(",")[1]
         if int(message_id) == int(add_event_message_id):
             db.execute(
-                """
-UPDATE settings
-SET add_event_date = 0
-WHERE user_id = ?;
-""",
-                params=(chat_id,),
+                queries["update add_event_date"],
+                params=(0, chat_id,),
                 commit=True,
             )
 
@@ -95,7 +92,7 @@ def update_message_action(
     message_id: int,
     message_text: str,
     call_id: int = None,
-):
+) -> None:
     settings, chat_id = request.user.settings, request.chat_id
     if message_text.startswith("🔍 "):  # Поиск
         first_line = message_text.split("\n", maxsplit=1)[0]
@@ -127,7 +124,12 @@ def update_message_action(
         CallBackAnswer("ok").answer(call_id, True)
 
 
-def confirm_changes_message(message: Message):
+def confirm_changes_message(message: Message) -> None | int:
+    """
+    Генерация сообщения для подтверждения изменений текста события.
+
+    Возвращает 1 если есть ошибка.
+    """
     user, chat_id = request.user, request.chat_id
 
     if message.entities:
@@ -242,7 +244,13 @@ def before_move_message(
     message_text,
     event_id: int,
     in_wastebasket: bool = False,
-):
+) -> None | int:
+    """
+    Генерирует сообщение с кнопками удаления,
+    удаления в корзину (для премиум) и изменения даты.
+
+    Возвращает 1 если есть ошибка.
+    """
     user, chat_id = request.user, request.chat_id
     settings = user.settings
     # Если события нет, то обновляем сообщение

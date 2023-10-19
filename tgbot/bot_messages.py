@@ -6,13 +6,14 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from tgbot.bot import bot
+from tgbot.queries import queries
 from tgbot.request import request
 from tgbot.limits import create_image
+from tgbot.utils import re_call_data_date
 from tgbot.sql_utils import sqlite_format_date2
 from tgbot.lang import get_translate, get_theme_emoji
-from tgbot.utils import update_userinfo, re_call_data_date
 from tgbot.message_generator import EventMessageGenerator, NoEventMessage
-from tgbot.time_utils import convert_date_format, now_time, now_time_strftime
+from tgbot.time_utils import convert_date_format, now_time
 from tgbot.buttons_utils import (
     delmarkup,
     generate_buttons,
@@ -178,14 +179,7 @@ def trash_can_message(
     """
     WHERE = f"user_id = {request.chat_id} AND removal_time != 0"
     # Удаляем события старше 30 дней
-    db.execute(
-        """
-DELETE FROM events
-      WHERE removal_time != 0 AND 
-            (julianday('now') - julianday(removal_time) > 30);
-""",
-        commit=True,
-    )
+    db.execute(queries["delete events_older_30_days"], commit=True)
 
     delete_permanently_translate = get_translate("delete_permanently")
     recover_translate = get_translate("recover")
@@ -298,42 +292,7 @@ def daily_message(
     daylist = [
         x[0]
         for x in db.execute(
-            f"""
--- Кнопка повторяющихся событий
-SELECT DISTINCT date
-  FROM events
- WHERE user_id = :user_id AND
-       removal_time = 0 AND
-       date != :date AND
-(
-    ( -- Каждый год
-        (
-            status LIKE '%🎉%'
-            OR
-            status LIKE '%🎊%'
-            OR
-            status LIKE '%📆%'
-        )
-        AND date LIKE :y_date
-    )
-    OR
-    ( -- Каждый месяц
-        status LIKE '%📅%'
-        AND date LIKE :m_date
-    )
-    OR
-    ( -- Каждую неделю
-        status LIKE '%🗞%'
-        AND
-        strftime('%w', {sqlite_format_date('date')}) =
-        CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT)
-    )
-    OR
-    ( -- Каждый день
-        status LIKE '%📬%'
-    )
-);
-""",
+            queries["select recurring_events"],
             params={
                 "user_id": request.chat_id,
                 "date": date,
@@ -382,19 +341,13 @@ def notifications_message(
             user_id_list = [
                 int(user_id)
                 for user in db.execute(
-                    """
-SELECT GROUP_CONCAT(user_id, ',') AS user_id_list
-  FROM settings
- WHERE notifications = 1 AND 
-       user_status != -1 AND 
-       ((CAST(SUBSTR(notifications_time, 1, 2) AS INT) - timezone + 24) % 24) = ? AND 
-       CAST(SUBSTR(notifications_time, 4, 2) AS INT) = ?;
-""",
+                    queries["select user_ids_for_sending_notifications"],
                     params=(n_time.hour, n_time.minute),
                 )
                 if user[0]
                 for user_id in user[0].split(",")
             ]  # [('id1,id2,id3',)] -> [id1, id2, id3]
+
 
     for user_id in user_id_list:
         request.user = User(user_id)  # TODO авторизация по токену
@@ -482,25 +435,10 @@ AND
                         generated.edit(user_id, message_id, markup=markup)
                     else:
                         generated.send(user_id)
-                    if not from_command:
-                        db.execute(
-                            """
-UPDATE events
-   SET status = REPLACE(status, '🔔', '🔕') 
- WHERE status LIKE '%🔔%' AND 
-       date = ?;
-""",
-                            params=(now_time_strftime(),),
-                            commit=True,
-                        )
+
                     logging.info(f"notifications -> {user_id} -> Ok")
                 except ApiTelegramException:
                     logging.info(f"notifications -> {user_id} -> Error")
-
-            try:
-                update_userinfo()
-            except ApiTelegramException:
-                pass
 
 
 def recurring_events_message(

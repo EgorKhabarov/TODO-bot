@@ -5,6 +5,7 @@ from io import StringIO
 from sqlite3 import Error
 from typing import Literal
 
+from todoapi.queries import queries
 from todoapi.types import Event, UserSettings, Limit, db, export_cooldown
 from todoapi.utils import (
     sqlite_format_date,
@@ -157,27 +158,7 @@ SELECT 1
 
         try:
             db.execute(
-                """
-INSERT INTO events (
-event_id,
-user_id,
-date,
-text
-)
-VALUES (
-    COALESCE(
-        (
-            SELECT user_max_event_id
-              FROM settings
-             WHERE user_id = :user_id
-        ),
-        1
-    ),
-    :user_id,
-    :date,
-    :text
-);
-""",
+                queries["insert event"],
                 params={
                     "user_id": self.user_id,
                     "date": date,
@@ -186,11 +167,7 @@ VALUES (
                 commit=True,
             )
             db.execute(
-                """
-UPDATE settings
-SET user_max_event_id = user_max_event_id + 1
-WHERE user_id = ?;
-""",
+                queries["update user_max_event_id"],
                 params=(self.user_id,),
                 commit=True,
             )
@@ -329,17 +306,8 @@ SELECT event_id,
 
         try:
             db.execute(
-                """
-UPDATE events
-   SET text = :text
- WHERE user_id = :user_id AND 
-       event_id = :event_id;
-""",
-                params={
-                    "user_id": self.user_id,
-                    "event_id": event_id,
-                    "text": text,
-                },
+                queries["update event_text"],
+                params=(text, self.user_id, event_id),
                 commit=True,
             )
             return True, ""
@@ -385,12 +353,7 @@ UPDATE events
 
         try:
             db.execute(
-                """
-UPDATE events
-   SET date = ?
- WHERE user_id = ? AND
-       event_id = ?;
-""",
+                queries["update event_date"],
                 params=(date, self.user_id, event_id),
                 commit=True,
             )
@@ -441,12 +404,7 @@ UPDATE events
 
         try:
             db.execute(
-                """
-UPDATE events
-   SET status = ?
- WHERE user_id = ? AND 
-       event_id = ?;
-""",
+                queries["update event_status"],
                 params=(status, self.user_id, event_id),
                 commit=True,
             )
@@ -472,22 +430,13 @@ UPDATE events
         try:
             if is_premium_user(self) and to_bin:
                 db.execute(
-                    """
-UPDATE events
-   SET removal_time = DATE() 
- WHERE user_id = ? AND 
-       event_id = ?;
-""",
+                    queries["update event_to_trash"],
                     params=(self.user_id, event_id),
                     commit=True,
                 )
             else:
                 db.execute(
-                    """
-DELETE FROM events
-      WHERE user_id = ? AND 
-            event_id = ?;
-""",
+                    queries["delete event"],
                     params=(self.user_id, event_id),
                     commit=True,
                 )
@@ -511,12 +460,7 @@ DELETE FROM events
 
         try:
             db.execute(
-                """
-UPDATE events
-   SET removal_time = 0
- WHERE user_id = ? AND 
-       event_id = ?;
-""",
+                queries["update restore_events"],
                 params=(self.user_id, event_id),
                 commit=True,
             )
@@ -533,11 +477,7 @@ UPDATE events
 
         try:
             db.execute(
-                """
-DELETE FROM events
-      WHERE user_id = ? AND 
-            removal_time != 0;
-""",
+                queries["delete deleted_events"],
                 params=(self.user_id,),
                 commit=True,
             )
@@ -576,15 +516,7 @@ DELETE FROM events
 
             try:
                 table: list[tuple[int, str, str, str], ...] = db.execute(
-                    """
-SELECT event_id,
-       date,
-       status,
-       text
-  FROM events
- WHERE user_id = ? AND 
-       removal_time = 0;
-""",
+                    queries["select all_events"],
                     params=(self.user_id,),
                     column_names=True,
                 )
@@ -781,18 +713,12 @@ UPDATE settings
 
         try:
             db.execute(
-                """
-DELETE FROM settings
-      WHERE user_id = ?;
-""",
+                queries["delete settings"],
                 params=(user_id,),
                 commit=True,
             )
             db.execute(
-                """
-DELETE FROM events
-      WHERE user_id = ?;
-""",
+                queries["delete all_events"],
                 params=(user_id,),
                 commit=True,
             )
@@ -835,11 +761,7 @@ DELETE FROM events
 
         try:
             db.execute(
-                """
-UPDATE settings
-   SET user_status = ?
- WHERE user_id = ?;
-""",
+                queries["update user_status"],
                 params=(status, user_id),
                 commit=True,
             )

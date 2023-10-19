@@ -132,7 +132,7 @@ SELECT event_id,
        adding_time,
        recent_changes_time
   FROM events
- WHERE event_id IN ({', '.join(values)}) AND 
+ WHERE user_id = {self._settings.user_id} AND event_id IN ({', '.join(values)}) AND 
        ({WHERE}) 
  ORDER BY {sqlite_format_date('date')} {self._settings.direction};
 """,

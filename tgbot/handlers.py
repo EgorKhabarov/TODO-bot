@@ -14,6 +14,7 @@ from telebot.types import (
 )
 
 from tgbot import config
+from tgbot.queries import queries
 from tgbot.request import request
 from tgbot.bot import bot, set_bot_commands
 from tgbot.lang import get_translate, get_theme_emoji
@@ -59,7 +60,6 @@ from tgbot.utils import (
     markdown,
     is_secure_chat,
     parse_message,
-    update_userinfo,
     re_setuserstatus,
     re_call_data_date,
 )
@@ -88,8 +88,6 @@ def command_handler(message: Message) -> None:
 
     elif message_text.startswith("/start"):
         set_bot_commands()
-        update_userinfo()
-
         generated = start_message()
         generated.send(chat_id)
 
@@ -340,7 +338,12 @@ SyntaxError
             pass
 
     elif message_text.startswith("/id"):
-        NoEventMessage(f"Your id <code>{chat_id}</code>").reply(message)
+        if message.reply_to_message:
+            NoEventMessage(
+                f"Message id <code>{message.reply_to_message.id}</code>"
+            ).reply(message)
+        else:
+            NoEventMessage(f"Chat id <code>{chat_id}</code>").reply(message)
 
     elif message_text.startswith("/deleteuser") and is_admin_id(chat_id):
         user_id = message_text.removeprefix("/deleteuser ").strip()
@@ -471,11 +474,7 @@ def callback_handler(
             return
 
         db.execute(
-            """
-UPDATE settings
-   SET add_event_date = ?
- WHERE user_id = ?;
-""",
+            queries["update add_event_date"],
             params=(f"{date},{message_id}", chat_id),
             commit=True,
         )
@@ -519,7 +518,7 @@ UPDATE settings
 
     elif call_data.startswith("select event "):
         # action: Literal["edit", "status", "delete", "delete bin", "recover bin", "open"]
-        action = call_data[13:]
+        action: str = call_data[13:]
 
         events_list = parse_message(message_text)
         msg_date = message_text[:10]
@@ -618,11 +617,16 @@ UPDATE settings
             update_message_action(message_id, message.html_text)
             return
 
+        match action:
+            case "open":
+                back_data = "recurring"
+            case x if x.endswith("bin"):
+                back_data = "back bin"
+            case _:
+                back_data = "back"
+
         markup.row(
-            InlineKeyboardButton(
-                get_theme_emoji("back"),
-                callback_data="back" if not action.endswith("bin") else "back bin",
-            )
+            InlineKeyboardButton(get_theme_emoji("back"), callback_data=back_data)
         )
 
         if action == "edit":
@@ -653,6 +657,10 @@ UPDATE settings
             translate_search = get_translate("messages.search")
             choose_event = get_translate("select.event")
             text = f"🔍 {translate_search} {html.escape(query)}:\n{choose_event}"
+
+        elif action == "open":
+            event_to_open = get_translate("select.event_to_open")
+            text = f"{msg_date}\n{event_to_open}"  # ↖️
 
         else:
             choose_event = get_translate("select.event")
@@ -1112,7 +1120,7 @@ UPDATE settings
                 text = get_translate("changes_saved")
                 CallBackAnswer(text).answer(call_id)
             elif api_response[1] == "Limit Exceeded":
-                text = get_translate("limit_exceeded")
+                text = get_translate("errors.limit_exceeded")
                 CallBackAnswer(text).answer(call_id)
             else:
                 text = get_translate("errors.error")
@@ -1124,24 +1132,9 @@ def clear_state(chat_id: int | str):
     Очищает состояние приёма сообщения у пользователя
     и изменяет сообщение по id из add_event_date
     """
-    add_event_date = db.execute(
-        """
-SELECT add_event_date
-  FROM settings
- WHERE user_id = ?;
-""",
-        params=(chat_id,),
-    )[0][0]
+    add_event_date = db.execute(queries["select add_event_date"], (chat_id,))[0][0]
 
     if add_event_date:
         msg_date, message_id = add_event_date.split(",")
-        db.execute(
-            """
-UPDATE settings
-   SET add_event_date = 0
- WHERE user_id = ?;
-""",
-            params=(chat_id,),
-            commit=True,
-        )
+        db.execute(queries["update add_event_date"], params=(0, chat_id), commit=True)
         update_message_action(message_id, msg_date)
