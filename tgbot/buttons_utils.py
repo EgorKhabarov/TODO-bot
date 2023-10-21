@@ -81,10 +81,21 @@ def create_monthly_calendar_keyboard(
             text=title, callback_data=f"calendar_y ({command},{back},{YY})"
         )
     )
+    # Каждую неделю
+    every_week = tuple(
+        6 if x[0] == -1 else x[0]
+        for x in db.execute(
+            queries["select week_day_number_with_event_every_week"],
+            params=(chat_id,),
+        )
+    )
     markup.row(
         *[
-            InlineKeyboardButton(text=week_day, callback_data="None")
-            for week_day in get_translate("week_days_list")
+            InlineKeyboardButton(
+                text=week_day + ("!" if wd in every_week else ""),
+                callback_data="None"
+            )
+            for wd, week_day in enumerate(get_translate("week_days_list"))
         ]
     )
 
@@ -106,16 +117,6 @@ def create_monthly_calendar_keyboard(
         )
     )
 
-    # Каждую неделю
-    # TODO полноценная настройка every_week_show !
-    every_week = tuple(
-        6 if x[0] == -1 else x[0]
-        for x in db.execute(
-            queries["select week_day_number_with_event_every_week"],
-            params=(chat_id,),
-        )
-    ) if (every_week_show := 0) else ()
-
     # получаем сегодняшнее число
     today = now_time().day
     # получаем список дней
@@ -129,7 +130,7 @@ def create_monthly_calendar_keyboard(
                 x = has_events.get(day)
                 tag_event = (number_to_power(x) if x < 10 else "*") if x else ""
                 tag_birthday = (
-                    "!" if (day in every_year_or_month or wd in every_week) else ""
+                    "!" if (day in every_year_or_month) else ""
                 )
                 weekbuttons.append(
                     InlineKeyboardButton(
