@@ -39,6 +39,7 @@ from tgbot.buttons_utils import (
     delmarkup,
     edit_button_attrs,
     create_yearly_calendar_keyboard,
+    create_twenty_year_calendar_keyboard,
 )
 from tgbot.bot_messages import (
     search_message,
@@ -955,6 +956,28 @@ def callback_handler(
         except ApiTelegramException:
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
+
+    elif call_data.startswith("calendar_t "):
+        sleep(0.3)
+        data: tuple = literal_eval(call_data.removeprefix("calendar_t "))
+        command, back, decade = data
+
+        if decade == "now":
+            decade = int(str(now_time().year)[:3])
+        else:
+            decade = int(decade)
+
+        if is_valid_year(int(str(decade) + "0")):
+            markup = create_twenty_year_calendar_keyboard(decade, command, back)
+            try:
+                bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
+            except ApiTelegramException:
+                # Сообщение не изменено
+                year = now_time().year
+                markup = create_yearly_calendar_keyboard(year, command, back)
+                bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
+        else:
+            CallBackAnswer("🤔").answer(call_id)
 
     elif call_data.startswith("calendar_y "):
         sleep(0.5)

@@ -94,7 +94,7 @@ def message_handler(message: Message):
     command_handler(message)
 
 
-@bot.callback_query_handler(func=lambda call: True)
+@bot.callback_query_handler(func=lambda call: call.data != "None")
 @check_user
 def callback_query_handler(call: CallbackQuery):
     """

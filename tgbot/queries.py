@@ -51,9 +51,30 @@ SELECT CAST (SUBSTR(date, 4, 2) AS INT) AS month_number,
        date LIKE ?
  GROUP BY month_number;
 """,
+    "select year_number_with_events": """
+-- Года в которых есть события
+SELECT CAST (SUBSTR(date, 7, 4) AS INT) AS year_number,
+       COUNT(event_id) AS event_count
+  FROM events
+ WHERE user_id = ? AND
+       removal_time = 0
+ GROUP BY year_number;
+""",
     "select month_number_with_birthdays": """
 -- Номера месяцев дней рождений в конкретном месяце
 SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT) 
+  FROM events
+ WHERE user_id = ? AND 
+       removal_time = 0 AND 
+       (
+           status LIKE '%🎉%' OR 
+           status LIKE '%🎊%' OR 
+           status LIKE '%📆%'
+       );
+""",
+    "select year_number_with_birthdays": """
+-- Номера месяцев дней рождений в конкретном месяце
+SELECT 1
   FROM events
  WHERE user_id = ? AND 
        removal_time = 0 AND 

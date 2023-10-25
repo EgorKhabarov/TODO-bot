@@ -1,5 +1,6 @@
 from calendar import monthcalendar
 
+from telebot.util import chunks
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from tgbot.queries import queries
@@ -7,6 +8,7 @@ from tgbot.request import request
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.time_utils import new_time_calendar, year_info, now_time, get_week_number
 from todoapi.types import db
+from todoapi.utils import is_valid_year
 
 
 def generate_buttons(buttons_data: list[dict]) -> InlineKeyboardMarkup:
@@ -219,7 +221,7 @@ def create_yearly_calendar_keyboard(
 
     markup = generate_buttons(
         [
-            {f"{YY} ({year_info(YY)})": "None"},
+            {f"{YY} ({year_info(YY)})": f"calendar_t ({command},{back},{str(YY)[:3]})"},
             *month_buttons,
             {
                 text: f"calendar_y ({command},{back},{year})"
@@ -234,6 +236,89 @@ def create_yearly_calendar_keyboard(
         )
 
     return markup
+
+
+def create_twenty_year_calendar_keyboard(
+    decade: int,
+    command: str | None = None,
+    back: str | None = None,
+) -> InlineKeyboardMarkup:
+    chat_id = request.chat_id
+    command = f"'{command.strip()}'" if command else None
+    back = f"'{back.strip()}'" if back else None
+    # example: millennium, decade =  '20', 2
+    millennium, decade = str(decade)[:2], (
+        lambda x: (x-1) if x % 2 else x
+    )(int(str(decade)[2]))
+
+    decade -= decade % 2  # if decade % 2: decade -= 1
+
+    now_year = now_time().year
+    years = chunks(
+        [
+            (n, y)
+            for n, y in enumerate(
+                (lambda y: range(y, y+20))(int(f"{millennium}{decade}0"))
+            )
+        ],
+        4
+    )
+
+    # В этом году
+    year_list = {
+        x[0]: x[1]
+        for x in db.execute(
+            queries["select year_number_with_events"],
+            params=(chat_id,),
+        )
+    }
+
+    # Повторение каждый год
+    every_year = db.execute(
+        queries["select year_number_with_birthdays"],
+        params=(chat_id,),
+    )
+
+    if every_year:
+        every_year = every_year[0]
+
+    years_buttons = []
+    for row in years:
+        years_buttons.append({})
+        for nameM, numY in row:
+            if not is_valid_year(numY):
+                years_buttons[-1][" "*(int(str(numY)[-1]) or 11)] = "None"
+                continue
+
+            tag_today = "#" if numY == now_year else ""
+            x = year_list.get(numY)
+            tag_event = (number_to_power(x) if x < 1000 else "*") if x else ""
+            tag_birthday = "!" if every_year else ""
+            years_buttons[-1][
+                f"{tag_today}{numY}{tag_event}{tag_birthday}"
+            ] = f"calendar_y ({command},{back},{numY})"
+
+    markup = generate_buttons(
+        [
+            *years_buttons,
+            {
+                text: f"calendar_t ({command},{back},{year})"
+                for text, year in {
+                    "<<": str(int(f"{millennium}{decade}") - 2)[:3],
+                    "⟳": "'now'",
+                    ">>": str(int(f"{millennium}{decade}") + 2)[:3]
+                }.items()
+            },
+        ]
+    )
+
+    if back:
+        markup.row(
+            InlineKeyboardButton(get_theme_emoji("back"), callback_data=back[1:-1])
+        )
+
+    return markup
+
 
 
 def edit_button_attrs(

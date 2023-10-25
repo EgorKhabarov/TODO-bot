@@ -83,7 +83,7 @@ def is_valid_year(year: int) -> bool:
     """
     Является ли год валидным (находится в диапазоне от 1900 до 3000)
     """
-    return 1900 <= year <= 3000
+    return 1900 <= year <= 2300
 
 
 def isdigit(string: str) -> bool:
