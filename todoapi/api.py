@@ -1,9 +1,11 @@
 import csv
 import html
+import json
 import logging
-from io import StringIO
 from sqlite3 import Error
 from typing import Literal
+from io import StringIO, BytesIO
+import xml.etree.ElementTree as xml
 
 from todoapi.queries import queries
 from todoapi.types import Event, UserSettings, Limit, db, export_cooldown
@@ -501,7 +503,7 @@ SELECT event_id,
         "SQL Error {}" - Ошибка sql.
         """
 
-        if file_format not in ("csv",):
+        if file_format not in ("csv", "xml", "json", "jsonl"):
             return False, "Format Is Not Valid"
 
         if self.__no_cooldown:
@@ -511,34 +513,105 @@ SELECT event_id,
             response, t = export_cooldown.check(self.user_id, False)
 
         if response:
-            file = StringIO()
-            file.name = file_name
+            def export_csv() -> tuple[bool, StringIO | str]:
+                file = StringIO()
+                file.name = file_name
 
-            try:
-                table: list[tuple[int, str, str, str], ...] = db.execute(
-                    queries["select all_events"],
-                    params=(self.user_id,),
-                    column_names=True,
-                )
-            except Error as e:
-                return False, f"SQL Error {e}"
+                try:
+                    table: list[tuple[int, str, str, str], ...] = db.execute(
+                        queries["select all_events"],
+                        params=(self.user_id,),
+                        column_names=True,
+                    )
+                except Error as e:
+                    return False, f"SQL Error {e}"
 
-            file_writer = csv.writer(file)
-            [
-                file_writer.writerows(
-                    [
+                file_writer = csv.writer(file)
+                [
+                    file_writer.writerows(
                         [
-                            str(event_id),
-                            event_date,
-                            event_status,
-                            html.unescape(event_text),
+                            [
+                                str(event_id),
+                                event_date,
+                                event_status,
+                                html.unescape(event_text),
+                            ]
                         ]
-                    ]
+                    )
+                    for event_id, event_date, event_status, event_text in table
+                ]
+                file.seek(0)
+                return True, file
+
+            def export_xml() -> tuple[bool, BytesIO | str]:
+                file = BytesIO()
+                file.name = file_name
+
+                try:
+                    table: list[tuple[int, str, str, str], ...] = db.execute(
+                        queries["select all_events"],
+                        params=(self.user_id,),
+                    )
+                except Error as e:
+                    return False, f"SQL Error {e}"
+
+                xml_events = xml.Element("events")
+                for event_id, date, status, text in table:
+                    xml_event = xml.SubElement(xml_events, "event")
+                    xml.SubElement(xml_event, "event_id").text = str(event_id)
+                    xml.SubElement(xml_event, "date").text = date
+                    xml.SubElement(xml_event, "status").text = status
+                    xml.SubElement(xml_event, "text").text = text
+                    xml.indent(xml_event, space="  ")
+
+                tree = xml.ElementTree(xml_events)
+                xml.indent(tree, space="  ")
+                tree.write(file, encoding="UTF-8", method="xml", xml_declaration=False, short_empty_elements=False)
+
+                file.seek(0)
+                return True, file
+
+            def export_json() -> tuple[bool, StringIO | str]:
+                file = StringIO()
+                file.name = file_name
+
+                try:
+                    table: list[tuple[int, str, str, str], ...] = db.execute(
+                        queries["select all_events"],
+                        params=(self.user_id,),
+                    )
+                except Error as e:
+                    return False, f"SQL Error {e}"
+
+                # event_id, date, status, text
+                d = tuple(
+                    {
+                        "event_id": event[0],
+                        "date": event[1],
+                        "status": event[2],
+                        "text": event[3]
+                    }
+                    for event in table
                 )
-                for event_id, event_date, event_status, event_text in table
-            ]
-            file.seek(0)
-            return True, file
+
+                if file_format == "json":
+                    file.write(json.dumps(d, indent=4, ensure_ascii=False))
+                else:
+                    file.writelines(json.dumps(line, ensure_ascii=False)+"\n" for line in d)
+
+                file.seek(0)
+                return True, file
+
+
+            match file_format:
+                case "csv":
+                    return export_csv()
+                case "xml":
+                    return export_xml()
+                case x if x in ("json", "jsonl"):
+                    return export_json()
+                case _:
+                    return False, f"SQL Error"
         else:
             return False, f"Wait {t // 60} min"
 

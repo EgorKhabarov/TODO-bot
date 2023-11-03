@@ -26,7 +26,7 @@ from todoapi.utils import is_admin_id, isdigit
 
 re_edit_message = re.compile(r"\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)")
 msg_check = re.compile(
-    rf"""(?x)(?s)
+    rf"""(?xs)
 \A
 /                               # Команда
 \w+                             # Текст команды

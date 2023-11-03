@@ -322,7 +322,7 @@ class NoEventMessage:
     def __init__(
         self,
         text: str,
-        reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup(),
+        reply_markup: InlineKeyboardMarkup | None = None,
     ):
         self.text = text
         self.reply_markup = reply_markup

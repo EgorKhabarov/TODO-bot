@@ -35,7 +35,7 @@ COMMANDS = (
     "sqlite",
     "account",
     "SQL",
-    "save_to_csv",
+    "export",
     "setuserstatus",
     "id",
     "deleteuser",
@@ -45,7 +45,7 @@ COMMANDS = (
 callbackTab = "⠀⠀⠀"  # Специальные прозрачные символы для заполнения
 
 
-__version__ = "25.10.2023"
+__version__ = "04.11.2023"
 __autor__ = "EgorKhabarov"
 
 bot_settings = """

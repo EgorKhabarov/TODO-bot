@@ -91,7 +91,7 @@ For example `#date=1.2023 status=🎧 youtube.com` to search for all events with
 | /forecast {city} | Weather forecast for 5 days |
 | /week_event_list | Weekly events               |
 | /dice            | Roll the dice (randomizer)  |      
-| /save_to_csv     | Save my data in csv         |     
+| /export          | Save my data in csv         |     
 | /help            | Help                        |                          
 | /settings        | Settings                    |
 | /search {query}  | Search                      |

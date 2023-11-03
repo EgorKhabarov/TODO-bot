@@ -25,7 +25,7 @@ from tests.mocks import message_mock, bot_mock, db_decorator
         # ("/sqlite", ""),
         # ("/SQL ", ""),
         # ("/bell", ""),
-        # ("/save_to_csv", ""),
+        # ("/export", ""),
         # ("/version", ""),
         # ("/setuserstatus", ""),
         # ("/idinfo ", ""),

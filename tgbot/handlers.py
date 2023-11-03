@@ -1,3 +1,4 @@
+import re
 import html
 import logging
 from time import sleep
@@ -227,9 +228,16 @@ def command_handler(message: Message) -> None:
     elif message_text.startswith("/bell"):
         notifications_message([chat_id], from_command=True)
 
-    elif message_text.startswith("/save_to_csv"):
+    elif message_text.startswith("/export"):
+        file_format = message_text.removeprefix("/export").strip() or "csv"
+
+        if file_format not in ("csv", "xml", "json", "jsonl"):
+            NoEventMessage(get_translate("errors.export_format")).reply(message)
+            return
+
         api_response = user.export_data(
-            f"events_{now_time().strftime('%Y-%m-%d_%H-%M-%S')}.csv"
+            f"events_{now_time().strftime('%Y-%m-%d_%H-%M-%S')}.{file_format}",
+            f"{file_format}"
         )
 
         if api_response[0]:
@@ -238,14 +246,17 @@ def command_handler(message: Message) -> None:
             try:
                 bot.send_document(chat_id, InputFile(api_response[1]))
             except ApiTelegramException as e:
-                logging.info(f'save_to_csv ApiTelegramException "{e}"')
+                logging.info(f'export ApiTelegramException "{e}"')
                 big_file_translate = get_translate("errors.file_is_too_big")
                 bot.send_message(chat_id=chat_id, text=big_file_translate)
         else:
-            export_error = get_translate("errors.export")
-            generated = NoEventMessage(
-                export_error.format(t=api_response[1].split(" ")[1])
-            )
+            if re.match(r"Wait \d+ min", api_response[1]):
+                export_error = get_translate("errors.export")
+                generated = NoEventMessage(
+                    export_error.format(t=api_response[1].split(" ")[1])
+                )
+            else:
+                generated = NoEventMessage(get_translate("errors.error"))
             generated.send(chat_id)
 
     elif message_text.startswith("/version"):
@@ -399,7 +410,7 @@ SyntaxError
 /week_event_list - Список событий на ближайшие 7 дней
 /deleted - Корзина
 /dice - Кинуть кубик
-/save_to_csv - Сохранить мои события в csv
+/export - Сохранить мои события в csv
 /help - Помощь
 /settings - Настройки
 /search {...} - Поиск
