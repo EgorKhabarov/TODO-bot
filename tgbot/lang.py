@@ -874,11 +874,13 @@ Visibility <b>{}</b>m""",
                     "🗂 Важность                           ": "status page 1",
                     "🗂 Разное                             ": "status page 2",
                     "🗂 Эффекты                            ": "status page 3",
+                    "🗂 Кастомные                          ": "status page 4",
                 },
                 "en": {
                     "🗂 Importance                         ": "status page 1",
                     "🗂 Miscellaneous                      ": "status page 2",
                     "🗂 Effects                            ": "status page 3",
+                    "🗂 Custom                             ": "status page 4",
                 },
             },
             "1": {
@@ -1029,6 +1031,78 @@ Visibility <b>{}</b>m""",
                     ("📅 Repeat every month                 ",),
                     ("🗞 Repeat every week                  ",),
                     ("📬 Repeat every day                   ",),
+                ),
+            },
+            "4": {
+                "ru": (
+                    (
+                        "💻py Python",
+                        "💻cpp C++",
+                        "💻c C",
+                    ),
+                    (
+                        "💻cs C#",
+                        "💻html HTML",
+                        "💻css CSS",
+                    ),
+                    (
+                        "💻js JavaScript",
+                        "💻ts TypeScript",
+                    ),
+                    (
+                        "💻java Java",
+                        "💻swift Swift",
+                        "💻kt Kotlin",
+                    ),
+                    (
+                        "💻go Go",
+                        "💻rs Rust",
+                        "💻rb Ruby",
+                    ),
+                    (
+                        "💻sql SQL",
+                        "💻re RegExp",
+                        "💻sh Shell | Bash",
+                    ),
+                    (
+                        "💻yaml YAML",
+                        "💻json JSON",
+                        "💻xml XML",
+                    ),
+                ),
+                "en": (
+                    (
+                        "💻py Python",
+                        "💻cpp C++",
+                        "💻c C",
+                        "💻cs C#",
+                    ),
+                    (
+                        "💻js JavaScript",
+                        "💻html HTML",
+                        "💻css CSS",
+                        "💻ts TypeScript",
+                    ),
+                    (
+                        "💻java Java",
+                        "💻swift Swift",
+                        "💻kt Kotlin",
+                    ),
+                    (
+                        "💻go Go",
+                        "💻rs Rust",
+                        "💻rb Ruby",
+                    ),
+                    (
+                        "💻sql SQL",
+                        "💻re RegExp",
+                        "💻sh Shell | Bash",
+                    ),
+                    (
+                        "💻yaml YAML",
+                        "💻json JSON",
+                        "💻xml XML",
+                    ),
                 ),
             },
         },

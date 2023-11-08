@@ -45,17 +45,64 @@ def markdown(text: str, statuses: str) -> str:
     Добавляем эффекты к событию по статусу
     """
 
-    def OrderList(_text: str, num=0) -> str:  # Нумерует каждую строчку
+    def check_comment_in_status(comment_string: Literal["##", "//", "--"]) -> bool:
+        """
+        Проверить будет ли этот символ комментария считаться за комментарий при выбранных языках.
+        """
+        status_set = {
+            s.removeprefix("💻")
+            for s in statuses_list
+            if s.startswith("💻")
+        }
+
+        if comment_string == "##":
+            return not status_set.isdisjoint({"py", "re"})
+        elif comment_string == "//":
+            return not status_set.isdisjoint({"cpp", "c"})
+        elif comment_string == "--":
+            return not status_set.isdisjoint({"sql"})
+        else:
+            return False
+
+    def is_comment_line(line: str) -> bool:
+        """
+        Проверяет строку на комментарий для списков ("🗒") и сортированный список ("🧮").
+        Комментарий не будет работать если в статусе стоит язык, в котором это часть синтаксиса.
+        """
+        return line == "⠀" or (
+            line.startswith("— ")
+            or (line.startswith("-- ") and not check_comment_in_status("--"))
+            or (line.startswith("## ") and not check_comment_in_status("##"))
+            or (line.startswith("// ") and not check_comment_in_status("//"))
+        )
+
+    def remove_comment_prefix(line: str) -> str:
+        """
+        Удаляет префикс комментария.
+        В зависимости от наличия комментария удаляет
+        """
+        line = line.removeprefix("— ")
+
+        if not check_comment_in_status("--"):
+            line = line.removeprefix("-- ")
+        if not check_comment_in_status("##"):
+            line = line.removeprefix("## ")
+        if not check_comment_in_status("//"):
+            line = line.removeprefix("// ")
+        return line
+
+
+    def format_order_list(_text: str, num=0) -> str:  # Нумерует каждую строчку
         lst = _text.splitlines()
 
         # Получаем длину отступа чтобы не съезжало
         width = len(
             str(
                 len(
-                    list(
+                    tuple(
                         line
                         for line in lst
-                        if not (line.startswith("-- ") or line.startswith("— "))
+                        if not is_comment_line(line)
                     )
                 )
             )
@@ -70,42 +117,37 @@ def markdown(text: str, statuses: str) -> str:
                 + "⃣".join(str(num))  # Само число
                 + "⃣"
                 + line
-                if not (line.startswith("-- ") or line.startswith("— "))
-                else line.removeprefix("-- ").removeprefix("— ")
+                if not is_comment_line(line)
+                else remove_comment_prefix(line)
             )
             if line not in ("", "⠀")
             else "⠀"
             for line in lst
         )
 
-    def List(_text: str):
+    def format_list(_text: str):
         """Заменяет \n на :black_small_square: (эмодзи Telegram)"""
         point = "▫️" if request.user.settings.theme == 1 else "▪️"
         big_point = "◻️" if request.user.settings.theme == 1 else "◼️"
-        _text = point + _text
-        for old, new in (
-            ("\n", f"\n{point}"),
-            (f"\n{point}⠀\n", "\n⠀\n"),
-            (f"\n{point}-- ", "\n"),
-            (f"\n{point}— ", "\n"),
-            (f"\n{point}!! ", f"\n{big_point}"),
-        ):
-            _text = _text.replace(old, new)
+        lst = _text.splitlines()
 
-        match _text:
-            case x if x.startswith(f"{point}-- "):
-                _text = _text.removeprefix(f"{point}-- ")
-            case x if x.startswith(f"{point}— "):
-                _text = _text.removeprefix(f"{point}— ")
-            case x if x.startswith(f"{big_point}!! "):
-                _text = _text.removeprefix(f"{big_point}!! ")
+        return "\n".join(
+            (
+                (
+                    (big_point if line.startswith("!!") else point) + line.removeprefix("!!")
+                )
+                if not is_comment_line(line)
+                else remove_comment_prefix(line)
+            )
+            if line not in ("", "⠀")
+            else "⠀"
+            for line in lst
+        )
 
-        return _text
+    def format_spoiler(spoiler: str):
+        return f"<span class='tg-spoiler'>{spoiler}</span>"
 
-    def Spoiler(_text: str):
-        return f"<span class='tg-spoiler'>{_text}</span>"
-
-    def SubUrls(_text: str):
+    def sub_urls(_text: str):
         def la(m: re.Match):
             url = re.sub(r"\Ahttp://", "https://", m[0])
 
@@ -117,31 +159,38 @@ def markdown(text: str, statuses: str) -> str:
 
         return re.sub(r"(http?s?://[^\"\'\n ]+)", la, _text)  # r"(http?s?://\S+)"
 
-    def Code(_text: str):
-        return f"<pre>{_text}</pre>"
+    def format_code(code: str):
+        return f"<pre>{code}</pre>"
+
+    def format_code_lang(code: str, lang: str) -> str:
+        return f"<pre><code class='language-{lang}'>{code}</code></pre>"
 
     text = html.escape(text)
 
     # Сокращаем несколько подряд переносов строки
-    text = re.sub(r"\n(\n*)\n", "\n⠀\n", text)
+    text = re.sub(r"\n(\n*)\n", "\n⠀\n", text)  # Прозрачный символ chr(10240)
 
     if ("🔗" in statuses and "⛓" not in statuses) or (
         request.user.settings.sub_urls and ("💻" not in statuses and "⛓" not in statuses)
     ):
-        text = SubUrls(text)
+        text = sub_urls(text)
 
-    statuses = statuses.split(",")
+    statuses_list: list[str] = statuses.split(",")
 
-    if "🗒" in statuses:
-        text = List(text)
-
-    elif "🧮" in statuses:
-        text = OrderList(text)
+    if "🗒" in statuses_list:
+        text = format_list(text)
+    elif "🧮" in statuses_list:
+        text = format_order_list(text)
 
     if "💻" in statuses:
-        text = Code(text)
-    elif "🪞" in statuses:
-        text = Spoiler(text)
+        status = [
+            status.removeprefix("💻")
+            for status in statuses_list
+            if status.startswith("💻")
+        ][-1]
+        text = format_code_lang(text, status) if status else format_code(text)
+    elif "🪞" in statuses_list:
+        text = format_spoiler(text)
 
     return text
 

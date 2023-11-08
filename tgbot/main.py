@@ -86,7 +86,7 @@ def check_user(func):
 
 @bot.message_handler(commands=[*config.COMMANDS])
 @check_user
-def message_handler(message: Message):
+def bot_command_handler(message: Message):
     """
     Ловит команды от пользователей
     """
@@ -96,7 +96,7 @@ def message_handler(message: Message):
 
 @bot.callback_query_handler(func=lambda call: call.data != "None")
 @check_user
-def callback_query_handler(call: CallbackQuery):
+def bot_callback_query_handler(call: CallbackQuery):
     """
     Ловит нажатия на кнопки
     """
@@ -179,7 +179,7 @@ def add_event_func(msg) -> int:
 
 @bot.message_handler(func=add_event_func)
 @check_user
-def add_event(message: Message):
+def add_event_handler(message: Message):
     """
     Ловит сообщение если пользователь хочет добавить событие
     """

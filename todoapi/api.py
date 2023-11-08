@@ -398,7 +398,21 @@ SELECT event_id,
             return False, "Status Conflict"
 
         statuses = status.split(",")
-        if len(statuses) > 5 or max(len(s) for s in statuses) > 3:
+
+        # Статусов не может быть больше 5
+        # Длинна одного обычного статуса не может быть больше 3 символов
+        # Язык кода не может быть больше 6 символов
+        if (
+            len(statuses) > 5
+            or
+            max(
+                # Если длинна больше 6, то сумма булева значение и 3 будет больше 3
+                (3 + (len(s.removeprefix("💻")) > 6))
+                if s.startswith("💻")
+                else len(s)
+                for s in statuses
+            ) > 3
+        ):
             return False, "Status Length Exceeded"
 
         if len(statuses) != len(set(statuses)):

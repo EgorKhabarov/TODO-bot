@@ -855,11 +855,9 @@ def callback_handler(
         if status == "⬜️" or old_status == "⬜️":
             return
 
-        res_status = (
-            old_status.replace(f",{status}", "")
-            .replace(f"{status},", "")
-            .replace(f"{status}", "")
-        )
+        statuses = old_status.split(",")
+        statuses.remove(status)
+        res_status = ",".join(statuses)
 
         if not res_status:
             res_status = "⬜️"
