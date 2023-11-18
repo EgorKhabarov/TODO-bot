@@ -2,8 +2,8 @@ import html
 import logging
 from datetime import timedelta, datetime
 
-from telebot.apihelper import ApiTelegramException
-from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
+from telebot.apihelper import ApiTelegramException  # noqa
+from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup  # noqa
 
 from tgbot.bot import bot
 from tgbot.queries import queries
@@ -348,7 +348,6 @@ def notifications_message(
                 for user_id in user[0].split(",")
             ]  # [('id1,id2,id3',)] -> [id1, id2, id3]
 
-
     for user_id in user_id_list:
         request.user = User(user_id)  # TODO авторизация по токену
         request.chat_id = user_id
@@ -590,7 +589,7 @@ def start_message() -> NoEventMessage:
             {"/calendar": "/calendar"},
             {
                 get_translate("text.add_bot_to_group"): {
-                    "url": f"https://t.me/{bot.username}?startgroup=AddGroup"
+                    "url": f"https://t.me/{bot.user.username}?startgroup=AddGroup"
                 }
             },
         ]

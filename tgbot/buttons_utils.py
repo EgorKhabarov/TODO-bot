@@ -1,7 +1,7 @@
 from calendar import monthcalendar
 
-from telebot.util import chunks
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telebot.util import chunks  # noqa
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton  # noqa
 
 from tgbot.queries import queries
 from tgbot.request import request
@@ -94,8 +94,7 @@ def create_monthly_calendar_keyboard(
     markup.row(
         *[
             InlineKeyboardButton(
-                text=week_day + ("!" if wd in every_week else ""),
-                callback_data="None"
+                text=week_day + ("!" if wd in every_week else ""), callback_data="None"
             )
             for wd, week_day in enumerate(get_translate("week_days_list"))
         ]
@@ -131,9 +130,7 @@ def create_monthly_calendar_keyboard(
                 tag_today = "#" if day == today else ""
                 x = has_events.get(day)
                 tag_event = (number_to_power(x) if x < 10 else "*") if x else ""
-                tag_birthday = (
-                    "!" if (day in every_year_or_month) else ""
-                )
+                tag_birthday = "!" if (day in every_year_or_month) else ""
                 weekbuttons.append(
                     InlineKeyboardButton(
                         f"{tag_today}{day}{tag_event}{tag_birthday}",
@@ -247,9 +244,9 @@ def create_twenty_year_calendar_keyboard(
     command = f"'{command.strip()}'" if command else None
     back = f"'{back.strip()}'" if back else None
     # example: millennium, decade =  '20', 2
-    millennium, decade = str(decade)[:2], (
-        lambda x: (x-1) if x % 2 else x
-    )(int(str(decade)[2]))
+    millennium, decade = str(decade)[:2], (lambda x: (x - 1) if x % 2 else x)(
+        int(str(decade)[2])
+    )
 
     decade -= decade % 2  # if decade % 2: decade -= 1
 
@@ -258,10 +255,10 @@ def create_twenty_year_calendar_keyboard(
         [
             (n, y)
             for n, y in enumerate(
-                (lambda y: range(y, y+20))(int(f"{millennium}{decade}0"))
+                (lambda y: range(y, y + 20))(int(f"{millennium}{decade}0"))
             )
         ],
-        4
+        4,
     )
 
     # В этом году
@@ -287,7 +284,7 @@ def create_twenty_year_calendar_keyboard(
         years_buttons.append({})
         for nameM, numY in row:
             if not is_valid_year(numY):
-                years_buttons[-1][" "*(int(str(numY)[-1]) or 11)] = "None"
+                years_buttons[-1][" " * (int(str(numY)[-1]) or 11)] = "None"
                 continue
 
             tag_today = "#" if numY == now_year else ""
@@ -306,7 +303,7 @@ def create_twenty_year_calendar_keyboard(
                 for text, year in {
                     "<<": str(int(f"{millennium}{decade}") - 2)[:3],
                     "⟳": "'now'",
-                    ">>": str(int(f"{millennium}{decade}") + 2)[:3]
+                    ">>": str(int(f"{millennium}{decade}") + 2)[:3],
                 }.items()
             },
         ]
@@ -318,7 +315,6 @@ def create_twenty_year_calendar_keyboard(
         )
 
     return markup
-
 
 
 def edit_button_attrs(

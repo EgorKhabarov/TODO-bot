@@ -6,8 +6,9 @@ from io import StringIO
 from sqlite3 import Error
 from ast import literal_eval
 
-from telebot.apihelper import ApiTelegramException
-from telebot.types import (
+from telebot.util import chunks  # noqa
+from telebot.apihelper import ApiTelegramException  # noqa
+from telebot.types import (  # noqa
     Message,
     InputFile,
     InlineKeyboardMarkup,
@@ -73,13 +74,14 @@ from todoapi.utils import (
     html_to_markdown,
     isdigit,
 )
+from telegram_utils.command_parser import parse_command
 
 
 def command_handler(message: Message) -> None:
     """
     Отвечает за реакцию бота на команды
     Метод message.text.startswith("")
-    используется и для групп (в них сообщение приходит в формате /command{bot.username})
+    используется и для групп (в них сообщение приходит в формате /command{bot.user.username})
     """
     user, chat_id = request.user, request.chat_id
     settings, message_text = user.settings, message.text
@@ -108,23 +110,16 @@ def command_handler(message: Message) -> None:
 
     elif message_text.startswith("/weather") or message_text.startswith("/forecast"):
         # Проверяем есть ли аргументы
-        if message_text not in (
-            "/weather",
-            f"/weather@{bot.username}",
-            "/forecast",
-            f"/forecast@{bot.username}",
-        ):
-            nowcity = message_text.split(maxsplit=1)[-1]
-        else:
-            nowcity = settings.city
+        command = parse_command(message_text, city=("long str", settings.city))
+        command_text, nowcity = command["command"], command["arguments"]["city"]
 
         try:
-            if message_text.startswith("/weather"):
+            if command_text == "weather":
                 text = fetch_weather(city=nowcity)
             else:  # forecast
                 text = fetch_forecast(city=nowcity)
         except KeyError:
-            if message_text.startswith("/weather"):
+            if command_text == "weather":
                 text = get_translate("errors.weather_invalid_city_name")
             else:  # forecast
                 text = get_translate("errors.forecast_invalid_city_name")
@@ -237,7 +232,7 @@ def command_handler(message: Message) -> None:
 
         api_response = user.export_data(
             f"events_{now_time().strftime('%Y-%m-%d_%H-%M-%S')}.{file_format}",
-            f"{file_format}"
+            f"{file_format}",
         )
 
         if api_response[0]:
@@ -718,13 +713,15 @@ def callback_handler(
         if call_data.startswith("status_home_page"):
             sl = status.split(",")
             sl.extend([""] * (5 - len(sl)))
+            status_page_0 = list(get_translate("buttons.status page.0").items())
             markup = generate_buttons(
                 [
                     *[
-                        {f"{title}{config.callbackTab * 20}": f"{data}"}
-                        for title, data in get_translate(
-                            "buttons.status page.0"
-                        ).items()
+                        {
+                            f"{title}{config.callbackTab * 20}": f"{data}"
+                            for (title, data) in chunk
+                        }
+                        for chunk in chunks(status_page_0, 2)
                     ],
                     {
                         f"{i}"

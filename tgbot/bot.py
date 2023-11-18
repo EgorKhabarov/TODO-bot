@@ -1,8 +1,9 @@
 import logging
 
+# noinspection PyPackageRequirements
 from telebot import TeleBot
-from telebot.types import BotCommandScopeChat
-from telebot.apihelper import ApiTelegramException
+from telebot.types import BotCommandScopeChat  # noqa
+from telebot.apihelper import ApiTelegramException  # noqa
 
 import todoapi.config
 from tgbot import config
@@ -13,17 +14,13 @@ from todoapi.utils import is_admin_id
 
 bot = TeleBot(config.BOT_TOKEN)
 
-bot.me = bot.get_me()
-bot.id = bot.me.id
-bot.username = bot.me.username
-
 bot.parse_mode = "html"
 bot.disable_web_page_preview = True
 bot.protect_content = False
 
 
 def bot_log_info():
-    bot_dict = bot.me.to_dict()
+    bot_dict = bot.user.to_dict()
     bot_dict.update(
         {
             "database": config.DATABASE_PATH,

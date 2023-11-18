@@ -13,8 +13,8 @@ from datetime import timedelta, datetime, timezone
 import requests
 from requests import ConnectionError
 from requests.exceptions import MissingSchema
-from telebot.apihelper import ApiTelegramException
-from telebot.types import Message
+from telebot.apihelper import ApiTelegramException  # noqa
+from telebot.types import Message  # noqa
 
 from tgbot import config
 from tgbot.bot import bot
@@ -25,17 +25,6 @@ from todoapi.types import db, Event
 from todoapi.utils import is_admin_id, isdigit
 
 re_edit_message = re.compile(r"\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)")
-msg_check = re.compile(
-    rf"""(?xs)
-\A
-/                               # Команда
-\w+                             # Текст команды
-(@{re.escape(bot.username)}\b)? # Необязательный username бота
-(\s|$)                          # Пробел или окончание строки
-.*                              # Необязательные аргументы команды
-\Z
-"""
-)
 re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
 re_setuserstatus = re.compile(r"\A(-?\d+) (-1|0|1|2)\Z")
 
@@ -49,11 +38,7 @@ def markdown(text: str, statuses: str) -> str:
         """
         Проверить будет ли этот символ комментария считаться за комментарий при выбранных языках.
         """
-        status_set = {
-            s.removeprefix("💻")
-            for s in statuses_list
-            if s.startswith("💻")
-        }
+        status_set = {s.removeprefix("💻") for s in statuses_list if s.startswith("💻")}
 
         if comment_string == "##":
             return not status_set.isdisjoint({"py", "re"})
@@ -91,22 +76,11 @@ def markdown(text: str, statuses: str) -> str:
             line = line.removeprefix("// ")
         return line
 
-
     def format_order_list(_text: str, num=0) -> str:  # Нумерует каждую строчку
         lst = _text.splitlines()
 
         # Получаем длину отступа чтобы не съезжало
-        width = len(
-            str(
-                len(
-                    tuple(
-                        line
-                        for line in lst
-                        if not is_comment_line(line)
-                    )
-                )
-            )
-        )
+        width = len(str(len(tuple(line for line in lst if not is_comment_line(line)))))
 
         # Заполняем с отступами числа + текст, а если двойной перенос строки то "⠀"
         return "\n".join(
@@ -134,7 +108,8 @@ def markdown(text: str, statuses: str) -> str:
         return "\n".join(
             (
                 (
-                    (big_point if line.startswith("!!") else point) + line.removeprefix("!!")
+                    (big_point if line.startswith("!!") else point)
+                    + line.removeprefix("!!")
                 )
                 if not is_comment_line(line)
                 else remove_comment_prefix(line)
@@ -195,6 +170,7 @@ def markdown(text: str, statuses: str) -> str:
     return text
 
 
+# TODO упростить
 def rate_limit_requests(
     requests_count: int = 3,
     time_sec: int = 60,

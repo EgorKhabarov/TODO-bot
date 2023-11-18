@@ -1,6 +1,17 @@
 from todoapi.utils import sqlite_format_date
 
 queries = {
+    # Миграция chat.id группы в супергруппу
+    "update settings_migrate_chat_id": """
+UPDATE settings
+   SET user_id = :to_chat_id
+ WHERE user_id = :from_chat_id;
+    """,
+    "update events_migrate_chat_id": """
+UPDATE events
+   SET user_id = :to_chat_id
+ WHERE user_id = :from_chat_id;
+    """,
     # Дата для добавления события
     "select add_event_date": """
 SELECT add_event_date

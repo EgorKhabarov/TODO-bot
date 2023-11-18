@@ -1,3 +1,4 @@
+# noinspection PyPackageRequirements
 from contextvars import ContextVar
 
 from todoapi.api import User

@@ -5,7 +5,7 @@ import logging
 from sqlite3 import Error
 from typing import Literal
 from io import StringIO, BytesIO
-import xml.etree.ElementTree as xml
+import xml.etree.ElementTree as xml  # noqa
 
 from todoapi.queries import queries
 from todoapi.types import Event, UserSettings, Limit, db, export_cooldown
@@ -404,14 +404,12 @@ SELECT event_id,
         # Язык кода не может быть больше 6 символов
         if (
             len(statuses) > 5
-            or
-            max(
+            or max(
                 # Если длинна больше 6, то сумма булева значение и 3 будет больше 3
-                (3 + (len(s.removeprefix("💻")) > 6))
-                if s.startswith("💻")
-                else len(s)
+                (3 + (len(s.removeprefix("💻")) > 6)) if s.startswith("💻") else len(s)
                 for s in statuses
-            ) > 3
+            )
+            > 3
         ):
             return False, "Status Length Exceeded"
 
@@ -527,6 +525,7 @@ SELECT event_id,
             response, t = export_cooldown.check(self.user_id, False)
 
         if response:
+
             def export_csv() -> tuple[bool, StringIO | str]:
                 file = StringIO()
                 file.name = file_name
@@ -580,7 +579,13 @@ SELECT event_id,
 
                 tree = xml.ElementTree(xml_events)
                 xml.indent(tree, space="  ")
-                tree.write(file, encoding="UTF-8", method="xml", xml_declaration=False, short_empty_elements=False)
+                tree.write(
+                    file,
+                    encoding="UTF-8",
+                    method="xml",
+                    xml_declaration=False,
+                    short_empty_elements=False,
+                )
 
                 file.seek(0)
                 return True, file
@@ -603,7 +608,7 @@ SELECT event_id,
                         "event_id": event[0],
                         "date": event[1],
                         "status": event[2],
-                        "text": event[3]
+                        "text": event[3],
                     }
                     for event in table
                 )
@@ -611,11 +616,12 @@ SELECT event_id,
                 if file_format == "json":
                     file.write(json.dumps(d, indent=4, ensure_ascii=False))
                 else:
-                    file.writelines(json.dumps(line, ensure_ascii=False)+"\n" for line in d)
+                    file.writelines(
+                        json.dumps(line, ensure_ascii=False) + "\n" for line in d
+                    )
 
                 file.seek(0)
                 return True, file
-
 
             match file_format:
                 case "csv":

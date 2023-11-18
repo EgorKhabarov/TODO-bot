@@ -4,6 +4,7 @@ from sqlite3 import Error
 from typing import Literal
 from datetime import datetime, timedelta
 
+# noinspection PyPackageRequirements
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 
 from tgbot.bot import bot

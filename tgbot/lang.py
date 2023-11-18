@@ -1,5 +1,6 @@
 from typing import Any
 
+# noinspection PyPackageRequirements
 from telebot.types import BotCommand
 
 from tgbot.request import request
@@ -240,6 +241,18 @@ translation = {
         "restore_to_default": {
             "ru": "Настройки по умолчанию",
             "en": "Set default settings",
+        },
+        "migrate": {
+            "ru": """
+Группа (<code>{from_chat_id}</code>) обновилась до супергруппы (<code>{to_chat_id}</code>).
+<b>Из-за особенностей телеграма все предыдущие сообщения бота устарели и больше не могут быть использованы для взаимодействий с вашим аккаунтом.
+Вызовите новые сообщения командами.</b>
+""",
+            "en": """
+The group (<code>{from_chat_id}</code>) migrate into a supergroup (<code>{to_chat_id}</code>)
+<b>Due to the nature of Telegram, all previous bot messages are outdated and can no longer be used to interact with your account.
+Please call up new messages using commands.</b>
+""",
         },
     },
     "messages": {
@@ -786,7 +799,10 @@ Visibility <b>{}</b>m""",
                     BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
                     BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
                     BotCommand("dice", "Кинуть кубик"),
-                    BotCommand("export", "{format} Сохранить мои данные в формат. (csv, xml, json, jsonl)"),
+                    BotCommand(
+                        "export",
+                        "{format} Сохранить мои данные в формат. (csv, xml, json, jsonl)",
+                    ),
                     BotCommand("help", "Помощь"),
                     BotCommand("settings", "Настройки"),
                 ],
@@ -798,7 +814,10 @@ Visibility <b>{}</b>m""",
                     BotCommand("forecast", "{city} Weather forecast for 5 days"),
                     BotCommand("week_event_list", "Weekly events"),
                     BotCommand("dice", "Roll the dice (randomizer)"),
-                    BotCommand("export", "{format} Save my data in format. (csv, xml, json, jsonl)"),
+                    BotCommand(
+                        "export",
+                        "{format} Save my data in format. (csv, xml, json, jsonl)",
+                    ),
                     BotCommand("help", "Help"),
                     BotCommand("settings", "Settings"),
                 ],
@@ -813,7 +832,10 @@ Visibility <b>{}</b>m""",
                     BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
                     BotCommand("deleted", "Корзина"),
                     BotCommand("dice", "Кинуть кубик"),
-                    BotCommand("export", "{format} Сохранить мои данные в формат. (csv, xml, json, jsonl)"),
+                    BotCommand(
+                        "export",
+                        "{format} Сохранить мои данные в формат. (csv, xml, json, jsonl)",
+                    ),
                     BotCommand("help", "Помощь"),
                     BotCommand("settings", "Настройки"),
                 ],
@@ -826,7 +848,10 @@ Visibility <b>{}</b>m""",
                     BotCommand("week_event_list", "Weekly events"),
                     BotCommand("deleted", "Trash bin"),
                     BotCommand("dice", "Roll the dice (randomizer)"),
-                    BotCommand("export", "{format} Save my data in format. (csv, xml, json, jsonl)"),
+                    BotCommand(
+                        "export",
+                        "{format} Save my data in format. (csv, xml, json, jsonl)",
+                    ),
                     BotCommand("help", "Help"),
                     BotCommand("settings", "Settings"),
                 ],
@@ -841,7 +866,10 @@ Visibility <b>{}</b>m""",
                     BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
                     BotCommand("deleted", "Корзина"),
                     BotCommand("dice", "Кинуть кубик"),
-                    BotCommand("export", "{format} Сохранить мои данные в формат. (csv, xml, json, jsonl)"),
+                    BotCommand(
+                        "export",
+                        "{format} Сохранить мои данные в формат. (csv, xml, json, jsonl)",
+                    ),
                     BotCommand("help", "Помощь"),
                     BotCommand("settings", "Настройки"),
                     BotCommand(
@@ -859,7 +887,10 @@ Visibility <b>{}</b>m""",
                     BotCommand("week_event_list", "Weekly events"),
                     BotCommand("deleted", "Trash bin"),
                     BotCommand("dice", "Roll the dice (randomizer)"),
-                    BotCommand("export", "{format} Save my data in format. (csv, xml, json, jsonl)"),
+                    BotCommand(
+                        "export",
+                        "{format} Save my data in format. (csv, xml, json, jsonl)",
+                    ),
                     BotCommand("help", "Help"),
                     BotCommand("settings", "Settings"),
                     BotCommand("setuserstatus", "{id} {status} Change user status"),
@@ -1187,13 +1218,13 @@ Visibility <b>{}</b>m""",
             "ru": "🕸  Ничего не нашлось🕷  🕸",
             "en": "🕸  Nothing has found🕷  🕸",
         },
-        "get_admin_rules": {
-            "ru": "Пожалуйста, выдайте боту права администратора, чтобы сохранять чат в чистоте",
-            "en": "Please give the bot admin rights to keep the chat clean",
+        "get_permission": {
+            "ru": "Пожалуйста, выдайте боту <b>права удалять сообщения</b>, чтобы сохранять чат в чистоте",
+            "en": "Please give the bot <b>permission to delete messages</b> to keep the chat clean",
         },
         "delete_messages_older_48_h": {
-            "ru": "Из-за ограничений Telegram бот не может удалять сообщения старше 48 часов.",
-            "en": "Due to Telegram restrictions, the bot cannot delete messages older than 48 hours."
+            "ru": "Из-за ограничений Telegram бот не может удалять сообщения <b>старше 48 часов</b>.",
+            "en": "Due to Telegram restrictions, the bot cannot delete messages <b>older than 48 hours</b>.",
         },
         "weather_invalid_city_name": {
             "ru": "Ошибка. Несуществующее название города.\n"
@@ -1251,7 +1282,7 @@ Visibility <b>{}</b>m""",
 }
 
 
-def get_translate(target: str, lang_iso: str | None = None) -> Any:
+def get_translate(target: str, lang_iso: str | None = None) -> str | Any:
     """
     Взять перевод из файла lang.py c нужным языком
     """

@@ -5,8 +5,8 @@ from functools import wraps
 from threading import Thread
 
 import requests
-from telebot.apihelper import ApiTelegramException
-from telebot.types import CallbackQuery, Message, BotCommandScopeDefault
+from telebot.apihelper import ApiTelegramException  # noqa
+from telebot.types import CallbackQuery, Message, BotCommandScopeDefault  # noqa
 
 from tgbot import config
 from tgbot.queries import queries
@@ -15,15 +15,16 @@ from tgbot.lang import get_translate
 from tgbot.time_utils import now_time
 from tgbot.bot import bot, bot_log_info
 from tgbot.buttons_utils import delmarkup
+from tgbot.utils import poke_link, re_edit_message, rate_limit_requests
 from tgbot.handlers import command_handler, callback_handler, clear_state
 from tgbot.bot_actions import delete_message_action, confirm_changes_message
-from tgbot.utils import poke_link, re_edit_message, rate_limit_requests, msg_check
 from tgbot.bot_messages import search_message, notifications_message, settings_message
 from todoapi.api import User
 from todoapi.types import db
 from todoapi.logger import logging
 from todoapi.db_creator import create_tables
 from todoapi.utils import html_to_markdown, is_admin_id
+from telegram_utils.command_parser import command_regex
 
 create_tables()
 
@@ -31,15 +32,15 @@ logging.info(bot_log_info())
 
 bot.set_my_commands(get_translate("buttons.commands.0", "ru"), BotCommandScopeDefault())
 
+command_regex.set_username(bot.user.username)
+
 
 def check_user(func):
     @wraps(func)
     def check_argument(_x: Message | CallbackQuery):
         if isinstance(_x, Message):
-            if (
-                _x.chat.type != "private"
-                and _x.text.startswith("/")
-                and not msg_check.match(_x.text)
+            if _x.content_type != "migrate_to_chat_id" and (
+                _x.text.startswith("/") and not command_regex.match(_x.text)
             ):
                 return
         elif isinstance(_x, CallbackQuery):
@@ -57,10 +58,8 @@ def check_user(func):
         def wrapper(x: Message | CallbackQuery):
             if isinstance(x, Message):
                 chat_id = x.chat.id
-                if (
-                    _x.chat.type != "private"
-                    and _x.text.startswith("/")
-                    and not msg_check.match(_x.text)
+                if _x.content_type != "migrate_to_chat_id" and (
+                    _x.text.startswith("/") and not command_regex.match(_x.text)
                 ):
                     return
             elif isinstance(x, CallbackQuery):
@@ -82,6 +81,34 @@ def check_user(func):
         return wrapper(_x)
 
     return check_argument
+
+
+@bot.message_handler(content_types=["migrate_to_chat_id"], chat_types=["group"])
+@check_user
+def migrate_chat(message: Message):
+    logging.info(
+        f"[{message.chat.id:<10}][{request.user.settings.user_status}] "
+        f"migrate_to_chat_id {message.migrate_to_chat_id}"
+    )
+    params = {
+        "from_chat_id": message.chat.id,
+        "to_chat_id": message.migrate_to_chat_id,
+    }
+    db.execute(
+        queries["update settings_migrate_chat_id"],
+        params=params,
+        commit=True,
+    )
+    db.execute(
+        queries["update events_migrate_chat_id"],
+        params=params,
+        commit=True,
+    )
+    bot.send_message(
+        message.migrate_to_chat_id,
+        get_translate("text.migrate").format(**params),
+        reply_markup=delmarkup(),
+    )
 
 
 @bot.message_handler(commands=[*config.COMMANDS])
@@ -150,7 +177,7 @@ def processing_edit_message(message: Message):
         m.reply_to_message
         and m.reply_to_message.text
         and m.reply_to_message.text.startswith("⚙️")
-        and m.reply_to_message.from_user.id == bot.id
+        and m.reply_to_message.from_user.id == bot.user.id
     )
 )
 @check_user
@@ -161,7 +188,7 @@ def processing_edit_city_message(message: Message):
     """
     request.user.settings.log("send", "edit city")
 
-    if request.user.set_settings(city=message.text[:25])[0]:
+    if request.user.set_settings(city=message.text[:50])[0]:
         delete_message_action(message)
 
     generated = settings_message()
