@@ -6,7 +6,6 @@ from io import StringIO
 from sqlite3 import Error
 from ast import literal_eval
 
-from telebot.util import chunks  # noqa
 from telebot.apihelper import ApiTelegramException  # noqa
 from telebot.types import (  # noqa
     Message,
@@ -713,15 +712,14 @@ def callback_handler(
         if call_data.startswith("status_home_page"):
             sl = status.split(",")
             sl.extend([""] * (5 - len(sl)))
-            status_page_0 = list(get_translate("buttons.status page.0").items())
             markup = generate_buttons(
                 [
                     *[
                         {
                             f"{title}{config.callbackTab * 20}": f"{data}"
-                            for (title, data) in chunk
+                            for (title, data) in row
                         }
-                        for chunk in chunks(status_page_0, 2)
+                        for row in get_translate("buttons.status page.0")
                     ],
                     {
                         f"{i}"
