@@ -1112,6 +1112,11 @@ Visibility <b>{}</b>m""",
                         "💻json JSON",
                         "💻xml XML",
                     ),
+                    (
+                        "💻toml TOML",
+                        "💻ini INI",
+                        "💻csv CSV",
+                    ),
                 ),
                 "en": (
                     (
@@ -1145,6 +1150,11 @@ Visibility <b>{}</b>m""",
                         "💻yaml YAML",
                         "💻json JSON",
                         "💻xml XML",
+                    ),
+                    (
+                        "💻toml TOML",
+                        "💻ini INI",
+                        "💻csv CSV",
                     ),
                 ),
             },

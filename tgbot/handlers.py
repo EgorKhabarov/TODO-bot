@@ -712,6 +712,7 @@ def callback_handler(
         if call_data.startswith("status_home_page"):
             sl = status.split(",")
             sl.extend([""] * (5 - len(sl)))
+            buttons_data = get_translate("buttons.status page.0")
             markup = generate_buttons(
                 [
                     *[
@@ -719,7 +720,7 @@ def callback_handler(
                             f"{title}{config.callbackTab * 20}": f"{data}"
                             for (title, data) in row
                         }
-                        for row in get_translate("buttons.status page.0")
+                        for row in buttons_data
                     ],
                     {
                         f"{i}"
@@ -736,7 +737,8 @@ def callback_handler(
             )
         else:  # status page
             buttons_data = get_translate(
-                f"buttons.status page.{call_data.removeprefix('status page ')}"
+                f"buttons.status page."
+                + call_data.removeprefix("status page ")
             )
             markup = generate_buttons(
                 [
