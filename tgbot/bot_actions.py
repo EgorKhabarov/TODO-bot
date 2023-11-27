@@ -14,11 +14,7 @@ from tgbot.time_utils import DayInfo
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.utils import re_edit_message, highlight_text_difference
 from tgbot.message_generator import NoEventMessage, CallBackAnswer
-from tgbot.buttons_utils import (
-    delmarkup,
-    create_monthly_calendar_keyboard,
-    generate_buttons,
-)
+from tgbot.buttons_utils import delmarkup, create_monthly_calendar_keyboard
 from tgbot.bot_messages import (
     trash_can_message,
     search_message,
@@ -27,9 +23,10 @@ from tgbot.bot_messages import (
 )
 from todoapi.types import db
 from todoapi.utils import html_to_markdown, is_admin_id
+from telegram_utils.buttons_generator import generate_buttons
+
 
 re_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}")
-
 
 def delete_message_action(message: Message) -> None:
     try:
@@ -171,12 +168,14 @@ def confirm_changes_message(message: Message) -> None | int:
 
     markup = generate_buttons(
         [
-            {
-                f"{event_id} {text[:20]}{config.callbackTab * 20}": {
-                    "switch_inline_query_current_chat": edit_text
-                }
-            },
-            {"✖": "message_del"},
+            [
+                {
+                    f"{event_id} {text[:20]}{config.callbackTab * 20}": {
+                        "switch_inline_query_current_chat": edit_text
+                    }
+                },
+                {"✖": "message_del"},
+            ]
         ]
     )
 
@@ -224,11 +223,11 @@ def confirm_changes_message(message: Message) -> None | int:
             f"<i>{text_diff}</i>",
             reply_markup=generate_buttons(
                 [
-                    {
-                        get_theme_emoji("back"): "back",
-                        "📝": {"switch_inline_query_current_chat": edit_text},
-                        "✅": "confirm change",
-                    }
+                    [
+                        {get_theme_emoji("back"): "back"},
+                        {"📝": {"switch_inline_query_current_chat": edit_text}},
+                        {"✅": "confirm change"},
+                    ]
                 ]
             ),
         )
@@ -279,22 +278,24 @@ def before_move_message(
 
     pre_delmarkup = generate_buttons(
         [
-            {
-                f"❌ {delete_permanently}": f"{split_data} delete",
-                **(
-                    {f"🗑 {trash_bin}": f"{split_data} to_bin"}
-                    if is_wastebasket_available and not in_wastebasket
-                    else {}
-                ),
-            },
-            {
-                f"✏️📅 {edit_date}": "edit_event_date",
-            }
+            [
+                {f"❌ {delete_permanently}": f"{split_data} delete"},
+                {f"🗑 {trash_bin}": f"{split_data} to_bin"}
+                if is_wastebasket_available and not in_wastebasket
+                else {},
+            ],
+            [
+                {
+                    f"✏️📅 {edit_date}": "edit_event_date",
+                }
+            ]
             if not in_wastebasket
-            else {},
-            {
-                get_theme_emoji("back"): "back" if not in_wastebasket else "back bin",
-            },
+            else [],
+            [
+                {
+                    get_theme_emoji("back"): "back" if not in_wastebasket else "back bin",
+                }
+            ],
         ]
     )
 

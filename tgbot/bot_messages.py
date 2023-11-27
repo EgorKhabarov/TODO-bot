@@ -14,15 +14,11 @@ from tgbot.sql_utils import sqlite_format_date2
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.message_generator import EventMessageGenerator, NoEventMessage
 from tgbot.time_utils import convert_date_format, now_time
-from tgbot.buttons_utils import (
-    delmarkup,
-    generate_buttons,
-    edit_button_attrs,
-    create_monthly_calendar_keyboard,
-)
+from tgbot.buttons_utils import delmarkup, edit_button_attrs, create_monthly_calendar_keyboard
 from todoapi.api import User
 from todoapi.types import db
 from todoapi.utils import sqlite_format_date, is_valid_year
+from telegram_utils.buttons_generator import generate_buttons
 
 
 def search_message(
@@ -76,10 +72,10 @@ def search_message(
 
     delopenmarkup = generate_buttons(
         [
-            {
-                get_theme_emoji("del"): "message_del",
-                "↖️": "select event open",
-            }
+            [
+                {get_theme_emoji("del"): "message_del"},
+                {"↖️": "select event open"},
+            ]
         ]
     )
     generated = EventMessageGenerator(reply_markup=delopenmarkup, page=page)
@@ -189,15 +185,15 @@ def trash_can_message(
 
     markup = generate_buttons(
         [
-            {
-                "✖": "message_del",
-                f"❌ {delete_permanently_translate}": "select event move bin",
-            },
-            {
-                "🔄": "update",
-                f"↩️ {recover_translate}": "select event recover bin",
-            },
-            {f"🧹 {clean_bin_translate}": "clean_bin"},
+            [
+                {"✖": "message_del"},
+                {f"❌ {delete_permanently_translate}": "select event move bin"},
+            ],
+            [
+                {"🔄": "update"},
+                {f"↩️ {recover_translate}": "select event recover bin"},
+            ],
+            [{f"🧹 {clean_bin_translate}": "clean_bin"}],
         ]
     )
 
@@ -249,18 +245,18 @@ def daily_message(
 
     markup = generate_buttons(
         [
-            {
-                get_theme_emoji("add"): "event_add",
-                "📝": "select event edit",
-                "🚩": "select event status",
-                "🔀": "select event move",
-            },
-            {
-                get_theme_emoji("back"): "calendar",
-                "<": yesterday,
-                ">": tomorrow,
-                "🔄": "update",
-            },
+            [
+                {get_theme_emoji("add"): "event_add"},
+                {"📝": "select event edit"},
+                {"🚩": "select event status"},
+                {"🔀": "select event move"},
+            ],
+            [
+                {get_theme_emoji("back"): "calendar"},
+                {"<": yesterday},
+                {">": tomorrow},
+                {"🔄": "update"},
+            ],
         ]
     )
     generated = EventMessageGenerator(date, reply_markup=markup, page=page)
@@ -487,7 +483,7 @@ AND
 )
 """
     backopenmarkup = generate_buttons(
-        [{get_theme_emoji("back"): "back", "↖️": "select event open"}]
+        [[{get_theme_emoji("back"): "back"}, {"↖️": "select event open recurring"}]]
     )
     generated = EventMessageGenerator(date, reply_markup=backopenmarkup, page=page)
 
@@ -566,17 +562,17 @@ def settings_message() -> NoEventMessage:
     )
     markup = generate_buttons(
         [
-            {
-                f"🗣 {settings.lang}": f"settings lang {not_lang}",
-                f"🔗 {bool(settings.sub_urls)}": f"settings sub_urls {not_sub_urls}",
-                f"{not_direction_smile}": f"settings direction {not_direction_sql}",
-                f"{not_notifications_[0]}": f"settings notifications {not_notifications_[1]}",
-                f"{not_theme[0]}": f"settings theme {not_theme[1]}",
-            },
-            time_zone_dict,
-            notifications_time,
-            {get_translate("text.restore_to_default"): "restore_to_default"},
-            {get_theme_emoji("del"): "message_del"},
+            [
+                {f"🗣 {settings.lang}": f"settings lang {not_lang}"},
+                {f"🔗 {bool(settings.sub_urls)}": f"settings sub_urls {not_sub_urls}"},
+                {f"{not_direction_smile}": f"settings direction {not_direction_sql}"},
+                {f"{not_notifications_[0]}": f"settings notifications {not_notifications_[1]}"},
+                {f"{not_theme[0]}": f"settings theme {not_theme[1]}"},
+            ],
+            [{k: v} for k, v in time_zone_dict.items()],
+            [{k: v} for k, v in notifications_time.items()],
+            [{get_translate("text.restore_to_default"): "restore_to_default"}],
+            [{get_theme_emoji("del"): "message_del"}],
         ]
     )
 
@@ -586,12 +582,14 @@ def settings_message() -> NoEventMessage:
 def start_message() -> NoEventMessage:
     markup = generate_buttons(
         [
-            {"/calendar": "/calendar"},
-            {
-                get_translate("text.add_bot_to_group"): {
-                    "url": f"https://t.me/{bot.user.username}?startgroup=AddGroup"
-                }
-            },
+            [{"/calendar": "/calendar"}],
+            [
+                {
+                    get_translate("text.add_bot_to_group"): {
+                        "url": f"https://t.me/{bot.user.username}?startgroup=AddGroup"
+                    }
+                },
+            ]
         ]
     )
     text = get_translate("messages.start")

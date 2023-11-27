@@ -36,7 +36,6 @@ from tgbot.bot_actions import (
 )
 from tgbot.buttons_utils import (
     create_monthly_calendar_keyboard,
-    generate_buttons,
     delmarkup,
     edit_button_attrs,
     create_yearly_calendar_keyboard,
@@ -74,6 +73,7 @@ from todoapi.utils import (
     isdigit,
 )
 from telegram_utils.command_parser import parse_command
+from telegram_utils.buttons_generator import generate_buttons
 
 
 def command_handler(message: Message) -> None:
@@ -489,7 +489,7 @@ def callback_handler(
         CallBackAnswer(text).answer(call_id)
 
         text = f"{message.html_text}\n\n<b>?.?.</b>⬜\n{text}"
-        backmarkup = generate_buttons([{get_theme_emoji("back"): "back"}])
+        backmarkup = generate_buttons([[{get_theme_emoji("back"): "back"}]])
         bot.edit_message_text(text, chat_id, message_id, reply_markup=backmarkup)
 
     elif call_data == "/calendar":
@@ -524,7 +524,7 @@ def callback_handler(
 
     elif call_data.startswith("select event "):
         # action: Literal["edit", "status", "delete", "delete bin", "recover bin", "open"]
-        action: str = call_data[13:]
+        action: str = call_data.removeprefix("select event ")
 
         events_list = parse_message(message_text)
         msg_date = message_text[:10]
@@ -542,7 +542,7 @@ def callback_handler(
                 update_message_action(message_id, message.html_text)
                 return
 
-            if action in ("status", "move", "move bin", "recover bin", "open"):
+            if action in ("status", "move", "move bin", "recover bin") or action.startswith("open"):
                 match action:
                     case "status":
                         new_call_data = (
@@ -610,7 +610,7 @@ def callback_handler(
 
                 button = InlineKeyboardButton(button_title, callback_data=callback_data)
 
-            elif action == "open":
+            elif action.startswith("open"):
                 callback_data = f"{event.date}"
                 button = InlineKeyboardButton(button_title, callback_data=callback_data)
 
@@ -625,7 +625,9 @@ def callback_handler(
 
         match action:
             case "open":
-                back_data = "recurring"
+                back_data = "back"
+            case x if x.startswith("open "):
+                back_data = x.removeprefix("open ")
             case x if x.endswith("bin"):
                 back_data = "back bin"
             case _:
@@ -661,10 +663,10 @@ def callback_handler(
             first_line = message.text.split("\n", maxsplit=1)[0]
             query = first_line.split(maxsplit=2)[-1][:-1]
             translate_search = get_translate("messages.search")
-            choose_event = get_translate("select.event")
+            choose_event = get_translate("select.event_to_open")
             text = f"🔍 {translate_search} {html.escape(query)}:\n{choose_event}"
 
-        elif action == "open":
+        elif action.startswith("open"):
             event_to_open = get_translate("select.event_to_open")
             text = f"{msg_date}\n{event_to_open}"  # ↖️
 
@@ -716,23 +718,25 @@ def callback_handler(
             markup = generate_buttons(
                 [
                     *[
-                        {
-                            f"{title}{config.callbackTab * 20}": f"{data}"
+                        [
+                            {f"{title}{config.callbackTab * 20}": f"{data}"}
                             for (title, data) in row
-                        }
+                        ]
                         for row in buttons_data
                     ],
-                    {
-                        f"{i}"
-                        if i
-                        else " " * n: f"status delete {i} {event_id} {event_date}"
-                        if i
-                        else "None"
+                    [
+                        {
+                            f"{i}"
+                            if i
+                            else " " * n: f"status delete {i} {event_id} {event_date}"
+                            if i
+                            else "None"
+                        }
                         for n, i in enumerate(sl)
-                    }
+                    ]
                     if status != "⬜️"
-                    else {},
-                    {get_theme_emoji("back"): "back"},
+                    else [],
+                    [{get_theme_emoji("back"): "back"}],
                 ]
             )
         else:  # status page
@@ -743,31 +747,26 @@ def callback_handler(
             markup = generate_buttons(
                 [
                     *[
-                        {
-                            f"{row}{config.callbackTab * 20}": (
-                                f"status set "
-                                f"{row.split(maxsplit=1)[0]} "
-                                f"{event_id} "
-                                f"{event_date}"
-                            )
+                        [
+                            {
+                                f"{row}{config.callbackTab * 20}": (
+                                    f"status set "
+                                    f"{row.split(maxsplit=1)[0]} "
+                                    f"{event_id} "
+                                    f"{event_date}"
+                                )
+                            }
                             for row in status_column
-                        }
-                        if len(status_column) > 1
-                        else {
-                            f"{status_column[0]}{config.callbackTab * 20}": (
-                                f"status set "
-                                f"{status_column[0].split(maxsplit=1)[0]} "
-                                f"{event_id} "
-                                f"{event_date}"
-                            )
-                        }
+                        ]
                         for status_column in buttons_data
                     ],
-                    {
-                        get_theme_emoji(
-                            "back"
-                        ): f"status_home_page {event_id} {event_date}"
-                    },
+                    [
+                        {
+                            get_theme_emoji(
+                                "back"
+                            ): f"status_home_page {event_id} {event_date}"
+                        },
+                    ],
                 ]
             )
 

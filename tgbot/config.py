@@ -41,11 +41,12 @@ COMMANDS = (
     "deleteuser",
     "idinfo",
     "commands",
+    "menu",
 )
 callbackTab = "⠀⠀⠀"  # Специальные прозрачные символы для заполнения
 
 
-__version__ = "22.11.2023"
+__version__ = "27.11.2023"
 __autor__ = "EgorKhabarov"
 
 bot_settings = """

@@ -3,7 +3,7 @@ from typing import Any, Literal, TypeAlias
 from datetime import datetime
 
 
-__data_types: TypeAlias = Literal["str", "int", "float", "date", "long str"]
+_data_types: TypeAlias = Literal["str", "int", "float", "date", "long str"]
 
 
 class __CommandRegex:
@@ -12,7 +12,7 @@ class __CommandRegex:
         self.__regex = None
         self.set_username()
 
-    def set_username(self, raw_bot_username: str | None = None):
+    def set_username(self, raw_bot_username: str | None = None) -> None:
         self.username = (
             re.escape(raw_bot_username) if raw_bot_username else "[a-zA-Z0-9_]{5,32}"
         )
@@ -32,7 +32,7 @@ class __CommandRegex:
 command_regex = __CommandRegex()
 
 
-def get_command_arguments(message: str, **kwargs: str | tuple[str, Any]) -> dict:
+def get_command_arguments(message: str, **kwargs: str | tuple[str, Any]) -> dict[str, Any]:
     """
     >>> try:
     ...     get_command_arguments("/c@namebot arg1 arg2", arg1="long str", arg2="str")
@@ -103,7 +103,7 @@ def get_command_arguments(message: str, **kwargs: str | tuple[str, Any]) -> dict
 
 def parse_command(
     message: str, **kwargs: str | tuple[str, Any]
-) -> dict[str:str, str:str, str:dict]:
+) -> dict[str, str | dict]:
     """
     >>> try:
     ...     parse_command("/c@namebot arg1 arg2", arg1="long str", arg2="str")
@@ -151,7 +151,7 @@ def parse_command(
 
 
 def __process_value(
-    arg_type: __data_types, value: str, default: Any = None
+    arg_type: _data_types, value: str, default: Any = None
 ) -> str | int | float | None | datetime:
     match arg_type:
         case "str":

@@ -229,10 +229,6 @@ def add_event_handler(message: Message):
         queries["select add_event_date"], params=(request.chat_id,)
     )[0][0].split(",")[0]
 
-    # Если сообщение команда, то проигнорировать
-    if markdown_text.split()[0].split("@")[0][1:] in config.COMMANDS:
-        return
-
     # Если сообщение длиннее 3800 символов, то ошибка
     if len(markdown_text) >= 3800:
         message_is_too_long = get_translate("errors.message_is_too_long")

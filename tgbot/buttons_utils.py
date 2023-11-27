@@ -9,44 +9,7 @@ from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.time_utils import new_time_calendar, year_info, now_time, get_week_number
 from todoapi.types import db
 from todoapi.utils import is_valid_year
-
-
-def generate_buttons(buttons_data: list[dict]) -> InlineKeyboardMarkup:
-    """
-    Генерация клавиатуры из списка словарей
-
-    Два ряда по 2 кнопке c callback_data в каждом ряду
-    markup = generate_buttons([
-        {"Кнопка 1": "button data 1", Кнопка 2": "button data 2"}
-        {"Кнопка 3": "button data 3", Кнопка 4": "button data 4"}])
-
-    Пример с другими аргументами
-    markup = generate_buttons([{"Ссылка": {"url": "https://example.com"}}])
-
-    Поддерживаются:
-    url, callback_data, switch_inline_query, switch_inline_query_current_chat
-
-    Не поддерживается:
-    web_app, callback_game, pay, login_url
-    """
-    keyboard = [
-        [
-            InlineKeyboardButton(text=text, callback_data=data)
-            if isinstance(data, str)
-            else InlineKeyboardButton(
-                text=text,
-                url=data.get("url"),
-                callback_data=data.get("callback_data"),
-                switch_inline_query=data.get("switch_inline_query"),
-                switch_inline_query_current_chat=data.get(
-                    "switch_inline_query_current_chat"
-                ),
-            )
-            for text, data in row.items()
-        ]
-        for row in buttons_data
-    ]
-    return InlineKeyboardMarkup(keyboard=keyboard)
+from telegram_utils.buttons_generator import generate_buttons
 
 
 def create_monthly_calendar_keyboard(
@@ -206,24 +169,30 @@ def create_yearly_calendar_keyboard(
 
     month_buttons = []
     for row in months:
-        month_buttons.append({})
+        month_buttons.append([])
         for nameM, numm in row:
             tag_today = "#" if numm == now_month else ""
             x = month_list.get(numm)
             tag_event = (number_to_power(x) if x < 1000 else "*") if x else ""
             tag_birthday = "!" if (numm in every_year or every_month) else ""
-            month_buttons[-1][
-                f"{tag_today}{nameM}{tag_event}{tag_birthday}"
-            ] = f"calendar_m ({command},{back},({YY},{numm}))"
+            month_buttons[-1].append(
+                {
+                    f"{tag_today}{nameM}{tag_event}{tag_birthday}": (
+                        f"calendar_m ({command},{back},({YY},{numm}))"
+                    )
+                }
+            )
 
     markup = generate_buttons(
         [
-            {f"{YY} ({year_info(YY)})": f"calendar_t ({command},{back},{str(YY)[:3]})"},
+            [
+                {f"{YY} ({year_info(YY)})": f"calendar_t ({command},{back},{str(YY)[:3]})"}
+            ],
             *month_buttons,
-            {
-                text: f"calendar_y ({command},{back},{year})"
+            [
+                {text: f"calendar_y ({command},{back},{year})"}
                 for text, year in {"<<": YY - 1, "⟳": "'now'", ">>": YY + 1}.items()
-            },
+            ]
         ]
     )
 
@@ -281,31 +250,39 @@ def create_twenty_year_calendar_keyboard(
 
     years_buttons = []
     for row in years:
-        years_buttons.append({})
+        years_buttons.append([])
         for nameM, numY in row:
             if not is_valid_year(numY):
-                years_buttons[-1][" " * (int(str(numY)[-1]) or 11)] = "None"
+                years_buttons[-1].append(
+                    {
+                        " " * (int(str(numY)[-1]) or 11): "None"
+                    }
+                )
                 continue
 
             tag_today = "#" if numY == now_year else ""
             x = year_list.get(numY)
             tag_event = (number_to_power(x) if x < 1000 else "*") if x else ""
             tag_birthday = "!" if every_year else ""
-            years_buttons[-1][
-                f"{tag_today}{numY}{tag_event}{tag_birthday}"
-            ] = f"calendar_y ({command},{back},{numY})"
+            years_buttons[-1].append(
+                {
+                    f"{tag_today}{numY}{tag_event}{tag_birthday}": (
+                        f"calendar_y ({command},{back},{numY})"
+                    )
+                }
+            )
 
     markup = generate_buttons(
         [
             *years_buttons,
-            {
-                text: f"calendar_t ({command},{back},{year})"
+            [
+                {text: f"calendar_t ({command},{back},{year})"}
                 for text, year in {
                     "<<": str(int(f"{millennium}{decade}") - 2)[:3],
                     "⟳": "'now'",
                     ">>": str(int(f"{millennium}{decade}") + 2)[:3],
                 }.items()
-            },
+            ]
         ]
     )
 
@@ -326,7 +303,7 @@ def edit_button_attrs(
 
 
 def delmarkup() -> InlineKeyboardMarkup:
-    return generate_buttons([{get_theme_emoji("del"): "message_del"}])
+    return generate_buttons([[{get_theme_emoji("del"): "message_del"}]])
 
 
 def number_to_power(string: str) -> str:
