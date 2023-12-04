@@ -10,7 +10,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.lang import get_translate
-from tgbot.utils import markdown, days_before_event
+from tgbot.utils import add_status_effect, days_before_event
 from tgbot.sql_utils import sqlite_format_date, pagination
 from tgbot.time_utils import now_time_strftime, DayInfo
 from todoapi.types import db, Event
@@ -238,7 +238,7 @@ SELECT event_id,
                         nums=f"{num + 1}️⃣",  # создание смайлика с цифрой
                         event_id=f"{event.event_id}",
                         status=event.status,
-                        markdown_text=markdown(event.text, event.status)
+                        markdown_text=add_status_effect(event.text, event.status)
                         if "{markdown_text" in args
                         else "",
                         days_before=f"<b>({dbd})</b>"

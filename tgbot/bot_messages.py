@@ -17,8 +17,23 @@ from tgbot.time_utils import convert_date_format, now_time
 from tgbot.buttons_utils import delmarkup, edit_button_attrs, create_monthly_calendar_keyboard
 from todoapi.api import User
 from todoapi.types import db
-from todoapi.utils import sqlite_format_date, is_valid_year
+from todoapi.utils import sqlite_format_date, is_valid_year, is_admin_id
 from telegram_utils.buttons_generator import generate_buttons
+
+
+def menu_message():
+    return NoEventMessage(
+        text="Меню",
+        reply_markup=generate_buttons(
+            [
+                [{"👤 Аккаунт": "None"}],  # авторизация, вход, выход
+                [{"👥 Группы": "None"}],  # список групп с настройками
+                [{"📊 Лимиты": "None"}],
+                [{"⚙️ Настройки": "None"}],
+                [{"😎 Админская": "None"}] if is_admin_id(request.user.user_id) else [],
+            ],
+        ),
+    )
 
 
 def search_message(
@@ -47,12 +62,13 @@ def search_message(
         )
     TODO шаблоны для поиска
     """
+    query = query.replace("\n", " ").replace("--", "").strip()
     translate_search = get_translate("messages.search")
 
     if query.isspace():
         generated = EventMessageGenerator(reply_markup=delmarkup())
         generated.format(
-            title=f"🔍 {translate_search} {html.escape(query.strip())}:\n",
+            title=f"🔍 {translate_search} {html.escape(query).strip()}:\n",
             if_empty=get_translate("errors.request_empty"),
         )
         return generated
@@ -74,6 +90,7 @@ def search_message(
         [
             [
                 {get_theme_emoji("del"): "message_del"},
+                {"🔄": "update"},
                 {"↖️": "select event open"},
             ]
         ]
@@ -186,7 +203,7 @@ def trash_can_message(
     markup = generate_buttons(
         [
             [
-                {"✖": "message_del"},
+                {get_theme_emoji("del"): "message_del"},
                 {f"❌ {delete_permanently_translate}": "select event move bin"},
             ],
             [
@@ -408,7 +425,8 @@ AND
                 generated.get_data(
                     WHERE=WHERE,
                     column="DAYS_BEFORE_EVENT(date, status), "
-                    "status LIKE '%📬%', status LIKE '%🗞%',status LIKE '%📅%', status LIKE '%📆%', status LIKE '%🎉%', status LIKE '%🎊%'",
+                    "status LIKE '%📬%', status LIKE '%🗞%', status LIKE '%📅%',"
+                    "status LIKE '%📆%', status LIKE '%🎉%', status LIKE '%🎊%'",
                     direction="ASC",
                 )
 

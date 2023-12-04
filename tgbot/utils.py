@@ -26,10 +26,10 @@ from todoapi.utils import is_admin_id, isdigit
 
 re_edit_message = re.compile(r"\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)")
 re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
-re_setuserstatus = re.compile(r"\A(-?\d+) (-1|0|1|2)\Z")
+link_sub = re.compile(r"<a href=\"(.+?)\">(.+?)(\n*?)</a>")
 
 
-def markdown(text: str, statuses: str) -> str:
+def add_status_effect(text: str, statuses: str) -> str:
     """
     Добавляем эффекты к событию по статусу
     """
@@ -487,7 +487,7 @@ def write_table_to_str(
 
     # Матрица максимальных длин и высот каждого столбца и строки
     w = [
-        [max(len(line) for line in str(column).splitlines()) for column in row]
+        [max(len(line) for line in str(column or " ").splitlines()) for column in row]
         for row in table
     ]
 
@@ -635,3 +635,32 @@ def days_before_event(event_date: str, event_status: str) -> tuple[int, str, str
 
     day = DayInfo(f"{min(dates):%d.%m.%Y}")
     return day.day_diff, day.date, day.relatively_date
+
+
+def html_to_markdown(html_text: str) -> str:
+    for (k1, k2), v in {
+        ("<i>", "</i>"): "__",
+        ("<b>", "</b>"): "**",
+        ("<s>", "</s>"): "~~",
+        ("<pre>", "</pre>"): "```",
+        ("<code>", "</code>"): "`",
+        ('<span class="tg-spoiler">', "</span>"): "||",
+    }.items():
+        html_text = html_text.replace(k1, v).replace(k2, v)
+
+    def prepare_url(url) -> str:
+        url = url.removeprefix("http://").removeprefix("https://")
+        url = url.strip().strip("/").strip("\\")
+        return f"https://{url}"
+
+    def replace_url(m: re.Match) -> str:
+        url = prepare_url(m.group(1))
+        caption = m.group(2).strip()
+
+        condition = caption != urlparse(m.group(1)).netloc
+        text = f" ({caption})" if condition else ""
+
+        return f"{url}{text}{m.group(3)}"
+
+    html_text = html.unescape(link_sub.sub(replace_url, html_text))
+    return html_text

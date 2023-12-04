@@ -12,7 +12,7 @@ from tgbot.queries import queries
 from tgbot.request import request
 from tgbot.time_utils import DayInfo
 from tgbot.lang import get_translate, get_theme_emoji
-from tgbot.utils import re_edit_message, highlight_text_difference
+from tgbot.utils import re_edit_message, highlight_text_difference, html_to_markdown
 from tgbot.message_generator import NoEventMessage, CallBackAnswer
 from tgbot.buttons_utils import delmarkup, create_monthly_calendar_keyboard
 from tgbot.bot_messages import (
@@ -22,7 +22,7 @@ from tgbot.bot_messages import (
     week_event_list_message,
 )
 from todoapi.types import db
-from todoapi.utils import html_to_markdown, is_admin_id
+from todoapi.utils import is_admin_id
 from telegram_utils.buttons_generator import generate_buttons
 
 
@@ -71,7 +71,8 @@ def press_back_action(
 
     elif message_text.startswith("🔍 "):  # Поиск
         first_line = message_text.split("\n", maxsplit=1)[0]
-        query = first_line.split(maxsplit=2)[-1][:-1]
+        raw_query = first_line.split(maxsplit=2)[-1][:-1]
+        query = html.unescape(raw_query)
         generated = search_message(query)
         generated.edit(chat_id, message_id)
 
@@ -96,7 +97,8 @@ def update_message_action(
     settings, chat_id = request.user.settings, request.chat_id
     if message_text.startswith("🔍 "):  # Поиск
         first_line = message_text.split("\n", maxsplit=1)[0]
-        query = first_line.split(maxsplit=2)[-1][:-1]
+        raw_query = first_line.split(maxsplit=2)[-1][:-1]
+        query = html.unescape(raw_query)
         generated = search_message(query)
 
     elif message_text.startswith("📆"):  # Если /week_event_list
@@ -132,10 +134,7 @@ def confirm_changes_message(message: Message) -> None | int:
     """
     user, chat_id = request.user, request.chat_id
 
-    if message.entities:
-        markdown_text = html.unescape(html_to_markdown(message.html_text))
-    else:
-        markdown_text = message.html_text
+    markdown_text = html_to_markdown(message.html_text)
 
     event_id, message_id = re_edit_message.findall(markdown_text)[0]
     event_id, message_id = int(event_id), int(message_id)

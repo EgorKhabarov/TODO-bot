@@ -42,6 +42,7 @@ from tgbot.buttons_utils import (
     create_twenty_year_calendar_keyboard,
 )
 from tgbot.bot_messages import (
+    menu_message,
     search_message,
     week_event_list_message,
     trash_can_message,
@@ -58,22 +59,20 @@ from tgbot.utils import (
     fetch_weather,
     fetch_forecast,
     write_table_to_str,
-    markdown,
+    add_status_effect,
     is_secure_chat,
     parse_message,
-    re_setuserstatus,
     re_call_data_date,
+    html_to_markdown,
 )
 from todoapi.types import db, UserSettings
 from todoapi.utils import (
     is_admin_id,
     is_premium_user,
     is_valid_year,
-    html_to_markdown,
-    isdigit,
 )
-from telegram_utils.command_parser import parse_command
 from telegram_utils.buttons_generator import generate_buttons
+from telegram_utils.command_parser import parse_command, get_command_arguments
 
 
 def command_handler(message: Message) -> None:
@@ -84,8 +83,14 @@ def command_handler(message: Message) -> None:
     """
     user, chat_id = request.user, request.chat_id
     settings, message_text = user.settings, message.text
+    parsed_command = parse_command(message_text, {"arg": "long str"})
+    command_text, command_arguments = parsed_command["command"], parsed_command["arguments"]
 
-    if message_text.startswith("/calendar"):
+    if command_text == "/menu":
+        generated = menu_message()
+        generated.send(chat_id)
+
+    elif message_text.startswith("/calendar"):
         generated = monthly_calendar_message()
         generated.send(chat_id)
 
@@ -107,10 +112,11 @@ def command_handler(message: Message) -> None:
         generated = week_event_list_message()
         generated.send(chat_id)
 
-    elif message_text.startswith("/weather") or message_text.startswith("/forecast"):
+    elif command_text in ("weather", "forecast"):
         # Проверяем есть ли аргументы
-        command = parse_command(message_text, city=("long str", settings.city))
-        command_text, nowcity = command["command"], command["arguments"]["city"]
+        nowcity = get_command_arguments(
+            message_text, {"city": ("long str", settings.city)}
+        )["city"]
 
         try:
             if command_text == "weather":
@@ -127,8 +133,10 @@ def command_handler(message: Message) -> None:
         generated.send(chat_id)
 
     elif message_text.startswith("/search"):
-        text = message.html_text.removeprefix("/search").strip()
-        query = html_to_markdown(text).replace("\n", " ").replace("--", "")
+        html_text = get_command_arguments(
+            message.html_text, {"query": ("long str", "")}
+        )["query"]
+        query = html_to_markdown(html_text)
         generated = search_message(query)
         generated.send(chat_id)
 
@@ -183,17 +191,12 @@ def command_handler(message: Message) -> None:
 
     elif message_text.startswith("/SQL ") and is_secure_chat(message):
         # Выполнение запроса от админа к базе данных и красивый вывод результатов
-        if message.entities:
-            markdown_text = html.unescape(html_to_markdown(message.html_text))
-        else:
-            markdown_text = message.html_text
-
-        query = markdown_text[5:].strip()
+        query = html_to_markdown(message.html_text.removeprefix("/SQL ")).strip()
 
         if not query.lower().startswith("select"):
             bot.send_chat_action(chat_id, "typing")
             try:
-                db.execute(query, commit=message_text.endswith("\n--commit=True"))
+                db.execute(query.removesuffix("\nCOMMIT"), commit=query.endswith("\nCOMMIT"))
             except Error as e:
                 NoEventMessage(f'Error "{e}"').reply(message)
             else:
@@ -223,7 +226,9 @@ def command_handler(message: Message) -> None:
         notifications_message([chat_id], from_command=True)
 
     elif message_text.startswith("/export"):
-        file_format = message_text.removeprefix("/export").strip() or "csv"
+        file_format = get_command_arguments(
+            message_text, {"format": ("str", "csv")}
+        )["format"].strip()
 
         if file_format not in ("csv", "xml", "json", "jsonl"):
             NoEventMessage(get_translate("errors.export_format")).reply(message)
@@ -257,12 +262,12 @@ def command_handler(message: Message) -> None:
         NoEventMessage(f"Version {config.__version__}").send(chat_id)
 
     elif message_text.startswith("/setuserstatus") and is_secure_chat(message):
-        message_text = message_text.removeprefix("/setuserstatus ")
-        input_id_status = re_setuserstatus.findall(message_text)
-        if input_id_status:
-            # TODO разобраться chat_id или user_id
-            user_id, user_status = [int(x) for x in input_id_status[0]]
+        arguments = get_command_arguments(
+            message_text, {"id": "int", "status": "int"}
+        )
 
+        user_id, user_status = arguments["id"], arguments["status"]
+        if user_id and user_status:
             api_response = user.set_user_status(user_id, user_status)
 
             if api_response[0]:
@@ -301,8 +306,10 @@ SyntaxError
         NoEventMessage(text).reply(message)
 
     elif message_text.startswith("/idinfo ") and is_secure_chat(message):
-        if len(message_text.split(" ")) == 2:
-            user_id = int(message_text.removeprefix("/idinfo "))
+        user_id = get_command_arguments(
+            message_text, {"id": "int"}
+        )["id"]
+        if user_id:
             _settings = UserSettings(user_id)
             chat = bot.get_chat(user_id)
             text = f"""
@@ -352,13 +359,15 @@ SyntaxError
             NoEventMessage(f"Chat id <code>{chat_id}</code>").reply(message)
 
     elif message_text.startswith("/deleteuser") and is_admin_id(chat_id):
-        user_id = message_text.removeprefix("/deleteuser ").strip()
+        user_id = get_command_arguments(
+            message_text, {"id": "int"}
+        )["id"]
 
-        if not isdigit(user_id):
+        if not user_id:
             NoEventMessage("SyntaxError\n/deleteuser {id}").send(chat_id)
             return
 
-        api_response = user.delete_user(int(user_id))
+        api_response = user.delete_user(user_id)
 
         if api_response[0]:
             text = "Пользователь успешно удалён"
@@ -491,6 +500,10 @@ def callback_handler(
         text = f"{message.html_text}\n\n<b>?.?.</b>⬜\n{text}"
         backmarkup = generate_buttons([[{get_theme_emoji("back"): "back"}]])
         bot.edit_message_text(text, chat_id, message_id, reply_markup=backmarkup)
+
+    elif call_data == "menu":
+        generated = menu_message()
+        generated.send(chat_id)
 
     elif call_data == "/calendar":
         generated = monthly_calendar_message()
@@ -661,10 +674,11 @@ def callback_handler(
 
         elif message_text.startswith("🔍 "):
             first_line = message.text.split("\n", maxsplit=1)[0]
-            query = first_line.split(maxsplit=2)[-1][:-1]
+            raw_query = first_line.split(maxsplit=2)[-1][:-1]
+            query = html.escape(raw_query)
             translate_search = get_translate("messages.search")
             choose_event = get_translate("select.event_to_open")
-            text = f"🔍 {translate_search} {html.escape(query)}:\n{choose_event}"
+            text = f"🔍 {translate_search} {query}:\n{choose_event}"
 
         elif action.startswith("open"):
             event_to_open = get_translate("select.event_to_open")
@@ -774,7 +788,7 @@ def callback_handler(
             f"{event_date}\n"
             f"<b>{get_translate('select.status_to_event')}\n"
             f"{event_date}.{event_id}.{status}</b>\n"
-            f"{markdown(text, status)}",
+            f"{add_status_effect(text, status)}",
             chat_id,
             message_id,
             reply_markup=markup,
@@ -906,7 +920,8 @@ def callback_handler(
         try:
             if message_text.startswith("🔍 "):  # Поиск
                 first_line = message.text.split("\n", maxsplit=1)[0]
-                query = first_line.split(maxsplit=2)[-1][:-1]
+                raw_query = first_line.split(maxsplit=2)[-1][:-1]
+                query = html.escape(raw_query)
                 generated = search_message(query, id_list, int(page))
                 generated.edit(chat_id, message_id, markup=message.reply_markup)
 
@@ -955,7 +970,7 @@ def callback_handler(
 
             elif message_text.startswith("🔔"):  # Будильник
                 notifications_message(
-                    [chat_id], id_list, int(page), message_id, message.reply_markup
+                    [chat_id], id_list, int(page), message_id, message.reply_markup, True
                 )
 
         except ApiTelegramException:

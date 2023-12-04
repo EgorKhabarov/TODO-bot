@@ -1,6 +1,7 @@
 import re
 from typing import Any, Literal, TypeAlias
-from datetime import datetime
+
+from telegram_utils.argument_parser import get_arguments
 
 
 _data_types: TypeAlias = Literal["str", "int", "float", "date", "long str"]
@@ -32,145 +33,90 @@ class __CommandRegex:
 command_regex = __CommandRegex()
 
 
-def get_command_arguments(message: str, **kwargs: str | tuple[str, Any]) -> dict[str, Any]:
+def get_command_arguments(message: str, arguments: dict[str, str | tuple[str, Any]]) -> dict[str, Any]:
     """
-    >>> try:
-    ...     get_command_arguments("/c@namebot arg1 arg2", arg1="long str", arg2="str")
-    ... except SyntaxError as e:
-    ...     str(e)
+    >>> try: get_command_arguments("", {"arg1": "long str", "arg2": "str"})
+    ... except SyntaxError as e: str(e)
     'parameter after or before "long str"'
-    >>> try:
-    ...     get_command_arguments("/c@namebot arg1 arg2", arg1="long str", arg2="long str")
-    ... except SyntaxError as e:
-    ...     str(e)
+    >>> try: get_command_arguments("", {"arg1": "long str", "arg2": "long str"})
+    ... except SyntaxError as e: str(e)
     'multiple starred expressions in assignment'
-    >>> get_command_arguments("")
+    >>> get_command_arguments("", {})
     {}
-    >>> get_command_arguments("", arg1="str", arg2=("str", 1))
+    >>> arguments_1 = {"arg1": "str", "arg2": ("str", 1)}
+    >>> get_command_arguments("", arguments_1)
     {'arg1': None, 'arg2': None}
-    >>> get_command_arguments("/c", arg1="str", arg2=("str", 1))
+    >>> get_command_arguments("/c", arguments_1)
     {'arg1': None, 'arg2': 1}
-    >>> get_command_arguments("/c@namebot", arg1="str", arg2=("str", 1))
+    >>> get_command_arguments("/c@namebot", arguments_1)
     {'arg1': None, 'arg2': 1}
-    >>> get_command_arguments("/c@namebot arg1", arg1="str", arg2=("str", 1))
+    >>> get_command_arguments("/c@namebot arg1", arguments_1)
     {'arg1': 'arg1', 'arg2': 1}
-    >>> get_command_arguments("/c@namebot arg1 arg2", arg1="str", arg2=("str", 1))
+    >>> get_command_arguments("/c@namebot arg1 arg2", arguments_1)
     {'arg1': 'arg1', 'arg2': 'arg2'}
-    >>> get_command_arguments("/c@namebot arg1 arg2 arg3", arg1="str", arg2=("str", 1))
+    >>> get_command_arguments("/c@namebot arg1 arg2 arg3", arguments_1)
     {'arg1': 'arg1', 'arg2': 'arg2'}
-    >>> get_command_arguments("/c@namebot arg1 arg2", text="long str")
+    >>> get_command_arguments("/c@namebot arg1 arg2", {"text": "long str"})
     {'text': 'arg1 arg2'}
-    >>> get_command_arguments("abrakadabra")
+    >>> get_command_arguments("abrakadabra", {})
     {}
-    >>> get_command_arguments("abrakadabra", text="long str")
+    >>> get_command_arguments("abrakadabra", {"text": "long str"})
     {'text': None}
     """
-    types = [(t[0] if isinstance(t, tuple) else t) for t in kwargs.values()]
-
-    if types.count("long str") > 1:
-        raise SyntaxError("multiple starred expressions in assignment")
-
-    if types.count("long str") and len(set(types)) > 1:
-        raise SyntaxError('parameter after or before "long str"')
-
-    if not kwargs:
-        return {}
-
     match = command_regex.match(message)
+    command_arguments = match.groupdict()["arguments"] if hasattr(match, "groupdict") else None
+    result = get_arguments(command_arguments, arguments)
+
+    if match is not None and command_arguments is not None:
+        return result
 
     if match is None:
-        return {k: None for k in kwargs}
+        return {k: None for k in arguments}
 
-    groups = match.groupdict()
-    if groups["arguments"] is None:
-        return {k: (v[1] if isinstance(v, tuple) else None) for k, v in kwargs.items()}
-
-    args = [groups["arguments"]] if "long str" in types else groups["arguments"].split()
-
-    result = {k: None for k in kwargs}
-    defaults = ((d[1] if isinstance(d, tuple) else None) for d in kwargs.values())
-
-    for i, (n, t, d) in enumerate(zip(kwargs, types, defaults)):
-        try:
-            arg = args[int(i)]
-        except IndexError:
-            arg = d
-        else:
-            arg = __process_value(t, arg, d)
-        result[n] = arg
-    return result
+    if command_arguments is None:
+        return {k: (v[1] if isinstance(v, tuple) else None) for k, v in arguments.items()}
 
 
-def parse_command(
-    message: str, **kwargs: str | tuple[str, Any]
-) -> dict[str, str | dict]:
+def parse_command(message: str, arguments: dict[str, str | tuple[str, Any]]) -> dict[str, Any]:
     """
-    >>> try:
-    ...     parse_command("/c@namebot arg1 arg2", arg1="long str", arg2="str")
-    ... except SyntaxError as e:
-    ...     str(e)
+    >>> try: parse_command("", {"arg1": "long str", "arg2": "str"})
+    ... except SyntaxError as e: str(e)
     'parameter after or before "long str"'
-    >>> try:
-    ...     parse_command("/c@namebot arg1 arg2", arg1="long str", arg2="long str")
-    ... except SyntaxError as e:
-    ...     str(e)
+    >>> try: parse_command("", {"arg1": "long str", "arg2": "long str"})
+    ... except SyntaxError as e: str(e)
     'multiple starred expressions in assignment'
-    >>> parse_command("")
+    >>> parse_command("", {})
     {'command': None, 'username': None, 'arguments': {}}
-    >>> parse_command("/c@namebot")
+    >>> parse_command("/c@namebot", {})
     {'command': 'c', 'username': '@namebot', 'arguments': {}}
-    >>> parse_command("/c@namebot arg1")
+    >>> parse_command("/c@namebot arg1", {})
     {'command': 'c', 'username': '@namebot', 'arguments': {}}
-    >>> parse_command("/c@namebot arg1 arg2")
+    >>> parse_command("/c@namebot arg1 arg2", {})
     {'command': 'c', 'username': '@namebot', 'arguments': {}}
 
-    >>> parse_command("", arg1="str", arg2=("str", 1))
+    >>> arguments_1 = {"arg1": "str", "arg2": ("str", 1)}
+    >>> parse_command("", arguments_1)
     {'command': None, 'username': None, 'arguments': {'arg1': None, 'arg2': None}}
-    >>> parse_command("/c@namebot", arg1="str", arg2=("str", 1))
+    >>> parse_command("/c@namebot", arguments_1)
     {'command': 'c', 'username': '@namebot', 'arguments': {'arg1': None, 'arg2': 1}}
-    >>> parse_command("/c@namebot arg1", arg1="str", arg2=("str", 1))
+    >>> parse_command("/c@namebot arg1", arguments_1)
     {'command': 'c', 'username': '@namebot', 'arguments': {'arg1': 'arg1', 'arg2': 1}}
-    >>> parse_command("/c@namebot arg1 arg2", arg1="str", arg2=("str", 1))
+    >>> parse_command("/c@namebot arg1 arg2", arguments_1)
     {'command': 'c', 'username': '@namebot', 'arguments': {'arg1': 'arg1', 'arg2': 'arg2'}}
     """
-    arguments = get_command_arguments(message, **kwargs)
+    res_arguments = get_command_arguments(message, arguments)
     match = command_regex.match(message)
+
     if match:
         groups = match.groupdict()
         return {
             "command": groups["command"],
             "username": groups["username"],
-            "arguments": arguments,
+            "arguments": res_arguments,
         }
     else:
         return {
             "command": None,
             "username": None,
-            "arguments": {k: None for k in kwargs},
+            "arguments": {k: None for k in arguments},
         }
-
-
-def __process_value(
-    arg_type: _data_types, value: str, default: Any = None
-) -> str | int | float | None | datetime:
-    match arg_type:
-        case "str":
-            return value
-        case "int" | "float":
-            try:
-                return int(value)
-            except ValueError:
-                try:
-                    return float(value)
-                except ValueError:
-                    return None
-        case "date":
-            try:
-                return datetime.strptime(value, "%d.%m.%Y")
-            except ValueError:
-                try:
-                    return datetime.strptime(value, "%Y.%m.%d")
-                except ValueError:
-                    return default
-        case "long str":
-            return value

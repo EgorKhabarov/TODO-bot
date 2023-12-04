@@ -15,7 +15,7 @@ from tgbot.lang import get_translate
 from tgbot.time_utils import now_time
 from tgbot.bot import bot, bot_log_info
 from tgbot.buttons_utils import delmarkup
-from tgbot.utils import poke_link, re_edit_message, rate_limit_requests
+from tgbot.utils import poke_link, re_edit_message, rate_limit_requests, html_to_markdown
 from tgbot.handlers import command_handler, callback_handler, clear_state
 from tgbot.bot_actions import delete_message_action, confirm_changes_message
 from tgbot.bot_messages import search_message, notifications_message, settings_message
@@ -23,7 +23,7 @@ from todoapi.api import User
 from todoapi.types import db
 from todoapi.logger import logging
 from todoapi.db_creator import create_tables
-from todoapi.utils import html_to_markdown, is_admin_id
+from todoapi.utils import is_admin_id
 from telegram_utils.command_parser import command_regex
 
 create_tables()
@@ -58,8 +58,8 @@ def check_user(func):
         def wrapper(x: Message | CallbackQuery):
             if isinstance(x, Message):
                 chat_id = x.chat.id
-                if _x.content_type != "migrate_to_chat_id" and (
-                    _x.text.startswith("/") and not command_regex.match(_x.text)
+                if x.content_type != "migrate_to_chat_id" and (
+                    x.text.startswith("/") and not command_regex.match(_x.text)
                 ):
                     return
             elif isinstance(x, CallbackQuery):
@@ -147,15 +147,9 @@ def processing_search_message(message: Message):
     #   (ИЛИ)
     #!  (И)
     """
-    if message.entities:
-        markdown_text = html.unescape(html_to_markdown(message.html_text))
-    else:
-        markdown_text = message.html_text
-
-    query = markdown_text[1:].replace("\n", " ").replace("--", "").strip()
+    query = html_to_markdown(message.html_text).removeprefix("#")
 
     request.user.settings.log("search", query)
-
     generated = search_message(query)
     generated.send(request.chat_id)
 
@@ -210,18 +204,7 @@ def add_event_handler(message: Message):
     """
     Ловит сообщение если пользователь хочет добавить событие
     """
-    # Экранируем текст
-    """
-    Телеграм экранирует html спец символы ('<', '>', '&', ';') только если в сообщении есть выделение.
-
-    Если написать "<b>text</b>" и взять message.html_text, то он вернёт тот же текст.
-
-    Если же написать "<b>text</b> **text**", то message.html_text вернёт "&lt;b&gt;text&lt;/b&gt; **text**"
-    """
-    if message.entities:
-        markdown_text = html.unescape(html_to_markdown(message.html_text))
-    else:
-        markdown_text = message.html_text
+    markdown_text = html_to_markdown(message.html_text)
 
     request.user.settings.log("send", "add event")
 

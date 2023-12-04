@@ -1,41 +1,10 @@
 import re
-from urllib.parse import urlparse
 
 import todoapi.config as config
 
 
 re_date = re.compile(r"\A\d{2}\.\d{2}\.\d{4}\Z")
 sql_date_pattern = re.compile(r"\d{4}-\d{2}-\d{2}")
-link_sub = re.compile(r"<a href=\"(.+?)\">(.+?)(\n*?)</a>")
-
-
-def html_to_markdown(html_text: str) -> str:
-    for (k1, k2), v in {
-        ("<i>", "</i>"): "__",
-        ("<b>", "</b>"): "**",
-        ("<s>", "</s>"): "~~",
-        ("<pre>", "</pre>"): "```",
-        ("<code>", "</code>"): "`",
-        ('<span class="tg-spoiler">', "</span>"): "||",
-    }.items():
-        html_text = html_text.replace(k1, v).replace(k2, v)
-
-    def prepare_url(url) -> str:
-        url = url.removeprefix("http://").removeprefix("https://")
-        url = url.strip().strip("/").strip("\\")
-        return f"https://{url}"
-
-    def replace_url(m: re.Match) -> str:
-        url = prepare_url(m.group(1))
-        pre_text = m.group(2).strip()
-
-        condition = pre_text != urlparse(m.group(1)).netloc
-        text = f" ({pre_text})" if condition else ""
-
-        return f"{url}{text}{m.group(3)}"
-
-    html_text = link_sub.sub(replace_url, html_text)
-    return html_text
 
 
 def sqlite_format_date(_column):
