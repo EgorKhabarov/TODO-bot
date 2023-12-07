@@ -656,15 +656,10 @@ def help_message(path: str = "page 1") -> NoEventMessage:
     if path.startswith("page"):
         text, keyboard = translate
         # Изменяем последнюю кнопку
-        last_button: dict = keyboard[-1]
+        last_button: dict = keyboard[-1][-1]
         k, v = last_button.popitem()
 
-        if k.startswith("✖"):
-            new_k = get_theme_emoji("del") + k.removeprefix("✖")
-        elif k.startswith("🔙"):
-            new_k = get_theme_emoji("back") + k.removeprefix("🔙")
-        else:
-            new_k = k
+        new_k = k if not k.startswith("🔙") else get_theme_emoji("back") + k.removeprefix("🔙")
 
         last_button[new_k] = v
 

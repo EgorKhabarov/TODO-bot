@@ -365,7 +365,7 @@ Use all the advantages of the bot to streamline your life and not miss a single 
                             "📄 Статусы": "help Statuses",
                             "📄 Лимиты": "help Limits",
                             "📂 Виды сообщений": "help page 2",
-                            "✖": "message_del",
+                            "🔙": "menu",
                         }.items()
                     ],
                 ],
@@ -382,7 +382,7 @@ Buttons with text are marked with a smiley 📄. The button folder is marked wit
                             "📄 Statuses": "help Statuses",
                             "📄 Limits": "help Limits",
                             "📂 Types of messages": "help page 2",
-                            "✖": "message_del",
+                            "🔙": "menu",
                         }.items()
                     ],
                 ],
@@ -793,6 +793,7 @@ Visibility <b>{}</b>m""",
             "0": {
                 "ru": [
                     BotCommand("start", "Старт"),
+                    BotCommand("menu", "Меню"),
                     BotCommand("calendar", "Календарь"),
                     BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
                     BotCommand("weather", "{city} Погода"),
@@ -808,6 +809,7 @@ Visibility <b>{}</b>m""",
                 ],
                 "en": [
                     BotCommand("start", "Start"),
+                    BotCommand("menu", "Menu"),
                     BotCommand("calendar", "Calendar"),
                     BotCommand("today", "Today's message"),
                     BotCommand("weather", "{city} Weather"),
@@ -825,6 +827,7 @@ Visibility <b>{}</b>m""",
             "1": {
                 "ru": [
                     BotCommand("start", "Старт"),
+                    BotCommand("menu", "Меню"),
                     BotCommand("calendar", "Календарь"),
                     BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
                     BotCommand("weather", "{city} Погода"),
@@ -841,6 +844,7 @@ Visibility <b>{}</b>m""",
                 ],
                 "en": [
                     BotCommand("start", "Start"),
+                    BotCommand("menu", "Menu"),
                     BotCommand("calendar", "Calendar"),
                     BotCommand("today", "Today's message"),
                     BotCommand("weather", "{city} Weather"),
@@ -859,6 +863,7 @@ Visibility <b>{}</b>m""",
             "2": {
                 "ru": [
                     BotCommand("start", "Старт"),
+                    BotCommand("menu", "Меню"),
                     BotCommand("calendar", "Календарь"),
                     BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
                     BotCommand("weather", "{city} Погода"),
@@ -876,6 +881,7 @@ Visibility <b>{}</b>m""",
                 ],
                 "en": [
                     BotCommand("start", "Start"),
+                    BotCommand("menu", "Menu"),
                     BotCommand("calendar", "Calendar"),
                     BotCommand("today", "Today's message"),
                     BotCommand("weather", "{city} Weather"),
