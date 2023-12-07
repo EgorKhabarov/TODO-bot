@@ -685,8 +685,6 @@ The time zone is used to determine the user's local time.
 <b>События в корзине хранятся не более 30 дней!</b>
 
 В корзине есть возможность восстановить событие на прежнюю дату.
-
-Вызываются командой /deleted.
 """,
                 "en": """
 <u>Types of messages > <b>Basket</b></u>
@@ -696,8 +694,6 @@ Premium users additionally have the option to move the event to the trash.
 <b>Events in the trash are stored for no more than 30 days!</b>
 
 In the trash basket, there is an option to restore the event to its original date.
-
-Called by the command /deleted.
 """,
             },
             "Search": {
@@ -833,7 +829,6 @@ Visibility <b>{}</b>m""",
                     BotCommand("weather", "{city} Погода"),
                     BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
                     BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
-                    BotCommand("deleted", "Корзина"),
                     BotCommand("dice", "Кинуть кубик"),
                     BotCommand(
                         "export",
@@ -850,7 +845,6 @@ Visibility <b>{}</b>m""",
                     BotCommand("weather", "{city} Weather"),
                     BotCommand("forecast", "{city} Weather forecast for 5 days"),
                     BotCommand("week_event_list", "Weekly events"),
-                    BotCommand("deleted", "Trash bin"),
                     BotCommand("dice", "Roll the dice (randomizer)"),
                     BotCommand(
                         "export",
@@ -869,7 +863,6 @@ Visibility <b>{}</b>m""",
                     BotCommand("weather", "{city} Погода"),
                     BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
                     BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
-                    BotCommand("deleted", "Корзина"),
                     BotCommand("dice", "Кинуть кубик"),
                     BotCommand(
                         "export",
@@ -887,7 +880,6 @@ Visibility <b>{}</b>m""",
                     BotCommand("weather", "{city} Weather"),
                     BotCommand("forecast", "{city} Weather forecast for 5 days"),
                     BotCommand("week_event_list", "Weekly events"),
-                    BotCommand("deleted", "Trash bin"),
                     BotCommand("dice", "Roll the dice (randomizer)"),
                     BotCommand(
                         "export",

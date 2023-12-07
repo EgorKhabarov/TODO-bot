@@ -858,6 +858,7 @@ UPDATE settings
                 params=(status, user_id),
                 commit=True,
             )
+            self.settings.user_status = status
             return True, ""
         except Error as e:
             return False, f"SQL Error {e}"

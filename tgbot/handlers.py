@@ -1136,7 +1136,7 @@ def callback_handler(
         user_id = arguments["user_id"]
         action: str = arguments["action"]
         key: str = arguments["key"]
-        val = arguments["val"]
+        val: str = arguments["val"]
         user = User(user_id)
 
         if user_id:
@@ -1201,13 +1201,16 @@ def callback_handler(
                             return
                 elif action == "edit" and key and val:
                     if key == "settings.notifications":
-                        if not user.set_settings(notifications=int(val))[0]:
-                            text = get_translate("errors.error")
+                        api_response = user.set_settings(notifications=int(val))  # type: ignore
+                        if not api_response[0]:
+                            text = api_response[1]
                             return CallBackAnswer(text).answer(call_id)
                     elif key == "settings.status":
-                        if not request.user.set_user_status(user_id, val)[0]:
-                            text = get_translate("errors.error")
+                        api_response = request.user.set_user_status(user_id, int(val))  # type: ignore
+                        if not api_response[0]:
+                            text = api_response[1]
                             return CallBackAnswer(text).answer(call_id)
+                        set_bot_commands(user_id, int(val), user.settings.lang)
 
             generated = user_message(user_id)
             try:

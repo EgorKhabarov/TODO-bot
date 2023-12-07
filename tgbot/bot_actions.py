@@ -222,7 +222,7 @@ def confirm_changes_message(message: Message) -> None | int:
                     [
                         {get_theme_emoji("back"): "back"},
                         {"📝": {"switch_inline_query_current_chat": edit_text}},
-                        {"✅": "confirm change"},
+                        {"💾": "confirm change"},
                     ]
                 ]
             ),
