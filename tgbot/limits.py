@@ -87,7 +87,7 @@ def create_image(year=None, month=None, day=None, text="Account") -> BytesIO:
     draw = Draw(image)
 
     font = ImageFont.truetype("fonts/arial.ttf", 100)
-    text_width, text_height = draw.textsize(text, font=font)
+    text_width, text_height = font.getbbox(text)[2:]
     draw.text(
         (375 * 2 - text_width // 2, 60 - text_height // 2),
         text,

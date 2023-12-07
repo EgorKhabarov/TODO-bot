@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 # noinspection PyPackageRequirements
 from telebot.types import BotCommand
@@ -872,10 +872,6 @@ Visibility <b>{}</b>m""",
                     ),
                     BotCommand("help", "Помощь"),
                     BotCommand("settings", "Настройки"),
-                    BotCommand(
-                        "setuserstatus", "{id} {status} Изменить статус пользователя"
-                    ),
-                    BotCommand("deleteuser", "{id} Удалить пользователя"),
                     BotCommand("commands", "Список команд"),
                 ],
                 "en": [
@@ -893,8 +889,6 @@ Visibility <b>{}</b>m""",
                     ),
                     BotCommand("help", "Help"),
                     BotCommand("settings", "Settings"),
-                    BotCommand("setuserstatus", "{id} {status} Change user status"),
-                    BotCommand("deleteuser", "{id} Delete user"),
                     BotCommand("commands", "Command list"),
                 ],
             },
@@ -1198,10 +1192,6 @@ Visibility <b>{}</b>m""",
             "ru": "Вы уже находитесь на этой странице",
             "en": "You are already on this page",
         },
-        "already_on_current_date": {
-            "ru": "Вы уже на текущей дате",
-            "en": "You are already on the current date",
-        },
         "status_already_posted": {
             "ru": "Cтатус уже стоит на событии",
             "en": "Status is already posted on event",
@@ -1320,7 +1310,7 @@ def get_translate(target: str, lang_iso: str | None = None) -> str | Any:
         return result["en"]
 
 
-def get_theme_emoji(target: str) -> str:
+def get_theme_emoji(target: Literal["back", "add", "del"]) -> str:
     """
     back
 

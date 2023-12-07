@@ -53,7 +53,11 @@ from tgbot.bot_messages import (
     start_message,
     help_message,
     monthly_calendar_message,
+    limits_message,
+    admin_message,
+    group_message,
     account_message,
+    user_message,
 )
 from tgbot.utils import (
     fetch_weather,
@@ -65,12 +69,14 @@ from tgbot.utils import (
     re_call_data_date,
     html_to_markdown,
 )
+from todoapi.api import User
 from todoapi.types import db, UserSettings
 from todoapi.utils import (
     is_admin_id,
     is_premium_user,
     is_valid_year,
 )
+from telegram_utils.argument_parser import get_arguments
 from telegram_utils.buttons_generator import generate_buttons
 from telegram_utils.command_parser import parse_command, get_command_arguments
 
@@ -86,20 +92,20 @@ def command_handler(message: Message) -> None:
     parsed_command = parse_command(message_text, {"arg": "long str"})
     command_text, command_arguments = parsed_command["command"], parsed_command["arguments"]
 
-    if command_text == "/menu":
+    if command_text == "menu":
         generated = menu_message()
         generated.send(chat_id)
 
-    elif message_text.startswith("/calendar"):
+    elif command_text == "calendar":
         generated = monthly_calendar_message()
         generated.send(chat_id)
 
-    elif message_text.startswith("/start"):
+    elif command_text == "start":
         set_bot_commands()
         generated = start_message()
         generated.send(chat_id)
 
-    elif message_text.startswith("/deleted"):
+    elif command_text == "deleted":
         if is_premium_user(user):
             generated = trash_can_message()
             generated.send(chat_id)
@@ -108,7 +114,7 @@ def command_handler(message: Message) -> None:
             generated = NoEventMessage(get_translate("errors.deleted"), delmarkup())
             generated.send(chat_id)
 
-    elif message_text.startswith("/week_event_list"):
+    elif command_text == "week_event_list":
         generated = week_event_list_message()
         generated.send(chat_id)
 
@@ -132,7 +138,7 @@ def command_handler(message: Message) -> None:
         generated = NoEventMessage(text, delmarkup())
         generated.send(chat_id)
 
-    elif message_text.startswith("/search"):
+    elif command_text == "search":
         html_text = get_command_arguments(
             message.html_text, {"query": ("long str", "")}
         )["query"]
@@ -140,20 +146,20 @@ def command_handler(message: Message) -> None:
         generated = search_message(query)
         generated.send(chat_id)
 
-    elif message_text.startswith("/dice"):
+    elif command_text == "dice":
         value = bot.send_dice(chat_id).json["dice"]["value"]
         sleep(4)
         NoEventMessage(value).send(chat_id)
 
-    elif message_text.startswith("/help"):
+    elif command_text == "help":
         generated = help_message()
         generated.send(chat_id)
 
-    elif message_text.startswith("/settings"):
+    elif command_text == "settings":
         generated = settings_message()
         generated.send(chat_id)
 
-    elif message_text.startswith("/today"):
+    elif command_text == "today":
         message_date = now_time_strftime()
         generated = daily_message(message_date)
         new_message = generated.send(chat_id)
@@ -176,7 +182,7 @@ def command_handler(message: Message) -> None:
             except ApiTelegramException:  # message is not modified
                 pass
 
-    elif message_text.startswith("/sqlite") and is_secure_chat(message):
+    elif command_text == "sqlite" and is_secure_chat(message):
         bot.send_chat_action(chat_id, "upload_document")
 
         try:
@@ -189,7 +195,7 @@ def command_handler(message: Message) -> None:
         except ApiTelegramException:
             NoEventMessage("Отправить файл не получилось").send(chat_id)
 
-    elif message_text.startswith("/SQL ") and is_secure_chat(message):
+    elif command_text == "SQL" and is_secure_chat(message):
         # Выполнение запроса от админа к базе данных и красивый вывод результатов
         query = html_to_markdown(message.html_text.removeprefix("/SQL ")).strip()
 
@@ -222,10 +228,7 @@ def command_handler(message: Message) -> None:
         finally:
             file.close()
 
-    elif message_text.startswith("/bell"):
-        notifications_message([chat_id], from_command=True)
-
-    elif message_text.startswith("/export"):
+    elif command_text == "export":
         file_format = get_command_arguments(
             message_text, {"format": ("str", "csv")}
         )["format"].strip()
@@ -258,52 +261,8 @@ def command_handler(message: Message) -> None:
                 generated = NoEventMessage(get_translate("errors.error"))
             generated.send(chat_id)
 
-    elif message_text.startswith("/version"):
+    elif command_text == "version":
         NoEventMessage(f"Version {config.__version__}").send(chat_id)
-
-    elif message_text.startswith("/setuserstatus") and is_secure_chat(message):
-        arguments = get_command_arguments(
-            message_text, {"id": "int", "status": "int"}
-        )
-
-        user_id, user_status = arguments["id"], arguments["status"]
-        if user_id and user_status:
-            api_response = user.set_user_status(user_id, user_status)
-
-            if api_response[0]:
-                text = f"Успешно изменено\n[{user_id}][{user_status}]"
-
-                if not set_bot_commands(
-                    user_id, user_status, UserSettings(user_id).lang
-                ):
-                    text = "Ошибка при обновлении команд."
-            else:
-                error_text = api_response[1]
-
-                if error_text == "User Not Exist":
-                    text = "Пользователь не найден."
-                elif error_text == "Invalid status":
-                    text = "Неверный status\nstatus должен быть в (-1, 0, 1, 2)"
-                elif error_text == "Not Enough Authority":
-                    text = "Недостаточно прав."
-                elif error_text == "Cannot be reduced in admin rights":
-                    text = "Нельзя изменить права администратора."
-                elif error_text.startswith("SQL Error "):
-                    text = f'Ошибка базы данных: "{api_response[1]}"'
-                else:
-                    text = "Ошибка"
-        else:
-            text = """
-SyntaxError
-/setuserstatus {id} {status}
-
-| -1 | ban
-|  0 | default
-|  1 | premium
-|  2 | admin
-"""
-
-        NoEventMessage(text).reply(message)
 
     elif message_text.startswith("/idinfo ") and is_secure_chat(message):
         user_id = get_command_arguments(
@@ -350,7 +309,7 @@ SyntaxError
         except ApiTelegramException:
             pass
 
-    elif message_text.startswith("/id"):
+    elif command_text == "id":
         if message.reply_to_message:
             NoEventMessage(
                 f"Message id <code>{message.reply_to_message.id}</code>"
@@ -358,51 +317,13 @@ SyntaxError
         else:
             NoEventMessage(f"Chat id <code>{chat_id}</code>").reply(message)
 
-    elif message_text.startswith("/deleteuser") and is_admin_id(chat_id):
-        user_id = get_command_arguments(
-            message_text, {"id": "int"}
-        )["id"]
+    elif command_text == "limits":
+        date = get_command_arguments(
+            message_text, {"date": ("date", "now")}
+        )["date"]
+        limits_message(date)
 
-        if not user_id:
-            NoEventMessage("SyntaxError\n/deleteuser {id}").send(chat_id)
-            return
-
-        api_response = user.delete_user(user_id)
-
-        if api_response[0]:
-            text = "Пользователь успешно удалён"
-            csv_file = api_response[1]
-        else:
-            error_text = api_response[1]
-
-            error_dict = {
-                "User Not Exist": "Пользователь не найден.",
-                "Not Enough Authority": "Недостаточно прав.",
-                "Unable To Remove Administrator": "Нельзя удалить администратора.\n"
-                "<code>/setuserstatus {user_id} 0</code>",
-                "CSV Error": "Не получилось получить csv файл.",
-            }
-            if error_text in error_dict:
-                NoEventMessage(error_dict[error_text]).send(chat_id)
-                return
-
-            text = "Ошибка при удалении."
-            csv_file = api_response[1][1]
-
-        try:
-            bot.send_document(
-                chat_id,
-                InputFile(csv_file),
-                message.message_id,
-                text,
-            )
-        except ApiTelegramException:
-            pass
-
-    elif message_text.startswith("/account"):
-        account_message(message_text)
-
-    elif message_text.startswith("/commands"):  # TODO перевод
+    elif command_text == "commands":  # TODO перевод
         # /account - Ваш аккаунт (просмотр лимитов)
         text = """
 /start - Старт
@@ -423,7 +344,6 @@ SyntaxError
 """ + (
             """
 /version - Версия бота
-/bell - Сообщение с уведомлением
 /sqlite - Бекап базы данных
 /files - Сохранить все файлы
 /SQL {...} - Выполнить sql запрос к базе данных
@@ -478,7 +398,11 @@ def callback_handler(
     user, chat_id = request.user, request.chat_id
     settings = user.settings
 
-    if call_data == "event_add":
+    if call_data == "menu":
+        generated = menu_message()
+        generated.edit(chat_id, message_id)
+
+    elif call_data == "event_add":
         clear_state(chat_id)
         date = message_text[:10]
 
@@ -500,20 +424,6 @@ def callback_handler(
         text = f"{message.html_text}\n\n<b>?.?.</b>⬜\n{text}"
         backmarkup = generate_buttons([[{get_theme_emoji("back"): "back"}]])
         bot.edit_message_text(text, chat_id, message_id, reply_markup=backmarkup)
-
-    elif call_data == "menu":
-        generated = menu_message()
-        generated.send(chat_id)
-
-    elif call_data == "/calendar":
-        generated = monthly_calendar_message()
-        generated.edit(chat_id, message_id)
-
-    elif call_data == "calendar":
-        YY_MM = [int(x) for x in message_text[:10].split(".")[1:]][::-1]
-        text = get_translate("select.date")
-        markup = create_monthly_calendar_keyboard(YY_MM)
-        NoEventMessage(text, markup).edit(chat_id, message_id)
 
     elif call_data.startswith("back"):
         press_back_action(call_data, message_id, message.html_text)
@@ -970,7 +880,12 @@ def callback_handler(
 
             elif message_text.startswith("🔔"):  # Будильник
                 notifications_message(
-                    [chat_id], id_list, int(page), message_id, message.reply_markup, True
+                    user_id_list=[chat_id],
+                    id_list=id_list,
+                    page=int(page),
+                    message_id=message_id,
+                    markup=message.reply_markup,
+                    from_command=True
                 )
 
         except ApiTelegramException:
@@ -1033,18 +948,45 @@ def callback_handler(
                 bot.edit_message_reply_markup(chat_id, message_id, reply_markup=markup)
             except ApiTelegramException:
                 # Если нажата кнопка ⟳, но сообщение не изменено
+                now_date = now_time_strftime()
+
                 if command is not None and back is not None:
-                    text = get_translate("errors.already_on_current_date")
-                    CallBackAnswer(text).answer(call_id)
+                    call_data = f"{command} {now_date}"
+                    callback_handler(message_id, message_text, call_data, call_id, message)
                     return
 
-                now_date = now_time_strftime()
                 generated = daily_message(now_date, message_id=message_id)
                 generated.edit(chat_id, message_id)
         else:
             CallBackAnswer("🤔").answer(call_id)
 
+    elif call_data.startswith("calendar"):
+        if call_data == "calendar":
+            generated = monthly_calendar_message()
+            generated.edit(chat_id, message_id)
+            return
+
+        arguments = get_arguments(
+            call_data.removeprefix("calendar"),
+            {"year": "int", "month": "int"}
+        )
+        year, month = arguments["year"], arguments["month"]
+        if not all((year, month)):
+            return
+        text = get_translate("select.date")
+        markup = create_monthly_calendar_keyboard([year, month])
+        NoEventMessage(text, markup).edit(chat_id, message_id)
+
     elif call_data.startswith("settings"):
+        if call_data == "settings":
+            generated = settings_message()
+
+            try:
+                generated.edit(chat_id, message_id)
+            except ApiTelegramException:
+                pass
+            return
+
         par_name, par_val = call_data.split(" ", maxsplit=2)[1:]
 
         if par_name not in (
@@ -1168,6 +1110,177 @@ def callback_handler(
             else:
                 text = get_translate("errors.error")
                 CallBackAnswer(text).answer(call_id)
+
+    elif call_data.startswith("admin") and is_secure_chat(message):
+        user_id = get_arguments(
+            call_data.removeprefix("admin"),
+            {"user_id": "int"}
+        )["user_id"]
+        generated = admin_message(user_id or 1)
+        generated.edit(chat_id, message_id)
+
+    elif call_data == "groups":
+        generated = group_message()
+        generated.edit(chat_id, message_id)
+
+    elif call_data == "account":
+        generated = account_message()
+        generated.edit(chat_id, message_id)
+
+    elif call_data.startswith("user") and is_secure_chat(message):
+        arguments = get_arguments(
+            call_data.removeprefix("user"),
+            {"user_id": "int", "action": "str", "key": "str", "val": "str"}
+        )
+
+        user_id = arguments["user_id"]
+        action: str = arguments["action"]
+        key: str = arguments["key"]
+        val = arguments["val"]
+        user = User(user_id)
+
+        if user_id:
+            if action:
+                if action == "del":
+                    if key == "account":
+                        delete_user_chat_id = user.user_id  # TODO user.telegram.chat_id
+                        api_response = user.delete_user(user_id)
+
+                        if api_response[0]:
+                            text = "Пользователь успешно удалён"
+                            csv_file = api_response[1]
+                        else:
+                            error_text = api_response[1]
+
+                            # TODO перевод
+                            error_dict = {
+                                "User Not Exist": "Пользователь не найден.",
+                                "Not Enough Authority": "Недостаточно прав.",
+                                "Unable To Remove Administrator": "Нельзя удалить администратора.\n"
+                                                                  "<code>/setuserstatus {user_id} 0</code>",
+                                "CSV Error": "Не получилось получить csv файл.",
+                            }
+                            if error_text in error_dict:
+                                return NoEventMessage(
+                                    error_dict[error_text]
+                                ).send(chat_id)
+
+                            text = "Ошибка при удалении."
+                            csv_file = api_response[1][1]
+                        try:
+                            bot.send_document(
+                                delete_user_chat_id,
+                                InputFile(csv_file),
+                                caption="Ваш аккаунт удалён. Ваши события:",  # TODO перевод
+                            )
+                        except ApiTelegramException:
+                            pass
+                        else:
+                            text += "\n+файл"
+
+                        NoEventMessage(text).send(chat_id)
+
+                    else:
+                        default_button = {get_theme_emoji("back"): f"user {user_id}"}
+                        markup = [
+                            [
+                                {"🗑": f"user {user_id} del account"} if (r, c) == (3, 3)
+                                else default_button
+                                for c in range(5)
+                            ]
+                            for r in range(5)
+                        ]
+                        generated = NoEventMessage(
+                            f"Вы точно хотите удалить аккаунт id: "
+                            f"<a href='tg://user?id={user_id}'>{user_id}</a>?",
+                            generate_buttons(markup)
+                        )
+                        try:
+                            return generated.edit(chat_id, message_id)
+                        except ApiTelegramException:
+                            return
+                elif action == "edit" and key and val:
+                    if key == "settings.notifications":
+                        if not user.set_settings(notifications=int(val))[0]:
+                            text = get_translate("errors.error")
+                            return CallBackAnswer(text).answer(call_id)
+                    elif key == "settings.status":
+                        if not request.user.set_user_status(user_id, val)[0]:
+                            text = get_translate("errors.error")
+                            return CallBackAnswer(text).answer(call_id)
+
+            generated = user_message(user_id)
+            try:
+                generated.edit(chat_id, message_id)
+            except ApiTelegramException:
+                pass
+
+    elif call_data == "deleted":
+        if is_premium_user(user):
+            generated = trash_can_message()
+            generated.edit(chat_id, message_id)
+
+    elif call_data.startswith("bell"):
+        date = get_arguments(
+            call_data.removeprefix("bell"),
+            {"date": "date"}
+        )["date"]
+
+        if call_data == "bell":  # and is_premium_user(request.user):
+            generated = monthly_calendar_message("bell", "menu", "Выберите дату уведомления")
+            generated.edit(chat_id, message_id)
+            return
+
+        notifications_message(
+            n_date=date,
+            user_id_list=[chat_id],
+            message_id=message_id,
+            from_command=True,
+        )
+
+    # elif call_data.startswith("limits"):
+    #     date = get_arguments(
+    #         call_data, {"date": ("date", "now")}
+    #     )["date"]
+    #     from telebot.formatting import hide_link  # noqa
+    #     bot.send_message(chat_id, hide_link("https://srus.gay"))
+    #     limits_message(date, message)
+
+
+def reply_handler(message: Message, reply_to_message: Message) -> None:
+    if reply_to_message.text.startswith("⚙️"):
+        if request.user.set_settings(city=message.text[:50])[0]:
+            delete_message_action(message)
+
+        generated = settings_message()
+        try:
+            generated.edit(request.chat_id, reply_to_message.message_id)
+        except ApiTelegramException:
+            pass
+    elif reply_to_message.text.startswith("😎") and is_secure_chat(message):
+        arguments = get_arguments(
+            message.text,
+            {"user_id": "int", "action": ("str", "user_id")},
+        )
+
+        user_id = arguments["user_id"]
+        action = arguments["action"]
+
+        if user_id:
+            if action == "page":
+                generated = admin_message(user_id)
+            elif action == "user_id":
+                generated = user_message(user_id)
+            else:
+                return
+
+            try:
+                generated.edit(reply_to_message.chat.id, reply_to_message.message_id)
+            except ApiTelegramException:
+                pass
+            else:
+                delete_message_action(message)
+
 
 
 def clear_state(chat_id: int | str):

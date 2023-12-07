@@ -27,18 +27,15 @@ COMMANDS = (
     "week_event_list",
     "weather",
     "search",
-    "bell",
     "dice",
     "help",
     "settings",
     "today",
     "sqlite",
-    "account",
+    "limits",
     "SQL",
     "export",
-    "setuserstatus",
     "id",
-    "deleteuser",
     "idinfo",
     "commands",
     "menu",
@@ -46,7 +43,7 @@ COMMANDS = (
 callbackTab = "⠀⠀⠀"  # Специальные прозрачные символы для заполнения
 
 
-__version__ = "04.12.2023"
+__version__ = "08.12.2023"
 __autor__ = "EgorKhabarov"
 
 bot_settings = """

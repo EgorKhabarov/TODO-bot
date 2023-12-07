@@ -846,7 +846,7 @@ UPDATE settings
         if is_admin_id(user_id):  # TODO Проверить
             return False, "Cannot be reduced in admin rights"
 
-        if status not in (-1, 0, 1, 2):
+        if status not in (-1, 0, 1, 2, "-1", "0", "1", "2"):
             return False, "Invalid status"
 
         if not self.check_user(user_id)[1]:

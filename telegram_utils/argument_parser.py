@@ -3,9 +3,10 @@ from datetime import datetime
 
 
 _data_types: TypeAlias = Literal["str", "int", "float", "date", "long str"]
+_return_types: TypeAlias = str | int | float | datetime
 
 
-def get_arguments(text: str, arguments: dict[str, str | tuple[str, Any]]) -> dict[str, Any]:
+def get_arguments(text: str, arguments: dict[str, str | tuple[str, Any]]) -> dict[str, _return_types]:
     """
     >>> try: get_arguments("", {"arg1": "long str", "arg2": "str"})
     ... except SyntaxError as e: str(e)
@@ -42,6 +43,8 @@ def get_arguments(text: str, arguments: dict[str, str | tuple[str, Any]]) -> dic
     {'arg1': '123', 'arg2': 123}
     >>> get_arguments("arg1 123", arguments_3)
     {'arg1': 'arg1', 'arg2': 123}
+    >>> get_arguments("arg1", arguments_3)
+    {'arg1': 'arg1', 'arg2': 1}
     >>> get_arguments("arg1 arg2", arguments_3)
     {'arg1': 'arg1', 'arg2': None}
 
@@ -98,7 +101,7 @@ def get_arguments(text: str, arguments: dict[str, str | tuple[str, Any]]) -> dic
 
 def __process_value(
     arg_type: _data_types, value: str, default: Any = None
-) -> str | int | float | None | datetime:
+) -> _return_types | None:
     match arg_type:
         case "str":
             return value

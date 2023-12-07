@@ -1,10 +1,10 @@
 import re
 import html
 import logging
-from time import sleep
+from time import sleep, time
 
 from telebot.apihelper import ApiTelegramException  # noqa
-from telebot.types import Message  # noqa
+from telebot.types import Message, CallbackQuery  # noqa
 
 from tgbot import config
 from tgbot.bot import bot
@@ -32,15 +32,12 @@ def delete_message_action(message: Message) -> None:
     try:
         bot.delete_message(message.chat.id, message.message_id)
     except ApiTelegramException:
-        if (
-            message.chat.type != "private"
-            and not bot.get_chat_member(
-                message.chat.id, bot.user.id
-            ).can_delete_messages
-        ):
-            error_text = get_translate("errors.get_permission")
-        else:
+        if (time() - message.date) * 60 * 60 > 48:
             error_text = get_translate("errors.delete_messages_older_48_h")
+            if isinstance(request.query, CallbackQuery):
+                return CallBackAnswer(error_text).answer(request.query.id)
+        else:
+            error_text = get_translate("errors.get_permission")
 
         NoEventMessage(error_text, delmarkup()).reply(message)
 

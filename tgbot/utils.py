@@ -14,7 +14,7 @@ import requests
 from requests import ConnectionError
 from requests.exceptions import MissingSchema
 from telebot.apihelper import ApiTelegramException  # noqa
-from telebot.types import Message  # noqa
+from telebot.types import Message, CallbackQuery  # noqa
 
 from tgbot import config
 from tgbot.bot import bot
@@ -435,12 +435,16 @@ def fetch_forecast(city: str) -> str:
     return result
 
 
-def is_secure_chat(message: Message):
+def is_secure_chat(message: Message | CallbackQuery):
     """
     Безопасный ли чат для админских команд.
     Чат должен быть приватным.
     """
-    return is_admin_id(message.chat.id) and message.chat.type == "private"
+    if isinstance(message, CallbackQuery):
+        message = message.message
+
+    chat_id, chat_type = message.chat.id, message.chat.type
+    return is_admin_id(chat_id) and chat_type == "private"
 
 
 def poke_link() -> None:

@@ -19,7 +19,9 @@ def create_monthly_calendar_keyboard(
 ) -> InlineKeyboardMarkup:
     """
     Создаёт календарь на месяц и возвращает inline клавиатуру
-    param YY_MM: Необязательный аргумент. Если None, то подставит текущую дату.
+    :param YY_MM: Необязательный аргумент. Если None, то подставит текущую дату.
+    :param command: Команда, которую пихать в кнопку + дата
+    :param back: Кнопка назад
     """
     settings, chat_id = request.user.settings, request.chat_id
     command = f"'{command.strip()}'" if command else None

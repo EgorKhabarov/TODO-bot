@@ -12,6 +12,7 @@ import todoapi.config as config
 from todoapi.queries import queries
 from todoapi.utils import sql_date_pattern
 
+
 limits = {
     -1: {
         "max_event_day": 0,
@@ -54,6 +55,9 @@ limits = {
         "max_symbol_all": 200000,
     },
 }
+
+
+string_status = {-1: "ban", 0: "normal", 1: "premium", 2: "admin"}
 
 
 class DataBase:

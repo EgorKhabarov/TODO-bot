@@ -1,4 +1,3 @@
-import html
 import atexit
 from time import sleep
 from functools import wraps
@@ -16,15 +15,16 @@ from tgbot.time_utils import now_time
 from tgbot.bot import bot, bot_log_info
 from tgbot.buttons_utils import delmarkup
 from tgbot.utils import poke_link, re_edit_message, rate_limit_requests, html_to_markdown
-from tgbot.handlers import command_handler, callback_handler, clear_state
+from tgbot.handlers import command_handler, callback_handler, clear_state, reply_handler
 from tgbot.bot_actions import delete_message_action, confirm_changes_message
-from tgbot.bot_messages import search_message, notifications_message, settings_message
+from tgbot.bot_messages import search_message, notifications_message
 from todoapi.api import User
 from todoapi.types import db
 from todoapi.logger import logging
 from todoapi.db_creator import create_tables
 from todoapi.utils import is_admin_id
 from telegram_utils.command_parser import command_regex
+
 
 create_tables()
 
@@ -75,6 +75,7 @@ def check_user(func):
                     return
                 request.user = user
                 request.chat_id = chat_id
+                request.query = x
                 res = func(x)
             return res
 
@@ -170,26 +171,19 @@ def processing_edit_message(message: Message):
     func=lambda m: (
         m.reply_to_message
         and m.reply_to_message.text
-        and m.reply_to_message.text.startswith("⚙️")
         and m.reply_to_message.from_user.id == bot.user.id
     )
 )
 @check_user
-def processing_edit_city_message(message: Message):
+def processing_reply_to_message(message: Message):
     """
     Ловит сообщения ответ на сообщение бота с настройками
     Изменение города пользователя
     """
-    request.user.settings.log("send", "edit city")
+    message_start = message.reply_to_message.text.split("\n", 1)[0]
+    request.user.settings.log("send", f"reply {message_start}")
 
-    if request.user.set_settings(city=message.text[:50])[0]:
-        delete_message_action(message)
-
-    generated = settings_message()
-    try:
-        generated.edit(request.chat_id, message.reply_to_message.message_id)
-    except ApiTelegramException:
-        pass
+    reply_handler(message, message.reply_to_message)
 
 
 def add_event_func(msg) -> int:
