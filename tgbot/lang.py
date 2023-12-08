@@ -894,28 +894,20 @@ Visibility <b>{}</b>m""",
         "status page": {
             "0": {
                 "ru": (
-                    (
-                        ("🗂 Важность", "status page 1"),
-                    ),
-                    (
-                        ("🗂 Разное", "status page 2"),
-                    ),
+                    (("🗂 Важность", "status page 1"),),
+                    (("🗂 Разное", "status page 2"),),
                     (
                         ("🗂 Эффекты", "status page 3"),
                         ("🗂 Кастомные", "status page 4"),
-                    )
+                    ),
                 ),
                 "en": (
-                    (
-                        ("🗂 Importance", "status page 1"),
-                    ),
-                    (
-                        ("🗂 Miscellaneous", "status page 2"),
-                    ),
+                    (("🗂 Importance", "status page 1"),),
+                    (("🗂 Miscellaneous", "status page 2"),),
                     (
                         ("🗂 Effects", "status page 3"),
                         ("🗂 Custom", "status page 4"),
-                    )
+                    ),
                 ),
             },
             "1": {

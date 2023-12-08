@@ -10,9 +10,14 @@ from telebot.types import (  # noqa
 
 
 def generate_buttons(
-    buttons_data: list[list[dict[str, str | dict]]] | list[list[str]] | dict[str, Any] | None,
+    buttons_data: list[list[dict[str, str | dict]]]
+    | list[list[str]]
+    | dict[str, Any]
+    | None,
     keyboard_type: Literal["inline", "reply", "force_reply", "reply_remove"] = "inline",
-) -> InlineKeyboardMarkup | ReplyKeyboardMarkup | ForceReply | ReplyKeyboardRemove | None:
+) -> (
+    InlineKeyboardMarkup | ReplyKeyboardMarkup | ForceReply | ReplyKeyboardRemove | None
+):
     """
     >>> from pprint import pprint
     >>> (
@@ -78,7 +83,9 @@ def generate_buttons(
                     if len(button.keys()) == 1:
                         [(text, data)] = button.items()
                         if isinstance(data, str):
-                            keyboard[-1].append(InlineKeyboardButton(text, callback_data=data))
+                            keyboard[-1].append(
+                                InlineKeyboardButton(text, callback_data=data)
+                            )
                         elif isinstance(data, dict):
                             [(text, data)] = button.items()
                             keyboard[-1].append(InlineKeyboardButton(text=text, **data))

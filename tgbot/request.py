@@ -1,5 +1,6 @@
 # noinspection PyPackageRequirements
 from contextvars import ContextVar
+
 # noinspection PyPackageRequirements
 from telebot.types import Message, CallbackQuery
 
@@ -16,6 +17,7 @@ class Request:
 
     request.query: telebot.types.Message | telebot.types.CallbackQuery
     """
+
     _user = ContextVar("user", default=None)
     _chat_id = ContextVar("chat_id", default=None)
     _query = ContextVar("query", default=None)

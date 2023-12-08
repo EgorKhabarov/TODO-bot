@@ -188,13 +188,15 @@ def create_yearly_calendar_keyboard(
     markup = generate_buttons(
         [
             [
-                {f"{YY} ({year_info(YY)})": f"calendar_t ({command},{back},{str(YY)[:3]})"}
+                {
+                    f"{YY} ({year_info(YY)})": f"calendar_t ({command},{back},{str(YY)[:3]})"
+                }
             ],
             *month_buttons,
             [
                 {text: f"calendar_y ({command},{back},{year})"}
                 for text, year in {"<<": YY - 1, "⟳": "'now'", ">>": YY + 1}.items()
-            ]
+            ],
         ]
     )
 
@@ -255,11 +257,7 @@ def create_twenty_year_calendar_keyboard(
         years_buttons.append([])
         for nameM, numY in row:
             if not is_valid_year(numY):
-                years_buttons[-1].append(
-                    {
-                        " " * (int(str(numY)[-1]) or 11): "None"
-                    }
-                )
+                years_buttons[-1].append({" " * (int(str(numY)[-1]) or 11): "None"})
                 continue
 
             tag_today = "#" if numY == now_year else ""
@@ -284,7 +282,7 @@ def create_twenty_year_calendar_keyboard(
                     "⟳": "'now'",
                     ">>": str(int(f"{millennium}{decade}") + 2)[:3],
                 }.items()
-            ]
+            ],
         ]
     )
 

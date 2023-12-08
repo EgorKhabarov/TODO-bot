@@ -33,7 +33,9 @@ class __CommandRegex:
 command_regex = __CommandRegex()
 
 
-def get_command_arguments(message: str, arguments: dict[str, str | tuple[str, Any]]) -> dict[str, Any]:
+def get_command_arguments(
+    message: str, arguments: dict[str, str | tuple[str, Any]]
+) -> dict[str, Any]:
     """
     >>> try: get_command_arguments("", {"arg1": "long str", "arg2": "str"})
     ... except SyntaxError as e: str(e)
@@ -64,7 +66,9 @@ def get_command_arguments(message: str, arguments: dict[str, str | tuple[str, An
     {'text': None}
     """
     match = command_regex.match(message)
-    command_arguments = match.groupdict()["arguments"] if hasattr(match, "groupdict") else None
+    command_arguments = (
+        match.groupdict()["arguments"] if hasattr(match, "groupdict") else None
+    )
     result = get_arguments(command_arguments, arguments)
 
     if match is not None and command_arguments is not None:
@@ -74,10 +78,14 @@ def get_command_arguments(message: str, arguments: dict[str, str | tuple[str, An
         return {k: None for k in arguments}
 
     if command_arguments is None:
-        return {k: (v[1] if isinstance(v, tuple) else None) for k, v in arguments.items()}
+        return {
+            k: (v[1] if isinstance(v, tuple) else None) for k, v in arguments.items()
+        }
 
 
-def parse_command(message: str, arguments: dict[str, str | tuple[str, Any]]) -> dict[str, Any]:
+def parse_command(
+    message: str, arguments: dict[str, str | tuple[str, Any]]
+) -> dict[str, Any]:
     """
     >>> try: parse_command("", {"arg1": "long str", "arg2": "str"})
     ... except SyntaxError as e: str(e)

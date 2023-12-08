@@ -14,7 +14,11 @@ class PathedMessage(Message):
     @property
     def html_caption(self):
         raw_html_caption = super().html_caption
-        return raw_html_caption if self.caption_entities else html.escape(raw_html_caption, False)
+        return (
+            raw_html_caption
+            if self.caption_entities
+            else html.escape(raw_html_caption, False)
+        )
 
     # @property
     # def markdown_text(self):

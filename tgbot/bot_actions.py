@@ -28,6 +28,7 @@ from telegram_utils.buttons_generator import generate_buttons
 
 re_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}")
 
+
 def delete_message_action(message: Message) -> None:
     try:
         bot.delete_message(message.chat.id, message.message_id)
@@ -289,7 +290,9 @@ def before_move_message(
             else [],
             [
                 {
-                    get_theme_emoji("back"): "back" if not in_wastebasket else "back bin",
+                    get_theme_emoji("back"): "back"
+                    if not in_wastebasket
+                    else "back bin",
                 }
             ],
         ]

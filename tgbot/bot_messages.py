@@ -22,11 +22,16 @@ from tgbot.time_utils import convert_date_format, now_time
 from tgbot.buttons_utils import (
     delmarkup,
     edit_button_attrs,
-    create_monthly_calendar_keyboard
+    create_monthly_calendar_keyboard,
 )
 from todoapi.api import User
 from todoapi.types import db, string_status
-from todoapi.utils import sqlite_format_date, is_valid_year, is_admin_id, is_premium_user
+from todoapi.utils import (
+    sqlite_format_date,
+    is_valid_year,
+    is_admin_id,
+    is_premium_user,
+)
 from telegram_utils.buttons_generator import generate_buttons
 
 
@@ -49,13 +54,9 @@ def menu_message():
                 ],
                 [
                     {"⚙️ Настройки": "settings"},
-                    {
-                        "🗑 Корзина": "deleted"
-                    } if is_premium_user(request.user) else {},
+                    {"🗑 Корзина": "deleted"} if is_premium_user(request.user) else {},
                 ],
-                [
-                    {"😎 Админская": "admin"}
-                ] if is_secure_chat(request.query) else [],
+                [{"😎 Админская": "admin"}] if is_secure_chat(request.query) else [],
             ],
         ),
     )
@@ -183,8 +184,7 @@ def week_event_list_message(
     """
 
     generated = EventMessageGenerator(
-        reply_markup=generate_buttons([[{get_theme_emoji("back"): "menu"}]]),
-        page=page
+        reply_markup=generate_buttons([[{get_theme_emoji("back"): "menu"}]]), page=page
     )
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
@@ -625,7 +625,9 @@ def settings_message() -> NoEventMessage:
                 {f"🗣 {settings.lang}": f"settings lang {not_lang}"},
                 {f"🔗 {bool(settings.sub_urls)}": f"settings sub_urls {not_sub_urls}"},
                 {f"{not_direction_smile}": f"settings direction {not_direction_sql}"},
-                {f"{not_notifications_[0]}": f"settings notifications {not_notifications_[1]}"},
+                {
+                    f"{not_notifications_[0]}": f"settings notifications {not_notifications_[1]}"
+                },
                 {f"{not_theme[0]}": f"settings theme {not_theme[1]}"},
             ],
             [{k: v} for k, v in time_zone_dict.items()],
@@ -649,7 +651,7 @@ def start_message() -> NoEventMessage:
                         "url": f"https://t.me/{bot.user.username}?startgroup=AddGroup"
                     }
                 },
-            ]
+            ],
         ]
     )
     text = get_translate("messages.start")
@@ -666,7 +668,11 @@ def help_message(path: str = "page 1") -> NoEventMessage:
         last_button: dict = keyboard[-1][-1]
         k, v = last_button.popitem()
 
-        new_k = k if not k.startswith("🔙") else get_theme_emoji("back") + k.removeprefix("🔙")
+        new_k = (
+            k
+            if not k.startswith("🔙")
+            else get_theme_emoji("back") + k.removeprefix("🔙")
+        )
 
         last_button[new_k] = v
 
@@ -688,7 +694,9 @@ def monthly_calendar_message(
     return NoEventMessage(text, markup)
 
 
-def limits_message(date: datetime | str | None = None, message: Message | None = None) -> None:
+def limits_message(
+    date: datetime | str | None = None, message: Message | None = None
+) -> None:
     chat_id = request.chat_id
     if date is None or date == "now":
         date = now_time()
@@ -705,7 +713,7 @@ def limits_message(date: datetime | str | None = None, message: Message | None =
             media=InputMediaPhoto(image),
             chat_id=chat_id,
             message_id=message.message_id,
-            reply_markup=markup
+            reply_markup=markup,
         )
     else:
         bot.send_photo(chat_id, image, reply_markup=markup)
@@ -714,8 +722,7 @@ def limits_message(date: datetime | str | None = None, message: Message | None =
 def admin_message(page: int = 1) -> NoEventMessage:
     if not is_admin_id(request.user.user_id):
         text = "you are not admin\n"
-        markup = generate_buttons(
-            [[{get_theme_emoji("back"): "menu"}]])
+        markup = generate_buttons([[{get_theme_emoji("back"): "menu"}]])
     else:
         text = f"""
 😎 Админская 😎
@@ -765,17 +772,29 @@ OFFSET :page;
                                     else string_status[user_status]
                                 )[0],
                                 event_count,
-                                user_event_count
+                                user_event_count,
                             ),
-                            user_id
+                            user_id,
                         )
-                        for user_id, user_status, user_event_count, event_count in users[:10]
+                        for user_id, user_status, user_event_count, event_count in users[
+                            :10
+                        ]
                     )
                 ],
                 [
-                    {tg_numbers_emoji.join(c for c in f"{page - 1}")+tg_numbers_emoji: f"admin {page - 1}"} if page > 1 else {" ": "None"},
+                    {
+                        tg_numbers_emoji.join(c for c in f"{page - 1}")
+                        + tg_numbers_emoji: f"admin {page - 1}"
+                    }
+                    if page > 1
+                    else {" ": "None"},
                     {get_theme_emoji("back"): "menu"},
-                    {tg_numbers_emoji.join(c for c in f"{page + 1}")+tg_numbers_emoji: f"admin {page + 1}"} if len(users) == 11 else {" ": "None"},
+                    {
+                        tg_numbers_emoji.join(c for c in f"{page + 1}")
+                        + tg_numbers_emoji: f"admin {page + 1}"
+                    }
+                    if len(users) == 11
+                    else {" ": "None"},
                 ],
             ]
         )
@@ -806,8 +825,7 @@ user_id: {user_id}
 
 Error: "User Not Exist"
 """
-        markup = generate_buttons(
-            [[{get_theme_emoji("back"): "admin"}]])
+        markup = generate_buttons([[{get_theme_emoji("back"): "admin"}]])
         return NoEventMessage(text, markup)
 
     user = User(user_id)
@@ -829,19 +847,18 @@ theme:     {'⬛️' if user.settings.theme else '⬜️'}</code></pre>
         [
             [
                 {"🗑": f"user {user_id} del"},
-                {f"{'🔔' if not user.settings.notifications else '🔕'}": (
-                    f"user {user_id} edit settings.notifications {int(not user.settings.notifications)}"
-                )},
+                {
+                    f"{'🔔' if not user.settings.notifications else '🔕'}": (
+                        f"user {user_id} edit settings.notifications {int(not user.settings.notifications)}"
+                    )
+                },
             ],
             [
                 {"ban": f"user {user_id} edit settings.status -1"},
                 {"normal": f"user {user_id} edit settings.status 0"},
                 {"premium": f"user {user_id} edit settings.status 1"},
             ],
-            [
-                {get_theme_emoji("back"): "admin"},
-                {"🔄": f"user {user_id}"}
-            ],
+            [{get_theme_emoji("back"): "admin"}, {"🔄": f"user {user_id}"}],
         ]
     )
     return NoEventMessage(text, markup)
@@ -865,10 +882,7 @@ name: {group.name}
 {string_groups}
 """
         markup = [
-            *[
-                [{f"id: {group.group_id}": "None"}]
-                for group in groups
-            ],
+            *[[{f"id: {group.group_id}": "None"}] for group in groups],
             [{"👥 Создать группу": "create_group"}] if len(groups) < 5 else [],
             [{get_theme_emoji("back"): "menu"}],
         ]

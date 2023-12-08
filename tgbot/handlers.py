@@ -90,7 +90,10 @@ def command_handler(message: Message) -> None:
     user, chat_id = request.user, request.chat_id
     settings, message_text = user.settings, message.text
     parsed_command = parse_command(message_text, {"arg": "long str"})
-    command_text, command_arguments = parsed_command["command"], parsed_command["arguments"]
+    command_text, command_arguments = (
+        parsed_command["command"],
+        parsed_command["arguments"],
+    )
 
     if command_text == "menu":
         generated = menu_message()
@@ -202,7 +205,9 @@ def command_handler(message: Message) -> None:
         if not query.lower().startswith("select"):
             bot.send_chat_action(chat_id, "typing")
             try:
-                db.execute(query.removesuffix("\nCOMMIT"), commit=query.endswith("\nCOMMIT"))
+                db.execute(
+                    query.removesuffix("\nCOMMIT"), commit=query.endswith("\nCOMMIT")
+                )
             except Error as e:
                 NoEventMessage(f'Error "{e}"').reply(message)
             else:
@@ -230,7 +235,7 @@ def command_handler(message: Message) -> None:
 
     elif command_text == "export":
         file_format = get_command_arguments(
-            message_text, {"format": ("str", "csv")}
+            message_text, {"format": ("str", "csv")},
         )["format"].strip()
 
         if file_format not in ("csv", "xml", "json", "jsonl"):
@@ -265,9 +270,7 @@ def command_handler(message: Message) -> None:
         NoEventMessage(f"Version {config.__version__}").send(chat_id)
 
     elif message_text.startswith("/idinfo ") and is_secure_chat(message):
-        user_id = get_command_arguments(
-            message_text, {"id": "int"}
-        )["id"]
+        user_id = get_command_arguments(message_text, {"id": "int"})["id"]
         if user_id:
             _settings = UserSettings(user_id)
             chat = bot.get_chat(user_id)
@@ -318,9 +321,7 @@ SyntaxError
             NoEventMessage(f"Chat id <code>{chat_id}</code>").reply(message)
 
     elif command_text == "limits":
-        date = get_command_arguments(
-            message_text, {"date": ("date", "now")}
-        )["date"]
+        date = get_command_arguments(message_text, {"date": ("date", "now")})["date"]
         limits_message(date)
 
     elif command_text == "commands":  # TODO перевод
@@ -465,7 +466,12 @@ def callback_handler(
                 update_message_action(message_id, message.html_text)
                 return
 
-            if action in ("status", "move", "move bin", "recover bin") or action.startswith("open"):
+            if action in (
+                "status",
+                "move",
+                "move bin",
+                "recover bin",
+            ) or action.startswith("open"):
                 match action:
                     case "status":
                         new_call_data = (
@@ -665,8 +671,7 @@ def callback_handler(
             )
         else:  # status page
             buttons_data = get_translate(
-                f"buttons.status page."
-                + call_data.removeprefix("status page ")
+                f"buttons.status page." + call_data.removeprefix("status page ")
             )
             markup = generate_buttons(
                 [
@@ -885,7 +890,7 @@ def callback_handler(
                     page=int(page),
                     message_id=message_id,
                     markup=message.reply_markup,
-                    from_command=True
+                    from_command=True,
                 )
 
         except ApiTelegramException:
@@ -952,7 +957,9 @@ def callback_handler(
 
                 if command is not None and back is not None:
                     call_data = f"{command} {now_date}"
-                    callback_handler(message_id, message_text, call_data, call_id, message)
+                    callback_handler(
+                        message_id, message_text, call_data, call_id, message
+                    )
                     return
 
                 generated = daily_message(now_date, message_id=message_id)
@@ -967,8 +974,7 @@ def callback_handler(
             return
 
         arguments = get_arguments(
-            call_data.removeprefix("calendar"),
-            {"year": "int", "month": "int"}
+            call_data.removeprefix("calendar"), {"year": "int", "month": "int"}
         )
         year, month = arguments["year"], arguments["month"]
         if not all((year, month)):
@@ -1118,8 +1124,7 @@ def callback_handler(
 
     elif call_data.startswith("admin") and is_secure_chat(message):
         user_id = get_arguments(
-            call_data.removeprefix("admin"),
-            {"user_id": ("int", 1)}
+            call_data.removeprefix("admin"), {"user_id": ("int", 1)}
         )["user_id"]
         generated = admin_message(user_id)
         generated.edit(chat_id, message_id)
@@ -1135,7 +1140,7 @@ def callback_handler(
     elif call_data.startswith("user") and is_secure_chat(message):
         arguments = get_arguments(
             call_data.removeprefix("user"),
-            {"user_id": "int", "action": "str", "key": "str", "val": "str"}
+            {"user_id": "int", "action": "str", "key": "str", "val": "str"},
         )
 
         user_id = arguments["user_id"]
@@ -1162,7 +1167,7 @@ def callback_handler(
                                 "User Not Exist": "Пользователь не найден.",
                                 "Not Enough Authority": "Недостаточно прав.",
                                 "Unable To Remove Administrator": "Нельзя удалить администратора.\n"
-                                                                  "<code>/setuserstatus {user_id} 0</code>",
+                                "<code>/setuserstatus {user_id} 0</code>",
                                 "CSV Error": "Не получилось получить csv файл.",
                             }
                             if error_text in error_dict:
@@ -1189,7 +1194,8 @@ def callback_handler(
                         default_button = {get_theme_emoji("back"): f"user {user_id}"}
                         markup = [
                             [
-                                {"🗑": f"user {user_id} del account"} if (r, c) == (3, 3)
+                                {"🗑": f"user {user_id} del account"}
+                                if (r, c) == (3, 3)
                                 else default_button
                                 for c in range(5)
                             ]
@@ -1198,7 +1204,7 @@ def callback_handler(
                         generated = NoEventMessage(
                             f"Вы точно хотите удалить аккаунт id: "
                             f"<a href='tg://user?id={user_id}'>{user_id}</a>?",
-                            generate_buttons(markup)
+                            generate_buttons(markup),
                         )
                         try:
                             return generated.edit(chat_id, message_id)
@@ -1229,13 +1235,12 @@ def callback_handler(
             generated.edit(chat_id, message_id)
 
     elif call_data.startswith("bell"):
-        date = get_arguments(
-            call_data.removeprefix("bell"),
-            {"date": "date"}
-        )["date"]
+        date = get_arguments(call_data.removeprefix("bell"), {"date": "date"})["date"]
 
         if call_data == "bell":  # and is_premium_user(request.user):
-            generated = monthly_calendar_message("bell", "menu", "Выберите дату уведомления")
+            generated = monthly_calendar_message(
+                "bell", "menu", "Выберите дату уведомления"
+            )
             generated.edit(chat_id, message_id)
             return
 
@@ -1292,7 +1297,6 @@ def reply_handler(message: Message, reply_to_message: Message) -> None:
                 pass
             else:
                 delete_message_action(message)
-
 
 
 def clear_state(chat_id: int | str):

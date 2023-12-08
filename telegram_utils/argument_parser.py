@@ -6,7 +6,9 @@ _data_types: TypeAlias = Literal["str", "int", "float", "date", "long str"]
 _return_types: TypeAlias = str | int | float | datetime
 
 
-def get_arguments(text: str, arguments: dict[str, str | tuple[str, Any]]) -> dict[str, _return_types]:
+def get_arguments(
+    text: str, arguments: dict[str, str | tuple[str, Any]]
+) -> dict[str, _return_types]:
     """
     >>> try: get_arguments("", {"arg1": "long str", "arg2": "str"})
     ... except SyntaxError as e: str(e)
@@ -80,7 +82,9 @@ def get_arguments(text: str, arguments: dict[str, str | tuple[str, Any]]) -> dic
         return {}
 
     if not text:
-        return {k: (v[1] if isinstance(v, tuple) else None) for k, v in arguments.items()}
+        return {
+            k: (v[1] if isinstance(v, tuple) else None) for k, v in arguments.items()
+        }
 
     args = [text] if "long str" in types else text.split()
 

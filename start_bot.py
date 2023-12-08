@@ -4,7 +4,6 @@ from telegram_utils.patch import PathedMessage
 
 
 with mock.patch("telebot.types.Message", PathedMessage):
-
     from threading import Thread
 
     from tgbot import config
