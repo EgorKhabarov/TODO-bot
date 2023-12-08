@@ -44,6 +44,10 @@ def menu_message():
                     {"👤 Аккаунт": "account"},
                 ],
                 [
+                    {"📆 7 дней": "week_event_list"},
+                    {"📚 Помощь": "help"},
+                ],
+                [
                     {"⚙️ Настройки": "settings"},
                     {
                         "🗑 Корзина": "deleted"
@@ -178,7 +182,10 @@ def week_event_list_message(
 )
     """
 
-    generated = EventMessageGenerator(reply_markup=delmarkup(), page=page)
+    generated = EventMessageGenerator(
+        reply_markup=generate_buttons([[{get_theme_emoji("back"): "menu"}]]),
+        page=page
+    )
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
@@ -710,7 +717,20 @@ def admin_message(page: int = 1) -> NoEventMessage:
         markup = generate_buttons(
             [[{get_theme_emoji("back"): "menu"}]])
     else:
-        text = f"😎 Админская 😎\n\nСтраница: {page}"
+        text = f"""
+😎 Админская 😎
+
+Страница: {page}
+
+<i>i - user id
+s - user status
+  a - admin
+  b - ban
+  n - normal
+  p - premium
+c - events count
+m - max events count</i>
+"""
         users = db.execute(
             f"""
 SELECT user_id,
@@ -728,6 +748,7 @@ OFFSET :page;
             params={"page": 0 if page < 2 else page * 10 - 10},
         )
         tg_numbers_emoji = "️⃣"
+        template = "{} {} {} {}"
         markup = generate_buttons(
             [
                 *[
@@ -736,10 +757,16 @@ OFFSET :page;
                     ]
                     for user, user_id in (
                         (
-                            f"id:{user_id} "
-                            f"status:\"{string_status[2] if is_admin_id(user_id) else string_status[user_status]}\" "
-                            f"events:{event_count} "
-                            f"max_id:{user_event_count}",
+                            template.format(
+                                user_id,
+                                (
+                                    string_status[2]
+                                    if is_admin_id(user_id)
+                                    else string_status[user_status]
+                                )[0],
+                                event_count,
+                                user_event_count
+                            ),
                             user_id
                         )
                         for user_id, user_status, user_event_count, event_count in users[:10]

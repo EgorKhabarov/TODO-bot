@@ -1034,6 +1034,11 @@ def callback_handler(
         update_message_action(message_id, message.html_text, call_id)
 
     elif call_data.startswith("help"):
+        if call_data == "help":
+            generated = help_message()
+            generated.edit(chat_id, message_id)
+            return
+
         try:
             generated = help_message(call_data.removeprefix("help "))
             markup = None if call_data.startswith("help page") else message.reply_markup
@@ -1114,9 +1119,9 @@ def callback_handler(
     elif call_data.startswith("admin") and is_secure_chat(message):
         user_id = get_arguments(
             call_data.removeprefix("admin"),
-            {"user_id": "int"}
+            {"user_id": ("int", 1)}
         )["user_id"]
-        generated = admin_message(user_id or 1)
+        generated = admin_message(user_id)
         generated.edit(chat_id, message_id)
 
     elif call_data == "groups":
@@ -1240,6 +1245,10 @@ def callback_handler(
             message_id=message_id,
             from_command=True,
         )
+
+    elif call_data.startswith("week_event_list"):
+        generated = week_event_list_message()
+        generated.edit(chat_id, message_id)
 
     # elif call_data.startswith("limits"):
     #     date = get_arguments(
