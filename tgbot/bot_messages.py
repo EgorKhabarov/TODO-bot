@@ -41,7 +41,7 @@ def menu_message():
         reply_markup=generate_buttons(
             [
                 [
-                    {"🔔 Уведомления": "bell"},
+                    {"📚 Помощь": "help"},
                     {"📆 Календарь": "calendar"},
                 ],
                 [
@@ -50,7 +50,7 @@ def menu_message():
                 ],
                 [
                     {"📆 7 дней": "week_event_list"},
-                    {"📚 Помощь": "help"},
+                    {"🔔 Уведомления": "bell"},
                 ],
                 [
                     {"⚙️ Настройки": "settings"},
@@ -262,7 +262,7 @@ def daily_message(
     date: str,
     id_list: list | tuple[str] = tuple(),
     page: int | str = 0,
-    message_id: int = None,
+    message_id: int | None = None,
 ) -> EventMessageGenerator:
     """
     :param date: дата у сообщения
@@ -355,7 +355,7 @@ def notifications_message(
     id_list: list | tuple[str] = tuple(),
     page: int | str = 0,
     message_id: int = -1,
-    markup: InlineKeyboardMarkup = None,
+    markup: InlineKeyboardMarkup | None = None,
     from_command: bool = False,
 ) -> None:
     """
@@ -643,7 +643,7 @@ def settings_message() -> NoEventMessage:
 def start_message() -> NoEventMessage:
     markup = generate_buttons(
         [
-            [{"Menu": "menu"}],
+            [{"/menu": "menu"}],
             [{"/calendar": "calendar"}],
             [
                 {
