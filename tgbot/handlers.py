@@ -235,7 +235,8 @@ def command_handler(message: Message) -> None:
 
     elif command_text == "export":
         file_format = get_command_arguments(
-            message_text, {"format": ("str", "csv")},
+            message_text,
+            {"format": ("str", "csv")},
         )["format"].strip()
 
         if file_format not in ("csv", "xml", "json", "jsonl"):
@@ -1172,7 +1173,7 @@ def callback_handler(
                             }
                             if error_text in error_dict:
                                 return NoEventMessage(
-                                    error_dict[error_text]
+                                    error_dict[error_text],
                                 ).send(chat_id)
 
                             text = "Ошибка при удалении."
