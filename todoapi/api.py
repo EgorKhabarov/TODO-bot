@@ -9,7 +9,14 @@ import xml.etree.ElementTree as xml  # noqa
 
 from todoapi.queries import queries
 from todoapi.types import Event, UserSettings, Limit, db, export_cooldown
-from todoapi.utils import sqlite_format_date, is_premium_user, is_valid_year, is_admin_id, to_valid_id, re_date
+from todoapi.utils import (
+    sqlite_format_date,
+    is_premium_user,
+    is_valid_year,
+    is_admin_id,
+    to_valid_id,
+    re_date,
+)
 
 
 class User:

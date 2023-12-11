@@ -76,7 +76,6 @@ def create_monthly_calendar_keyboard(
     )
     first_line = [{title: f"calendar_y ({command},{back},{YY})"}]
 
-
     buttons_lines = []
     today = now_time().day
     for weekcalendar in row_calendar:

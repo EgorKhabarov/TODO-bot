@@ -17,7 +17,12 @@ from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.message_generator import TextMessage, CallBackAnswer
 from tgbot.time_utils import now_time_strftime, now_time, new_time_calendar, DayInfo
 from tgbot.bot_actions import delete_message_action
-from tgbot.buttons_utils import create_monthly_calendar_keyboard, delmarkup, create_yearly_calendar_keyboard, create_twenty_year_calendar_keyboard
+from tgbot.buttons_utils import (
+    create_monthly_calendar_keyboard,
+    delmarkup,
+    create_yearly_calendar_keyboard,
+    create_twenty_year_calendar_keyboard,
+)
 from tgbot.bot_messages import (
     menu_message,
     search_message,
@@ -40,7 +45,15 @@ from tgbot.bot_messages import (
     before_move_message,
     event_info_message,
 )
-from tgbot.utils import fetch_weather, fetch_forecast, write_table_to_str, is_secure_chat, parse_message, html_to_markdown, add_status_effect
+from tgbot.utils import (
+    fetch_weather,
+    fetch_forecast,
+    write_table_to_str,
+    is_secure_chat,
+    parse_message,
+    html_to_markdown,
+    add_status_effect,
+)
 from todoapi.api import User
 from todoapi.types import db
 from todoapi.utils import is_admin_id, is_premium_user, is_valid_year
@@ -98,21 +111,20 @@ def command_handler(message: Message) -> None:
             message_text, {"city": ("long str", settings.city)}
         )["city"]
 
+        func = fetch_weather if command_text == "weather" else fetch_forecast
         try:
-            text = (
-                fetch_weather if command_text == "weather" else fetch_forecast
-            )(city=nowcity)
+            text = func(city=nowcity)
         except KeyError:
             text = get_translate(f"errors.{command_text}_invalid_city_name")
 
         TextMessage(text, delmarkup()).send(chat_id)
 
     elif command_text == "search":
-        query = html_to_markdown(
-            get_command_arguments(
-                message.html_text, {"query": ("long str", "")}
-            )["query"]
-        )
+        raw_query = get_command_arguments(
+            message.html_text,
+            {"query": ("long str", "")},
+        )["query"]
+        query = html_to_markdown(raw_query)
         search_message(query).send(chat_id)
 
     elif command_text == "dice":
@@ -170,7 +182,8 @@ def command_handler(message: Message) -> None:
 
     elif command_text == "export":
         file_format = get_command_arguments(
-            message_text, {"format": ("str", "csv")},
+            message_text,
+            {"format": ("str", "csv")},
         )["format"].strip()
 
         if file_format not in ("csv", "xml", "json", "jsonl"):
@@ -190,8 +203,13 @@ def command_handler(message: Message) -> None:
                 logging.info(f'export ApiTelegramException "{e}"')
                 TextMessage(get_translate("errors.file_is_too_big")).send(chat_id)
         else:
-            if re.match(r"Wait (\d+) min", api_response[1]):  # TODO "m := "   # TODO "m[0]"
-                generated = TextMessage(get_translate("errors.export").format(t=api_response[1].split(" ")[1]))
+            if re.match(r"Wait (\d+) min", api_response[1]):
+                # TODO "m := "   # TODO "m[0]"
+                generated = TextMessage(
+                    get_translate("errors.export").format(
+                        t=api_response[1].split(" ")[1]
+                    )
+                )
             else:
                 generated = TextMessage(get_translate("errors.error"))
             generated.send(chat_id)
@@ -270,12 +288,18 @@ def callback_handler(call: CallbackQuery):
         week_event_list_message().edit(chat_id, message_id)
 
     elif call_data.startswith("event_info"):
-        event_id = get_arguments(call_data.removeprefix("event_info"), {"event_id": "int"})["event_id"]
+        event_id = get_arguments(
+            call_data.removeprefix("event_info"),
+            {"event_id": "int"},
+        )["event_id"]
         event_info_message(event_id).edit(chat_id, message_id)
 
     elif call_data.startswith("event_add"):
         clear_state(chat_id)
-        date = get_arguments(call_data.removeprefix("event_add"), {"date": "str"})["date"]
+        date = get_arguments(
+            call_data.removeprefix("event_add"),
+            {"date": "str"},
+        )["date"]
 
         # Проверяем будет ли превышен лимит для пользователя, если добавить 1 событие с 1 символом
         if request.user.check_limit(date, event_count=1, symbol_count=1)[1] is True:
@@ -315,10 +339,18 @@ def callback_handler(call: CallbackQuery):
     elif call_data.startswith("select one"):
         arguments = get_arguments(
             call_data.removeprefix("select one"),
-            {"action_type": ("str", message_text[:10]), "back_data": "str", "back_arg": ("str", "")},
+            {
+                "action_type": ("str", message_text[:10]),
+                "back_data": "str",
+                "back_arg": ("str", ""),
+            },
         )
 
-        action_type, back_data, back_arg = arguments["action_type"], arguments["back_data"], arguments["back_arg"]
+        action_type, back_data, back_arg = (
+            arguments["action_type"],
+            arguments["back_data"],
+            arguments["back_arg"],
+        )
         in_wastebasket = action_type == "deleted"
         is_open = action_type == "open"
         events_list = parse_message(message_text)
@@ -367,9 +399,15 @@ def callback_handler(call: CallbackQuery):
             call.data = message_text.split("\n", 1)[1][:10]
             return callback_handler(call)
 
-        back_button_data = action_type if not is_open else f"{back_data} {back_arg}".strip()
+        back_button_data = (
+            action_type if not is_open else f"{back_data} {back_arg}".strip()
+        )
         markup.append([{get_theme_emoji("back"): back_button_data}])
-        text = get_translate("select.event_to_open") if is_open else get_translate("select.event")
+        text = (
+            get_translate("select.event_to_open")
+            if is_open
+            else get_translate("select.event")
+        )
         TextMessage(text, generate_buttons(markup)).edit(chat_id, message_id)
 
     elif call_data.startswith("select many "):
@@ -405,9 +443,13 @@ def callback_handler(call: CallbackQuery):
     elif call_data.startswith("status page "):
         arguments = get_arguments(
             call_data.removeprefix("status page"),
-            {"page": "str", "event_id": "int", "date": "date"}
+            {"page": "str", "event_id": "int", "date": "date"},
         )
-        page, event_id, date = arguments["page"], arguments["event_id"], arguments["date"]
+        page, event_id, date = (
+            arguments["page"],
+            arguments["event_id"],
+            arguments["date"],
+        )
 
         # Проверяем наличие события
         api_response = request.user.get_event(event_id)
@@ -424,7 +466,11 @@ def callback_handler(call: CallbackQuery):
             call_data.removeprefix("status set"),
             {"new_status": "str", "event_id": "int", "date": "date"},
         )
-        new_status, event_id, date = arguments["new_status"], arguments["event_id"], arguments["date"]
+        new_status, event_id, date = (
+            arguments["new_status"],
+            arguments["event_id"],
+            arguments["date"],
+        )
 
         api_response = request.user.get_event(event_id)
 
@@ -474,7 +520,11 @@ def callback_handler(call: CallbackQuery):
             call_data.removeprefix("status delete"),
             {"status": "str", "event_id": "int", "date": "date"},
         )
-        status, event_id, date = arguments["status"], arguments["event_id"], arguments["date"]
+        status, event_id, date = (
+            arguments["status"],
+            arguments["event_id"],
+            arguments["date"],
+        )
 
         api_response = request.user.get_event(event_id)
 
@@ -523,7 +573,9 @@ def callback_handler(call: CallbackQuery):
             elif m := re_date.match(message_text):
                 msg_date = m[0]
                 if page.startswith("!"):
-                    generated = recurring_events_message(msg_date, id_list, int(page[1:]))
+                    generated = recurring_events_message(
+                        msg_date, id_list, int(page[1:])
+                    )
                 else:
                     generated = daily_message(msg_date, id_list, int(page))
 
@@ -668,11 +720,17 @@ def callback_handler(call: CallbackQuery):
             pass
 
     elif call_data.startswith("recurring"):
-        date = get_arguments(call_data.removeprefix("recurring"), {"date": "str"})["date"]
+        date = get_arguments(
+            call_data.removeprefix("recurring"),
+            {"date": "str"},
+        )["date"]
         recurring_events_message(date).edit(chat_id, message_id)
 
     elif call_data.startswith("update"):
-        call_data = get_arguments(call_data.removeprefix("update"), {"data": "long str"})["data"]
+        call_data = get_arguments(
+            call_data.removeprefix("update"),
+            {"data": "long str"},
+        )["data"]
 
         if re_call_data_date.match(call_data):
             generated = daily_message(call_data)
@@ -751,7 +809,11 @@ def callback_handler(call: CallbackQuery):
             call_data.removeprefix("edit_event_date"),
             {"event_id": "int", "action": ("str", "back"), "date": "date"},
         )
-        event_id, action, date = arguments["event_id"], arguments["action"], arguments["date"]
+        event_id, action, date = (
+            arguments["event_id"],
+            arguments["action"],
+            arguments["date"],
+        )
         if action == "back":
             api_response = request.user.get_event(event_id)
             if not api_response[0]:
@@ -780,16 +842,27 @@ def callback_handler(call: CallbackQuery):
                 # generated = daily_message(event_date)
                 generated.edit(chat_id, message_id)
             elif api_response[1] == "Limit Exceeded":
-                CallBackAnswer(get_translate("errors.limit_exceeded")).answer(call_id, True)
+                answer = CallBackAnswer(get_translate("errors.limit_exceeded"))
+                answer.answer(call_id, True)
             else:
                 CallBackAnswer(get_translate("errors.error")).answer(call_id)
 
     elif call_data.startswith("event_delete"):
         arguments = get_arguments(
             call_data.removeprefix("event_delete"),
-            {"event_id": "int", "date": "date", "action": "str", "back": ("str", "daily")},
+            {
+                "event_id": "int",
+                "date": "date",
+                "action": "str",
+                "back": ("str", "daily"),
+            },
         )
-        event_id, date, action, back = arguments["event_id"], arguments["date"], arguments["action"], arguments["back"]
+        event_id, date, action, back = (
+            arguments["event_id"],
+            arguments["date"],
+            arguments["action"],
+            arguments["back"],
+        )
         if action == "before":
             return before_move_message(event_id).edit(chat_id, message_id)
         elif action == "forever":
@@ -806,7 +879,8 @@ def callback_handler(call: CallbackQuery):
 
     elif call_data.startswith("admin") and is_secure_chat(message):
         user_id = get_arguments(
-            call_data.removeprefix("admin"), {"user_id": ("int", 1)},
+            call_data.removeprefix("admin"),
+            {"user_id": ("int", 1)},
         )["user_id"]
         admin_message(user_id).edit(chat_id, message_id)
 

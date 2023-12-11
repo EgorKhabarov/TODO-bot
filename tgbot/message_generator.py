@@ -58,7 +58,9 @@ class TextMessage:
         """
         if only_markup:
             bot.edit_message_reply_markup(
-                chat_id=chat_id, message_id=message_id, reply_markup=self.reply_markup,
+                chat_id=chat_id,
+                message_id=message_id,
+                reply_markup=self.reply_markup,
             )
         elif markup is not None:
             bot.edit_message_text(
@@ -310,9 +312,7 @@ SELECT event_id,
                         else "",
                         days_before_delete=""
                         if event.removal_time == "0"
-                        else get_translate("deldate")(
-                            event.days_before_delete()
-                        ),
+                        else get_translate("deldate")(event.days_before_delete()),
                         **kwargs,
                         text=event.text,
                     )

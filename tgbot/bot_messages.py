@@ -21,10 +21,21 @@ from tgbot.bot_actions import delete_message_action
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.message_generator import EventsMessage, TextMessage
 from tgbot.buttons_utils import delmarkup, create_monthly_calendar_keyboard
-from tgbot.utils import is_secure_chat, add_status_effect, html_to_markdown, re_edit_message, highlight_text_difference
+from tgbot.utils import (
+    is_secure_chat,
+    add_status_effect,
+    html_to_markdown,
+    re_edit_message,
+    highlight_text_difference,
+)
 from todoapi.api import User
 from todoapi.types import db, string_status, Event
-from todoapi.utils import sqlite_format_date, is_valid_year, is_admin_id, is_premium_user
+from todoapi.utils import (
+    sqlite_format_date,
+    is_valid_year,
+    is_admin_id,
+    is_premium_user,
+)
 from telegram_utils.buttons_generator import generate_buttons
 
 
@@ -183,8 +194,9 @@ def help_message(path: str = "page 1") -> TextMessage:
     return generated
 
 
-
-def daily_message(date: datetime | str, id_list: list | tuple[str] = tuple(), page: int | str = 0) -> EventsMessage:
+def daily_message(
+    date: datetime | str, id_list: list | tuple[str] = tuple(), page: int | str = 0
+) -> EventsMessage:
     """
     Генерирует сообщение на один день
 
@@ -194,7 +206,11 @@ def daily_message(date: datetime | str, id_list: list | tuple[str] = tuple(), pa
     """
     if isinstance(date, str):
         date = datetime.strptime(date, "%d.%m.%Y")
-    WHERE = f"user_id = {request.chat_id} AND date = '{date:%d.%m.%Y}' AND removal_time = 0"
+    WHERE = (
+        f"user_id = {request.chat_id} "
+        f"AND date = '{date:%d.%m.%Y}' "
+        f"AND removal_time = 0"
+    )
 
     y = date - timedelta(days=1)
     t = date + timedelta(days=1)
@@ -245,12 +261,16 @@ def daily_message(date: datetime | str, id_list: list | tuple[str] = tuple(), pa
     ]
 
     if daylist:
-        generated.reply_markup.row(InlineKeyboardButton("📅", callback_data=f"recurring {date:%d.%m.%Y}"))
+        generated.reply_markup.row(
+            InlineKeyboardButton("📅", callback_data=f"recurring {date:%d.%m.%Y}")
+        )
 
     return generated
 
 
-def event_message(event_id: int, in_wastebasket: bool = False, message_id: int | None = None) -> TextMessage | None:
+def event_message(
+    event_id: int, in_wastebasket: bool = False, message_id: int | None = None
+) -> TextMessage | None:
     """
     Сообщение для взаимодействия с одним событием
     """
@@ -264,7 +284,6 @@ def event_message(event_id: int, in_wastebasket: bool = False, message_id: int |
     if not in_wastebasket:
         relatively_date = day.relatively_date
         edit_date = get_translate("edit_date")
-        add_media = get_translate("add_media")
         markup = [
             [
                 {
@@ -274,19 +293,21 @@ def event_message(event_id: int, in_wastebasket: bool = False, message_id: int |
                             f"{html.unescape(event.text)}"
                         )
                     }
-                } if message_id else {"📝": "None"},
+                }
+                if message_id
+                else {"📝": "None"},
                 {"🏷" or "🚩": f"status page 0 {event_id} {event.date}"},
                 {"🗑": f"event_delete {event_id} {event.date} before"},
             ],
             [
-                # {f"🖼 {add_media}": "None"},
-                {f"📅 {edit_date}": f"edit_event_date {event_id} back {event.date}"},  # "✏️"
+                # add_media = get_translate("add_media") {f"🖼 {add_media}": "None"}, # "✏️"
+                {f"📅 {edit_date}": f"edit_event_date {event_id} back {event.date}"},
             ],
             [
                 {get_theme_emoji("back"): event.date},
-                {f"ℹ️": f"event_info {event_id}"},
-                {"🔄": f"event {event_id}"}
-            ]
+                {"ℹ️": f"event_info {event_id}"},
+                {"🔄": f"event {event_id}"},
+            ],
         ]
     else:
         relatively_date = get_translate("deldate")(event.days_before_delete())
@@ -294,7 +315,9 @@ def event_message(event_id: int, in_wastebasket: bool = False, message_id: int |
         recover_translate = get_translate("recover")
         markup = [
             [
-                {f"❌ {delete_permanently_translate}": f"event_delete {event_id} {event.date} forever deleted"},
+                {
+                    f"❌ {delete_permanently_translate}": f"event_delete {event_id} {event.date} forever deleted"
+                },
                 {f"↩️ {recover_translate}": f"recover {event_id} {event.date}"},
             ],
             [{get_theme_emoji("back"): "deleted"}],
@@ -441,7 +464,9 @@ def confirm_changes_message(message: Message) -> None | int:
                 return 1
 
 
-def recurring_events_message(date: str, id_list: list | tuple[str] = tuple(), page: int | str = 0) -> EventsMessage:
+def recurring_events_message(
+    date: str, id_list: list | tuple[str] = tuple(), page: int | str = 0
+) -> EventsMessage:
     """
     :param date: дата у сообщения
     :param id_list: Список из event_id
@@ -512,7 +537,11 @@ def event_status_message(event: Event, path: str = "0") -> TextMessage:
             [
                 *[
                     [
-                        {f"{title}".ljust(60, "⠀"): f"status page {page} {event.event_id} {event.date}"}
+                        {
+                            f"{title}".ljust(60, "⠀"): (
+                                f"status page {page} {event.event_id} {event.date}"
+                            )
+                        }
                         for (title, page) in row
                     ]
                     for row in buttons_data
@@ -584,13 +613,19 @@ def before_move_message(event_id: int) -> TextMessage | None:
     delete_permanently = get_translate("delete_permanently")
     trash_bin = get_translate("trash_bin")
 
-    is_wastebasket_available = request.user.settings.user_status in (1, 2) or is_admin_id(request.chat_id)
+    is_wastebasket_available = is_admin_id(
+        request.chat_id
+    ) or request.user.settings.user_status in (1, 2)
 
     markup = generate_buttons(
         [
             [
-                {f"❌ {delete_permanently}": f"event_delete {event.event_id} {event.date} forever"},
-                {f"🗑 {trash_bin}": f"event_delete {event.event_id} {event.date} wastebasket"}
+                {
+                    f"❌ {delete_permanently}": f"event_delete {event.event_id} {event.date} forever"
+                },
+                {
+                    f"🗑 {trash_bin}": f"event_delete {event.event_id} {event.date} wastebasket"
+                }
                 if is_wastebasket_available
                 else {},
             ],
@@ -607,8 +642,9 @@ def before_move_message(event_id: int) -> TextMessage | None:
     return TextMessage(text, markup)
 
 
-
-def search_message(query: str, id_list: list | tuple[str] = tuple(), page: int | str = 0) -> EventsMessage:
+def search_message(
+    query: str, id_list: list | tuple[str] = tuple(), page: int | str = 0
+) -> EventsMessage:
     """
     :param query: поисковый запрос
     :param id_list: Список из event_id
@@ -680,7 +716,9 @@ def search_message(query: str, id_list: list | tuple[str] = tuple(), page: int |
     return generated
 
 
-def week_event_list_message(id_list: list | tuple[str] = tuple(), page: int | str = 0) -> EventsMessage:
+def week_event_list_message(
+    id_list: list | tuple[str] = tuple(), page: int | str = 0
+) -> EventsMessage:
     """
     :param id_list: Список из event_id
     :param page: Номер страницы
@@ -729,9 +767,7 @@ def week_event_list_message(id_list: list | tuple[str] = tuple(), page: int | st
             {"↖️": "select one open week_event_list"},
         ]
     ]
-    generated = EventsMessage(
-        reply_markup=generate_buttons(markup), page=page
-    )
+    generated = EventsMessage(reply_markup=generate_buttons(markup), page=page)
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
@@ -752,7 +788,9 @@ def week_event_list_message(id_list: list | tuple[str] = tuple(), page: int | st
     return generated
 
 
-def trash_can_message(id_list: list | tuple[str] = tuple(), page: int | str = 0) -> EventsMessage:
+def trash_can_message(
+    id_list: list | tuple[str] = tuple(), page: int | str = 0
+) -> EventsMessage:
     """
     :param id_list: Список из event_id
     :param page: Номер страницы
@@ -797,7 +835,15 @@ def trash_can_message(id_list: list | tuple[str] = tuple(), page: int | str = 0)
     return generated
 
 
-def notifications_message(n_date: datetime | None = None, user_id_list: list | tuple[int | str, ...] = None, id_list: list | tuple[str] = tuple(), page: int | str = 0, message_id: int = -1, markup: InlineKeyboardMarkup | None = None, from_command: bool = False) -> None:
+def notifications_message(
+    n_date: datetime | None = None,
+    user_id_list: list | tuple[int | str, ...] = None,
+    id_list: list | tuple[str] = tuple(),
+    page: int | str = 0,
+    message_id: int = -1,
+    markup: InlineKeyboardMarkup | None = None,
+    from_command: bool = False,
+) -> None:
     """
     :param n_date: notifications date
     :param user_id_list: user_id_list
@@ -893,7 +939,9 @@ AND
                     [
                         [
                             {get_theme_emoji("back"): "menu"},
-                            {get_theme_emoji("del"): "message_del"} if not from_command else {},
+                            {get_theme_emoji("del"): "message_del"}
+                            if not from_command
+                            else {},
                             {"↖️": f"select one open bell {n_date:%d.%m.%Y}"},
                         ]
                     ]
@@ -936,13 +984,17 @@ AND
                     logging.info(f"notifications -> {user_id} -> Error")
 
 
-def monthly_calendar_message(command: str | None = None, back: str | None = None, custom_text: str | None = None) -> TextMessage:
+def monthly_calendar_message(
+    command: str | None = None, back: str | None = None, custom_text: str | None = None
+) -> TextMessage:
     text = custom_text if custom_text else get_translate("select.date")
     markup = create_monthly_calendar_keyboard(command=command, back=back)
     return TextMessage(text, markup)
 
 
-def limits_message(date: datetime | str | None = None, message: Message | None = None) -> None:
+def limits_message(
+    date: datetime | str | None = None, message: Message | None = None
+) -> None:
     chat_id = request.chat_id
     if date is None or date == "now":
         date = now_time()
