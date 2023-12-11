@@ -8,21 +8,16 @@ from telebot.apihelper import ApiTelegramException  # noqa
 from telebot.types import CallbackQuery, Message, BotCommandScopeDefault  # noqa
 
 from tgbot import config
-from tgbot.queries import queries
 from tgbot.request import request
+from tgbot.queries import queries
 from tgbot.lang import get_translate
 from tgbot.time_utils import now_time
 from tgbot.bot import bot, bot_log_info
 from tgbot.buttons_utils import delmarkup
-from tgbot.handlers import command_handler, callback_handler, clear_state, reply_handler
-from tgbot.bot_actions import delete_message_action, confirm_changes_message
-from tgbot.bot_messages import search_message, notifications_message
-from tgbot.utils import (
-    poke_link,
-    re_edit_message,
-    rate_limit_requests,
-    html_to_markdown,
-)
+from tgbot.handlers import command_handler, callback_handler, reply_handler, clear_state
+from tgbot.bot_actions import delete_message_action
+from tgbot.bot_messages import search_message, notifications_message, confirm_changes_message
+from tgbot.utils import poke_link, re_edit_message, rate_limit_requests, html_to_markdown
 from todoapi.api import User
 from todoapi.types import db
 from todoapi.logger import logging
@@ -134,13 +129,7 @@ def bot_callback_query_handler(call: CallbackQuery):
     Ловит нажатия на кнопки
     """
     request.user.settings.log("pressed", call.data)
-    callback_handler(
-        message_id=call.message.message_id,
-        message_text=call.message.text,
-        call_data=call.data,
-        call_id=call.id,
-        message=call.message,
-    )
+    callback_handler(call)
 
 
 @bot.message_handler(

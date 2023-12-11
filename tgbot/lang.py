@@ -65,9 +65,13 @@ translation = {
         "ru": "Выберите, что сделать с событием",
         "en": "Choose what to do with the event",
     },
+    "event_about_info": {
+        "ru": "Информация о событии",
+        "en": "Information about event",
+    },
     "are_you_sure_edit": {
-        "ru": "Вы точно хотите изменить тест события на: ",
-        "en": "Are you sure you want to change the event text to:",
+        "ru": "Вы точно хотите изменить тест события на",
+        "en": "Are you sure you want to change the event text to",
     },
     "deldate": {
         "ru": lambda x: f"<b>{x} {end('ru')(x)} до удаления</b>",
@@ -84,6 +88,10 @@ translation = {
     "edit_date": {
         "ru": "Изменить дату",
         "en": "Edit date",
+    },
+    "add_media": {
+        "ru": "Добавить медиа",
+        "en": "Add media",
     },
     "recover": {
         "ru": "Восстановить",
@@ -317,7 +325,7 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 *(<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 >www.youtube.com</a> <i>вместо полной ссылки</i>)
 **<i>Ответьте на это сообщение с названием города</i>
-***<i>Изменяет тёмные эмоджи на светлые</i>""",
+***<i>Изменяет тёмные эмодзи на светлые</i>""",
             "en": """⚙️ Settings ⚙️
 
 [<u>Language</u>]
@@ -431,14 +439,14 @@ Select a topic button to read more.
                 "ru": """
 <u><b>События</b></u>
 
-Событие - это текстовая заметка на определенную дату. Каждое событие помечается уникальным номером (id) и может иметь свой статус. По умолчанию статус устанавливается как "⬜️". Статус можно изменить с помощью кнопки "🚩" в сообщении на день.
+Событие - это текстовая заметка на определенную дату. Каждое событие помечается уникальным номером (id) и может иметь свой статус. По умолчанию статус устанавливается как "⬜️". Статус можно изменить с помощью кнопки "🏷" в сообщении на день.
 
 В сообщении на день есть кнопки для изменения или удаления событий. Если событий в сообщении несколько, то такие кнопки предлагают выбрать конкретное. <b>Если событие одно, то кнопки сразу выбирают его.</b>
 """,
                 "en": """
 <u><b>Events</b></u>
 
-An event is a textual note for a specific date. Each event is marked with a unique identifier (id) and can have its own status. By default, the status is set to "⬜️". The status can be changed using the "🚩" button in the message for a day.
+An event is a textual note for a specific date. Each event is marked with a unique identifier (id) and can have its own status. By default, the status is set to "⬜️". The status can be changed using the "🏷" button in the message for a day.
 
 The message for the day has buttons for changing or deleting events. If there are several events in the message, then such buttons offer to select a specific one. <b>If there is only one event, then the buttons select it immediately.</b>
 """,
@@ -525,8 +533,6 @@ Here is the complete list of incompatible statuses:
 Максимальный <b>общий</b> лимит для обычного пользователя составляет <b>500</b> событий и <b>100000</b> символов.
 
 Если вы превысите лимиты, вы не сможете добавлять новые события и добавлять новый текст к событиям. Чтобы освободить место под новые события, вы можете удалять старые события или сократить их текст.
-
-Посмотреть свои лимиты можно командой /account
 """,
                 "en": """
 <u><b>Limits</b></u>
@@ -544,8 +550,6 @@ By default, regular users have the following limits:
 The maximum <b>general</b> limit for a normal user is <b>500</b> events and <b>100000</b> characters.
 
 If you exceed the limits, you will not be able to add new events and add new text to events. To make a room for new events, you can delete old events or shorten their text.
-
-You can view your limits with the /account command
 """,
             },
             "Calendar": {
@@ -599,7 +603,7 @@ Here are the meanings of the symbol notations:
 Кнопки управления:
 ➕ - Добавить событие.
 📝 - Редактировать текст события.
-🚩 - Изменить статус события.
+🏷 - Изменить статус события.
 🗑 - Удалить событие.
 🔙 - Назад.
   &lt;   - Перелистнуть на один день назад.
@@ -625,7 +629,7 @@ The order of events in the message can be changed in the settings. By default, e
 Control buttons:
 ➕ - Add an event.
 📝 - Edit the event text.
-🚩 - Change the event status.
+🏷 - Change the event status.
 🗑 - Delete an event.
 🔙 - Go back.
   &lt;   - Navigate one day back.
@@ -894,19 +898,19 @@ Visibility <b>{}</b>m""",
         "status page": {
             "0": {
                 "ru": (
-                    (("🗂 Важность", "status page 1"),),
-                    (("🗂 Разное", "status page 2"),),
+                    (("🗂 Важность", "1"),),
+                    (("🗂 Разное", "2"),),
                     (
-                        ("🗂 Эффекты", "status page 3"),
-                        ("🗂 Кастомные", "status page 4"),
+                        ("🗂 Эффекты", "3"),
+                        ("🗂 Кастомные", "4"),
                     ),
                 ),
                 "en": (
-                    (("🗂 Importance", "status page 1"),),
-                    (("🗂 Miscellaneous", "status page 2"),),
+                    (("🗂 Importance", "1"),),
+                    (("🗂 Miscellaneous", "2"),),
                     (
-                        ("🗂 Effects", "status page 3"),
-                        ("🗂 Custom", "status page 4"),
+                        ("🗂 Effects", "3"),
+                        ("🗂 Custom", "4"),
                     ),
                 ),
             },
@@ -1019,6 +1023,7 @@ Visibility <b>{}</b>m""",
                     (
                         "💻 Код⠀",
                         "🪞 Скрыто",
+                        "💬 Цитата",
                     ),
                     (
                         "🎉 Дни рождения",
@@ -1043,6 +1048,7 @@ Visibility <b>{}</b>m""",
                     (
                         "💻 Code",
                         "🪞 Hidden",
+                        "💬 Quote",
                     ),
                     (
                         "🎉 Birthdays",
@@ -1244,29 +1250,13 @@ Visibility <b>{}</b>m""",
         },
     },
     "select": {
-        "event_to_edit": {
-            "ru": "Выберите событие для редактирования",
-            "en": "Select an event to edit",
-        },
-        "event_to_change_status": {
-            "ru": "Выберите событие для изменения статуса",
-            "en": "Select an event to change status",
-        },
         "status_to_event": {
-            "ru": "Выберите статус для события",
-            "en": "Select a status for the event",
+            "ru": "Выберите статус для события:",
+            "en": "Select a status for the event:",
         },
         "event_to_open": {
             "ru": "Выберите событие для открытия",
             "en": "Select an event to open",
-        },
-        "event_to_move": {
-            "ru": "Выберите событие для перемещения",
-            "en": "Select an event to move",
-        },
-        "event_to_recover": {
-            "ru": "Выберите событие для восстановления",
-            "en": "Select an event to recover",
         },
         "event": {
             "ru": "Выберите событие",

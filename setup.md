@@ -16,7 +16,7 @@ mv tgbot/.env.example tgbot/.env
 ### Windows
 
 ```shell
-mv tgbot\.env.example tgbot\.env
+move tgbot\.env.example tgbot\.env
 ```
 
 # Скачиваем библиотеки
@@ -47,5 +47,5 @@ echo WEATHER_API_KEY=...>>tgbot\.env
 # Запуск
 
 ```shell
-python main.py
+python start_bot.py
 ```

@@ -12,6 +12,9 @@ from todoapi.utils import is_valid_year
 from telegram_utils.buttons_generator import generate_buttons
 
 
+calendar_event_count_template = ("⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹")
+
+
 def create_monthly_calendar_keyboard(
     YY_MM: list | tuple[int, int] = None,
     command: str | None = None,
@@ -32,39 +35,6 @@ def create_monthly_calendar_keyboard(
     else:
         YY, MM = new_time_calendar()
 
-    row_calendar = monthcalendar(YY, MM)
-    markup = InlineKeyboardMarkup()
-    #  December (12.2022)
-    # Пн Вт Ср Чт Пт Сб Вс
-    title = (
-        f"{get_translate('months_name')[MM - 1]} "
-        f"({MM}.{YY}) "
-        f"({year_info(YY)}) "
-        f"({get_week_number(YY, MM, 1)}-"
-        f"{get_week_number(YY, MM, max(row_calendar[-1]))})"
-    )
-    markup.row(
-        InlineKeyboardButton(
-            text=title, callback_data=f"calendar_y ({command},{back},{YY})"
-        )
-    )
-    # Каждую неделю
-    every_week = tuple(
-        6 if x[0] == -1 else x[0]
-        for x in db.execute(
-            queries["select week_day_number_with_event_every_week"],
-            params=(chat_id,),
-        )
-    )
-    markup.row(
-        *[
-            InlineKeyboardButton(
-                text=week_day + ("!" if wd in every_week else ""), callback_data="None"
-            )
-            for wd, week_day in enumerate(get_translate("week_days_list"))
-        ]
-    )
-
     # Дни в которые есть события
     has_events = {
         x[0]: x[1]
@@ -83,48 +53,71 @@ def create_monthly_calendar_keyboard(
         )
     )
 
-    # получаем сегодняшнее число
+    # Каждую неделю
+    every_week = tuple(
+        6 if x[0] == -1 else x[0]
+        for x in db.execute(
+            queries["select week_day_number_with_event_every_week"],
+            params=(chat_id,),
+        )
+    )
+
+    second_line = [
+        {(week_day + ("!" if wd in every_week else "")): "None"}
+        for wd, week_day in enumerate(get_translate("week_days_list"))
+    ]
+
+    row_calendar = monthcalendar(YY, MM)
+    title = (
+        f"{get_translate('months_name')[MM - 1]} "
+        f"({MM}.{YY}) ({year_info(YY)}) "
+        f"({get_week_number(YY, MM, 1)}-"
+        f"{get_week_number(YY, MM, max(row_calendar[-1]))})"
+    )
+    first_line = [{title: f"calendar_y ({command},{back},{YY})"}]
+
+
+    buttons_lines = []
     today = now_time().day
-    # получаем список дней
     for weekcalendar in row_calendar:
         weekbuttons = []
         for wd, day in enumerate(weekcalendar):
             if day == 0:
-                weekbuttons.append(InlineKeyboardButton("  ", callback_data="None"))
+                weekbuttons.append({"  ": "None"})
             else:
                 tag_today = "#" if day == today else ""
                 x = has_events.get(day)
                 tag_event = (number_to_power(x) if x < 10 else "*") if x else ""
                 tag_birthday = "!" if (day in every_year_or_month) else ""
                 weekbuttons.append(
-                    InlineKeyboardButton(
-                        f"{tag_today}{day}{tag_event}{tag_birthday}",
-                        callback_data=f"{command[1:-1] if command else ''} {day:0>2}.{MM:0>2}.{YY}".strip(),
-                    )
+                    {
+                        f"{tag_today}{day}{tag_event}{tag_birthday}": (
+                            f"{command[1:-1] if command else ''} {day:0>2}.{MM:0>2}.{YY}".strip()
+                        )
+                    }
                 )
-        markup.row(*weekbuttons)
+        buttons_lines.append(weekbuttons)
 
-    markup.row(
-        *[
-            InlineKeyboardButton(
-                f"{text}", callback_data=f"calendar_m ({command},{back},{data})"
-            )
-            for text, data in {
-                "<<": f"({YY - 1},{MM})",
-                "<": f"({YY - 1},12)" if MM == 1 else f"({YY},{MM - 1})",
-                "⟳": "'now'",
-                ">": f"({YY + 1},1)" if MM == 12 else f"({YY},{MM + 1})",
-                ">>": f"({YY + 1},{MM})",
-            }.items()
-        ]
-    )
+    arrows_buttons = [
+        {text: f"calendar_m ({command},{back},{data})" if data != "None" else data}
+        for text, data in {
+            "<<": f"({YY - 1},{MM})",
+            "<": f"({YY - 1},12)" if MM == 1 else f"({YY},{MM - 1})",
+            "⟳": "'now'",
+            ">": f"({YY + 1},1)" if MM == 12 else f"({YY},{MM + 1})",
+            ">>": f"({YY + 1},{MM})",
+        }.items()
+    ]
 
-    if back:
-        markup.row(
-            InlineKeyboardButton(get_theme_emoji("back"), callback_data=back[1:-1])
-        )
+    markup = [
+        first_line,
+        second_line,
+        *buttons_lines,
+        arrows_buttons,
+        [{get_theme_emoji("back"): back[1:-1]}] if back else [],
+    ]
 
-    return markup
+    return generate_buttons(markup)
 
 
 def create_yearly_calendar_keyboard(
@@ -167,10 +160,9 @@ def create_yearly_calendar_keyboard(
     ]
 
     now_month = now_time().month
-    months = get_translate("months_list")
 
     month_buttons = []
-    for row in months:
+    for row in get_translate("months_list"):
         month_buttons.append([])
         for nameM, numm in row:
             tag_today = "#" if numm == now_month else ""
@@ -185,27 +177,17 @@ def create_yearly_calendar_keyboard(
                 }
             )
 
-    markup = generate_buttons(
+    markup = [
+        [{f"{YY} ({year_info(YY)})": f"calendar_t ({command},{back},{str(YY)[:3]})"}],
+        *month_buttons,
         [
-            [
-                {
-                    f"{YY} ({year_info(YY)})": f"calendar_t ({command},{back},{str(YY)[:3]})"
-                }
-            ],
-            *month_buttons,
-            [
-                {text: f"calendar_y ({command},{back},{year})"}
-                for text, year in {"<<": YY - 1, "⟳": "'now'", ">>": YY + 1}.items()
-            ],
-        ]
-    )
+            {text: f"calendar_y ({command},{back},{year})"}
+            for text, year in {"<<": YY - 1, "⟳": "'now'", ">>": YY + 1}.items()
+        ],
+        [{get_theme_emoji("back"): back[1:-1]}] if back else [],
+    ]
 
-    if back:
-        markup.row(
-            InlineKeyboardButton(get_theme_emoji("back"), callback_data=back[1:-1])
-        )
-
-    return markup
+    return generate_buttons(markup)
 
 
 def create_twenty_year_calendar_keyboard(
@@ -217,22 +199,14 @@ def create_twenty_year_calendar_keyboard(
     command = f"'{command.strip()}'" if command else None
     back = f"'{back.strip()}'" if back else None
     # example: millennium, decade =  '20', 2
-    millennium, decade = str(decade)[:2], (lambda x: (x - 1) if x % 2 else x)(
-        int(str(decade)[2])
-    )
+    decade = int(str(decade)[2])
+    millennium, decade = str(decade)[:2], (decade - 1) if decade % 2 else decade
 
     decade -= decade % 2  # if decade % 2: decade -= 1
 
     now_year = now_time().year
-    years = chunks(
-        [
-            (n, y)
-            for n, y in enumerate(
-                (lambda y: range(y, y + 20))(int(f"{millennium}{decade}0"))
-            )
-        ],
-        4,
-    )
+    year = int(f"{millennium}{decade}0")
+    years = chunks([(n, y) for n, y in enumerate(range(year, year + 20))], 4)
 
     # В этом году
     year_list = {
@@ -283,13 +257,9 @@ def create_twenty_year_calendar_keyboard(
                     ">>": str(int(f"{millennium}{decade}") + 2)[:3],
                 }.items()
             ],
+            [{get_theme_emoji("back"): back[1:-1]}] if back else [],
         ]
     )
-
-    if back:
-        markup.row(
-            InlineKeyboardButton(get_theme_emoji("back"), callback_data=back[1:-1])
-        )
 
     return markup
 
@@ -312,6 +282,3 @@ def number_to_power(string: str) -> str:
     Например "123" в "¹²³".
     """
     return "".join(calendar_event_count_template[int(ch)] for ch in str(string))
-
-
-calendar_event_count_template = ("⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹")

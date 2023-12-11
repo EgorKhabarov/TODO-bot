@@ -9,14 +9,7 @@ import xml.etree.ElementTree as xml  # noqa
 
 from todoapi.queries import queries
 from todoapi.types import Event, UserSettings, Limit, db, export_cooldown
-from todoapi.utils import (
-    sqlite_format_date,
-    is_premium_user,
-    is_valid_year,
-    is_admin_id,
-    to_valid_id,
-    re_date,
-)
+from todoapi.utils import sqlite_format_date, is_premium_user, is_valid_year, is_admin_id, to_valid_id, re_date
 
 
 class User:
@@ -193,6 +186,10 @@ SELECT 1
 
         "Events Not Found" - Событие не найдено.
         """
+        try:
+            event_id = int(event_id)
+        except TypeError:
+            return False, "Wrong id"
 
         if 0 >= int(event_id):
             return False, "Wrong id"
@@ -241,6 +238,10 @@ SELECT event_id,
         """
 
         if direction in (-1, 1):
+            """
+            Expected type 'int', got 'Literal[-1, 1, "DESC", "ASC"]' instead
+            """
+            # noinspection PyTypeChecker
             direction = {-1: "DESC", 1: "ASC"}[direction]
 
         if direction not in ("DESC", "ASC"):
@@ -579,6 +580,7 @@ SELECT event_id,
 
                 tree = xml.ElementTree(xml_events)
                 xml.indent(tree, space="  ")
+                # noinspection PyTypeChecker
                 tree.write(
                     file,
                     encoding="UTF-8",
@@ -654,6 +656,8 @@ SELECT event_id,
 
         "sub_urls must be in [0, 1]"
 
+        "length city must be less than 50 characters"
+
         "timezone must be -12 and less 12"
 
         'direction must be in ["DESC", "ASC"]'
@@ -684,9 +688,12 @@ SELECT event_id,
                 return False, "sub_urls must be in [0, 1]"
 
             update_list.append("sub_urls")
-            self.settings.sub_urls = sub_urls
+            self.settings.sub_urls = int(sub_urls)
 
         if city is not None:
+            if len(city) > 50:
+                return False, "length city must be less than 50 characters"
+
             update_list.append("city")
             self.settings.city = city
 
@@ -695,7 +702,7 @@ SELECT event_id,
                 return False, "timezone must be -12 and less 12"
 
             update_list.append("timezone")
-            self.settings.timezone = timezone
+            self.settings.timezone = int(timezone)
 
         if direction is not None:
             if direction not in ("DESC", "ASC"):
@@ -709,14 +716,14 @@ SELECT event_id,
                 return False, "user_status must be in [-1, 0, 1, 2]"
 
             update_list.append("user_status")
-            self.settings.user_status = user_status
+            self.settings.user_status = int(user_status)
 
         if notifications is not None:
             if notifications not in (0, 1, "0", "1"):
                 return False, "notifications must be in [0, 1]"
 
             update_list.append("notifications")
-            self.settings.notifications = notifications
+            self.settings.notifications = int(notifications)
 
         if notifications_time is not None:
             hour, minute = [int(v) for v in notifications_time.split(":")]

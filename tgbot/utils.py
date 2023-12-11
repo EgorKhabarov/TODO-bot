@@ -25,7 +25,6 @@ from todoapi.types import db, Event
 from todoapi.utils import is_admin_id, isdigit
 
 re_edit_message = re.compile(r"\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)")
-re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
 link_sub = re.compile(r"<a href=\"(.+?)\">(.+?)(\n*?)</a>")
 
 
@@ -99,7 +98,7 @@ def add_status_effect(text: str, statuses: str) -> str:
             for line in lst
         )
 
-    def format_list(_text: str):
+    def format_list(_text: str) -> str:
         """Заменяет \n на :black_small_square: (эмодзи Telegram)"""
         point = "▫️" if request.user.settings.theme == 1 else "▪️"
         big_point = "◻️" if request.user.settings.theme == 1 else "◼️"
@@ -119,10 +118,10 @@ def add_status_effect(text: str, statuses: str) -> str:
             for line in lst
         )
 
-    def format_spoiler(spoiler: str):
+    def format_spoiler(spoiler: str) -> str:
         return f"<span class='tg-spoiler'>{spoiler}</span>"
 
-    def sub_urls(_text: str):
+    def sub_urls(_text: str) -> str:
         def la(m: re.Match):
             url = re.sub(r"\Ahttp://", "https://", m[0])
 
@@ -134,11 +133,14 @@ def add_status_effect(text: str, statuses: str) -> str:
 
         return re.sub(r"(http?s?://[^\"\'\n ]+)", la, _text)  # r"(http?s?://\S+)"
 
-    def format_code(code: str):
+    def format_code(code: str) -> str:
         return f"<pre>{code}</pre>"
 
     def format_code_lang(code: str, lang: str) -> str:
         return f"<pre><code class='language-{lang}'>{code}</code></pre>"
+
+    def format_blockquote(_text: str) -> str:
+        return f"<blockquote>{_text}</blockquote>"
 
     text = html.escape(text)
 
@@ -166,6 +168,9 @@ def add_status_effect(text: str, statuses: str) -> str:
         text = format_code_lang(text, status) if status else format_code(text)
     elif "🪞" in statuses_list:
         text = format_spoiler(text)
+
+    if "💬" in statuses:
+        text = format_blockquote(text)
 
     return text
 

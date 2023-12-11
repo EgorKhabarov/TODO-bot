@@ -13,7 +13,7 @@ def sqlite_format_date(_column):
     dd.mm.yyyy в yyyy.mm.dd в виде sql выражения
 
     :param _column: Столбец для превращения.
-    :return: sql выражение
+    :return: SQL выражение
     """
     return f"""
 SUBSTR({_column}, 7, 4) || '-' ||
@@ -50,7 +50,7 @@ def to_valid_id(x_id: int | str) -> int:
 
 def is_valid_year(year: int) -> bool:
     """
-    Является ли год валидным (находится в диапазоне от 1900 до 3000)
+    Является ли год валидным (находится в диапазоне от 1900 до 2300)
     """
     return 1900 <= year <= 2300
 

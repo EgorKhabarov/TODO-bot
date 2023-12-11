@@ -2,21 +2,88 @@ import logging
 from copy import deepcopy
 from sqlite3 import Error
 from typing import Literal
-from datetime import datetime, timedelta
 
 # noinspection PyPackageRequirements
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 
 from tgbot.bot import bot
 from tgbot.request import request
+from todoapi.types import db, Event
 from tgbot.lang import get_translate
 from tgbot.utils import add_status_effect, days_before_event
 from tgbot.sql_utils import sqlite_format_date, pagination
 from tgbot.time_utils import now_time_strftime, DayInfo
-from todoapi.types import db, Event
 
 
-class EventMessageGenerator:
+class TextMessage:
+    def __init__(
+        self,
+        text: str | None = None,
+        markup: InlineKeyboardMarkup | None = None,
+    ):
+        self.text = text
+        self.reply_markup = markup
+
+    def send(self, chat_id: int) -> Message:
+        return bot.send_message(
+            chat_id=chat_id, text=self.text, reply_markup=self.reply_markup
+        )
+
+    def edit(
+        self,
+        chat_id: int,
+        message_id: int,
+        *,
+        only_markup: bool = False,
+        markup: InlineKeyboardMarkup = None,
+    ) -> None:
+        """
+        :param chat_id: chat_id
+        :param message_id: message_id
+        :param only_markup: обновить только клавиатуру self.reply_markup
+        :param markup: обновить текст self.text и клавиатура markup
+
+
+        bot.edit_message_text(text, chat_id, message_id, reply_markup=self.reply_markup)
+
+        .edit(chat_id, message_id, markup=markup)
+
+        bot.edit_message_reply_markup(self.text, chat_id, message_id, reply_markup=markup)
+
+        .edit(chat_id, message_id, only_markup=True)
+
+        bot.edit_message_text(self.text, chat_id, message_id, reply_markup=self.reply_markup)
+
+        .edit(chat_id, message_id)
+        """
+        if only_markup:
+            bot.edit_message_reply_markup(
+                chat_id=chat_id, message_id=message_id, reply_markup=self.reply_markup,
+            )
+        elif markup is not None:
+            bot.edit_message_text(
+                text=self.text,
+                chat_id=chat_id,
+                message_id=message_id,
+                reply_markup=markup,
+            )
+        else:
+            bot.edit_message_text(
+                text=self.text,
+                chat_id=chat_id,
+                message_id=message_id,
+                reply_markup=self.reply_markup,
+            )
+
+    def reply(self, message):
+        bot.reply_to(
+            message,
+            self.text,
+            reply_markup=self.reply_markup,
+        )
+
+
+class EventsMessage(TextMessage):
     """
     Класс для заполнения и форматирования сообщений по шаблону
     """
@@ -28,13 +95,11 @@ class EventMessageGenerator:
         reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup(),
         page: int = 0,
     ):
-        self._settings = request.user.settings
+        super().__init__("", deepcopy(reply_markup))
         if date == "now":
             date = now_time_strftime()
         self.event_list = event_list
         self._date = date
-        self.text = ""
-        self.reply_markup = deepcopy(reply_markup)
         self.page = page
         self.page_signature_needed = True if page else False
 
@@ -82,7 +147,7 @@ SELECT event_id,
                 )
             ]
 
-            if self._settings.direction == "ASC":
+            if request.user.settings.direction == "ASC":
                 first_message = first_message[::-1]
             self.event_list = first_message
 
@@ -133,9 +198,9 @@ SELECT event_id,
        adding_time,
        recent_changes_time
   FROM events
- WHERE user_id = {self._settings.user_id} AND event_id IN ({', '.join(values)}) AND 
+ WHERE user_id = {request.user.settings.user_id} AND event_id IN ({', '.join(values)}) AND 
        ({WHERE}) 
- ORDER BY {sqlite_format_date('date')} {self._settings.direction};
+ ORDER BY {sqlite_format_date('date')} {request.user.settings.direction};
 """,
                 )
             ]
@@ -145,7 +210,7 @@ SELECT event_id,
             )
             self.event_list = []
         else:
-            if self._settings.direction == "ASC":
+            if request.user.settings.direction == "ASC":
                 res = res[::-1]
             self.event_list = res
         return self
@@ -193,16 +258,6 @@ SELECT event_id,
         :param if_empty: Если результат запроса пустой
         :return:         message.text
         """
-
-        def days_before_delete(event_deletion_date: str) -> int:
-            if event_deletion_date == "0":
-                return 30
-            else:
-                # Текущая дата у пользователя
-                d1 = datetime.utcnow() + timedelta(hours=self._settings.timezone)
-                d2 = datetime(*[int(i) for i in event_deletion_date.split("-")])
-
-                return 30 - (d1 - d2).days
 
         day = DayInfo(self._date)
 
@@ -256,7 +311,7 @@ SELECT event_id,
                         days_before_delete=""
                         if event.removal_time == "0"
                         else get_translate("deldate")(
-                            days_before_delete(event.removal_time)
+                            event.days_before_delete()
                         ),
                         **kwargs,
                         text=event.text,
@@ -266,127 +321,6 @@ SELECT event_id,
 
         self.text = (format_string + ending).strip()
         return self
-
-    def send(self, chat_id: int) -> Message:
-        return bot.send_message(
-            chat_id=chat_id, text=self.text, reply_markup=self.reply_markup
-        )
-
-    def edit(
-        self,
-        chat_id: int,
-        message_id: int,
-        *,
-        only_markup: bool = False,
-        markup: InlineKeyboardMarkup = None,
-    ) -> None:
-        """
-        :param chat_id: chat_id
-        :param message_id: message_id
-        :param only_markup: обновить только клавиатуру self.reply_markup
-        :param markup: обновить текст self.text и клавиатура markup
-
-
-        bot.edit_message_text(text, chat_id, message_id, reply_markup=self.reply_markup)
-
-        .edit(chat_id, message_id, markup=markup)
-
-        bot.edit_message_reply_markup(self.text, chat_id, message_id, reply_markup=markup)
-
-        .edit(chat_id, message_id, only_markup=True)
-
-        bot.edit_message_text(self.text, chat_id, message_id, reply_markup=self.reply_markup)
-
-        .edit(chat_id, message_id)
-        """
-        if only_markup:
-            bot.edit_message_reply_markup(
-                chat_id=chat_id, message_id=message_id, reply_markup=self.reply_markup
-            )
-        elif markup is not None:
-            bot.edit_message_text(
-                chat_id=chat_id,
-                message_id=message_id,
-                text=self.text,
-                reply_markup=markup,
-            )
-        else:
-            bot.edit_message_text(
-                chat_id=chat_id,
-                message_id=message_id,
-                text=self.text,
-                reply_markup=self.reply_markup,
-            )
-
-
-class NoEventMessage:
-    def __init__(
-        self,
-        text: str,
-        reply_markup: InlineKeyboardMarkup | None = None,
-    ):
-        self.text = text
-        self.reply_markup = reply_markup
-
-    def send(self, chat_id: int) -> Message:
-        return bot.send_message(
-            chat_id=chat_id, text=self.text, reply_markup=self.reply_markup
-        )
-
-    def edit(
-        self,
-        chat_id: int,
-        message_id: int,
-        *,
-        only_markup: bool = False,
-        markup: InlineKeyboardMarkup = None,
-    ) -> None:
-        """
-        :param chat_id: chat_id
-        :param message_id: message_id
-        :param only_markup: обновить только клавиатуру self.reply_markup
-        :param markup: обновить текст self.text и клавиатура markup
-
-
-        bot.edit_message_text(text, chat_id, message_id, reply_markup=self.reply_markup)
-
-        .edit(chat_id, message_id, markup=markup)
-
-        bot.edit_message_reply_markup(self.text, chat_id, message_id, reply_markup=markup)
-
-        .edit(chat_id, message_id, only_markup=True)
-
-        bot.edit_message_text(self.text, chat_id, message_id, reply_markup=self.reply_markup)
-
-        .edit(chat_id, message_id)
-        """
-        if only_markup:
-            bot.edit_message_reply_markup(
-                chat_id=chat_id,
-                message_id=message_id,
-                reply_markup=self.reply_markup,
-            )
-        elif markup is not None:
-            bot.edit_message_text(
-                text=self.text,
-                chat_id=chat_id,
-                message_id=message_id,
-                reply_markup=markup,
-            )
-        else:
-            bot.edit_message_text(
-                text=self.text,
-                chat_id=chat_id,
-                message_id=message_id,
-                reply_markup=self.reply_markup,
-            )
-
-    def reply(self, message):
-        bot.reply_to(
-            message,
-            self.text,
-            reply_markup=self.reply_markup,
-        )
 
 
 class CallBackAnswer:

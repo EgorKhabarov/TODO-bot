@@ -86,7 +86,7 @@ def get_arguments(
             k: (v[1] if isinstance(v, tuple) else None) for k, v in arguments.items()
         }
 
-    args = [text] if "long str" in types else text.split()
+    args = [text.strip()] if "long str" in types else text.strip().split()
 
     result = {k: None for k in arguments}
     defaults = ((d[1] if isinstance(d, tuple) else None) for d in arguments.values())

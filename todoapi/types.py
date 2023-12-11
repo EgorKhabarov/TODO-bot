@@ -115,6 +115,7 @@ class DataBase:
             result = [description] + result
         # self.sqlite_cursor.close()
         self.sqlite_connection.close()
+        # noinspection PyTypeChecker
         return result
 
 
@@ -148,7 +149,7 @@ class Event:
         """
         if sql_date_pattern.match(self.removal_time):
             _d1 = datetime.utcnow()
-            _d2 = datetime(*[int(i) for i in self.removal_time.split("-")])
+            _d2 = datetime.strptime(self.removal_time, "%Y-%m-%d")
             _days = 30 - (_d1 - _d2).days
             return -1 if _days < 0 else _days
         else:
@@ -309,6 +310,7 @@ class Limit:
         )
 
     def now_limit_percent(self) -> list[int, int, int, int, int, int, int, int]:
+        # noinspection PyTypeChecker
         return [
             int((self.limit_event_day / self.max_event_day) * 100),
             int((self.limit_symbol_day / self.max_symbol_day) * 100),
