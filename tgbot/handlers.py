@@ -44,6 +44,7 @@ from tgbot.bot_messages import (
     event_status_message,
     before_move_message,
     event_info_message,
+    events_message,
 )
 from tgbot.utils import (
     fetch_weather,
@@ -365,10 +366,10 @@ def callback_handler(call: CallbackQuery):
         if len(events_list) == 1:
             event = events_list[0]
             if not request.user.check_event(event.event_id, in_wastebasket)[1]:
-                call.data = message_text.split("\n", 1)[1][:10]
+                call.data = message_text.split("\n", 1)[1][:10]  # TODO проверить
                 return callback_handler(call)
             if is_open:
-                generated = daily_message(message_text[:10])
+                generated = daily_message(event.date)
             else:
                 generated = event_message(event.event_id, in_wastebasket, message_id)
             generated.edit(chat_id, message_id)
@@ -397,7 +398,7 @@ def callback_handler(call: CallbackQuery):
 
         if not markup:  # Созданный markup пустой
             call.data = message_text.split("\n", 1)[1][:10]
-            return callback_handler(call)
+            return callback_handler(call)  # TODO проверить
 
         back_button_data = (
             action_type if not is_open else f"{back_data} {back_arg}".strip()
@@ -410,10 +411,127 @@ def callback_handler(call: CallbackQuery):
         )
         TextMessage(text, generate_buttons(markup)).edit(chat_id, message_id)
 
-    elif call_data.startswith("select many "):
-        ...
+    elif call_data.startswith("select many"):
+        arguments = get_arguments(
+            call_data.removeprefix("select many"),
+            {
+                "action_type": ("str", message_text[:10]),
+                "back_data": "str",
+                "back_arg": ("str", ""),
+            },
+        )
 
-    elif call_data.startswith("event "):
+        action_type, back_data, back_arg = (
+            arguments["action_type"],
+            arguments["back_data"],
+            arguments["back_arg"],
+        )
+        in_wastebasket = action_type == "deleted"
+        events_list = parse_message(message_text)
+
+        # Если событий нет
+        if len(events_list) == 0:
+            no_events = get_translate("errors.no_events_to_interact")
+            CallBackAnswer(no_events).answer(call_id, True)
+            return
+
+        # Если событие одно
+        if len(events_list) == 1:
+            event = events_list[0]
+            if not request.user.check_event(event.event_id, in_wastebasket)[1]:
+                call.data = message_text.split("\n", 1)[1][:10]  # TODO проверить
+                return callback_handler(call)
+            generated = events_message([str(event.event_id)], in_wastebasket)
+            generated.edit(chat_id, message_id)
+            return
+
+        # Если событий несколько
+        markup = []
+        event_ids = []
+        for n, event in enumerate(events_list):
+            api_response = request.user.get_event(event.event_id, in_wastebasket)
+
+            # Проверяем существование события
+            if not api_response[0]:
+                continue
+
+            e = api_response[1]  # event
+            event_ids.append(e.event_id)
+            button_title = f"{e.event_id}.{e.status} {e.text}".ljust(60, "⠀")[:60]
+            if in_wastebasket:
+                button_title = f"{e.date}.{button_title}"[:60]
+
+            button_data = f"select {n} {0}"
+
+            markup.append([{button_title: button_data}])
+
+        if not markup:  # Созданный markup пустой
+            call.data = message_text.split("\n", 1)[1][:10]
+            return callback_handler(call)  # TODO проверить
+
+        markup.append(
+            [
+                {get_theme_emoji("back"): action_type},
+                {"☑️": "select all"},
+                {"↗️": f"events {','.join(map(str, event_ids))} {int(in_wastebasket)}"},
+            ]
+        )
+        TextMessage(
+            get_translate("select.events"), generate_buttons(markup)
+        ).edit(chat_id, message_id)
+
+    elif call_data.startswith("select all"):
+        for line in message.reply_markup.keyboard[:-1]:
+            for button in line:
+                button.text = (
+                    button.text.removeprefix("👉")
+                    if button.text.startswith("👉")
+                    else f"👉{button.text}"
+                )
+        TextMessage(markup=message.reply_markup).edit(
+            chat_id, message_id, only_markup=True,
+        )
+
+    elif call_data.startswith("select"):
+        arguments = get_arguments(
+            call_data.removeprefix("select"),
+            {"row": "int", "column": "int"},
+        )
+
+        row, column = arguments["row"], arguments["column"]
+        button = message.reply_markup.keyboard[row][column]
+        button.text = (
+            button.text.removeprefix("👉")
+            if button.text.startswith("👉")
+            else f"👉{button.text}"
+        )
+        TextMessage(markup=message.reply_markup).edit(
+            chat_id, message_id, only_markup=True,
+        )
+
+    elif call_data.startswith("events"):
+        arguments = get_arguments(
+            call_data.removeprefix("events"),
+            {"event_ids": "str", "in_wastebasket": ("int", 0)},
+        )
+        event_ids, in_wastebasket = arguments["event_ids"], arguments["in_wastebasket"]
+        ids = [
+            i
+            for n, i in enumerate(event_ids.split(","))
+            if message.reply_markup.keyboard[n][0].text.startswith("👉")
+        ]
+        if ids:
+            generated = events_message(ids, bool(in_wastebasket))
+            if generated:
+                try:
+                    generated.edit(chat_id, message_id)
+                except ApiTelegramException:
+                    pass
+        else:
+            no_events = get_translate("errors.no_events_to_interact")
+            CallBackAnswer(no_events).answer(call_id, True)
+
+    elif call_data.startswith("event"):
         arguments = get_arguments(
             call_data.removeprefix("event"),
             {"event_id": "int", "in_wastebasket": ("int", 0)},
@@ -666,19 +784,13 @@ def callback_handler(call: CallbackQuery):
             CallBackAnswer("🤔").answer(call_id)  # TODO Перевод неправильная дата
 
     elif call_data.startswith("calendar"):
-        if call_data == "calendar":
-            generated = monthly_calendar_message()
-            generated.edit(chat_id, message_id)
-            return
-
         arguments = get_arguments(
             call_data.removeprefix("calendar"), {"year": "int", "month": "int"}
         )
         year, month = arguments["year"], arguments["month"]
-        if not all((year, month)):
-            return
         text = get_translate("select.date")
-        markup = create_monthly_calendar_keyboard([year, month])
+        YY_MM = [year, month] if year and month else None
+        markup = create_monthly_calendar_keyboard(YY_MM)
         TextMessage(text, markup).edit(chat_id, message_id)
 
     elif call_data.startswith("settings"):

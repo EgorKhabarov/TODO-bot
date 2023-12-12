@@ -65,6 +65,10 @@ translation = {
         "ru": "Выберите, что сделать с событием",
         "en": "Choose what to do with the event",
     },
+    "what_do_with_events": {
+        "ru": "Выберите, что сделать с событиями",
+        "en": "Choose what to do with the events",
+    },
     "event_about_info": {
         "ru": "Информация о событии",
         "en": "Information about event",
@@ -1261,6 +1265,10 @@ Visibility <b>{}</b>m""",
         "event": {
             "ru": "Выберите событие",
             "en": "Choose an event",
+        },
+        "events": {
+            "ru": "Выберите события",
+            "en": "Choose an events",
         },
         "date": {
             "ru": "Выберите дату",

@@ -226,7 +226,7 @@ def daily_message(
                 {"Menu": "menu"},
             ],
             [
-                {get_theme_emoji("back"): "calendar"},
+                {get_theme_emoji("back"): f"calendar {date:%Y} {date:%m}"},
                 {"<": yesterday},
                 {">": tomorrow},
                 {"🔄": f"update {date:%d.%m.%Y}"},
@@ -330,6 +330,45 @@ def event_message(
     return TextMessage(text, generate_buttons(markup))
 
 
+def events_message(
+    id_list: list[str], in_wastebasket: bool = False
+) -> EventsMessage | None:
+    """
+    Сообщение для взаимодействия с одним событием
+    """
+
+    generated = EventsMessage()
+    generated.get_events(WHERE=f"removal_time != {not in_wastebasket}", values=id_list)
+
+    if not in_wastebasket:
+        date = generated.event_list[0].date
+        markup = [[{get_theme_emoji("back"): date}]]
+        args = ("<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
+                "{weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n")
+    else:
+        # delete_permanently_translate = get_translate("delete_permanently")
+        # recover_translate = get_translate("recover")
+        markup = [
+            # [
+            #     {
+            #         f"❌ {delete_permanently_translate}": f"event_delete {event_id} {event.date} forever deleted"
+            #     },
+            #     {f"↩️ {recover_translate}": f"recover {event_id} {event.date}"},
+            # ],
+            [{get_theme_emoji("back"): "deleted"}],
+        ]
+        args = ("<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
+                "{weekday}</i></u> ({days_before_delete})\n{markdown_text}\n")
+
+    generated.format(
+        title=f"<b>{get_translate('what_do_with_events')}:</b>",
+        args=args,
+        if_empty=get_translate("errors.message_empty"),
+    )
+    generated.reply_markup = generate_buttons(markup)
+    return generated
+
+
 def event_info_message(event_id: int) -> TextMessage | None:
     api_response = request.user.get_event(event_id, False)
     if not api_response[0]:
@@ -349,7 +388,7 @@ def event_info_message(event_id: int) -> TextMessage | None:
     text = f"""
 <b>{get_translate("event_about_info")}:
 {event.date}.{event_id}.</b>{event.status} <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})
-<pre><code class='language-event'>{len(event.text)} - длинна текста
+<pre><code class='language-event-metadata'>{len(event.text)} - длинна текста
 {parse_utc_datetime(event.adding_time)} - время добавления
 {parse_utc_datetime(event.recent_changes_time)} - время последних изменений</code></pre>
 """

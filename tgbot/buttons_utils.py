@@ -198,8 +198,8 @@ def create_twenty_year_calendar_keyboard(
     command = f"'{command.strip()}'" if command else None
     back = f"'{back.strip()}'" if back else None
     # example: millennium, decade =  '20', 2
-    decade = int(str(decade)[2])
-    millennium, decade = str(decade)[:2], (decade - 1) if decade % 2 else decade
+    millennium, decade = str(decade)[:2], int(str(decade)[2])
+    decade = (decade - 1) if decade % 2 else decade
 
     decade -= decade % 2  # if decade % 2: decade -= 1
 
