@@ -3,7 +3,7 @@ import logging
 from time import time
 from datetime import datetime
 from sqlite3 import Error, connect
-from typing import Literal, Callable
+from typing import Literal, Callable, Any
 from contextlib import contextmanager
 
 from vedis import Vedis
@@ -86,7 +86,7 @@ class DataBase:
         commit: bool = False,
         column_names: bool = False,
         func: tuple[str, int, Callable] | None = None,
-    ) -> list[tuple[int | str | bytes, ...], ...]:
+    ) -> list[tuple[int | str | bytes | Any, ...], ...]:
         """
         Выполняет SQL запрос
         Пробовал через with, но оно не закрывало файл

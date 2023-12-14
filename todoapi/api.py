@@ -229,12 +229,14 @@ SELECT event_id,
     def get_events(
         self,
         events_id: list | tuple[int, ...],
-        direction: Literal[-1, 1, "DESC", "ASC"] = -1,
+        in_wastebasket: bool = False,
+        direction: Literal[-1, 1, "DESC", "ASC"] | None = None,
     ) -> tuple[bool, list[Event] | str]:
         """
         Получить события по списку id.
 
         :param events_id:
+        :param in_wastebasket:
         :param direction:
 
         (events, "") - Успешно.
@@ -243,12 +245,13 @@ SELECT event_id,
 
         "SQL Error {}" - Ошибка sql.
         """
+        if direction is None:
+            direction = self.settings.direction or "DESC"
 
         if direction in (-1, 1):
             """
             Expected type 'int', got 'Literal[-1, 1, "DESC", "ASC"]' instead
             """
-            # noinspection PyTypeChecker
             direction = {-1: "DESC", 1: "ASC"}[direction]
 
         if direction not in ("DESC", "ASC"):
@@ -265,11 +268,13 @@ SELECT event_id,
        adding_time,
        recent_changes_time
   FROM events
- WHERE user_id = ? AND
-       event_id IN ({})
+ WHERE user_id = ? AND 
+       event_id IN ({}) AND
+       removal_time {}= 0
  ORDER BY {} {};
 """.format(
                     ", ".join(str(int(e_id)) for e_id in events_id),
+                    ("!" if in_wastebasket else ""),
                     sqlite_format_date("date"),
                     direction,
                 ),

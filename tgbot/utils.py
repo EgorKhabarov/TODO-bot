@@ -575,23 +575,23 @@ def parse_message(text: str) -> list[Event]:
             r"(\S{1,6}(?:,\S{1,6}){0,4}) ",  # status
             str_event,
         ):
-            event_date, event_id, event_status = m[1], m[2], m[3]
+            event_date = m[1]
         elif m := re.match(
             r"\A(10|[1-9])\."  # номер события в сообщении
             r"(\d+)\."  # event_id
             r"(\S{1,6}(?:,\S{1,6}){0,4})\n",  # status
             str_event,
         ):
-            event_date, event_id, event_status = msg_date, m[2], m[3]
+            event_date = msg_date
         else:
             continue
 
         event_list.append(
             Event(
-                event_id=event_id,
+                event_id=int(m[2]),
                 date=event_date,
                 text=str_event.split("\n", maxsplit=1)[1],
-                status=event_status,
+                status=m[3],
             )
         )
 

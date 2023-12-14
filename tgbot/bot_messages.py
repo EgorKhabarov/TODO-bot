@@ -297,7 +297,7 @@ def event_message(
                 if message_id
                 else {"📝": "None"},
                 {"🏷" or "🚩": f"status page 0 {event_id} {event.date}"},
-                {"🗑": f"event_delete {event_id} {event.date} before"},
+                {"🗑": f"delete_event {event_id} {event.date} before"},
             ],
             [
                 # add_media = get_translate("add_media") {f"🖼 {add_media}": "None"}, # "✏️"
@@ -305,7 +305,7 @@ def event_message(
             ],
             [
                 {get_theme_emoji("back"): event.date},
-                {"ℹ️": f"event_info {event_id}"},
+                {"ℹ️": f"about_event {event_id}"},
                 {"🔄": f"event {event_id}"},
             ],
         ]
@@ -316,7 +316,7 @@ def event_message(
         markup = [
             [
                 {
-                    f"❌ {delete_permanently_translate}": f"event_delete {event_id} {event.date} forever deleted"
+                    f"❌ {delete_permanently_translate}": f"delete_event {event_id} {event.date} forever deleted"
                 },
                 {f"↩️ {recover_translate}": f"recover {event_id} {event.date}"},
             ],
@@ -351,7 +351,7 @@ def events_message(
         markup = [
             # [
             #     {
-            #         f"❌ {delete_permanently_translate}": f"event_delete {event_id} {event.date} forever deleted"
+            #         f"❌ {delete_permanently_translate}": f"delete_event {event_id} {event.date} forever deleted"
             #     },
             #     {f"↩️ {recover_translate}": f"recover {event_id} {event.date}"},
             # ],
@@ -369,7 +369,7 @@ def events_message(
     return generated
 
 
-def event_info_message(event_id: int) -> TextMessage | None:
+def about_event_message(event_id: int) -> TextMessage | None:
     api_response = request.user.get_event(event_id, False)
     if not api_response[0]:
         return None
@@ -660,10 +660,10 @@ def before_move_message(event_id: int) -> TextMessage | None:
         [
             [
                 {
-                    f"❌ {delete_permanently}": f"event_delete {event.event_id} {event.date} forever"
+                    f"❌ {delete_permanently}": f"delete_event {event.event_id} {event.date} forever"
                 },
                 {
-                    f"🗑 {trash_bin}": f"event_delete {event.event_id} {event.date} wastebasket"
+                    f"🗑 {trash_bin}": f"delete_event {event.event_id} {event.date} wastebasket"
                 }
                 if is_wastebasket_available
                 else {},

@@ -43,7 +43,7 @@ from tgbot.bot_messages import (
     event_message,
     event_status_message,
     before_move_message,
-    event_info_message,
+    about_event_message,
     events_message,
 )
 from tgbot.utils import (
@@ -288,12 +288,13 @@ def callback_handler(call: CallbackQuery):
     elif call_data == "week_event_list":
         week_event_list_message().edit(chat_id, message_id)
 
-    elif call_data.startswith("event_info"):
+    elif call_data.startswith("about_event"):
+        # event metadata
         event_id = get_arguments(
-            call_data.removeprefix("event_info"),
+            call_data.removeprefix("about_event"),
             {"event_id": "int"},
         )["event_id"]
-        event_info_message(event_id).edit(chat_id, message_id)
+        about_event_message(event_id).edit(chat_id, message_id)
 
     elif call_data.startswith("event_add"):
         clear_state(chat_id)
@@ -362,53 +363,58 @@ def callback_handler(call: CallbackQuery):
             CallBackAnswer(no_events).answer(call_id, True)
             return
 
+        updated_events_list = request.user.get_events(
+            [event.event_id for event in events_list],
+            in_wastebasket,
+        )[1]
+
+        # Если событий нет
+        if len(updated_events_list) == 0:
+            no_events = get_translate("errors.no_events_to_interact")
+            CallBackAnswer(no_events).answer(call_id, True)
+            return
+
         # Если событие одно
         if len(events_list) == 1:
-            event = events_list[0]
-            if not request.user.check_event(event.event_id, in_wastebasket)[1]:
-                call.data = message_text.split("\n", 1)[1][:10]  # TODO проверить
-                return callback_handler(call)
+            event = updated_events_list[0]
             if is_open:
                 generated = daily_message(event.date)
             else:
                 generated = event_message(event.event_id, in_wastebasket, message_id)
-            generated.edit(chat_id, message_id)
-            return
+            return generated.edit(chat_id, message_id)
 
         # Если событий несколько
         markup = []
+        events_dict = {event.event_id: event for event in updated_events_list}
         for event in events_list:
-            api_response = request.user.get_event(event.event_id, in_wastebasket)
+            event = events_dict.get(event.event_id)
 
             # Проверяем существование события
-            if not api_response[0]:
+            if event is None:
                 continue
 
-            e = api_response[1]  # event
-            button_title = f"{e.event_id}.{e.status} {e.text}".ljust(60, "⠀")[:60]
+            button_title = (
+                f"{event.event_id}.{event.status} {event.text}"
+            ).ljust(60, "⠀")[:60]
+
             if in_wastebasket:
-                button_title = f"{e.date}.{button_title}"[:60]
+                button_title = f"{event.date}.{button_title}"[:60]
 
             if is_open:
-                button_data = e.date
+                button_data = event.date
             else:
-                button_data = f"event {e.event_id} {int(in_wastebasket)}"
+                button_data = f"event {event.event_id} {int(in_wastebasket)}"
 
             markup.append([{button_title: button_data}])
 
-        if not markup:  # Созданный markup пустой
-            call.data = message_text.split("\n", 1)[1][:10]
-            return callback_handler(call)  # TODO проверить
+        if is_open:
+            text = get_translate("select.event_to_open")
+            back_button_data = f"{back_data} {back_arg}".strip()
+        else:
+            text = get_translate("select.event")
+            back_button_data = action_type
 
-        back_button_data = (
-            action_type if not is_open else f"{back_data} {back_arg}".strip()
-        )
         markup.append([{get_theme_emoji("back"): back_button_data}])
-        text = (
-            get_translate("select.event_to_open")
-            if is_open
-            else get_translate("select.event")
-        )
         TextMessage(text, generate_buttons(markup)).edit(chat_id, message_id)
 
     elif call_data.startswith("select many"):
@@ -558,7 +564,7 @@ def callback_handler(call: CallbackQuery):
 
         trash_can_message().edit(chat_id, message_id)
 
-    elif call_data.startswith("status page "):
+    elif call_data.startswith("status page"):
         arguments = get_arguments(
             call_data.removeprefix("status page"),
             {"page": "str", "event_id": "int", "date": "date"},
@@ -959,9 +965,9 @@ def callback_handler(call: CallbackQuery):
             else:
                 CallBackAnswer(get_translate("errors.error")).answer(call_id)
 
-    elif call_data.startswith("event_delete"):
+    elif call_data.startswith("delete_event"):
         arguments = get_arguments(
-            call_data.removeprefix("event_delete"),
+            call_data.removeprefix("delete_event"),
             {
                 "event_id": "int",
                 "date": "date",
