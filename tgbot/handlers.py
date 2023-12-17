@@ -1,6 +1,7 @@
 import re
 import html
 import logging
+import traceback
 from time import sleep
 from io import StringIO
 from sqlite3 import Error
@@ -57,6 +58,7 @@ from tgbot.utils import (
 )
 from todoapi.api import User
 from todoapi.types import db
+from todoapi.log_cleaner import clear_logs
 from todoapi.utils import is_admin_id, is_premium_user, is_valid_year
 from telegram_utils.argument_parser import get_arguments
 from telegram_utils.buttons_generator import generate_buttons
@@ -227,6 +229,19 @@ def command_handler(message: Message) -> None:
         date = get_command_arguments(message_text, {"date": ("date", "now")})["date"]
         limits_message(date)
 
+    elif command_text == "clear_logs":
+        try:
+            clear_logs()
+        except BaseException as e:
+            text = (
+                f"<b>{e.__class__.__name__}:</b> <i>{e}</i>\n"
+                f"<pre>{traceback.format_exc()}</pre>"
+            )
+        else:
+            text = "Ok"
+
+        TextMessage(text).reply(message)
+
     elif command_text == "commands":  # TODO перевод
         # /account - Ваш аккаунт (просмотр лимитов)
         text = """
@@ -254,6 +269,7 @@ def command_handler(message: Message) -> None:
 /idinfo {id}/None - Получить файл с id всех пользователей или информацию о id
 /setuserstatus {id} {status} - Поставить пользователю id команды для статуса status
 /deleteuser {id} - Удалить пользователя
+/clear_logs - Очистить логи
 """
             if is_admin_id(chat_id)
             else ""
@@ -1174,4 +1190,7 @@ def clear_state(chat_id: int | str):
     if add_event_date:
         msg_date, message_id = add_event_date.split(",")
         db.execute(queries["update add_event_date"], params=(0, chat_id), commit=True)
-        daily_message(msg_date).edit(chat_id, message_id)
+        try:
+            daily_message(msg_date).edit(chat_id, message_id)
+        except ApiTelegramException:
+            pass

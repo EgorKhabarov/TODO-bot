@@ -39,11 +39,12 @@ COMMANDS = (
     "idinfo",
     "commands",
     "menu",
+    "clear_logs",
 )
 callbackTab = "⠀⠀⠀"  # Специальные прозрачные символы для заполнения
 
 
-__version__ = "15.12.2023"
+__version__ = "17.12.2023"
 __autor__ = "EgorKhabarov"
 
 bot_settings = """

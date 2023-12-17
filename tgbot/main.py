@@ -30,17 +30,15 @@ from tgbot.utils import (
 from todoapi.api import User
 from todoapi.types import db
 from todoapi.logger import logging
-from todoapi.db_creator import create_tables
 from todoapi.utils import is_admin_id
+from todoapi.log_cleaner import clear_logs
+from todoapi.db_creator import create_tables
 from telegram_utils.command_parser import command_regex
 
 
 create_tables()
-
 logging.info(bot_log_info())
-
 bot.set_my_commands(get_translate("buttons.commands.0", "ru"), BotCommandScopeDefault())
-
 command_regex.set_username(bot.user.username)
 
 
@@ -237,20 +235,25 @@ def add_event_handler(message: Message):
 
 def schedule_loop():
     # ждём чтобы цикл уведомлений начинался
-    sleep(60 - now_time().second)
-    while True:
+    def process():
         while_time = now_time()
+        weekday = while_time.weekday()
+        hour = while_time.hour
+        minute = while_time.minute
 
-        if config.NOTIFICATIONS and while_time.minute in (0, 10, 20, 30, 40, 50):
+        if config.NOTIFICATIONS and minute in (0, 10, 20, 30, 40, 50):
             Thread(target=notifications_message, daemon=True).start()
 
-        if (
-            config.POKE_LINK
-            and config.LINK
-            and while_time.minute in (0, 10, 20, 30, 40, 50)
-        ):
+        if config.POKE_LINK and config.LINK and minute in (0, 10, 20, 30, 40, 50):
             Thread(target=poke_link, daemon=True).start()
 
+        if weekday == hour == minute == 0:  # Monday 00:00
+            Thread(target=clear_logs, daemon=True).start()
+
+    process()
+    sleep(60 - now_time().second)
+    while True:
+        process()
         sleep(60)
 
 
