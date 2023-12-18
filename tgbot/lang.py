@@ -293,7 +293,7 @@ Here you can easily create events and notes that will be automatically placed on
 
 🔍 Search: Search for events by date or text so that no important event escapes you!
 
-🔔 Notifications: Never miss important moments! Set notifications for a specific time or turn them off at your convenience.
+🔔 Notifications: Never miss important moments! Set notification for a specific time or turn them off at your convenience.
 
 ☁️ Weather: Want to know the weather forecast for your city? Just ask me and I will provide you with up-to-date data.
 
@@ -781,7 +781,7 @@ Visibility <b>{}</b>m""",
         },
         "reminder": {
             "ru": "Напоминание",
-            "en": "Reminder",
+            "en": "Notification",
         },
     },
     "buttons": {

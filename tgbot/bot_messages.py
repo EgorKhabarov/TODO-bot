@@ -893,15 +893,15 @@ def notifications_message(
     :param from_command: Если True то сообщение присылается в любом случае
 
     Вызвать сообщение с будильником для всех:
-        notifications()
+        notifications_message()
     Вызвать сообщение для одного человека:
-        notifications(user_id=[chat_id])
+        notifications_message(user_id=[chat_id])
     Изменить страницу сообщения:
-        notifications(user_id=[chat_id],
-                      id_list=id_list,
-                      page=page,
-                      message_id=message_id,
-                      markup=message.reply_markup)
+        notifications_message(user_id=[chat_id],
+                              id_list=id_list,
+                              page=page,
+                              message_id=message_id,
+                              markup=message.reply_markup)
     """
     if not user_id_list:
         n_time = now_time()
@@ -1171,14 +1171,14 @@ Error: "User Not Exist"
 user_id: {user_id}
 
 <pre><code class='language-settings'>lang:      {user.settings.lang}
-sub_urls:  {bool(user.settings.sub_urls)}
-city:      {user.settings.city}
-timezone:  {user.settings.timezone}
-direction: {'⬇️' if user.settings.direction == 'DESC' else '⬆️'}
-status:    {user_status}
-notice:    {'🔔' if user.settings.notifications else '🔕'}
-n_time:    {user.settings.notifications_time}
-theme:     {'⬛️' if user.settings.theme else '⬜️'}</code></pre>
+sub_urls:      {bool(user.settings.sub_urls)}
+city:          {user.settings.city}
+timezone:      {user.settings.timezone}
+direction:     {'⬇️' if user.settings.direction == 'DESC' else '⬆️'}
+status:        {user_status}
+notifications: {'🔔' if user.settings.notifications else '🔕'}
+n_time:        {user.settings.notifications_time}
+theme:         {'⬛️' if user.settings.theme else '⬜️'}</code></pre>
 """
     markup = generate_buttons(
         [

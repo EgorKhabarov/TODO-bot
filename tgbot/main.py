@@ -14,19 +14,10 @@ from tgbot.lang import get_translate
 from tgbot.time_utils import now_time
 from tgbot.bot import bot, bot_log_info
 from tgbot.buttons_utils import delmarkup
-from tgbot.handlers import command_handler, callback_handler, reply_handler, clear_state
 from tgbot.bot_actions import delete_message_action
-from tgbot.bot_messages import (
-    search_message,
-    notifications_message,
-    confirm_changes_message,
-)
-from tgbot.utils import (
-    poke_link,
-    re_edit_message,
-    rate_limit_requests,
-    html_to_markdown,
-)
+from tgbot.handlers import command_handler, callback_handler, reply_handler, clear_state
+from tgbot.bot_messages import search_message, notifications_message, confirm_changes_message
+from tgbot.utils import poke_link, re_edit_message, rate_limit_requests, html_to_markdown
 from todoapi.api import User
 from todoapi.types import db
 from todoapi.logger import logging
