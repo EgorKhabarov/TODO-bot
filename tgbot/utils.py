@@ -558,11 +558,12 @@ def highlight_text_difference(_old_text, _new_text):
     return result_text
 
 
-def parse_message(text: str) -> list[Event]:
+def parse_message(text: str) -> tuple[list[Event], bool]:
     """
-    Парсит сообщение и возвращает список событий
+    Парсит сообщение и возвращает список событий и на разные ли они даты
     """
     event_list: list[Event] = []
+    different_dates = False
     msg_date = None
 
     if m := re.match(r"\A\d{2}\.\d{2}\.\d{4}", text):
@@ -576,6 +577,8 @@ def parse_message(text: str) -> list[Event]:
             str_event,
         ):
             event_date = m[1]
+            different_dates = True
+
         elif m := re.match(
             r"\A(10|[1-9])\."  # номер события в сообщении
             r"(\d+)\."  # event_id
@@ -583,6 +586,7 @@ def parse_message(text: str) -> list[Event]:
             str_event,
         ):
             event_date = msg_date
+
         else:
             continue
 
@@ -595,7 +599,7 @@ def parse_message(text: str) -> list[Event]:
             )
         )
 
-    return event_list
+    return event_list, different_dates
 
 
 def days_before_event(event_date: str, event_status: str) -> tuple[int, str, str]:

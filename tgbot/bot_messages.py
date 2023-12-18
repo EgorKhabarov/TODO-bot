@@ -853,7 +853,7 @@ def trash_can_message(
 
     markup = generate_buttons(
         [
-            [{"one": "select one deleted"}, {"many": "select many deleted"}],
+            [{"🔼": "select one deleted"}, {"↕️": "select many deleted"}],
             [
                 {f"🧹 {clean_bin_translate}": "clean_bin"},
                 {"🔄": "deleted"},
@@ -1174,7 +1174,7 @@ Error: "User Not Exist"
     text = f"""👤 User 👤
 user_id: {user_id}
 
-<pre><code class='language-settings'>lang:      {user.settings.lang}
+<pre><code class='language-settings'>lang:          {user.settings.lang}
 sub_urls:      {bool(user.settings.sub_urls)}
 city:          {user.settings.city}
 timezone:      {user.settings.timezone}

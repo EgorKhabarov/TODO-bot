@@ -371,7 +371,7 @@ def callback_handler(call: CallbackQuery):
         )
         in_wastebasket = action_type == "deleted"
         is_open = action_type == "open"
-        events_list = parse_message(message_text)
+        events_list, different_dates = parse_message(message_text)
 
         # Если событий нет
         if len(events_list) == 0:
@@ -412,7 +412,7 @@ def callback_handler(call: CallbackQuery):
             button_title = f"{event.event_id}.{event.status} {event.text}"
             button_title = button_title.ljust(60, "⠀")[:60]
 
-            if in_wastebasket:
+            if in_wastebasket or different_dates:
                 button_title = f"{event.date}.{button_title}"[:60]
 
             if is_open:
@@ -448,7 +448,7 @@ def callback_handler(call: CallbackQuery):
             arguments["back_arg"],
         )
         in_wastebasket = action_type == "deleted"
-        events_list = parse_message(message_text)
+        events_list, different_dates = parse_message(message_text)
 
         # Если событий нет
         if len(events_list) == 0:
@@ -479,7 +479,7 @@ def callback_handler(call: CallbackQuery):
             e = api_response[1]  # event
             event_ids.append(e.event_id)
             button_title = f"{e.event_id}.{e.status} {e.text}".ljust(60, "⠀")[:60]
-            if in_wastebasket:
+            if in_wastebasket or different_dates:
                 button_title = f"{e.date}.{button_title}"[:60]
 
             button_data = f"select {n} {0}"
@@ -911,7 +911,10 @@ def callback_handler(call: CallbackQuery):
         if not request.user.clear_basket()[0]:
             return CallBackAnswer(get_translate("errors.error")).answer(call_id)
 
-        trash_can_message().edit(chat_id, message_id)
+        try:
+            trash_can_message().edit(chat_id, message_id)
+        except ApiTelegramException:
+            CallBackAnswer("ok").answer(call_id, True)
 
     elif call_data == "restore_to_default":
         old_lang = request.user.settings.lang
