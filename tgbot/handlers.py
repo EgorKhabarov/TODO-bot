@@ -409,9 +409,8 @@ def callback_handler(call: CallbackQuery):
             if event is None:
                 continue
 
-            button_title = (
-                f"{event.event_id}.{event.status} {event.text}"
-            ).ljust(60, "⠀")[:60]
+            button_title = f"{event.event_id}.{event.status} {event.text}"
+            button_title = button_title.ljust(60, "⠀")[:60]
 
             if in_wastebasket:
                 button_title = f"{event.date}.{button_title}"[:60]
@@ -498,9 +497,10 @@ def callback_handler(call: CallbackQuery):
                 {"↗️": f"events {','.join(map(str, event_ids))} {int(in_wastebasket)}"},
             ]
         )
-        TextMessage(
+        generated = TextMessage(
             get_translate("select.events"), generate_buttons(markup)
-        ).edit(chat_id, message_id)
+        )
+        generated.edit(chat_id, message_id)
 
     elif call_data.startswith("select all"):
         for line in message.reply_markup.keyboard[:-1]:
@@ -510,9 +510,8 @@ def callback_handler(call: CallbackQuery):
                     if button.text.startswith("👉")
                     else f"👉{button.text}"
                 )
-        TextMessage(markup=message.reply_markup).edit(
-            chat_id, message_id, only_markup=True,
-        )
+        generated = TextMessage(markup=message.reply_markup)
+        generated.edit(chat_id, message_id, only_markup=True)
 
     elif call_data.startswith("select"):
         arguments = get_arguments(
@@ -527,9 +526,8 @@ def callback_handler(call: CallbackQuery):
             if button.text.startswith("👉")
             else f"👉{button.text}"
         )
-        TextMessage(markup=message.reply_markup).edit(
-            chat_id, message_id, only_markup=True,
-        )
+        generated = TextMessage(markup=message.reply_markup)
+        generated.edit(chat_id, message_id, only_markup=True)
 
     elif call_data.startswith("events"):
         arguments = get_arguments(

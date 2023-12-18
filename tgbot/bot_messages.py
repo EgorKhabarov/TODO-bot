@@ -343,8 +343,10 @@ def events_message(
     if not in_wastebasket:
         date = generated.event_list[0].date
         markup = [[{get_theme_emoji("back"): date}]]
-        args = ("<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
-                "{weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n")
+        args = (
+            "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
+            "{weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n"
+        )
     else:
         # delete_permanently_translate = get_translate("delete_permanently")
         # recover_translate = get_translate("recover")
@@ -357,8 +359,10 @@ def events_message(
             # ],
             [{get_theme_emoji("back"): "deleted"}],
         ]
-        args = ("<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
-                "{weekday}</i></u> ({days_before_delete})\n{markdown_text}\n")
+        args = (
+            "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
+            "{weekday}</i></u> ({days_before_delete})\n{markdown_text}\n"
+        )
 
     generated.format(
         title=f"<b>{get_translate('what_do_with_events')}:</b>",

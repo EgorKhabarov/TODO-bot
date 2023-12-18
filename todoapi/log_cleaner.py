@@ -15,6 +15,7 @@ removal_lines_end = (
     "Error code: 502. Description: Bad Gateway\n",
 )
 
+
 def filter_function(test_line: str) -> bool:
     if any(test_line.endswith(rl) for rl in removal_lines_end):
         return False
@@ -27,8 +28,8 @@ def filter_function(test_line: str) -> bool:
 
 def clear_logs():
     log_folder, utc_time = Path(input_file_path).parent, datetime.utcnow()
-    output_file_path = fr"{log_folder}\old_logs\{utc_time:%Y.%m.%d-%H.%M.%S}.log"
-    output_errors_file_path = fr"{output_file_path.removesuffix('.log')}_errors.log"
+    output_file_path = rf"{log_folder}\old_logs\{utc_time:%Y.%m.%d-%H.%M.%S}.log"
+    output_errors_file_path = rf"{output_file_path.removesuffix('.log')}_errors.log"
     Path(output_file_path).parent.mkdir(parents=True, exist_ok=True)
 
     with (
