@@ -303,7 +303,7 @@ def callback_handler(call: CallbackQuery):
             commit=True,
         )
 
-        send_event_text = get_translate("send_event_text")
+        send_event_text = get_translate("text.send_event_text")
         CallBackAnswer(send_event_text).answer(call_id)
         text = f"{message.html_text}\n\n<b>?.?.</b>⬜\n{send_event_text}"
         markup = generate_buttons([[{get_theme_emoji("back"): date}]])
@@ -321,7 +321,7 @@ def callback_handler(call: CallbackQuery):
             CallBackAnswer(get_translate("errors.error")).answer(call_id, True)
             return
 
-        CallBackAnswer(get_translate("changes_saved")).answer(call_id)
+        CallBackAnswer(get_translate("text.changes_saved")).answer(call_id)
         generated = event_message(event_id, False, message_id)
         # generated = daily_message(event_date)
         generated.edit(chat_id, message_id)
@@ -934,7 +934,7 @@ def callback_handler(call: CallbackQuery):
             # Изменяем дату у события
             api_response = request.user.edit_event_date(event_id, f"{date:%d.%m.%Y}")
             if api_response[0]:
-                CallBackAnswer(get_translate("changes_saved")).answer(call_id)
+                CallBackAnswer(get_translate("text.changes_saved")).answer(call_id)
                 generated = event_message(event_id, False, message_id)
                 # generated = daily_message(event_date)
                 generated.edit(chat_id, message_id)

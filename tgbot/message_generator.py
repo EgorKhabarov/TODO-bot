@@ -321,7 +321,7 @@ SELECT user_id,
                         else "",
                         days_before_delete=""
                         if event.removal_time == "0"
-                        else get_translate("deldate")(event.days_before_delete()),
+                        else get_translate("func.deldate")(event.days_before_delete()),
                         **kwargs,
                         text=event.text,
                     )

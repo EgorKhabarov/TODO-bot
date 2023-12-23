@@ -31,215 +31,155 @@ def end(lang: str):
 
 
 translation = {
-    "relative_date_list": {
-        "ru": (
-            "Сегодня",
-            "Завтра",
-            "Послезавтра",
-            "Вчера",
-            "Позавчера",
-            "Через",
-            "назад",
-            end("ru"),
-        ),
-        "en": (
-            "Today",
-            "Tomorrow",
-            "Day after tomorrow",
-            "Yesterday",
-            "Day before yesterday",
-            "After",
-            "ago",
-            end("en"),
-        ),
+    "func": {
+        "deldate": {
+            "ru": lambda x: f"<b>{x} {end('ru')(x)} до удаления</b>",
+            "en": lambda x: f"<b>{x} {end('en')(x)} before delete</b>",
+        },
     },
-    "send_event_text": {
-        "ru": "Отправьте текст события",
-        "en": "Send the text of the event",
-    },
-    "clean_bin": {
-        "ru": "Очистить корзину",
-        "en": "Clear basket",
-    },
-    "what_do_with_event": {
-        "ru": "Выберите, что сделать с событием",
-        "en": "Choose what to do with the event",
-    },
-    "what_do_with_events": {
-        "ru": "Выберите, что сделать с событиями",
-        "en": "Choose what to do with the events",
-    },
-    "event_about_info": {
-        "ru": "Информация о событии",
-        "en": "Information about event",
-    },
-    "are_you_sure_edit": {
-        "ru": "Вы точно хотите изменить тест события на",
-        "en": "Are you sure you want to change the event text to",
-    },
-    "deldate": {
-        "ru": lambda x: f"<b>{x} {end('ru')(x)} до удаления</b>",
-        "en": lambda x: f"<b>{x} {end('en')(x)} before delete</b>",
-    },
-    "delete_permanently": {
-        "ru": "Удалить навсегда",
-        "en": "Delete permanently",
-    },
-    "trash_bin": {
-        "ru": "В корзину",
-        "en": "To trash bin",
-    },
-    "edit_date": {
-        "ru": "Изменить дату",
-        "en": "Edit date",
-    },
-    "add_media": {
-        "ru": "Добавить медиа",
-        "en": "Add media",
-    },
-    "recover": {
-        "ru": "Восстановить",
-        "en": "Recover",
-    },
-    "changes_saved": {
-        "ru": "Изменения сохранены",
-        "en": "Changes saved",
-    },
-    "account": {
-        "ru": (
-            "Событий в день",
-            "Символов в день",
-            "Событий в месяц",
-            "Символов в месяц",
-            "Событий в год",
-            "Символов в год",
-            "Событий всего",
-            "Символов всего",
-        ),
-        "en": (
-            "Events per day",
-            "Symbols per day",
-            "Events per month",
-            "Symbols per month",
-            "Events per year",
-            "Symbols per year",
-            "Total events",
-            "Total symbols",
-        ),
-    },
-    "months_list": {
-        "ru": (
-            (("Январь", 1), ("Февраль", 2), ("Март", 3)),
-            (("Апрель", 4), ("Май", 5), ("Июнь", 6)),
-            (("Июль", 7), ("Август", 8), ("Сентябрь", 9)),
-            (("Октябрь", 10), ("Ноябрь", 11), ("Декабрь", 12)),
-        ),
-        "en": (
-            (("January", 1), ("February", 2), ("March", 3)),
-            (("April", 4), ("May", 5), ("June", 6)),
-            (("July", 7), ("August", 8), ("September", 9)),
-            (("October", 10), ("November", 11), ("December", 12)),
-        ),
-    },
-    "leap": {
-        "ru": "Високосный",
-        "en": "leap",
-    },
-    "not_leap": {
-        "ru": "Невисокосный",
-        "en": "non-leap",
-    },
-    "week_days_list": {
-        "ru": ("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"),
-        "en": ("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"),
-    },
-    "week_days_list_full": {
-        "ru": (
-            "Понедельник",
-            "Вторник",
-            "Среда",
-            "Четверг",
-            "Пятница",
-            "Суббота",
-            "Воскресенье",
-        ),
-        "en": (
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday",
-            "Friday",
-            "Saturday",
-            "Sunday",
-        ),
-    },
-    "months_name": {
-        "ru": (
-            "Январь",
-            "Февраль",
-            "Март",
-            "Апрель",
-            "Май",
-            "Июнь",
-            "Июль",
-            "Август",
-            "Сентябрь",
-            "Октябрь",
-            "Ноябрь",
-            "Декабрь",
-        ),
-        "en": (
-            "January",
-            "February",
-            "March",
-            "April",
-            "May",
-            "June",
-            "July",
-            "August",
-            "September",
-            "October",
-            "November",
-            "December",
-        ),
-    },
-    "months_name2": {
-        "ru": (
-            "Января",
-            "Февраля",
-            "Марта",
-            "Апреля",
-            "Мая",
-            "Июня",
-            "Июля",
-            "Августа",
-            "Сентября",
-            "Октября",
-            "Ноября",
-            "Декабря",
-        ),
-        "en": (
-            "January",
-            "February",
-            "March",
-            "April",
-            "May",
-            "June",
-            "July",
-            "August",
-            "September",
-            "October",
-            "November",
-            "December",
-        ),
-    },
-    "week_events": {
-        "ru": "Cобытия в ближайшие 7 дней",
-        "en": "Events in the next 7 days",
-    },
-    "recurring_events": {
-        "ru": "Повторяющиеся события",
-        "en": "Recurring events",
+    "arrays": {
+        "relative_date_list": {
+            "ru": (
+                "Сегодня",
+                "Завтра",
+                "Послезавтра",
+                "Вчера",
+                "Позавчера",
+                "Через",
+                "назад",
+                end("ru"),
+            ),
+            "en": (
+                "Today",
+                "Tomorrow",
+                "Day after tomorrow",
+                "Yesterday",
+                "Day before yesterday",
+                "After",
+                "ago",
+                end("en"),
+            ),
+        },
+        "account": {
+            "ru": (
+                "Событий в день",
+                "Символов в день",
+                "Событий в месяц",
+                "Символов в месяц",
+                "Событий в год",
+                "Символов в год",
+                "Событий всего",
+                "Символов всего",
+            ),
+            "en": (
+                "Events per day",
+                "Symbols per day",
+                "Events per month",
+                "Symbols per month",
+                "Events per year",
+                "Symbols per year",
+                "Total events",
+                "Total symbols",
+            ),
+        },
+        "months_list": {
+            "ru": (
+                (("Январь", 1), ("Февраль", 2), ("Март", 3)),
+                (("Апрель", 4), ("Май", 5), ("Июнь", 6)),
+                (("Июль", 7), ("Август", 8), ("Сентябрь", 9)),
+                (("Октябрь", 10), ("Ноябрь", 11), ("Декабрь", 12)),
+            ),
+            "en": (
+                (("January", 1), ("February", 2), ("March", 3)),
+                (("April", 4), ("May", 5), ("June", 6)),
+                (("July", 7), ("August", 8), ("September", 9)),
+                (("October", 10), ("November", 11), ("December", 12)),
+            ),
+        },
+        "week_days_list": {
+            "ru": ("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"),
+            "en": ("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"),
+        },
+        "week_days_list_full": {
+            "ru": (
+                "Понедельник",
+                "Вторник",
+                "Среда",
+                "Четверг",
+                "Пятница",
+                "Суббота",
+                "Воскресенье",
+            ),
+            "en": (
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday",
+            ),
+        },
+        "months_name": {
+            "ru": (
+                "Январь",
+                "Февраль",
+                "Март",
+                "Апрель",
+                "Май",
+                "Июнь",
+                "Июль",
+                "Август",
+                "Сентябрь",
+                "Октябрь",
+                "Ноябрь",
+                "Декабрь",
+            ),
+            "en": (
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+            ),
+        },
+        "months_name2": {
+            "ru": (
+                "Января",
+                "Февраля",
+                "Марта",
+                "Апреля",
+                "Мая",
+                "Июня",
+                "Июля",
+                "Августа",
+                "Сентября",
+                "Октября",
+                "Ноября",
+                "Декабря",
+            ),
+            "en": (
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+            ),
+        },
     },
     "text": {
         "page": {
@@ -298,7 +238,7 @@ Please call up new messages using commands.</b>
 /setuserstatus {id} {status} - Поставить пользователю id команды для статуса status
 /deleteuser {id} - Удалить пользователя
 /clear_logs - Очистить логи
-"""
+""",
             ),
             "en": (
                 """
@@ -329,6 +269,62 @@ Please call up new messages using commands.</b>
 /clear_logs - Clear logs
 """,
             ),
+        },
+        "recover": {
+            "ru": "Восстановить",
+            "en": "Recover",
+        },
+        "leap": {
+            "ru": "Високосный",
+            "en": "leap",
+        },
+        "not_leap": {
+            "ru": "Невисокосный",
+            "en": "non-leap",
+        },
+        "trash_bin": {
+            "ru": "В корзину",
+            "en": "To trash bin",
+        },
+        "delete_permanently": {
+            "ru": "Удалить навсегда",
+            "en": "Delete permanently",
+        },
+        "changes_saved": {
+            "ru": "Изменения сохранены",
+            "en": "Changes saved",
+        },
+        "event_about_info": {
+            "ru": "Информация о событии",
+            "en": "Information about event",
+        },
+        "clean_bin": {
+            "ru": "Очистить корзину",
+            "en": "Clear basket",
+        },
+        "edit_date": {
+            "ru": "Изменить дату",
+            "en": "Edit date",
+        },
+        "add_media": {
+            "ru": "Добавить медиа",
+            "en": "Add media",
+        },
+        "send_event_text": {
+            "ru": "Отправьте текст события",
+            "en": "Send the text of the event",
+        },
+        "recurring_events": {
+            "ru": "Повторяющиеся события",
+            "en": "Recurring events",
+        },
+        "week_events": {
+            "ru": "Cобытия в ближайшие 7 дней",
+            "en": "Events in the next 7 days",
+        },
+        "are_you_sure_edit": {
+            "ru": "Вы точно хотите изменить тест события на",
+            "en": "Are you sure you want to change the event text to",
         },
     },
     "messages": {
@@ -1345,6 +1341,14 @@ Visibility <b>{}</b>m""",
         "new_date": {
             "ru": "Выберите новую дату для события",
             "en": "Select a new date for the event",
+        },
+        "what_do_with_event": {
+            "ru": "Выберите, что сделать с событием",
+            "en": "Choose what to do with the event",
+        },
+        "what_do_with_events": {
+            "ru": "Выберите, что сделать с событиями",
+            "en": "Choose what to do with the events",
         },
     },
 }

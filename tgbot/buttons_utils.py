@@ -65,12 +65,12 @@ def create_monthly_calendar_keyboard(
 
     second_line = [
         {(week_day + ("!" if wd in every_week else "")): "None"}
-        for wd, week_day in enumerate(get_translate("week_days_list"))
+        for wd, week_day in enumerate(get_translate("arrays.week_days_list"))
     ]
 
     row_calendar = monthcalendar(YY, MM)
     title = (
-        f"{get_translate('months_name')[MM - 1]} "
+        f"{get_translate('arrays.months_name')[MM - 1]} "
         f"({MM}.{YY}) ({year_info(YY)}) "
         f"({get_week_number(YY, MM, 1)}-"
         f"{get_week_number(YY, MM, max(row_calendar[-1]))})"
@@ -162,7 +162,7 @@ def create_yearly_calendar_keyboard(
     now_month = now_time().month
 
     month_buttons = []
-    for row in get_translate("months_list"):
+    for row in get_translate("arrays.months_list"):
         month_buttons.append([])
         for nameM, numm in row:
             tag_today = "#" if numm == now_month else ""

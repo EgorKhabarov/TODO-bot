@@ -283,7 +283,7 @@ def event_message(
     day = DayInfo(event.date)
     if not in_wastebasket:
         relatively_date = day.relatively_date
-        edit_date = get_translate("edit_date")
+        edit_date = get_translate("text.edit_date")
         markup = [
             [
                 {
@@ -310,9 +310,9 @@ def event_message(
             ],
         ]
     else:
-        relatively_date = get_translate("deldate")(event.days_before_delete())
-        delete_permanently_translate = get_translate("delete_permanently")
-        recover_translate = get_translate("recover")
+        relatively_date = get_translate("func.deldate")(event.days_before_delete())
+        delete_permanently_translate = get_translate("text.delete_permanently")
+        recover_translate = get_translate("text.recover")
         markup = [
             [
                 {
@@ -323,7 +323,7 @@ def event_message(
             [{get_theme_emoji("back"): "deleted"}],
         ]
     text = f"""
-<b>{get_translate("what_do_with_event")}:
+<b>{get_translate("select.what_do_with_event")}:
 {event.date}.{event_id}.</b>{event.status} <u><i>{day.str_date}  {day.week_date}</i></u> ({relatively_date})
 {add_status_effect(event.text, event.status)}
 """
@@ -348,8 +348,8 @@ def events_message(
             "{weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n"
         )
     else:
-        # delete_permanently_translate = get_translate("delete_permanently")
-        # recover_translate = get_translate("recover")
+        # delete_permanently_translate = get_translate("text.delete_permanently")
+        # recover_translate = get_translate("text.recover")
         markup = [
             # [
             #     {
@@ -365,7 +365,7 @@ def events_message(
         )
 
     generated.format(
-        title=f"<b>{get_translate('what_do_with_events')}:</b>",
+        title=f"<b>{get_translate('select.what_do_with_events')}:</b>",
         args=args,
         if_empty=get_translate("errors.message_empty"),
     )
@@ -390,7 +390,7 @@ def about_event_message(event_id: int) -> TextMessage | None:
         return f"{time:%Y.%m.%d %H:%M:%S}"
 
     text = f"""
-<b>{get_translate("event_about_info")}:
+<b>{get_translate("text.event_about_info")}:
 {event.date}.{event_id}.</b>{event.status} <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})
 <pre><code class='language-event-metadata'>{len(event.text)} - длинна текста
 {parse_utc_datetime(event.adding_time)} - время добавления
@@ -483,7 +483,7 @@ def confirm_changes_message(message: Message) -> None | int:
             text_diff,
         )
         text = f"""
-<b>{get_translate("are_you_sure_edit")}:
+<b>{get_translate("text.are_you_sure_edit")}:
 {event.date} {event_id}</b> <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})
 <i>{text_diff}</i>
 """
@@ -563,7 +563,7 @@ AND
 
     generated.format(
         title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})"
-        + f'\n📅 {get_translate("recurring_events")}',
+        + f'\n📅 {get_translate("text.recurring_events")}',
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
         "{weekday}</i></u> ({reldate})\n{markdown_text}\n",
         if_empty=get_translate("errors.nothing_found"),
@@ -653,8 +653,8 @@ def before_move_message(event_id: int) -> TextMessage | None:
 
     event = api_response[1]
 
-    delete_permanently = get_translate("delete_permanently")
-    trash_bin = get_translate("trash_bin")
+    delete_permanently = get_translate("text.delete_permanently")
+    trash_bin = get_translate("text.trash_bin")
 
     is_wastebasket_available = is_admin_id(
         request.chat_id
@@ -678,7 +678,7 @@ def before_move_message(event_id: int) -> TextMessage | None:
 
     day = DayInfo(event.date)
     text = f"""
-<b>{get_translate("what_do_with_event")}:
+<b>{get_translate("select.what_do_with_event")}:
 {event.date}.{event_id}.</b>{event.status} <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})
 {add_status_effect(event.text, event.status)}
 """
@@ -823,7 +823,7 @@ def week_event_list_message(
         )
 
     generated.format(
-        title=f"📆 {get_translate('week_events')}",
+        title=f"📆 {get_translate('text.week_events')}",
         args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
         "{weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
         if_empty=get_translate("errors.nothing_found"),
@@ -847,7 +847,7 @@ def trash_can_message(
     # Удаляем события старше 30 дней
     db.execute(queries["delete events_older_30_days"], commit=True)
 
-    clean_bin_translate = get_translate("clean_bin")
+    clean_bin_translate = get_translate("text.clean_bin")
     basket_translate = get_translate("messages.basket")
     message_empty_translate = get_translate("errors.message_empty")
 

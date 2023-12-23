@@ -56,9 +56,9 @@ def year_info(year: int) -> str:
     """
     result = ""
     if isleap(year):  # year % 4 == 0 and (year % 100 != 0 or year % 400 == 0):
-        result += get_translate("leap")
+        result += get_translate("text.leap")
     else:
-        result += get_translate("not_leap")
+        result += get_translate("text.not_leap")
     result += " "
     emoji = ("🐀", "🐂", "🐅", "🐇", "🐲", "🐍", "🐴", "🐐", "🐒", "🐓", "🐕", "🐖")
     result += emoji[(year - 4) % 12]
@@ -91,7 +91,7 @@ class DayInfo:
             after,
             ago,
             Fday,
-        ) = get_translate("relative_date_list")
+        ) = get_translate("arrays.relative_date_list")
         x = now_time()
         x = datetime(x.year, x.month, x.day)
         y = convert_date_format(date)
@@ -114,8 +114,8 @@ class DayInfo:
             case _ as n:
                 self.relatively_date = f"{-n} {Fday(n)} {ago}"
 
-        week_days = get_translate("week_days_list_full")
-        month_list = get_translate("months_name2")
+        week_days = get_translate("arrays.week_days_list_full")
+        month_list = get_translate("arrays.months_name2")
 
         self.date = date
         self.str_date = f"{y.day} {month_list[y.month - 1]}"

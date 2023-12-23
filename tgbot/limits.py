@@ -125,7 +125,7 @@ def create_image(year=None, month=None, day=None, text="Account") -> BytesIO:
         symbol_year,
         event_all,
         symbol_all,
-    ) = get_translate("account")
+    ) = get_translate("arrays.account")
 
     if day:
         image.paste(
