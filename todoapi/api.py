@@ -14,7 +14,6 @@ from todoapi.utils import (
     is_premium_user,
     is_valid_year,
     is_admin_id,
-    to_valid_id,
     re_date,
 )
 
@@ -34,10 +33,7 @@ class User:
         :param event_id:
         :param in_wastebasket:
         """
-        # TODO Проверку
-        event_id = to_valid_id(event_id)
-
-        if not event_id:
+        if str(event_id).isdigit():
             return False, ""
 
         if not isinstance(in_wastebasket, bool):
@@ -69,7 +65,6 @@ SELECT 1
 
         :param user_id:
         """
-        # TODO Проверить
         return (
             True,
             bool(
@@ -864,10 +859,12 @@ UPDATE settings
         if not is_admin_id(self.user_id):
             return False, "Not Enough Authority"
 
-        if is_admin_id(user_id):  # TODO Проверить
+        if is_admin_id(user_id):
             return False, "Cannot be reduced in admin rights"
 
         if status not in (-1, 0, 1, 2, "-1", "0", "1", "2"):
+            # TODO Убрать статус 2.
+            #  Пусть админом можно будет стать только вставив его id в config
             return False, "Invalid status"
 
         if not self.check_user(user_id)[1]:

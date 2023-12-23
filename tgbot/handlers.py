@@ -209,13 +209,8 @@ def command_handler(message: Message) -> None:
                 logging.info(f'export ApiTelegramException "{e}"')
                 TextMessage(get_translate("errors.file_is_too_big")).send(chat_id)
         else:
-            if re.match(r"Wait (\d+) min", api_response[1]):
-                # TODO "m := "   # TODO "m[0]"
-                generated = TextMessage(
-                    get_translate("errors.export").format(
-                        t=api_response[1].split(" ")[1]
-                    )
-                )
+            if m := re.match(r"Wait (\d+) min", api_response[1]):
+                generated = TextMessage(get_translate("errors.export").format(t=m[1]))
             else:
                 generated = TextMessage(get_translate("errors.error"))
             generated.send(chat_id)
@@ -228,7 +223,7 @@ def command_handler(message: Message) -> None:
         TextMessage(text).reply(message)
 
     elif command_text == "limits":
-        # TODO сделать проверку на user.status
+        # TODO сделать проверку на user.status ?
         date = get_command_arguments(message_text, {"date": ("date", "now")})["date"]
         limits_message(date)
 
@@ -245,38 +240,12 @@ def command_handler(message: Message) -> None:
 
         TextMessage(text).reply(message)
 
-    elif command_text == "commands":  # TODO перевод
-        # /account - Ваш аккаунт (просмотр лимитов)
-        text = """
-/start - Старт
-/calendar - Календарь
-/today - События на сегодня
-/weather {city} - Погода сейчас
-/forecast {city} - Прогноз погоды
-/week_event_list - Список событий на ближайшие 7 дней
-/deleted - Корзина
-/dice - Кинуть кубик
-/export - Сохранить мои события в csv
-/help - Помощь
-/settings - Настройки
-/search {...} - Поиск
-/id - Получить свой Telegram id
+    elif command_text == "commands":
+        text, admin_commands = get_translate("text.command_list")
 
-/commands - Этот список
-""" + (
-            """
-/version - Версия бота
-/sqlite - Бекап базы данных
-/files - Сохранить все файлы
-/SQL {...} - Выполнить sql запрос к базе данных
-/idinfo {id}/None - Получить файл с id всех пользователей или информацию о id
-/setuserstatus {id} {status} - Поставить пользователю id команды для статуса status
-/deleteuser {id} - Удалить пользователя
-/clear_logs - Очистить логи
-"""
-            if is_admin_id(chat_id)
-            else ""
-        )
+        if is_admin_id(chat_id):
+            text += admin_commands
+
         TextMessage(text).send(chat_id)
 
 
@@ -750,7 +719,7 @@ def callback_handler(call: CallbackQuery):
                 markup = create_yearly_calendar_keyboard(year, command, back)
                 TextMessage(markup=markup).edit(chat_id, message_id, only_markup=True)
         else:
-            CallBackAnswer("🤔").answer(call_id)
+            CallBackAnswer(get_translate("errors.invalid_date")).answer(call_id)
 
     elif call_data.startswith("calendar_y "):
         sleep(0.5)
@@ -769,7 +738,7 @@ def callback_handler(call: CallbackQuery):
                 markup = create_monthly_calendar_keyboard(date, command, back)
                 TextMessage(markup=markup).edit(chat_id, message_id, only_markup=True)
         else:
-            CallBackAnswer("🤔").answer(call_id)
+            CallBackAnswer(get_translate("errors.invalid_date")).answer(call_id)
 
     elif call_data.startswith("calendar_m "):
         sleep(0.5)
@@ -793,7 +762,7 @@ def callback_handler(call: CallbackQuery):
                 generated = daily_message(now_date)
                 generated.edit(chat_id, message_id)
         else:
-            CallBackAnswer("🤔").answer(call_id)  # TODO Перевод неправильная дата
+            CallBackAnswer(get_translate("errors.invalid_date")).answer(call_id)
 
     elif call_data.startswith("calendar"):
         sleep(0.5)
@@ -884,7 +853,7 @@ def callback_handler(call: CallbackQuery):
         if is_valid_year(date.year):
             daily_message(date).edit(chat_id, message_id)
         else:
-            CallBackAnswer("🤔").answer(call_id)  # TODO невалидная дата
+            CallBackAnswer(get_translate("errors.invalid_date")).answer(call_id)
 
     elif call_data.startswith("help"):
         if call_data == "help":
@@ -1054,7 +1023,7 @@ def callback_handler(call: CallbackQuery):
                             bot.send_document(
                                 delete_user_chat_id,
                                 InputFile(csv_file),
-                                caption="Ваш аккаунт удалён. Ваши события:",  # TODO перевод
+                                caption=get_translate("text.account_has_been_deleted"),
                             )
                         except ApiTelegramException:
                             pass

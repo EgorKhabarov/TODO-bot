@@ -36,18 +36,6 @@ def is_premium_user(user) -> bool:
     return user.settings.user_status >= 1 or is_admin_id(user.user_id)
 
 
-def to_valid_id(x_id: int | str) -> int:
-    """
-    Вернёт валидный id.
-    Если ошибка, то возвращает 0.
-    """
-    # TODO убрать
-    if isinstance(x_id, str) and isdigit(x_id):
-        x_id = int(x_id)
-
-    return x_id if 0 < x_id else 0
-
-
 def is_valid_year(year: int) -> bool:
     """
     Является ли год валидным (находится в диапазоне от 1900 до 2300)

@@ -266,6 +266,70 @@ The group (<code>{from_chat_id}</code>) migrate into a supergroup (<code>{to_cha
 Please call up new messages using commands.</b>
 """,
         },
+        "account_has_been_deleted": {
+            "ru": "Ваш аккаунт удалён.",
+            "en": "Your account has been deleted.",
+        },
+        "command_list": {
+            "ru": (
+                """
+/start - Старт
+/calendar - Календарь
+/today - События на сегодня
+/weather {city} - Погода сейчас
+/forecast {city} - Прогноз погоды
+/week_event_list - Список событий на ближайшие 7 дней
+/deleted - Корзина
+/dice - Кинуть кубик
+/export - Сохранить мои события в csv
+/help - Помощь
+/settings - Настройки
+/search {...} - Поиск
+/id - Получить свой Telegram id
+
+/commands - Этот список
+""",
+                """
+/version - Версия бота
+/sqlite - Бекап базы данных
+/files - Сохранить все файлы
+/SQL {...} - Выполнить sql запрос к базе данных
+/idinfo {id}/None - Получить файл с id всех пользователей или информацию о id
+/setuserstatus {id} {status} - Поставить пользователю id команды для статуса status
+/deleteuser {id} - Удалить пользователя
+/clear_logs - Очистить логи
+"""
+            ),
+            "en": (
+                """
+/start - Start
+/calendar - Calendar
+/today - Events for today
+/weather {city} - Weather now
+/forecast {city} - Weather forecast
+/week_event_list - List of events for the next 7 days
+/deleted - Trash
+/dice - Roll a die
+/export - Save my events to csv
+/help - Help
+/settings - Settings
+/search {...} - Search
+/id - Get your Telegram id
+
+/commands - This list
+""",
+                """
+/version - Bot version
+/sqlite - Database backup
+/files - Save all files
+/SQL {...} - Execute an sql query to the database
+/idinfo {id}/None - Get a file with the id of all users or information about id
+/setuserstatus {id} {status} - Set the command id to the user for the status status
+/deleteuser {id} - Delete a user
+/clear_logs - Clear logs
+""",
+            ),
+        },
     },
     "messages": {
         "start": {
@@ -1251,6 +1315,10 @@ Visibility <b>{}</b>m""",
         "nodata": {
             "ru": "👀 На эту дату у вас нет событий",
             "en": "👀 You have no events for this date",
+        },
+        "invalid_date": {
+            "ru": "Недействительная дата!",
+            "en": "Invalid date!",
         },
     },
     "select": {

@@ -13,7 +13,7 @@ class Request:
 
     request.user: todoapi.api.User
 
-    request.chat_id: todoapi.api.User  # TODO добавить в todoapi.api.User
+    request.chat_id: todoapi.api.User
 
     request.query: telebot.types.Message | telebot.types.CallbackQuery
     """
