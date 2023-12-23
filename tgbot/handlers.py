@@ -23,6 +23,7 @@ from tgbot.buttons_utils import (
     delmarkup,
     create_yearly_calendar_keyboard,
     create_twenty_year_calendar_keyboard,
+    decode_id,
 )
 from tgbot.bot_messages import (
     menu_message,
@@ -65,6 +66,7 @@ from telegram_utils.buttons_generator import generate_buttons
 from telegram_utils.command_parser import parse_command, get_command_arguments
 
 
+delimiter_regex = re.compile(r"[|!]")
 re_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}")
 re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
 
@@ -689,49 +691,41 @@ def callback_handler(call: CallbackQuery):
         generated.edit(chat_id, message_id)
 
     elif call_data.startswith("|"):  # Список id событий на странице
-        # TODO Сделать шифровку для повторяющихся event_id их просто убирать
-        page, id_list = call_data.split("|")[1:]
-        id_list = id_list.split(",")
+        call_data = call_data.removeprefix("|")
+        is_recurring = True if delimiter_regex.findall(call_data)[0] == "!" else False
+        page, id_list = (lambda _page, _id_list: (int(_page), decode_id(_id_list)))(
+            *delimiter_regex.split(call_data)
+        )
 
         try:
             if message_text.startswith("🔍 "):  # Поиск
                 first_line = message.text.split("\n", maxsplit=1)[0]
-                raw_query = first_line.split(maxsplit=2)[-1][:-1]
-                query = html.escape(raw_query)
-                generated = search_message(query, id_list, int(page))
-                generated.edit(chat_id, message_id, markup=message.reply_markup)
+                query = html.escape(first_line.split(maxsplit=2)[-1][:-1])
+                generated = search_message(query, id_list, page)
 
             elif message_text.startswith("📆"):  # Если /week_event_list
-                generated = week_event_list_message(id_list, int(page))
-                generated.edit(chat_id, message_id, markup=message.reply_markup)
+                generated = week_event_list_message(id_list, page)
 
             elif message_text.startswith("🗑"):  # Корзина
-                generated = trash_can_message(id_list, int(page))
-                generated.edit(chat_id, message_id, markup=message.reply_markup)
+                generated = trash_can_message(id_list, page)
 
             elif m := re_date.match(message_text):
-                msg_date = m[0]
-                if page.startswith("!"):
-                    generated = recurring_events_message(
-                        msg_date, id_list, int(page[1:])
-                    )
-                else:
-                    generated = daily_message(msg_date, id_list, int(page))
-
-                # Изменяем кнопку изменения текста события на актуальную
-                markup = message.reply_markup
-
-                generated.edit(chat_id, message_id, markup=markup)
+                func = recurring_events_message if is_recurring else daily_message
+                generated = func(m[0], id_list, page)
 
             elif message_text.startswith("🔔"):  # Будильник
-                notifications_message(
+                return notifications_message(
                     user_id_list=[chat_id],
                     id_list=id_list,
-                    page=int(page),
+                    page=page,
                     message_id=message_id,
                     markup=message.reply_markup,
                     from_command=True,
                 )
+            else:
+                return
+
+            generated.edit(chat_id, message_id, markup=message.reply_markup)
 
         except ApiTelegramException:
             text = get_translate("errors.already_on_this_page")

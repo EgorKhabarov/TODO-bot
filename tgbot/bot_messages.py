@@ -508,7 +508,7 @@ def confirm_changes_message(message: Message) -> None | int:
 
 
 def recurring_events_message(
-    date: str, id_list: list | tuple[str] = tuple(), page: int | str = 0
+    date: str, id_list: list | tuple[int] = tuple(), page: int | str = 0
 ) -> EventsMessage:
     """
     :param date: дата у сообщения
@@ -559,7 +559,7 @@ AND
     if id_list:
         generated.get_events(WHERE=WHERE, values=id_list)
     else:
-        generated.get_data(WHERE=WHERE, prefix="|!")
+        generated.get_data(WHERE=WHERE, is_recurring=True)
 
     generated.format(
         title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})"

@@ -12,6 +12,7 @@ from todoapi.utils import is_valid_year
 from telegram_utils.buttons_generator import generate_buttons
 
 
+alphabet = "0123456789aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
 calendar_event_count_template = ("⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹")
 
 
@@ -281,3 +282,76 @@ def number_to_power(string: str) -> str:
     Например "123" в "¹²³".
     """
     return "".join(calendar_event_count_template[int(ch)] for ch in str(string))
+
+
+def exel_str_int(excel_string: str) -> int:
+    return sum(
+        (alphabet.index(char) + 1) * len(alphabet) ** i
+        for i, char in enumerate(reversed(excel_string))
+    )
+
+
+def int_str_exel(number: int) -> str:
+    result = ""
+    while number:
+        number, remainder = divmod(number - 1, len(alphabet))
+        result = alphabet[remainder] + result
+    return result
+
+
+def decode_id(input_ids: str) -> list[int]:
+    """
+    >>> decode_id("a,,,,,,,")
+    [1, 2, 3, 4, 5, 6, 7, 8]
+    >>> decode_id("a,,B,C,D")
+    [1, 2, 4, 6, 8]
+    >>> decode_id("a,,B,C,D,")
+    [1, 2, 4, 6, 8, 9]
+    """
+
+    result = []
+    ids: list[int | Ellipsis] = [
+        exel_str_int(i) if i else ... for i in input_ids.split(",")
+    ]
+    current_number = ids[0]
+
+    if current_number is ...:
+        raise ValueError("...")
+
+    for char in ids:
+        if char is ...:
+            current_number += 1
+        else:
+            current_number = char
+        result.append(current_number)
+    return result
+
+
+def encode_id(ids: list[int]) -> str:
+    """
+    >>> encode_id([1, 2, 3, 4, 5, 6, 7, 8])
+    'a,,,,,,,'
+    >>> encode_id([1, 2, 4, 6, 8])
+    'a,,B,C,D'
+    >>> encode_id([8, 6, 7, 5, 4, 3, 2, 1])
+    'D,C,,c,B,b,A,a'
+    >>> encode_id([1, 2, 4, 6, 8, 6, 4, 2, 1])
+    'a,,B,C,D,C,B,A,a'
+    """
+
+    result = []
+    for n, i in enumerate(ids):
+        abbreviated_int = int_str_exel(i)
+        if n == 0:
+            data = f"{abbreviated_int}"
+        else:
+            diff = i - ids[n - 1]
+            if diff == 1:
+                data = ","
+            elif diff > 1:
+                data = f",{abbreviated_int}"
+            else:
+                data = f",{abbreviated_int}"
+        result.append(data)
+
+    return "".join(result)

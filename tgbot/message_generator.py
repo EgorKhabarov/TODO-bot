@@ -10,6 +10,7 @@ from tgbot.bot import bot
 from tgbot.request import request
 from todoapi.types import db, Event
 from tgbot.lang import get_translate
+from tgbot.buttons_utils import encode_id
 from tgbot.utils import add_status_effect, days_before_event
 from tgbot.sql_utils import sqlite_format_date, pagination
 from tgbot.time_utils import now_time_strftime, DayInfo
@@ -111,7 +112,7 @@ class EventsMessage(TextMessage):
         WHERE: str,
         column: str = sqlite_format_date("date"),
         direction: Literal["ASC", "DESC"] | None = None,
-        prefix: str = "|",
+        is_recurring: bool = False,
     ):
         """
         Получить список кортежей строк id по страницам
@@ -155,12 +156,15 @@ SELECT user_id,
             self.event_list = first_message
 
             count_columns = 5
-            diapason_list = []
+            diapason_list: list[list[tuple[int, str | int]]] = []
             for num, d in enumerate(data):  # Заполняем данные из диапазонов в список
                 if int(f"{num}"[-1]) in (0, count_columns):
                     # Разделяем диапазоны в строчки по 5
                     diapason_list.append([])
-                diapason_list[-1].append((num + 1, d))  # Номер страницы, id
+                # Номер страницы, id
+                diapason_list[-1].append(
+                    (num + 1, encode_id([int(i) for i in d.split(",")]))
+                )
 
             if len(diapason_list[0]) != 1:  # Если страниц больше одной
                 self.page_signature_needed = True
@@ -169,11 +173,13 @@ SELECT user_id,
                     diapason_list[-1].append((0, 0))
 
                 # Обрезаем до 8 строк кнопок чтобы не было слишком много строк кнопок
+                delimiter = "!" if is_recurring else "|"
                 [
                     self.reply_markup.row(
                         *[
                             InlineKeyboardButton(
-                                f"{numpage}", callback_data=f"{prefix}{numpage}|{vals}"
+                                f"{numpage}",
+                                callback_data=f"|{numpage}{delimiter}{vals}",
                             )
                             if vals
                             else InlineKeyboardButton(" ", callback_data="None")
@@ -184,7 +190,7 @@ SELECT user_id,
                 ]
         return self
 
-    def get_events(self, WHERE: str, values: list | tuple[str]):
+    def get_events(self, WHERE: str, values: list | tuple[int | str]):
         """
         Возвращает события входящие в values с условием WHERE
         """
@@ -202,7 +208,8 @@ SELECT user_id,
        adding_time,
        recent_changes_time
   FROM events
- WHERE user_id = {request.user.settings.user_id} AND event_id IN ({', '.join(values)}) AND 
+ WHERE user_id = {request.user.settings.user_id} AND
+       event_id IN ({', '.join(str(i) for i in values)}) AND
        ({WHERE}) 
  ORDER BY {sqlite_format_date('date')} {request.user.settings.direction};
 """,
