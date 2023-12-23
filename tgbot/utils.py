@@ -4,25 +4,26 @@ import difflib
 import logging
 from time import time
 from io import StringIO
-from typing import Literal
 from functools import wraps
 from urllib.parse import urlparse
+from typing import Literal, Callable
 from textwrap import wrap as textwrap
 from datetime import timedelta, datetime, timezone
 
 import requests
+from cachetools.keys import hashkey
 from requests import ConnectionError
+from cachetools import TTLCache, LRUCache, cached
 from requests.exceptions import MissingSchema
 from telebot.apihelper import ApiTelegramException  # noqa
 from telebot.types import Message, CallbackQuery  # noqa
 
 from tgbot import config
-from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.time_utils import DayInfo, convert_date_format, now_time
 from todoapi.types import db, Event
-from todoapi.utils import is_admin_id, isdigit
+from todoapi.utils import is_admin_id
 
 re_edit_message = re.compile(r"\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)")
 link_sub = re.compile(r"<a href=\"(.+?)\">(.+?)(\n*?)</a>")
@@ -175,80 +176,28 @@ def add_status_effect(text: str, statuses: str) -> str:
     return text
 
 
-# TODO упростить
-def rate_limit_requests(
-    requests_count: int = 3,
-    time_sec: int = 60,
-    key_path: int | str | tuple[str | int] | set[str | int] = None,
-    translate_key: str = "errors.many_attempts",
-    send: bool = False,
+def rate_limit(
+    storage: LRUCache,
+    max_calls: int,
+    seconds: int,
+    key_func: Callable = hashkey,
+    else_func: Callable = lambda arg, kwargs, key, sec: (key, sec),
 ):
-    """
-    Возвращает текст ошибки,
-    если пользователи вызывали функцию чаще чем 3 раза в 60 секунд.
-    """
-
-    def get_key(
-        _args: tuple,
-        _kwargs: dict,
-        path: int | str | tuple[str | int] | list[str | int] = None,
-    ):
-        if path is None:
-            path = key_path
-
-        if isinstance(path, int):
-            return _args[path]
-        elif isinstance(path, str):
-            result = None
-            for i, a in enumerate(path.split(".")):
-                a: str
-                if i == 0:
-                    result = _kwargs.get(a) or _args[0]
-                else:
-                    result = result[int(a)] if isdigit(a) else getattr(result, a)
-            return result
-
-        elif isinstance(path, (tuple, list)):
-            return tuple(get_key(_args, _kwargs, key) for key in path)
-        elif isinstance(path, set):
-            keys = []
-            for key in path:
-                try:
-                    x = get_key(_args, _kwargs, key)
-                    keys.append(x)
-                except AttributeError:
-                    pass
-
-            return " ".join(f"{key}" for key in keys)
-
     def decorator(func):
-        cache = [] if key_path is None else {}
-
         @wraps(func)
         def wrapper(*args, **kwargs):
-            now = time()
-            key = get_key(args, kwargs)
+            key = key_func(*args, **kwargs)
+            contains = key in storage
+            t = time()
 
-            if key not in cache and key_path is not None:
-                cache[key] = []
+            if contains:
+                storage[key] = [call for call in storage[key] if t - call < seconds]
 
-            _cache = cache if key_path is None else cache[key]
-            _cache[:] = [call for call in _cache if now - call < time_sec]
+                if len(storage[key]) >= max_calls:
+                    sec = seconds - int(t - storage[key][0])
+                    return else_func(args, kwargs, key=key, sec=sec)
 
-            if len(_cache) >= requests_count:
-                wait_time = time_sec - int(now - _cache[0])
-
-                raw_text: str = get_translate(translate_key)
-                text = raw_text.format(wait_time)
-                if send:
-                    try:
-                        return bot.send_message(key, text)
-                    except ApiTelegramException:
-                        return
-                else:
-                    return text
-
-            _cache.append(now)
+            storage.setdefault(key, []).append(t)
             return func(*args, **kwargs)
 
         return wrapper
@@ -256,35 +205,27 @@ def rate_limit_requests(
     return decorator
 
 
-def cache_with_ttl(cache_time_sec: int = 60):
-    """
-    Кеширует значение функции подобно functools.cache,
-    но держит значение не больше cache_time_sec.
-    Не даёт запрашивать новый результат функции
-    с одним и тем же аргументом чаще чем в cache_time_sec секунды.
-    """
-
-    def decorator(func):
-        cache = {}
-
-        @wraps(func)
-        def wrapper(city: str):
-            key = f"{city} {request.user.settings.lang}"
-            now = time()
-            if key not in cache or now - cache[key][1] > cache_time_sec:
-                cache[key] = (func(city), now)
-            return cache[key][0]
-
-        return wrapper
-
-    return decorator
+def _get_cache_city_key(city):
+    return city, request.user.settings.lang
 
 
-# TODO добавить персональные api ключи для запрашивания погоды
-# TODO декоратор для проверки api ключа у пользователя
-# TODO в зависимости от наличия ключа ставить разные лимиты на запросы
-@rate_limit_requests(4, 60, translate_key="errors.many_attempts_weather")
-@cache_with_ttl(300)
+def _get_cache_city_key_user_id(city):
+    return city, request.user.settings.lang, request.user.user_id
+
+
+@rate_limit(
+    LRUCache(maxsize=100),
+    10,
+    60,
+    lambda *args, **kwargs: request.user.user_id,
+    lambda *args, **kwargs: None,
+)
+def _else_func(args, kwargs, key, sec) -> str:  # noqa
+    return get_translate("errors.many_attempts_weather").format(int(sec))
+
+
+@rate_limit(LRUCache(maxsize=100), 4, 60, _get_cache_city_key_user_id, _else_func)
+@cached(TTLCache(100, 60 * 5), _get_cache_city_key)
 def fetch_weather(city: str) -> str:
     """
     Возвращает текущую погоду по городу city
@@ -364,8 +305,8 @@ def fetch_weather(city: str) -> str:
     )
 
 
-@rate_limit_requests(4, 60, translate_key="errors.many_attempts_weather")
-@cache_with_ttl(3600)
+@rate_limit(LRUCache(maxsize=100), 4, 60, _get_cache_city_key_user_id, _else_func)
+@cached(TTLCache(100, 60 * 60), _get_cache_city_key)
 def fetch_forecast(city: str) -> str:
     """
     Прогноз погоды на 5 дней для города city
@@ -592,6 +533,7 @@ def parse_message(text: str) -> tuple[list[Event], bool]:
 
         event_list.append(
             Event(
+                user_id=request.user.user_id,
                 event_id=int(m[2]),
                 date=event_date,
                 text=str_event.split("\n", maxsplit=1)[1],

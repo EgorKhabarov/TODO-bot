@@ -127,7 +127,8 @@ class EventsMessage(TextMessage):
                 Event(*event)
                 for event in db.execute(
                     f"""
-SELECT event_id,
+SELECT user_id,
+       event_id,
        date,
        text,
        status,
@@ -192,7 +193,8 @@ SELECT event_id,
                 Event(*event)
                 for event in db.execute(
                     f"""
-SELECT event_id,
+SELECT user_id,
+       event_id,
        date,
        text,
        status,

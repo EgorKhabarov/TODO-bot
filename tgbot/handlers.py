@@ -120,7 +120,8 @@ def command_handler(message: Message) -> None:
         except KeyError:
             text = get_translate(f"errors.{command_text}_invalid_city_name")
 
-        TextMessage(text, delmarkup()).send(chat_id)
+        if text:
+            TextMessage(text, delmarkup()).send(chat_id)
 
     elif command_text == "search":
         raw_query = get_command_arguments(
@@ -738,8 +739,7 @@ def callback_handler(call: CallbackQuery):
 
     elif call_data.startswith("calendar_t "):
         sleep(0.3)
-        data: tuple = literal_eval(call_data.removeprefix("calendar_t "))
-        command, back, decade = data
+        command, back, decade = literal_eval(call_data.removeprefix("calendar_t "))
 
         if decade == "now":
             decade = int(str(now_time().year)[:3])
@@ -760,8 +760,7 @@ def callback_handler(call: CallbackQuery):
 
     elif call_data.startswith("calendar_y "):
         sleep(0.5)
-        data: tuple = literal_eval(call_data.removeprefix("calendar_y "))
-        command, back, year = data
+        command, back, year = literal_eval(call_data.removeprefix("calendar_y "))
 
         if year == "now":
             year = now_time().year
@@ -780,8 +779,7 @@ def callback_handler(call: CallbackQuery):
 
     elif call_data.startswith("calendar_m "):
         sleep(0.5)
-        data: tuple = literal_eval(call_data.removeprefix("calendar_m "))
-        command, back, date = data
+        command, back, date = literal_eval(call_data.removeprefix("calendar_m "))
 
         if date == "now":
             date = new_time_calendar()
@@ -804,13 +802,14 @@ def callback_handler(call: CallbackQuery):
             CallBackAnswer("🤔").answer(call_id)  # TODO Перевод неправильная дата
 
     elif call_data.startswith("calendar"):
-        arguments = get_arguments(
-            call_data.removeprefix("calendar"), {"year": "int", "month": "int"}
-        )
-        year, month = arguments["year"], arguments["month"]
+        sleep(0.5)
+        date = literal_eval(call_data.removeprefix("calendar "))[0]
+
+        if date == "now":
+            date = new_time_calendar()
+
         text = get_translate("select.date")
-        YY_MM = [year, month] if year and month else None
-        markup = create_monthly_calendar_keyboard(YY_MM)
+        markup = create_monthly_calendar_keyboard(date)
         TextMessage(text, markup).edit(chat_id, message_id)
 
     elif call_data.startswith("settings"):
@@ -1117,7 +1116,7 @@ def callback_handler(call: CallbackQuery):
                 CallBackAnswer("ok").answer(call_id, True)
 
     elif call_data.startswith("bell"):
-        date = get_arguments(call_data.removeprefix("bell"), {"date": "date"})["date"]
+        n_date = get_arguments(call_data.removeprefix("bell"), {"date": "date"})["date"]
 
         if call_data == "bell":  # and is_premium_user(request.user):
             generated = monthly_calendar_message(
@@ -1127,7 +1126,7 @@ def callback_handler(call: CallbackQuery):
             return
 
         notifications_message(
-            n_date=date,
+            n_date=n_date,
             user_id_list=[chat_id],
             message_id=message_id,
             from_command=True,
@@ -1148,7 +1147,7 @@ def reply_handler(message: Message, reply_to_message: Message) -> None:
     """
 
     if reply_to_message.text.startswith("⚙️"):
-        if request.user.set_settings(city=message.text[:50])[0]:
+        if request.user.set_settings(city=html_to_markdown(message.html_text)[:50])[0]:
             try:
                 settings_message().edit(request.chat_id, reply_to_message.message_id)
             except ApiTelegramException:
@@ -1158,18 +1157,18 @@ def reply_handler(message: Message, reply_to_message: Message) -> None:
 
     elif reply_to_message.text.startswith("😎") and is_secure_chat(message):
         arguments = get_arguments(
-            message.text,
-            {"user_id": "int", "action": ("str", "user_id")},
+            message.html_text,
+            {"value": "int", "action": ("str", "user_id")},
         )
 
-        user_id = arguments["user_id"]
-        action = arguments["action"]
+        value = arguments["value"]
+        action = html_to_markdown(arguments["action"])
 
-        if user_id:
+        if value:
             if action == "page":
-                generated = admin_message(user_id)
+                generated = admin_message(value)
             elif action == "user_id":
-                generated = user_message(user_id)
+                generated = user_message(value)
             else:
                 return
 

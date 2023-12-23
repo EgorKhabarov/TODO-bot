@@ -4,6 +4,7 @@ from functools import wraps
 from threading import Thread
 
 import requests
+from cachetools import LRUCache
 from telebot.apihelper import ApiTelegramException  # noqa
 from telebot.types import CallbackQuery, Message, BotCommandScopeDefault  # noqa
 
@@ -15,17 +16,13 @@ from tgbot.time_utils import now_time
 from tgbot.bot import bot, bot_log_info
 from tgbot.buttons_utils import delmarkup
 from tgbot.bot_actions import delete_message_action
+from tgbot.message_generator import TextMessage, CallBackAnswer
 from tgbot.handlers import command_handler, callback_handler, reply_handler, clear_state
+from tgbot.utils import poke_link, re_edit_message, html_to_markdown, rate_limit
 from tgbot.bot_messages import (
     search_message,
     notifications_message,
     confirm_changes_message,
-)
-from tgbot.utils import (
-    poke_link,
-    re_edit_message,
-    rate_limit_requests,
-    html_to_markdown,
 )
 from todoapi.api import User
 from todoapi.types import db
@@ -40,6 +37,32 @@ create_tables()
 logging.info(bot_log_info())
 bot.set_my_commands(get_translate("buttons.commands.0", "ru"), BotCommandScopeDefault())
 command_regex.set_username(bot.user.username)
+rate_limit_200_1800 = LRUCache(maxsize=100)
+rate_limit_30_60 = LRUCache(maxsize=100)
+rate_limit_else = LRUCache(maxsize=100)
+
+
+def key_func(x: Message | CallbackQuery) -> int:
+    return (x if isinstance(x, Message) else x.message).chat.id
+
+
+@rate_limit(
+    rate_limit_else,
+    10,
+    60,
+    lambda *args, **kwargs: request.user.user_id,
+    lambda *args, **kwargs: None,
+)
+def else_func(args, kwargs, key, sec) -> None:
+    x = kwargs.get("x") or args[0]
+    text = get_translate("errors.many_attempts").format(sec)
+
+    if isinstance(x, CallbackQuery):
+        func, arg = CallBackAnswer(text).answer, x.id
+    else:
+        func, arg = TextMessage(text).send, key
+
+    func(arg)
 
 
 def check_user(func):
@@ -56,12 +79,8 @@ def check_user(func):
         else:
             return
 
-        @rate_limit_requests(
-            200, 60 * 30, {"call.message.chat.id", "message.chat.id"}, send=True
-        )
-        @rate_limit_requests(
-            30, 60, {"call.message.chat.id", "message.chat.id"}, send=True
-        )
+        @rate_limit(rate_limit_200_1800, 200, 60 * 30, key_func, else_func)
+        @rate_limit(rate_limit_30_60, 30, 60, key_func, else_func)
         def wrapper(x: Message | CallbackQuery):
             if isinstance(x, Message):
                 chat_id = x.chat.id

@@ -43,7 +43,7 @@ def start_message() -> TextMessage:
     markup = generate_buttons(
         [
             [{"/menu": "menu"}],
-            [{"/calendar": "calendar"}],
+            [{"/calendar": "calendar ('now',)"}],
             [
                 {
                     get_translate("text.add_bot_to_group"): {
@@ -66,7 +66,7 @@ def menu_message() -> TextMessage:
     markup = [
         [
             {"📚 Помощь": "help"},
-            {"📆 Календарь": "calendar"},
+            {"📆 Календарь": "calendar ('now',)"},
         ],
         [
             {"👤 Аккаунт": "account"},
@@ -135,9 +135,9 @@ def settings_message() -> TextMessage:
     text = get_translate("messages.settings").format(
         settings.lang,
         bool(settings.sub_urls),
-        settings.city,
+        html.escape(settings.city),
         str_utz,
-        now_time().strftime("%H:%M  %d.%m.%Y"),
+        f"{now_time():%H:%M  %d.%m.%Y}",
         {"DESC": "⬇️", "ASC": "⬆️"}[settings.direction],
         "🔔" if settings.notifications else "🔕",
         f"{n_hours:0>2}:{n_minutes:0>2}" if settings.notifications else "",
@@ -226,7 +226,7 @@ def daily_message(
                 {"Menu": "menu"},
             ],
             [
-                {get_theme_emoji("back"): f"calendar {date:%Y} {date:%m}"},
+                {get_theme_emoji("back"): f"calendar (({date:%Y},{int(date.month)}),)"},
                 {"<": yesterday},
                 {">": tomorrow},
                 {"🔄": f"update {date:%d.%m.%Y}"},
@@ -938,7 +938,11 @@ def notifications_message(
             ]
 
             WHERE = f"""
-user_id = {user_id} AND removal_time = 0
+user_id = {user_id}
+AND
+removal_time = 0
+AND
+status NOT LIKE '%🔕%'
 AND
 (
     ( -- На сегодня и +1 день
@@ -981,7 +985,11 @@ AND
                 reply_markup=generate_buttons(
                     [
                         [
-                            {get_theme_emoji("back"): "menu"},
+                            {
+                                get_theme_emoji("back"): "bell"
+                                if from_command
+                                else "menu"
+                            },
                             {get_theme_emoji("del"): "message_del"}
                             if not from_command
                             else {},
@@ -1010,7 +1018,7 @@ AND
                 reminder_translate = get_translate("messages.reminder")
 
                 generated.format(
-                    title=f"🔔 {reminder_translate} 🔔 <i>{n_date.strftime('%d.%m.%Y')}</i>",
+                    title=f"🔔 {reminder_translate} <b>{n_date:%d.%m.%Y}</b>🔔",
                     args="<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
                     "{weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
                     if_empty=get_translate("errors.message_empty"),
@@ -1078,6 +1086,8 @@ s - user status
   p - premium
 c - events count
 m - max events count</i>
+
+↖️ <i>reply</i> <u>int</u> <u>str</u>: ("user_id"? | "page")
 """
         users = db.execute(
             f"""
@@ -1176,7 +1186,7 @@ user_id: {user_id}
 
 <pre><code class='language-settings'>lang:          {user.settings.lang}
 sub_urls:      {bool(user.settings.sub_urls)}
-city:          {user.settings.city}
+city:          {html.escape(user.settings.city)}
 timezone:      {user.settings.timezone}
 direction:     {'⬇️' if user.settings.direction == 'DESC' else '⬆️'}
 status:        {user_status}

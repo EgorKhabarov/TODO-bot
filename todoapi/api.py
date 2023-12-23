@@ -204,7 +204,8 @@ SELECT 1
         try:
             raw_event = db.execute(
                 f"""
-SELECT event_id,
+SELECT user_id,
+       event_id,
        date,
        text,
        status,
@@ -260,7 +261,8 @@ SELECT event_id,
         try:
             raw_events = db.execute(
                 """
-SELECT event_id,
+SELECT user_id,
+       event_id,
        date,
        text,
        status,

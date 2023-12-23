@@ -126,6 +126,7 @@ class Event:
 
     def __init__(
         self,
+        user_id: int,
         event_id: int,
         date: str = "now",
         text: str = "",
@@ -134,6 +135,7 @@ class Event:
         adding_time: str = "",
         recent_changes_time: str = "",
     ):
+        self.user_id = user_id
         self.event_id = event_id
         self.date = date
         self.text = text
@@ -158,6 +160,7 @@ class Event:
     def to_json(self) -> str:
         return json.dumps(
             {
+                "user_id": self.user_id,
                 "event_id": self.event_id,
                 "date": self.date,
                 "text": self.text,
@@ -171,6 +174,7 @@ class Event:
 
     def to_dict(self) -> dict:
         return {
+            "user_id": self.user_id,
             "event_id": self.event_id,
             "date": self.date,
             "text": self.text,
