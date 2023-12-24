@@ -1,6 +1,6 @@
 <table>
-    <td><a href="/README.md">EN</a></td>  <!-- <img src="https://www.megaflag.ru/sites/default/files/images/shop/products/flag_velikobritanija_new.jpg" width="30" alt="EN"> -->
-    <td><a href="/README_ru.md">RU</a></td>  <!-- <img src="https://www.megaflag.ru/sites/default/files/images/shop/products/flag_rf_enl.jpg"           width="30" alt="RU"> -->
+    <td><a href="/README.md">EN</a></td>
+    <td><a href="/README_ru.md">RU</a></td>
 </table>
 
 <h1>Bot for organizing notes by dates.</h1>

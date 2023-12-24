@@ -24,6 +24,7 @@ from tgbot.buttons_utils import (
     create_yearly_calendar_keyboard,
     create_twenty_year_calendar_keyboard,
     decode_id,
+    encode_id,
 )
 from tgbot.bot_messages import (
     menu_message,
@@ -466,7 +467,7 @@ def callback_handler(call: CallbackQuery):
             [
                 {get_theme_emoji("back"): action_type},
                 {"☑️": "select all"},
-                {"↗️": f"events {','.join(map(str, event_ids))} {int(in_wastebasket)}"},
+                {"↗️": f"events {encode_id(event_ids)} {int(in_wastebasket)}"},
             ]
         )
         generated = TextMessage(
@@ -508,8 +509,8 @@ def callback_handler(call: CallbackQuery):
         )
         event_ids, in_wastebasket = arguments["event_ids"], arguments["in_wastebasket"]
         ids = [
-            i
-            for n, i in enumerate(event_ids.split(","))
+            str(i)
+            for n, i in enumerate(decode_id(event_ids))
             if message.reply_markup.keyboard[n][0].text.startswith("👉")
         ]
         if ids:
