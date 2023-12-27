@@ -5,14 +5,14 @@ from telebot import TeleBot
 from telebot.types import BotCommandScopeChat  # noqa
 from telebot.apihelper import ApiTelegramException  # noqa
 
-import todoapi.config
-from tgbot import config
+from tgbot import config as bot_config
+from todoapi import config as api_config
 from tgbot.request import request
 from tgbot.lang import get_translate
 from todoapi.utils import is_admin_id
 
 
-bot = TeleBot(config.BOT_TOKEN)
+bot = TeleBot(bot_config.BOT_TOKEN)
 
 bot.parse_mode = "html"
 bot.disable_web_page_preview = True
@@ -23,10 +23,10 @@ def bot_log_info():
     bot_dict = bot.user.to_dict()
     bot_dict.update(
         {
-            "database": config.DATABASE_PATH,
-            "log_file": todoapi.config.LOG_FILE,
-            "notifications": config.NOTIFICATIONS,
-            "__version__": config.__version__,
+            "database": api_config.DATABASE_PATH,
+            "log_file": api_config.LOG_FILE,
+            "notifications": bot_config.NOTIFICATIONS,
+            "__version__": bot_config.__version__,
         }
     )
 
@@ -42,7 +42,7 @@ def bot_log_info():
                 f"{k}\n"
                 f"Should be {key_list[k]}\n"
                 f"Actually is {bot_dict[k]}\n\n"
-                f"{config.bot_settings.strip()}"
+                f"{bot_config.bot_settings.strip()}"
             )
 
     max_len_left = max(len(k) for k in bot_dict.keys())

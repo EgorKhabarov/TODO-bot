@@ -619,3 +619,8 @@ def html_to_markdown(html_text: str) -> str:
 
     html_text = html.unescape(link_sub.sub(replace_url, html_text))
     return html_text
+
+
+def sqlite_format_date2(_date):
+    """12.34.5678 -> 5678-34-12"""
+    return "-".join(_date.split(".")[::-1])

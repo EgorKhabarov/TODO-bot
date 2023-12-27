@@ -8,12 +8,65 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 
 from tgbot.bot import bot
 from tgbot.request import request
-from todoapi.types import db, Event
 from tgbot.lang import get_translate
 from tgbot.buttons_utils import encode_id
-from tgbot.utils import add_status_effect, days_before_event
-from tgbot.sql_utils import sqlite_format_date, pagination
 from tgbot.time_utils import now_time_strftime, DayInfo
+from tgbot.utils import add_status_effect, days_before_event
+from todoapi.types import db, Event
+from todoapi.utils import sqlite_format_date
+
+
+def pagination(
+    WHERE: str,
+    direction: Literal["ASC", "DESC"] = "DESC",
+    max_group_len: int = 10,
+    max_group_symbols_count: int = 2500,
+    max_group_id_len: int = 39,
+) -> list[str]:
+    """
+    :param WHERE: SQL условие
+    :param direction: Направление сортировки
+    :param max_group_len: Максимальное количество элементов на странице
+    :param max_group_symbols_count: Максимальное количество символов на странице
+    :param max_group_id_len: Максимальная длинна сокращённого id
+    Количество данных в кнопке ограничено 64 символами
+    """
+
+    data = db.execute(
+        f"""
+SELECT event_id,
+       LENGTH(text) 
+  FROM events
+ WHERE {WHERE}
+ ORDER BY {sqlite_format_date('date')} {direction}
+ LIMIT 400;
+"""
+    )
+    _result = []
+    group = []
+    group_sum = 0
+
+    for event_id, text_len in data:
+        event_id = str(event_id)
+        if (
+            len(group) < max_group_len
+            and group_sum + text_len <= max_group_symbols_count
+            and len(
+                encode_id([int(i) for i in group + [event_id]])
+            ) <= max_group_id_len
+        ):
+            group.append(event_id)
+            group_sum += text_len
+        else:
+            if group:
+                _result.append(",".join(group))
+            group = [event_id]
+            group_sum = text_len
+
+    if group:
+        _result.append(",".join(group))
+
+    return _result
 
 
 class TextMessage:
@@ -119,10 +172,9 @@ class EventsMessage(TextMessage):
         """
         if not direction:
             direction = request.user.settings.direction
-        data = pagination(
-            WHERE=WHERE,
-            direction=direction,
-        )
+
+        data = pagination(WHERE, direction)
+
         if data:
             first_message = [
                 Event(*event)

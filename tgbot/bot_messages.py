@@ -16,12 +16,12 @@ from tgbot.queries import queries
 from tgbot.request import request
 from tgbot.limits import create_image
 from tgbot.time_utils import now_time, DayInfo
-from tgbot.sql_utils import sqlite_format_date2
 from tgbot.bot_actions import delete_message_action
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.message_generator import EventsMessage, TextMessage
 from tgbot.buttons_utils import delmarkup, create_monthly_calendar_keyboard
 from tgbot.utils import (
+    sqlite_format_date2,
     is_secure_chat,
     add_status_effect,
     html_to_markdown,
@@ -195,7 +195,7 @@ def help_message(path: str = "page 1") -> TextMessage:
 
 
 def daily_message(
-    date: datetime | str, id_list: list | tuple[str] = tuple(), page: int | str = 0
+    date: datetime | str, id_list: list[str] | tuple[str] = tuple(), page: int | str = 0
 ) -> EventsMessage:
     """
     Генерирует сообщение на один день
@@ -331,14 +331,17 @@ def event_message(
 
 
 def events_message(
-    id_list: list[str], in_wastebasket: bool = False
+    id_list: list[int], in_wastebasket: bool = False
 ) -> EventsMessage | None:
     """
     Сообщение для взаимодействия с одним событием
     """
 
     generated = EventsMessage()
-    generated.get_events(WHERE=f"removal_time != {not in_wastebasket}", values=id_list)
+    generated.get_events(
+        WHERE=f"removal_time != {int(not in_wastebasket)}",
+        values=id_list,
+    )
 
     if not in_wastebasket:
         date = generated.event_list[0].date
@@ -426,7 +429,7 @@ def confirm_changes_message(message: Message) -> None | int:
 
     if len(message.text.split("\n")) == 1:
         try:
-            before_move_message(event_id).send(chat_id)
+            before_event_delete_message(event_id).send(chat_id)
             return 1
         except ApiTelegramException:
             pass
@@ -508,7 +511,7 @@ def confirm_changes_message(message: Message) -> None | int:
 
 
 def recurring_events_message(
-    date: str, id_list: list | tuple[int] = tuple(), page: int | str = 0
+    date: str, id_list: list | tuple[int] = (), page: int | str = 0
 ) -> EventsMessage:
     """
     :param date: дата у сообщения
@@ -641,6 +644,50 @@ def event_status_message(event: Event, path: str = "0") -> TextMessage:
 
 
 def before_move_message(event_id: int) -> TextMessage | None:
+def edit_event_date_message(event_id: int, date: datetime) -> TextMessage | EventsMessage:
+    api_response = request.user.get_event(event_id)
+    if not api_response[0]:
+        return daily_message(date)
+
+    event = api_response[1]
+    day = DayInfo(event.date)
+    text = f"""
+<b>{get_translate("select.new_date")}:
+{event.date}.{event_id}.</b>{event.status}  <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})
+{add_status_effect(event.text, event.status)}
+    """
+
+    markup = create_monthly_calendar_keyboard(
+        (date.year, date.month),
+        f"edit_event_date {event_id} move",
+        f"event {event_id}",
+    )
+    return TextMessage(text, markup)
+
+
+def edit_events_date_message(id_list: list[int], date: datetime | None = None):
+    if date is None:
+        date = now_time()
+    generated = EventsMessage()
+    generated.get_events("1", id_list)
+    generated.format(
+        title=f"<b>{get_translate('select.what_do_with_events')}:</b>",
+        args=(
+            "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
+            "{weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n"
+        ),
+        if_empty=get_translate("errors.message_empty"),
+    )
+    string_ids = encode_id(id_list)
+    generated.reply_markup = create_monthly_calendar_keyboard(
+        (date.year, date.month),
+        f"es-ed {string_ids} move",
+        f"es {string_ids}",
+    )
+    return generated
+
+
+def before_event_delete_message(event_id: int) -> TextMessage | None:
     """
     Генерирует сообщение с кнопками удаления,
     удаления в корзину (для премиум) и изменения даты.
@@ -658,7 +705,7 @@ def before_move_message(event_id: int) -> TextMessage | None:
 
     is_wastebasket_available = is_admin_id(
         request.chat_id
-    ) or request.user.settings.user_status in (1, 2)
+    ) or request.user.settings.user_status == 1
 
     markup = generate_buttons(
         [
@@ -683,6 +730,72 @@ def before_move_message(event_id: int) -> TextMessage | None:
 {add_status_effect(event.text, event.status)}
 """
     return TextMessage(text, markup)
+
+
+def before_events_delete_message(
+    id_list: list[int], in_wastebasket: bool = False
+) -> TextMessage | None:
+    """
+    Генерирует сообщение с кнопками удаления,
+    удаления в корзину (для премиум) и изменения даты.
+    """
+    generated = EventsMessage()
+    generated.get_events(
+        WHERE=f"removal_time != {int(not in_wastebasket)}",
+        values=id_list,
+    )
+
+    delete_permanently = get_translate("text.delete_permanently")
+    trash_bin = get_translate("text.trash_bin")
+
+    is_wastebasket_available = is_admin_id(
+        request.chat_id
+    ) or request.user.settings.user_status == 1
+
+    if not in_wastebasket:
+        markup = [
+            [
+                {
+                    f"❌ {delete_permanently}": "None"
+                    # f"delete_event {event.event_id} {event.date} forever"
+                },
+                {
+                    f"🗑 {trash_bin}": "None"
+                    # f"delete_event {event.event_id} {event.date} wastebasket"
+                }
+                if is_wastebasket_available
+                else {},
+            ],
+            [{get_theme_emoji("back"): f"es {encode_id(id_list)}"}],
+        ]
+        args = (
+            "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
+            "{weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n"
+        )
+    else:
+        # delete_permanently_translate = get_translate("text.delete_permanently")
+        # recover_translate = get_translate("text.recover")
+        markup = [
+            # [
+            #     {
+            #         f"❌ {delete_permanently_translate}": f"delete_event {event_id} {event.date} forever deleted"
+            #     },
+            #     {f"↩️ {recover_translate}": f"recover {event_id} {event.date}"},
+            # ],
+            [{get_theme_emoji("back"): "deleted"}],
+        ]
+        args = (
+            "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  "
+            "{weekday}</i></u> ({days_before_delete})\n{markdown_text}\n"
+        )
+
+    generated.format(
+        title=f"<b>{get_translate('select.what_do_with_events')}:</b>",
+        args=args,
+        if_empty=get_translate("errors.message_empty"),
+    )
+    generated.reply_markup = generate_buttons(markup)
+    return generated
 
 
 def search_message(

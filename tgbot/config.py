@@ -2,12 +2,9 @@ import os
 
 from dotenv import load_dotenv
 
-from todoapi.config import DATABASE_PATH
 
+load_dotenv("tgbot/.env")
 
-load_dotenv()
-
-DATABASE_PATH = DATABASE_PATH
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
 POKE_LINK = int(os.getenv("POKE_LINK", 0))
@@ -44,7 +41,7 @@ COMMANDS = (
 callbackTab = "⠀⠀⠀"  # Специальные прозрачные символы для заполнения
 
 
-__version__ = "25.12.2023"
+__version__ = "27.12.2023"
 __autor__ = "EgorKhabarov"
 
 bot_settings = """

@@ -301,11 +301,11 @@ def int_str_exel(number: int) -> str:
 
 def decode_id(input_ids: str) -> list[int]:
     """
-    >>> decode_id("a,,,,,,,")
+    >>> decode_id("0,,,,,,,")
     [1, 2, 3, 4, 5, 6, 7, 8]
-    >>> decode_id("a,,B,C,D")
+    >>> decode_id("0,,3,5,7")
     [1, 2, 4, 6, 8]
-    >>> decode_id("a,,B,C,D,")
+    >>> decode_id("0,,3,5,7,")
     [1, 2, 4, 6, 8, 9]
     """
 
@@ -327,16 +327,16 @@ def decode_id(input_ids: str) -> list[int]:
     return result
 
 
-def encode_id(ids: list[int]) -> str:
+def encode_id(ids: tuple[int] | list[int]) -> str:
     """
     >>> encode_id([1, 2, 3, 4, 5, 6, 7, 8])
-    'a,,,,,,,'
+    '0,,,,,,,'
     >>> encode_id([1, 2, 4, 6, 8])
-    'a,,B,C,D'
+    '0,,3,5,7'
     >>> encode_id([8, 6, 7, 5, 4, 3, 2, 1])
-    'D,C,,c,B,b,A,a'
+    '7,5,,4,3,2,1,0'
     >>> encode_id([1, 2, 4, 6, 8, 6, 4, 2, 1])
-    'a,,B,C,D,C,B,A,a'
+    '0,,3,5,7,5,3,1,0'
     """
 
     result = []
@@ -348,8 +348,6 @@ def encode_id(ids: list[int]) -> str:
             diff = i - ids[n - 1]
             if diff == 1:
                 data = ","
-            elif diff > 1:
-                data = f",{abbreviated_int}"
             else:
                 data = f",{abbreviated_int}"
         result.append(data)

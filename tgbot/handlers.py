@@ -10,13 +10,14 @@ from ast import literal_eval
 from telebot.apihelper import ApiTelegramException  # noqa
 from telebot.types import Message, CallbackQuery, InputFile  # noqa
 
-from tgbot import config
+from tgbot import config as bot_config
+from todoapi import config as api_config
 from tgbot.queries import queries
 from tgbot.request import request
 from tgbot.bot import bot, set_bot_commands
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.message_generator import TextMessage, CallBackAnswer
-from tgbot.time_utils import now_time_strftime, now_time, new_time_calendar, DayInfo
+from tgbot.time_utils import now_time_strftime, now_time, new_time_calendar
 from tgbot.bot_actions import delete_message_action
 from tgbot.buttons_utils import (
     create_monthly_calendar_keyboard,
@@ -45,9 +46,12 @@ from tgbot.bot_messages import (
     user_message,
     event_message,
     event_status_message,
-    before_move_message,
+    before_event_delete_message,
+    before_events_delete_message,
     about_event_message,
     events_message,
+    edit_event_date_message,
+    edit_events_date_message,
 )
 from tgbot.utils import (
     fetch_weather,
@@ -56,7 +60,6 @@ from tgbot.utils import (
     is_secure_chat,
     parse_message,
     html_to_markdown,
-    add_status_effect,
 )
 from todoapi.api import User
 from todoapi.types import db
@@ -109,7 +112,7 @@ def command_handler(message: Message) -> None:
         daily_message(now_time()).send(chat_id)
 
     elif command_text == "version":
-        TextMessage(f"Version {config.__version__}").send(chat_id)
+        TextMessage(f"Version {bot_config.__version__}").send(chat_id)
 
     elif command_text in ("weather", "forecast"):
         # Проверяем есть ли аргументы
@@ -143,7 +146,7 @@ def command_handler(message: Message) -> None:
         bot.send_chat_action(chat_id, "upload_document")
 
         try:
-            with open(config.DATABASE_PATH, "rb") as file:
+            with open(api_config.DATABASE_PATH, "rb") as file:
                 bot.send_document(
                     chat_id,
                     file,
@@ -224,7 +227,6 @@ def command_handler(message: Message) -> None:
         TextMessage(text).reply(message)
 
     elif command_text == "limits":
-        # TODO сделать проверку на user.status ?
         date = get_command_arguments(message_text, {"date": ("date", "now")})["date"]
         limits_message(date)
 
@@ -332,15 +334,14 @@ def callback_handler(call: CallbackQuery):
             call_data.removeprefix("select one"),
             {
                 "action_type": ("str", message_text[:10]),
-                "back_data": "str",
+                "back_data": ("str", ""),
                 "back_arg": ("str", ""),
             },
         )
 
-        action_type, back_data, back_arg = (
+        action_type, back_data = (
             arguments["action_type"],
-            arguments["back_data"],
-            arguments["back_arg"],
+            arguments["back_data"] + arguments["back_arg"],
         )
         in_wastebasket = action_type == "deleted"
         is_open = action_type == "open"
@@ -397,7 +398,7 @@ def callback_handler(call: CallbackQuery):
 
         if is_open:
             text = get_translate("select.event_to_open")
-            back_button_data = f"{back_data} {back_arg}".strip()
+            back_button_data = f"{back_data}".strip()
         else:
             text = get_translate("select.event")
             back_button_data = action_type
@@ -410,15 +411,14 @@ def callback_handler(call: CallbackQuery):
             call_data.removeprefix("select many"),
             {
                 "action_type": ("str", message_text[:10]),
-                "back_data": "str",
+                "back_data": ("str", ""),
                 "back_arg": ("str", ""),
             },
         )
 
-        action_type, back_data, back_arg = (
+        action_type, back_data = (
             arguments["action_type"],
-            arguments["back_data"],
-            arguments["back_arg"],
+            arguments["back_data"] + arguments["back_arg"],
         )
         in_wastebasket = action_type == "deleted"
         events_list, different_dates = parse_message(message_text)
@@ -432,10 +432,10 @@ def callback_handler(call: CallbackQuery):
         # Если событие одно
         if len(events_list) == 1:
             event = events_list[0]
-            if not request.user.check_event(event.event_id, in_wastebasket)[1]:
-                call.data = message_text.split("\n", 1)[1][:10]  # TODO проверить
-                return callback_handler(call)
-            generated = events_message([str(event.event_id)], in_wastebasket)
+            is_event = request.user.check_event(event.event_id, in_wastebasket)
+            if is_event[0] is False or not is_event[1]:
+                return CallBackAnswer(get_translate("errors.error")).answer(call_id)
+            generated = events_message([event.event_id], in_wastebasket)
             generated.edit(chat_id, message_id)
             return
 
@@ -460,14 +460,13 @@ def callback_handler(call: CallbackQuery):
             markup.append([{button_title: button_data}])
 
         if not markup:  # Созданный markup пустой
-            call.data = message_text.split("\n", 1)[1][:10]
-            return callback_handler(call)  # TODO проверить
+            return CallBackAnswer(get_translate("errors.error")).answer(call_id)
 
         markup.append(
             [
                 {get_theme_emoji("back"): action_type},
                 {"☑️": "select all"},
-                {"↗️": f"events {encode_id(event_ids)} {int(in_wastebasket)}"},
+                {"↗️": f"es {encode_id(event_ids)} {int(in_wastebasket)}"},
             ]
         )
         generated = TextMessage(
@@ -502,14 +501,39 @@ def callback_handler(call: CallbackQuery):
         generated = TextMessage(markup=message.reply_markup)
         generated.edit(chat_id, message_id, only_markup=True)
 
-    elif call_data.startswith("events"):
+    elif call_data.startswith("es-"):
         arguments = get_arguments(
-            call_data.removeprefix("events"),
+            call_data.removeprefix("es-"),
+            {"action": "str", "event_ids": "str"},
+        )
+        event_ids, action = decode_id(arguments["event_ids"]), arguments["action"]
+        match action:
+            case "s":  # status
+                generated = None
+            case "bd":  # before delete
+                generated = before_events_delete_message(event_ids)
+            case "d":  # edit date
+                generated = edit_events_date_message(event_ids)
+            case _:
+                return None
+
+        if generated:
+            try:
+                generated.edit(chat_id, message_id)
+            except ApiTelegramException:
+                pass
+        else:
+            no_events = get_translate("errors.no_events_to_interact")
+            CallBackAnswer(no_events).answer(call_id, True)
+
+    elif call_data.startswith("es"):
+        arguments = get_arguments(
+            call_data.removeprefix("es"),
             {"event_ids": "str", "in_wastebasket": ("int", 0)},
         )
         event_ids, in_wastebasket = arguments["event_ids"], arguments["in_wastebasket"]
         ids = [
-            str(i)
+            i
             for n, i in enumerate(decode_id(event_ids))
             if message.reply_markup.keyboard[n][0].text.startswith("👉")
         ]
@@ -550,6 +574,7 @@ def callback_handler(call: CallbackQuery):
             return  # такого события нет
 
         trash_can_message().edit(chat_id, message_id)
+        # daily_message(event_date).edit(chat_id, message_id)
 
     elif call_data.startswith("status page"):
         arguments = get_arguments(
@@ -913,24 +938,8 @@ def callback_handler(call: CallbackQuery):
             arguments["date"],
         )
         if action == "back":
-            api_response = request.user.get_event(event_id)
-            if not api_response[0]:
-                return daily_message(date).edit(chat_id, message_id)
+            edit_event_date_message(event_id, date).edit(chat_id, message_id)
 
-            event = api_response[1]
-            day = DayInfo(event.date)
-            text = f"""
-<b>{get_translate("select.new_date")}:
-{event.date}.{event_id}.</b>{event.status}  <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})
-{add_status_effect(event.text, event.status)}
-"""
-
-            markup = create_monthly_calendar_keyboard(
-                (date.year, date.month),
-                f"edit_event_date {event_id} move",
-                f"event {event_id}",
-            )
-            TextMessage(text, markup).edit(chat_id, message_id)
         elif action == "move":
             # Изменяем дату у события
             api_response = request.user.edit_event_date(event_id, f"{date:%d.%m.%Y}")
@@ -962,7 +971,7 @@ def callback_handler(call: CallbackQuery):
             arguments["back"],
         )
         if action == "before":
-            return before_move_message(event_id).edit(chat_id, message_id)
+            return before_event_delete_message(event_id).edit(chat_id, message_id)
         elif action == "forever":
             if not request.user.delete_event(event_id)[0]:
                 CallBackAnswer(get_translate("errors.error")).answer(call_id)
@@ -976,11 +985,11 @@ def callback_handler(call: CallbackQuery):
         generated.edit(chat_id, message_id)
 
     elif call_data.startswith("admin") and is_secure_chat(message):
-        user_id = get_arguments(
+        page = get_arguments(
             call_data.removeprefix("admin"),
-            {"user_id": ("int", 1)},
-        )["user_id"]
-        admin_message(user_id).edit(chat_id, message_id)
+            {"page": ("int", 1)},
+        )["page"]
+        admin_message(page).edit(chat_id, message_id)
 
     elif call_data.startswith("user") and is_secure_chat(message):
         arguments = get_arguments(

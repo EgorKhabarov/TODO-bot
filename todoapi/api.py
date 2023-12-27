@@ -33,7 +33,7 @@ class User:
         :param event_id:
         :param in_wastebasket:
         """
-        if str(event_id).isdigit():
+        if not str(event_id).isdigit():
             return False, ""
 
         if not isinstance(in_wastebasket, bool):
@@ -224,7 +224,7 @@ SELECT user_id,
 
     def get_events(
         self,
-        events_id: list | tuple[int, ...],
+        events_id: list[int] | tuple[int],
         in_wastebasket: bool = False,
         direction: Literal[-1, 1, "DESC", "ASC"] | None = None,
     ) -> tuple[bool, list[Event] | str]:
