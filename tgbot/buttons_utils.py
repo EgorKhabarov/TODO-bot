@@ -20,16 +20,19 @@ def create_monthly_calendar_keyboard(
     YY_MM: list | tuple[int, int] = None,
     command: str | None = None,
     back: str | None = None,
+    arguments: str | None = None,
 ) -> InlineKeyboardMarkup:
     """
     Создаёт календарь на месяц и возвращает inline клавиатуру
     :param YY_MM: Необязательный аргумент. Если None, то подставит текущую дату.
     :param command: Команда, которую пихать в кнопку + дата
     :param back: Кнопка назад
+    :param arguments: Аргументы у команды и back
     """
     settings, chat_id = request.user.settings, request.chat_id
     command = f"'{command.strip()}'" if command else None
     back = f"'{back.strip()}'" if back else None
+    arguments = f"'{arguments.strip()}'" if arguments else None
 
     if YY_MM:
         YY, MM = YY_MM
@@ -75,7 +78,7 @@ def create_monthly_calendar_keyboard(
         f"({get_week_number(YY, MM, 1)}-"
         f"{get_week_number(YY, MM, max(row_calendar[-1]))})"
     )
-    first_line = [{title: f"calendar_y ({command},{back},{YY})"}]
+    first_line = [{title: f"cy ({command},{back},{YY},{arguments})"}]
 
     buttons_lines = []
     today = now_time().day
@@ -92,14 +95,16 @@ def create_monthly_calendar_keyboard(
                 weekbuttons.append(
                     {
                         f"{tag_today}{day}{tag_event}{tag_birthday}": (
-                            f"{command[1:-1] if command else ''} {day:0>2}.{MM:0>2}.{YY}".strip()
-                        )
+                            f"{command[1:-1] if command else 'dl'}"
+                            f"{f' {arguments[1:-1]}' if arguments else ''} "
+                            f"{day:0>2}.{MM:0>2}.{YY}"
+                        ).strip()
                     }
                 )
         buttons_lines.append(weekbuttons)
 
     arrows_buttons = [
-        {text: f"calendar_m ({command},{back},{data})" if data != "None" else data}
+        {text: f"cm ({command},{back},{data},{arguments})" if data != "None" else data}
         for text, data in {
             "<<": f"({YY - 1},{MM})",
             "<": f"({YY - 1},12)" if MM == 1 else f"({YY},{MM - 1})",
@@ -114,7 +119,14 @@ def create_monthly_calendar_keyboard(
         second_line,
         *buttons_lines,
         arrows_buttons,
-        [{get_theme_emoji("back"): back[1:-1]}] if back else [],
+        [
+            {
+                get_theme_emoji("back"): (
+                    f"{back[1:-1]}"
+                    f"{f' {arguments[1:-1]}' if arguments else ''}"
+                )
+            }
+        ] if back else [],
     ]
 
     return generate_buttons(markup)
@@ -124,6 +136,7 @@ def create_yearly_calendar_keyboard(
     YY: int,
     command: str | None = None,
     back: str | None = None,
+    arguments: str | None = None,
 ) -> InlineKeyboardMarkup:
     """
     Создаёт календарь из месяцев на определённый год и возвращает inline клавиатуру
@@ -131,6 +144,7 @@ def create_yearly_calendar_keyboard(
     chat_id = request.chat_id
     command = f"'{command.strip()}'" if command else None
     back = f"'{back.strip()}'" if back else None
+    arguments = f"'{arguments.strip()}'" if arguments else None
 
     # В этом году
     month_list = {
@@ -172,19 +186,26 @@ def create_yearly_calendar_keyboard(
             month_buttons[-1].append(
                 {
                     f"{tag_today}{nameM}{tag_event}{tag_birthday}": (
-                        f"calendar_m ({command},{back},({YY},{numm}))"
+                        f"cm ({command},{back},({YY},{numm}),{arguments})"
                     )
                 }
             )
 
     markup = [
-        [{f"{YY} ({year_info(YY)})": f"calendar_t ({command},{back},{str(YY)[:3]})"}],
+        [{f"{YY} ({year_info(YY)})": f"ct ({command},{back},{str(YY)[:3]},{arguments})"}],
         *month_buttons,
         [
-            {text: f"calendar_y ({command},{back},{year})"}
+            {text: f"cy ({command},{back},{year},{arguments})"}
             for text, year in {"<<": YY - 1, "⟳": "'now'", ">>": YY + 1}.items()
         ],
-        [{get_theme_emoji("back"): back[1:-1]}] if back else [],
+        [
+            {
+                get_theme_emoji("back"): (
+                    f"{back[1:-1]}"
+                    f"{f' {arguments[1:-1]}' if arguments else ''}"
+                )
+            }
+        ] if back else [],
     ]
 
     return generate_buttons(markup)
@@ -194,6 +215,7 @@ def create_twenty_year_calendar_keyboard(
     decade: int,
     command: str | None = None,
     back: str | None = None,
+    arguments: str | None = None,
 ) -> InlineKeyboardMarkup:
     chat_id = request.chat_id
     command = f"'{command.strip()}'" if command else None
@@ -241,7 +263,7 @@ def create_twenty_year_calendar_keyboard(
             years_buttons[-1].append(
                 {
                     f"{tag_today}{numY}{tag_event}{tag_birthday}": (
-                        f"calendar_y ({command},{back},{numY})"
+                        f"cy ({command},{back},{numY},{arguments})"
                     )
                 }
             )
@@ -250,14 +272,21 @@ def create_twenty_year_calendar_keyboard(
         [
             *years_buttons,
             [
-                {text: f"calendar_t ({command},{back},{year})"}
+                {text: f"ct ({command},{back},{year},{arguments})"}
                 for text, year in {
                     "<<": str(int(f"{millennium}{decade}") - 2)[:3],
                     "⟳": "'now'",
                     ">>": str(int(f"{millennium}{decade}") + 2)[:3],
                 }.items()
             ],
-            [{get_theme_emoji("back"): back[1:-1]}] if back else [],
+            [
+                {
+                    get_theme_emoji("back"): (
+                        f"{back[1:-1]}"
+                        f"{f' {arguments[1:-1]}' if arguments else ''}"
+                    )
+                }
+            ] if back else [],
         ]
     )
 
@@ -272,8 +301,12 @@ def edit_button_attrs(
     button.__setattr__(new, val)
 
 
+def edit_button_data(markup: InlineKeyboardMarkup, row: int, column: int, val: str) -> None:
+    markup.keyboard[row][column].callback_data = val
+
+
 def delmarkup() -> InlineKeyboardMarkup:
-    return generate_buttons([[{get_theme_emoji("del"): "message_del"}]])
+    return generate_buttons([[{get_theme_emoji("del"): "md"}]])
 
 
 def number_to_power(string: str) -> str:
@@ -308,6 +341,9 @@ def decode_id(input_ids: str) -> list[int]:
     >>> decode_id("0,,3,5,7,")
     [1, 2, 4, 6, 8, 9]
     """
+
+    if (not input_ids) or input_ids == "_":
+        return []
 
     result = []
     ids: list[int | Ellipsis] = [
@@ -352,4 +388,4 @@ def encode_id(ids: tuple[int] | list[int]) -> str:
                 data = f",{abbreviated_int}"
         result.append(data)
 
-    return "".join(result)
+    return "".join(result) or "_"

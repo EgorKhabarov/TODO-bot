@@ -1,4 +1,4 @@
-from typing import Any, Literal, TypeAlias
+from typing import Any, Literal, TypeAlias, Callable
 from datetime import datetime
 
 
@@ -127,3 +127,13 @@ def __process_value(
                     return default
         case "long str":
             return value
+
+
+def getargs(__func: Callable, text: str) -> Callable[
+    [dict[str, str | tuple[str, Any]]],
+    dict[str, _return_types],
+]:
+    def closure(arg: dict[str, str | tuple[str, Any]]) -> dict[str, _return_types]:
+        return get_arguments(text, arg)
+
+    return closure

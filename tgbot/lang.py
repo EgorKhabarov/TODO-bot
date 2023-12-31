@@ -433,11 +433,11 @@ Use all the advantages of the bot to streamline your life and not miss a single 
                     [
                         [{k + (callbackTab * 20): v}]
                         for k, v in {
-                            "📄 События": "help Events",
-                            "📄 Статусы": "help Statuses",
-                            "📄 Лимиты": "help Limits",
-                            "📂 Виды сообщений": "help page 2",
-                            "🔙": "menu",
+                            "📄 События": "Events",
+                            "📄 Статусы": "Statuses",
+                            "📄 Лимиты": "Limits",
+                            "📂 Виды сообщений": "page 2",
+                            "🔙": "mnm",
                         }.items()
                     ],
                 ],
@@ -450,11 +450,11 @@ Buttons with text are marked with a smiley 📄. The button folder is marked wit
                     [
                         [{k + (callbackTab * 20): v}]
                         for k, v in {
-                            "📄 Events": "help Events",
-                            "📄 Statuses": "help Statuses",
-                            "📄 Limits": "help Limits",
-                            "📂 Types of messages": "help page 2",
-                            "🔙": "menu",
+                            "📄 Events": "Events",
+                            "📄 Statuses": "Statuses",
+                            "📄 Limits": "Limits",
+                            "📂 Types of messages": "page 2",
+                            "🔙": "mnm",
                         }.items()
                     ],
                 ],
@@ -468,14 +468,14 @@ Buttons with text are marked with a smiley 📄. The button folder is marked wit
                     [
                         [{k + (callbackTab * 20): v}]
                         for k, v in {
-                            "📄 Календарь": "help Calendar",
-                            "📄 1 день": "help 1_day",
-                            "📄 7 дней": "help 7_days",
-                            "📄 Настройки": "help Settings",
-                            "📄 Корзина": "help Basket",
-                            "📄 Поиск": "help Search",
-                            "📄 Уведомления": "help Notifications",
-                            "🔙": "help page 1",
+                            "📄 Календарь": "Calendar",
+                            "📄 1 день": "1_day",
+                            "📄 7 дней": "7_days",
+                            "📄 Настройки": "Settings",
+                            "📄 Корзина": "Basket",
+                            "📄 Поиск": "Search",
+                            "📄 Уведомления": "Notifications",
+                            "🔙": "page 1",
                         }.items()
                     ],
                 ],
@@ -487,14 +487,14 @@ Select a topic button to read more.
                     [
                         [{k + (callbackTab * 20): v}]
                         for k, v in {
-                            "📄 Calendar": "help Calendar",
-                            "📄 1 day": "help 1_day",
-                            "📄 7 days": "help 7_days",
-                            "📄 Settings": "help Settings",
-                            "📄 Basket": "help Basket",
-                            "📄 Search": "help Search",
-                            "📄 Notifications": "help Notifications",
-                            "🔙": "help page 1",
+                            "📄 Calendar": "Calendar",
+                            "📄 1 day": "1_day",
+                            "📄 7 days": "7_days",
+                            "📄 Settings": "Settings",
+                            "📄 Basket": "Basket",
+                            "📄 Search": "Search",
+                            "📄 Notifications": "Notifications",
+                            "🔙": "page 1",
                         }.items()
                     ],
                 ],

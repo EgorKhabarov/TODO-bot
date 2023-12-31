@@ -21,7 +21,7 @@ from tgbot.handlers import command_handler, callback_handler, reply_handler, cle
 from tgbot.utils import poke_link, re_edit_message, html_to_markdown, rate_limit
 from tgbot.bot_messages import (
     search_message,
-    notifications_message,
+    send_notifications_messages,
     confirm_changes_message,
 )
 from todoapi.api import User
@@ -261,7 +261,7 @@ def schedule_loop():
         minute = while_time.minute
 
         if config.NOTIFICATIONS and minute in (0, 10, 20, 30, 40, 50):
-            Thread(target=notifications_message, daemon=True).start()
+            Thread(target=send_notifications_messages, daemon=True).start()
 
         if config.POKE_LINK and config.LINK and minute in (0, 10, 20, 30, 40, 50):
             Thread(target=poke_link, daemon=True).start()

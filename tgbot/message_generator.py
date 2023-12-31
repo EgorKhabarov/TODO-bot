@@ -1,7 +1,7 @@
 import logging
 from copy import deepcopy
 from sqlite3 import Error
-from typing import Literal
+from typing import Literal, Callable
 
 # noinspection PyPackageRequirements
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
@@ -161,11 +161,10 @@ class EventsMessage(TextMessage):
 
     def get_data(
         self,
-        *,
         WHERE: str,
+        call_back_func: Callable[[int, str], str],
         column: str = sqlite_format_date("date"),
         direction: Literal["ASC", "DESC"] | None = None,
-        is_recurring: bool = False,
     ):
         """
         Получить список кортежей строк id по страницам
@@ -208,37 +207,36 @@ SELECT user_id,
             self.event_list = first_message
 
             count_columns = 5
-            diapason_list: list[list[tuple[int, str | int]]] = []
+            page_diapason: list[list[tuple[int, str]]] = []
             for num, d in enumerate(data):  # Заполняем данные из диапазонов в список
                 if int(f"{num}"[-1]) in (0, count_columns):
                     # Разделяем диапазоны в строчки по 5
-                    diapason_list.append([])
+                    page_diapason.append([])
                 # Номер страницы, id
-                diapason_list[-1].append(
+                page_diapason[-1].append(
                     (num + 1, encode_id([int(i) for i in d.split(",")]))
                 )
 
-            if len(diapason_list[0]) != 1:  # Если страниц больше одной
+            if len(page_diapason[0]) != 1:  # Если страниц больше одной
                 self.page_signature_needed = True
-                for i in range(count_columns - len(diapason_list[-1])):
+                for i in range(count_columns - len(page_diapason[-1])):
                     # Заполняем пустые кнопки в последнем ряду до 5
-                    diapason_list[-1].append((0, 0))
+                    page_diapason[-1].append((0, ""))
 
                 # Обрезаем до 8 строк кнопок чтобы не было слишком много строк кнопок
-                delimiter = "!" if is_recurring else "|"
                 [
                     self.reply_markup.row(
                         *[
                             InlineKeyboardButton(
                                 f"{numpage}",
-                                callback_data=f"|{numpage}{delimiter}{vals}",
+                                callback_data=call_back_func(numpage, event_ids),
                             )
-                            if vals
+                            if event_ids
                             else InlineKeyboardButton(" ", callback_data="None")
-                            for numpage, vals in row
+                            for numpage, event_ids in row
                         ]
                     )
-                    for row in diapason_list[:8]
+                    for row in page_diapason[:8]
                 ]
         return self
 

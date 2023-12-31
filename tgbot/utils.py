@@ -621,6 +621,12 @@ def html_to_markdown(html_text: str) -> str:
     return html_text
 
 
-def sqlite_format_date2(_date):
+def sqlite_format_date2(_date: str) -> str:
     """12.34.5678 -> 5678-34-12"""
     return "-".join(_date.split(".")[::-1])
+
+
+def extract_search_query(message_text: str, html_escape=True) -> str:
+    first_line = message_text.split("\n", maxsplit=1)[0]
+    query = first_line.split(maxsplit=2)[-1][:-1]
+    return html.escape(query) if html_escape else query

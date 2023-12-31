@@ -1,5 +1,4 @@
 import re
-import html
 import logging
 import traceback
 from time import sleep
@@ -24,8 +23,7 @@ from tgbot.buttons_utils import (
     delmarkup,
     create_yearly_calendar_keyboard,
     create_twenty_year_calendar_keyboard,
-    decode_id,
-    encode_id,
+    decode_id, edit_button_data, encode_id,
 )
 from tgbot.bot_messages import (
     menu_message,
@@ -33,7 +31,7 @@ from tgbot.bot_messages import (
     week_event_list_message,
     trash_can_message,
     daily_message,
-    notifications_message,
+    notification_message,
     recurring_events_message,
     settings_message,
     start_message,
@@ -52,27 +50,23 @@ from tgbot.bot_messages import (
     events_message,
     edit_event_date_message,
     edit_events_date_message,
+    select_one_message,
+    select_events_message,
 )
 from tgbot.utils import (
     fetch_weather,
     fetch_forecast,
     write_table_to_str,
     is_secure_chat,
-    parse_message,
-    html_to_markdown,
+    html_to_markdown, extract_search_query,
 )
 from todoapi.api import User
 from todoapi.types import db
 from todoapi.log_cleaner import clear_logs
 from todoapi.utils import is_admin_id, is_premium_user, is_valid_year
-from telegram_utils.argument_parser import get_arguments
+from telegram_utils.argument_parser import get_arguments, getargs
 from telegram_utils.buttons_generator import generate_buttons
 from telegram_utils.command_parser import parse_command, get_command_arguments
-
-
-delimiter_regex = re.compile(r"[|!]")
-re_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}")
-re_call_data_date = re.compile(r"\A\d{1,2}\.\d{1,2}\.\d{4}\Z")
 
 
 def command_handler(message: Message) -> None:
@@ -255,748 +249,96 @@ def command_handler(message: Message) -> None:
 def callback_handler(call: CallbackQuery):
     """
     Реакцию бота на нажатия на кнопки
+
+    "md   " {} "message delete"
+
+    "st-d " {} "settings restore to default"
+    "st-e " {"par_name": "str", "par_val": "str"} "settings set"
+
+    "b-cl " {} "bin clear"
+    "be-m " {"event_id": "int"} "event message bin"
+    "be-d " {"event_id": "int"} "event delete bin"
+    "be-r " {"event_id": "int", "date": "str"} "event recover bin"
+    "bs-m " {"event_ids": "int"} "events message bin"
+    "bs-d " {"event_ids": "int"} "events delete bin"
+    "bs-r " {"event_ids": "int"} "events recover bin"
+
+    "mn-m " {} "menu"
+    "mn-ad" {"page": ("int", 1)} "admin message"
+    "mn-au" {"user_id": "int", "action": "str", "key": "str", "val": "str"} "user message"
+    "mn-s " {} "settings"
+    "mn-gr" {} "group message"
+    "mn-a " {} "account message"
+    "mn-c " {"date": "literal_eval"} "calendar"
+    "mn-h " {"path": ("long str", None)} "help"
+    "mn-b " {} "bin"
+    "mn-n " {"date": ("date", None)} "notification"
+
+    "e-m  " {"event_id": "int"} "event message"
+    "e-a  " {"date": "str"} "event add"
+    "e-sp " {"event_id": "int", "date": "date", "page": "str"} "event status page"
+    "e-sa " {"event_id": "int", "date": "date", "status": "str"} "event status add"
+    "e-sr " {"event_id": "int", "date": "date", "status": "str"} "event status remove"
+    "e-et " {"event_id": "int", "date": "date"} "event edit text (confirm_change)"
+    "e-sd " {"event_id": "int", "date": "date"} "event select new date"
+    "e-ds " {"event_id": "int", "date": "date"} "event new date set"
+    "e-bd " {"event_id": "int", "date": "date"} "event before delete"
+    "e-d  " {"event_id": "int", "date": "date"} "event delete"
+    "e-db " {"event_id": "int", "date": "date"} "event delete to bin"
+    "e-ab " {"event_id": "int"} "event about"
+
+    "es-m " {"event_ids": "int"} "events message"
+    "es-bd" {"event_ids": "int", "date": "date"} "events before delete"
+    "es-d " {"event_ids": "int", "date": "date"} "events delete"
+    "es-db" {"event_ids": "int", "date": "date"} "events delete to bin"
+
+    "es-sd" {"event_ids": "int", "date": "date"} "events select new date"
+    "es-ds" {"event_ids": "int", "date": "date"} "events new date set"
+
+    "s-e  " {"event_ids": "int", "action_type": ("str", message.text[:10]), "back_data": "str", "back_arg": ("str", "")} "select event"
+    "s-es " {"event_ids": "int", "action_type": ("str", message.text[:10]), "back_data": "str", "back_arg": ("str", "")} "select events"
+    "s-al " {} "select all"
+    "s-on " {"row": "int", "column": "int"} "select one"
+    "sb-e " {"event_ids": "int", "action_type": ("str", message.text[:10])} "select event in bin"
+    "sb-es" {"event_ids": "int", "action_type": ("str", message.text[:10])} "select events in bin"
+    "sb-al" {} "select all in bin"
+    "sb-on" {"row": "int", "column": "int"} "select one in bin"
+
+    "p-d  " {"id_list": "str", "page": "str", "date": "date"} "page daily"
+    "p-r  " {"id_list": "str", "page": "str", "date": "date"} "page recurring"
+    "p-s  " {"id_list": "str", "page": "str"} "page search"
+    "p-w  " {"id_list": "str", "page": "str"} "page week event list"
+    "p-b  " {"id_list": "str", "page": "str"} "page bin"
+    "p-n  " {"id_list": "str", "page": "str"} "page notification"
+
+    "c-m  " {"year,month": "literal_eval", "command": "str", "back": "str"} "calendar month"
+    "c-y  " {"year": "int", "command": "str", "back": "str"} "calendar year"
+    "c-t  " {"decade": "int", "command": "str", "back": "str"} "calendar twenty year"
+
+    "u-d  " {"date": "date"} "update daily"
+    "u-s  " {} "update search"
+    "u-w  " {} "update week event list"
+    "u-b  " {} "update bin"
     """
 
     message_id = call.message.message_id
-    message_text = call.message.text
-    call_data = call.data
     call_id = call.id
     message = call.message
     chat_id = request.chat_id
 
-    if call_data == "menu":
+    call_prefix = call.data.strip().split(maxsplit=1)[0]
+    call_data = call.data.removeprefix(call_prefix).strip()
+    args_func = getargs(get_arguments, call_data)
+
+    if call_prefix == "mnm":  # menu
         menu_message().edit(chat_id, message_id)
 
-    elif call_data == "message_del":
-        delete_message_action(message)
-
-    elif call_data == "groups":
-        group_message().edit(chat_id, message_id)
-
-    elif call_data == "account":
-        account_message().edit(chat_id, message_id)
-
-    elif call_data == "week_event_list":
-        week_event_list_message().edit(chat_id, message_id)
-
-    elif call_data.startswith("about_event"):
-        # event metadata
-        event_id = get_arguments(
-            call_data.removeprefix("about_event"),
-            {"event_id": "int"},
-        )["event_id"]
-        about_event_message(event_id).edit(chat_id, message_id)
-
-    elif call_data.startswith("event_add"):
-        clear_state(chat_id)
-        date = get_arguments(
-            call_data.removeprefix("event_add"),
-            {"date": "str"},
-        )["date"]
-
-        # Проверяем будет ли превышен лимит для пользователя, если добавить 1 событие с 1 символом
-        if request.user.check_limit(date, event_count=1, symbol_count=1)[1] is True:
-            text = get_translate("errors.exceeded_limit")
-            CallBackAnswer(text).answer(call_id, True)
-            return
-
-        db.execute(
-            queries["update add_event_date"],
-            params=(f"{date},{message_id}", chat_id),
-            commit=True,
-        )
-
-        send_event_text = get_translate("text.send_event_text")
-        CallBackAnswer(send_event_text).answer(call_id)
-        text = f"{message.html_text}\n\n<b>?.?.</b>⬜\n{send_event_text}"
-        markup = generate_buttons([[{get_theme_emoji("back"): date}]])
-        TextMessage(text, markup).edit(chat_id, message_id)
-
-    elif call_data.startswith("confirm_change"):
-        arguments = get_arguments(
-            call_data.removeprefix("confirm_change"),
-            {"event_id": "int", "date": "date"},
-        )
-        event_id, event_date = arguments["event_id"], arguments["date"]
-        text = message_text.split("\n", maxsplit=2)[-1]
-
-        if not request.user.edit_event_text(event_id, text)[0]:
-            CallBackAnswer(get_translate("errors.error")).answer(call_id, True)
-            return
-
-        CallBackAnswer(get_translate("text.changes_saved")).answer(call_id)
-        generated = event_message(event_id, False, message_id)
-        # generated = daily_message(event_date)
-        generated.edit(chat_id, message_id)
-
-    elif call_data.startswith("select one"):
-        arguments = get_arguments(
-            call_data.removeprefix("select one"),
-            {
-                "action_type": ("str", message_text[:10]),
-                "back_data": ("str", ""),
-                "back_arg": ("str", ""),
-            },
-        )
-
-        action_type, back_data = (
-            arguments["action_type"],
-            arguments["back_data"] + arguments["back_arg"],
-        )
-        in_wastebasket = action_type == "deleted"
-        is_open = action_type == "open"
-        events_list, different_dates = parse_message(message_text)
-
-        # Если событий нет
-        if len(events_list) == 0:
-            no_events = get_translate("errors.no_events_to_interact")
-            CallBackAnswer(no_events).answer(call_id, True)
-            return
-
-        updated_events_list = request.user.get_events(
-            [event.event_id for event in events_list],
-            in_wastebasket,
-        )[1]
-
-        # Если событий нет
-        if len(updated_events_list) == 0:
-            no_events = get_translate("errors.no_events_to_interact")
-            CallBackAnswer(no_events).answer(call_id, True)
-            return
-
-        # Если событие одно
-        if len(events_list) == 1:
-            event = updated_events_list[0]
-            if is_open:
-                generated = daily_message(event.date)
-            else:
-                generated = event_message(event.event_id, in_wastebasket, message_id)
-            return generated.edit(chat_id, message_id)
-
-        # Если событий несколько
-        markup = []
-        events_dict = {event.event_id: event for event in updated_events_list}
-        for event in events_list:
-            event = events_dict.get(event.event_id)
-
-            # Проверяем существование события
-            if event is None:
-                continue
-
-            button_title = f"{event.event_id}.{event.status} {event.text}"
-            button_title = button_title.ljust(60, "⠀")[:60]
-
-            if in_wastebasket or different_dates:
-                button_title = f"{event.date}.{button_title}"[:60]
-
-            if is_open:
-                button_data = event.date
-            else:
-                button_data = f"event {event.event_id} {int(in_wastebasket)}"
-
-            markup.append([{button_title: button_data}])
-
-        if is_open:
-            text = get_translate("select.event_to_open")
-            back_button_data = f"{back_data}".strip()
-        else:
-            text = get_translate("select.event")
-            back_button_data = action_type
-
-        markup.append([{get_theme_emoji("back"): back_button_data}])
-        TextMessage(text, generate_buttons(markup)).edit(chat_id, message_id)
-
-    elif call_data.startswith("select many"):
-        arguments = get_arguments(
-            call_data.removeprefix("select many"),
-            {
-                "action_type": ("str", message_text[:10]),
-                "back_data": ("str", ""),
-                "back_arg": ("str", ""),
-            },
-        )
-
-        action_type, back_data = (
-            arguments["action_type"],
-            arguments["back_data"] + arguments["back_arg"],
-        )
-        in_wastebasket = action_type == "deleted"
-        events_list, different_dates = parse_message(message_text)
-
-        # Если событий нет
-        if len(events_list) == 0:
-            no_events = get_translate("errors.no_events_to_interact")
-            CallBackAnswer(no_events).answer(call_id, True)
-            return
-
-        # Если событие одно
-        if len(events_list) == 1:
-            event = events_list[0]
-            is_event = request.user.check_event(event.event_id, in_wastebasket)
-            if is_event[0] is False or not is_event[1]:
-                return CallBackAnswer(get_translate("errors.error")).answer(call_id)
-            generated = events_message([event.event_id], in_wastebasket)
-            generated.edit(chat_id, message_id)
-            return
-
-        # Если событий несколько
-        markup = []
-        event_ids = []
-        for n, event in enumerate(events_list):
-            api_response = request.user.get_event(event.event_id, in_wastebasket)
-
-            # Проверяем существование события
-            if not api_response[0]:
-                continue
-
-            e = api_response[1]  # event
-            event_ids.append(e.event_id)
-            button_title = f"{e.event_id}.{e.status} {e.text}".ljust(60, "⠀")[:60]
-            if in_wastebasket or different_dates:
-                button_title = f"{e.date}.{button_title}"[:60]
-
-            button_data = f"select {n} {0}"
-
-            markup.append([{button_title: button_data}])
-
-        if not markup:  # Созданный markup пустой
-            return CallBackAnswer(get_translate("errors.error")).answer(call_id)
-
-        markup.append(
-            [
-                {get_theme_emoji("back"): action_type},
-                {"☑️": "select all"},
-                {"↗️": f"es {encode_id(event_ids)} {int(in_wastebasket)}"},
-            ]
-        )
-        generated = TextMessage(
-            get_translate("select.events"), generate_buttons(markup)
-        )
-        generated.edit(chat_id, message_id)
-
-    elif call_data.startswith("select all"):
-        for line in message.reply_markup.keyboard[:-1]:
-            for button in line:
-                button.text = (
-                    button.text.removeprefix("👉")
-                    if button.text.startswith("👉")
-                    else f"👉{button.text}"
-                )
-        generated = TextMessage(markup=message.reply_markup)
-        generated.edit(chat_id, message_id, only_markup=True)
-
-    elif call_data.startswith("select"):
-        arguments = get_arguments(
-            call_data.removeprefix("select"),
-            {"row": "int", "column": "int"},
-        )
-
-        row, column = arguments["row"], arguments["column"]
-        button = message.reply_markup.keyboard[row][column]
-        button.text = (
-            button.text.removeprefix("👉")
-            if button.text.startswith("👉")
-            else f"👉{button.text}"
-        )
-        generated = TextMessage(markup=message.reply_markup)
-        generated.edit(chat_id, message_id, only_markup=True)
-
-    elif call_data.startswith("es-"):
-        arguments = get_arguments(
-            call_data.removeprefix("es-"),
-            {"action": "str", "event_ids": "str"},
-        )
-        event_ids, action = decode_id(arguments["event_ids"]), arguments["action"]
-        match action:
-            case "s":  # status
-                generated = None
-            case "bd":  # before delete
-                generated = before_events_delete_message(event_ids)
-            case "d":  # edit date
-                generated = edit_events_date_message(event_ids)
-            case _:
-                return None
-
-        if generated:
-            try:
-                generated.edit(chat_id, message_id)
-            except ApiTelegramException:
-                pass
-        else:
-            no_events = get_translate("errors.no_events_to_interact")
-            CallBackAnswer(no_events).answer(call_id, True)
-
-    elif call_data.startswith("es"):
-        arguments = get_arguments(
-            call_data.removeprefix("es"),
-            {"event_ids": "str", "in_wastebasket": ("int", 0)},
-        )
-        event_ids, in_wastebasket = arguments["event_ids"], arguments["in_wastebasket"]
-        ids = [
-            i
-            for n, i in enumerate(decode_id(event_ids))
-            if message.reply_markup.keyboard[n][0].text.startswith("👉")
-        ]
-        if ids:
-            generated = events_message(ids, bool(in_wastebasket))
-            if generated:
-                try:
-                    generated.edit(chat_id, message_id)
-                except ApiTelegramException:
-                    pass
-        else:
-            no_events = get_translate("errors.no_events_to_interact")
-            CallBackAnswer(no_events).answer(call_id, True)
-
-    elif call_data.startswith("event"):
-        arguments = get_arguments(
-            call_data.removeprefix("event"),
-            {"event_id": "int", "in_wastebasket": ("int", 0)},
-        )
-        event_id, in_wastebasket = arguments["event_id"], arguments["in_wastebasket"]
-        if event_id:
-            generated = event_message(event_id, bool(in_wastebasket), message_id)
-            if generated:
-                try:
-                    generated.edit(chat_id, message_id)
-                except ApiTelegramException:
-                    CallBackAnswer("ok").answer(call_id, True)
-
-    elif call_data.startswith("recover"):
-        arguments = get_arguments(
-            call_data.removeprefix("recover"),
-            {"event_id": "int", "date": "str"},
-        )
-        event_id, event_date = arguments["event_id"], arguments["date"]
-
-        if not request.user.recover_event(event_id)[0]:
-            CallBackAnswer(get_translate("errors.error")).answer(call_id, True)
-            return  # такого события нет
-
-        trash_can_message().edit(chat_id, message_id)
-        # daily_message(event_date).edit(chat_id, message_id)
-
-    elif call_data.startswith("status page"):
-        arguments = get_arguments(
-            call_data.removeprefix("status page"),
-            {"page": "str", "event_id": "int", "date": "date"},
-        )
-        page, event_id, date = (
-            arguments["page"],
-            arguments["event_id"],
-            arguments["date"],
-        )
-
-        # Проверяем наличие события
-        api_response = request.user.get_event(event_id)
-
-        if not api_response[0]:  # Если этого события нет
-            return daily_message(date).edit(chat_id, message_id)
-
-        event = api_response[1]
-        generated = event_status_message(event, page)
-        generated.edit(chat_id, message_id)
-
-    elif call_data.startswith("status set"):
-        arguments = get_arguments(
-            call_data.removeprefix("status set"),
-            {"new_status": "str", "event_id": "int", "date": "date"},
-        )
-        new_status, event_id, date = (
-            arguments["new_status"],
-            arguments["event_id"],
-            arguments["date"],
-        )
-
-        api_response = request.user.get_event(event_id)
-
-        if not api_response[0]:
-            return daily_message(date).edit(chat_id, message_id)
-
-        event = api_response[1]
-        old_status = event.status
-
-        if new_status == "⬜️" == old_status:
-            return event_status_message(event).edit(chat_id, message_id)
-
-        if old_status == "⬜️":
-            res_status = new_status
-
-        elif new_status == "⬜️":
-            res_status = "⬜️"
-
-        else:
-            res_status = f"{old_status},{new_status}"
-
-        api_response = request.user.edit_event_status(event_id, res_status)
-
-        match api_response[1]:
-            case "":
-                text = ""
-            case "Status Conflict":
-                text = get_translate("errors.conflict_statuses")
-            case "Status Length Exceeded":
-                text = get_translate("errors.more_5_statuses")
-            case "Status Repeats":
-                text = get_translate("errors.status_already_posted")
-            case _:
-                text = get_translate("errors.error")
-
-        if text:
-            CallBackAnswer(text).answer(call_id, True)
-
-        if new_status == "⬜️":
-            event_message(event_id, False, message_id).edit(chat_id, message_id)
-        else:
-            event.status = res_status
-            event_status_message(event).edit(chat_id, message_id)
-
-    elif call_data.startswith("status delete"):
-        arguments = get_arguments(
-            call_data.removeprefix("status delete"),
-            {"status": "str", "event_id": "int", "date": "date"},
-        )
-        status, event_id, date = (
-            arguments["status"],
-            arguments["event_id"],
-            arguments["date"],
-        )
-
-        api_response = request.user.get_event(event_id)
-
-        if not api_response[0]:
-            return daily_message(date).edit(chat_id, message_id)
-
-        event = api_response[1]
-        old_status = event.status
-
-        if status == "⬜️" or old_status == "⬜️":
-            return
-
-        statuses = old_status.split(",")
-        statuses.remove(status)
-        res_status = ",".join(statuses)
-
-        if not res_status:
-            res_status = "⬜️"
-
-        request.user.edit_event_status(event_id, res_status)
-        event.status = res_status
-        generated = event_status_message(event)
-        generated.edit(chat_id, message_id)
-
-    elif call_data.startswith("|"):  # Список id событий на странице
-        call_data = call_data.removeprefix("|")
-        is_recurring = True if delimiter_regex.findall(call_data)[0] == "!" else False
-        page, id_list = (lambda _page, _id_list: (int(_page), decode_id(_id_list)))(
-            *delimiter_regex.split(call_data)
-        )
-
-        try:
-            if message_text.startswith("🔍 "):  # Поиск
-                first_line = message.text.split("\n", maxsplit=1)[0]
-                query = html.escape(first_line.split(maxsplit=2)[-1][:-1])
-                generated = search_message(query, id_list, page)
-
-            elif message_text.startswith("📆"):  # Если /week_event_list
-                generated = week_event_list_message(id_list, page)
-
-            elif message_text.startswith("🗑"):  # Корзина
-                generated = trash_can_message(id_list, page)
-
-            elif m := re_date.match(message_text):
-                func = recurring_events_message if is_recurring else daily_message
-                generated = func(m[0], id_list, page)
-
-            elif message_text.startswith("🔔"):  # Будильник
-                return notifications_message(
-                    user_id_list=[chat_id],
-                    id_list=id_list,
-                    page=page,
-                    message_id=message_id,
-                    markup=message.reply_markup,
-                    from_command=True,
-                )
-            else:
-                return
-
-            generated.edit(chat_id, message_id, markup=message.reply_markup)
-
-        except ApiTelegramException:
-            text = get_translate("errors.already_on_this_page")
-            CallBackAnswer(text).answer(call_id)
-
-    elif call_data.startswith("calendar_t "):
-        sleep(0.3)
-        command, back, decade = literal_eval(call_data.removeprefix("calendar_t "))
-
-        if decade == "now":
-            decade = int(str(now_time().year)[:3])
-        else:
-            decade = int(decade)
-
-        if is_valid_year(int(str(decade) + "0")):
-            markup = create_twenty_year_calendar_keyboard(decade, command, back)
-            try:
-                TextMessage(markup=markup).edit(chat_id, message_id, only_markup=True)
-            except ApiTelegramException:
-                # Сообщение не изменено
-                year = now_time().year
-                markup = create_yearly_calendar_keyboard(year, command, back)
-                TextMessage(markup=markup).edit(chat_id, message_id, only_markup=True)
-        else:
-            CallBackAnswer(get_translate("errors.invalid_date")).answer(call_id)
-
-    elif call_data.startswith("calendar_y "):
-        sleep(0.5)
-        command, back, year = literal_eval(call_data.removeprefix("calendar_y "))
-
-        if year == "now":
-            year = now_time().year
-
-        if is_valid_year(year):
-            markup = create_yearly_calendar_keyboard(year, command, back)
-            try:
-                TextMessage(markup=markup).edit(chat_id, message_id, only_markup=True)
-            except ApiTelegramException:
-                # Сообщение не изменено
-                date = new_time_calendar()
-                markup = create_monthly_calendar_keyboard(date, command, back)
-                TextMessage(markup=markup).edit(chat_id, message_id, only_markup=True)
-        else:
-            CallBackAnswer(get_translate("errors.invalid_date")).answer(call_id)
-
-    elif call_data.startswith("calendar_m "):
-        sleep(0.5)
-        command, back, date = literal_eval(call_data.removeprefix("calendar_m "))
-
-        if date == "now":
-            date = new_time_calendar()
-
-        if is_valid_year(date[0]):
-            markup = create_monthly_calendar_keyboard(date, command, back)
-            try:
-                TextMessage(markup=markup).edit(chat_id, message_id, only_markup=True)
-            except ApiTelegramException:
-                # Если нажата кнопка ⟳, но сообщение не изменено
-                now_date = now_time()
-
-                if command is not None and back is not None:
-                    call.data = f"{command} {now_date:%d.%m.%Y}"
-                    return callback_handler(call)
-
-                generated = daily_message(now_date)
-                generated.edit(chat_id, message_id)
-        else:
-            CallBackAnswer(get_translate("errors.invalid_date")).answer(call_id)
-
-    elif call_data.startswith("calendar"):
-        sleep(0.5)
-        date = literal_eval(call_data.removeprefix("calendar "))[0]
-
-        if date == "now":
-            date = new_time_calendar()
-
-        text = get_translate("select.date")
-        markup = create_monthly_calendar_keyboard(date)
-        TextMessage(text, markup).edit(chat_id, message_id)
-
-    elif call_data.startswith("settings"):
-        if call_data == "settings":
-            try:
-                settings_message().edit(chat_id, message_id)
-            except ApiTelegramException:
-                pass
-            return
-
-        arguments = get_arguments(
-            call_data.removeprefix("settings"),
-            {"par_name": "str", "par_val": "str"},
-        )
-        par_name, par_val = arguments["par_name"], arguments["par_val"]
-
-        if par_name not in (
-            "lang",
-            "sub_urls",
-            "city",
-            "timezone",
-            "direction",
-            "user_status",
-            "notifications",
-            "notifications_time",
-            "theme",
-        ):
-            return
-
-        api_response = request.user.set_settings(**{par_name: par_val})
-        if not api_response[0]:
-            return CallBackAnswer(get_translate("errors.error")).answer(call_id)
-
-        set_bot_commands()
-
-        try:
-            settings_message().edit(chat_id, message_id)
-        except ApiTelegramException:
-            pass
-
-    elif call_data.startswith("recurring"):
-        date = get_arguments(
-            call_data.removeprefix("recurring"),
-            {"date": "str"},
-        )["date"]
-        recurring_events_message(date).edit(chat_id, message_id)
-
-    elif call_data.startswith("update"):
-        call_data = get_arguments(
-            call_data.removeprefix("update"),
-            {"data": "long str"},
-        )["data"]
-
-        if re_call_data_date.match(call_data):
-            generated = daily_message(call_data)
-        elif call_data == "search":
-            first_line = message_text.split("\n", maxsplit=1)[0]
-            raw_query = first_line.split(maxsplit=2)[-1][:-1]
-            query = html.unescape(raw_query)
-            generated = search_message(query)
-        elif message_text.startswith("📆"):  # week_event_list
-            generated = week_event_list_message()
-        else:
-            return
-
-        sleep(0.5)
-
-        try:
-            generated.edit(chat_id, message_id)
-        except ApiTelegramException:
-            pass
-
-        CallBackAnswer("ok").answer(call_id, True)
-
-    elif re_call_data_date.search(call_data):
-        sleep(0.3)
-        date = get_arguments(call_data, {"date": "date"})["date"]
-        if is_valid_year(date.year):
-            daily_message(date).edit(chat_id, message_id)
-        else:
-            CallBackAnswer(get_translate("errors.invalid_date")).answer(call_id)
-
-    elif call_data.startswith("help"):
-        if call_data == "help":
-            generated = help_message()
-            generated.edit(chat_id, message_id)
-            return
-
-        try:
-            generated = help_message(call_data.removeprefix("help "))
-            markup = None if call_data.startswith("help page") else message.reply_markup
-            generated.edit(chat_id, message_id, markup=markup)
-        except ApiTelegramException:
-            text = get_translate("errors.already_on_this_page")
-            CallBackAnswer(text).answer(call_id)
-
-    elif call_data == "clean_bin":
-        if not request.user.clear_basket()[0]:
-            return CallBackAnswer(get_translate("errors.error")).answer(call_id)
-
-        try:
-            trash_can_message().edit(chat_id, message_id)
-        except ApiTelegramException:
-            CallBackAnswer("ok").answer(call_id, True)
-
-    elif call_data == "restore_to_default":
-        old_lang = request.user.settings.lang
-        request.user.set_settings(
-            lang="ru",
-            sub_urls=1,
-            city="Москва",
-            timezone=3,
-            direction="DESC",
-            notifications=0,
-            notifications_time="08:00",
-            theme=0,
-        )
-
-        if old_lang != "ru":
-            set_bot_commands()
-
-        CallBackAnswer("ok").answer(call_id)
-
-        try:
-            settings_message().edit(chat_id, message_id)
-        except ApiTelegramException:
-            pass
-
-    elif call_data.startswith("edit_event_date"):
-        arguments = get_arguments(
-            call_data.removeprefix("edit_event_date"),
-            {"event_id": "int", "action": ("str", "back"), "date": "date"},
-        )
-        event_id, action, date = (
-            arguments["event_id"],
-            arguments["action"],
-            arguments["date"],
-        )
-        if action == "back":
-            edit_event_date_message(event_id, date).edit(chat_id, message_id)
-
-        elif action == "move":
-            # Изменяем дату у события
-            api_response = request.user.edit_event_date(event_id, f"{date:%d.%m.%Y}")
-            if api_response[0]:
-                CallBackAnswer(get_translate("text.changes_saved")).answer(call_id)
-                generated = event_message(event_id, False, message_id)
-                # generated = daily_message(event_date)
-                generated.edit(chat_id, message_id)
-            elif api_response[1] == "Limit Exceeded":
-                answer = CallBackAnswer(get_translate("errors.limit_exceeded"))
-                answer.answer(call_id, True)
-            else:
-                CallBackAnswer(get_translate("errors.error")).answer(call_id)
-
-    elif call_data.startswith("delete_event"):
-        arguments = get_arguments(
-            call_data.removeprefix("delete_event"),
-            {
-                "event_id": "int",
-                "date": "date",
-                "action": "str",
-                "back": ("str", "daily"),
-            },
-        )
-        event_id, date, action, back = (
-            arguments["event_id"],
-            arguments["date"],
-            arguments["action"],
-            arguments["back"],
-        )
-        if action == "before":
-            return before_event_delete_message(event_id).edit(chat_id, message_id)
-        elif action == "forever":
-            if not request.user.delete_event(event_id)[0]:
-                CallBackAnswer(get_translate("errors.error")).answer(call_id)
-        elif action == "wastebasket":
-            if not request.user.delete_event(event_id, True)[0]:
-                CallBackAnswer(get_translate("errors.error")).answer(call_id)
-        else:
-            return
-
-        generated = trash_can_message() if back == "deleted" else daily_message(date)
-        generated.edit(chat_id, message_id)
-
-    elif call_data.startswith("admin") and is_secure_chat(message):
-        page = get_arguments(
-            call_data.removeprefix("admin"),
-            {"page": ("int", 1)},
-        )["page"]
+    elif call_prefix == "mnad" and is_secure_chat(message):  # admin
+        page = args_func({"page": ("int", 1)})["page"]
         admin_message(page).edit(chat_id, message_id)
 
-    elif call_data.startswith("user") and is_secure_chat(message):
-        arguments = get_arguments(
-            call_data.removeprefix("user"),
-            {"user_id": "int", "action": "str", "key": "str", "val": "str"},
-        )
-
+    elif call_prefix == "mnau" and is_secure_chat(message):  # user message
+        arguments = args_func({"user_id": "int", "action": "str", "key": "str", "val": "str"})
         user_id = arguments["user_id"]
         action: str = arguments["action"]
         key: str = arguments["key"]
@@ -1021,7 +363,7 @@ def callback_handler(call: CallbackQuery):
                                 "User Not Exist": "Пользователь не найден.",
                                 "Not Enough Authority": "Недостаточно прав.",
                                 "Unable To Remove Administrator": "Нельзя удалить администратора.\n"
-                                "<code>/setuserstatus {user_id} 0</code>",
+                                                                  "<code>/setuserstatus {user_id} 0</code>",
                                 "CSV Error": "Не получилось получить csv файл.",
                             }
                             if error_text in error_dict:
@@ -1043,10 +385,10 @@ def callback_handler(call: CallbackQuery):
                         TextMessage(text).send(chat_id)
 
                     else:
-                        default_button = {get_theme_emoji("back"): f"user {user_id}"}
+                        default_button = {get_theme_emoji("back"): f"mnau {user_id}"}
                         markup = [
                             [
-                                {"🗑": f"user {user_id} del account"}
+                                {"🗑": f"mnau {user_id} del account"}
                                 if (r, c) == (3, 3)
                                 else default_button
                                 for c in range(5)
@@ -1081,34 +423,680 @@ def callback_handler(call: CallbackQuery):
             except ApiTelegramException:
                 pass
 
-    elif call_data == "deleted":
-        if is_premium_user(request.user):
+    elif call_prefix == "mns":  # settings
+        try:
+            settings_message().edit(chat_id, message_id)
+        except ApiTelegramException:
+            pass
+
+    elif call_prefix == "mnw":  # week_event_list
+        try:
+            week_event_list_message().edit(chat_id, message_id)
+        except ApiTelegramException:
+            CallBackAnswer("ok").answer(call_id, True)
+
+    elif call_prefix == "mngr":  # group message
+        group_message().edit(chat_id, message_id)
+
+    elif call_prefix == "mna":  # account message
+        account_message().edit(chat_id, message_id)
+
+    elif call_prefix == "mnc":  # calendar
+        sleep(0.5)
+        date = literal_eval(call_data)[0]
+        date = new_time_calendar() if date == "now" else date
+        markup = create_monthly_calendar_keyboard(date)
+        text = get_translate("select.date")
+        TextMessage(text, markup).edit(chat_id, message_id)
+
+    elif call_prefix == "mnh":  # help
+        page = args_func({"page": ("long str", "page 1")})["page"]
+        markup = None if page.startswith("page") else message.reply_markup
+
+        try:
+            help_message(page).edit(chat_id, message_id, markup=markup)
+        except ApiTelegramException:
+            text = get_translate("errors.already_on_this_page")
+            CallBackAnswer(text).answer(call_id)
+
+    elif call_prefix == "mnb" and is_premium_user(request.user):  # bin
+        try:
+            trash_can_message().edit(chat_id, message_id)
+        except ApiTelegramException:
+            CallBackAnswer("ok").answer(call_id, True)
+
+    elif call_prefix == "mnn":  # notification
+        n_date = args_func({"date": "date"})["date"]
+
+        if n_date is None:
+            return monthly_calendar_message(
+                "mnn", "mnm", "Выберите дату уведомления"
+            ).edit(chat_id, message_id)
+        notification_message(
+            request.user.user_id,
+            n_date,
+            from_command=True,
+        ).edit(chat_id, message_id)
+
+    elif call_prefix == "dl":
+        date = args_func({"date": "date"})["date"]
+        try:
+            daily_message(date).edit(chat_id, message_id)
+        except ApiTelegramException:
+            CallBackAnswer("ok").answer(call_id, True)
+
+    elif call_prefix == "em":  # event message
+        event_id = args_func({"event_id": "int"})["event_id"]
+        generated = event_message(event_id, message_id=message_id)
+        if generated:
             try:
-                trash_can_message().edit(chat_id, message_id)
+                generated.edit(chat_id, message_id)
             except ApiTelegramException:
                 CallBackAnswer("ok").answer(call_id, True)
+        else:
+            text = get_translate("errors.no_events_to_interact")
+            CallBackAnswer(text).answer(call_id, True)
 
-    elif call_data.startswith("bell"):
-        n_date = get_arguments(call_data.removeprefix("bell"), {"date": "date"})["date"]
+    elif call_prefix == "ea":  # event add
+        clear_state(chat_id)
+        date = args_func({"date": "str"})["date"]
 
-        if call_data == "bell":  # and is_premium_user(request.user):
-            generated = monthly_calendar_message(
-                "bell", "menu", "Выберите дату уведомления"
-            )
-            generated.edit(chat_id, message_id)
+        # Проверяем будет ли превышен лимит для пользователя, если добавить 1 событие с 1 символом
+        if request.user.check_limit(date, event_count=1, symbol_count=1)[1] is True:
+            text = get_translate("errors.exceeded_limit")
+            CallBackAnswer(text).answer(call_id, True)
             return
 
-        notifications_message(
-            n_date=n_date,
-            user_id_list=[chat_id],
-            message_id=message_id,
-            from_command=True,
+        db.execute(
+            queries["update add_event_date"],
+            params=(f"{date},{message_id}", chat_id),
+            commit=True,
         )
 
-    # elif call_data.startswith("limits"):
-    #     date = get_arguments(
-    #         call_data, {"date": ("date", "now")}
-    #     )["date"]
+        send_event_text = get_translate("text.send_event_text")
+        CallBackAnswer(send_event_text).answer(call_id)
+        text = f"{message.html_text}\n\n<b>?.?.</b>⬜\n{send_event_text}"
+        markup = generate_buttons([[{get_theme_emoji("back"): f"dl {date}"}]])
+        TextMessage(text, markup).edit(chat_id, message_id)
+
+    elif call_prefix == "esp":  # event status page
+        page, date, event_id = args_func(
+            {"page": "str", "date": "date", "event_id": "int"}
+        ).values()
+        response, event = request.user.get_event(event_id)
+
+        (
+            event_status_message(event, page)
+            if response
+            else daily_message(date)
+        ).edit(chat_id, message_id)
+
+    elif call_prefix == "esa":  # event status add
+        status, date, event_id = args_func(
+            {"status": "str", "date": "date", "event_id": "int"}
+        ).values()
+        response, event = request.user.get_event(event_id)
+
+        if not response:
+            return daily_message(date).edit(chat_id, message_id)
+
+        if status == "⬜️" == event.status:
+            return event_status_message(event).edit(chat_id, message_id)
+
+        if event.status == "⬜️":
+            res_status = status
+        elif status == "⬜️":
+            res_status = "⬜️"
+        else:
+            res_status = f"{event.status},{status}"
+
+        response, error_text = request.user.edit_event_status(event_id, res_status)
+        match error_text:
+            case "":
+                text = ""
+            case "Status Conflict":
+                text = get_translate("errors.conflict_statuses")
+            case "Status Length Exceeded":
+                text = get_translate("errors.more_5_statuses")
+            case "Status Repeats":
+                text = get_translate("errors.status_already_posted")
+            case _:
+                text = get_translate("errors.error")
+
+        if text:
+            CallBackAnswer(text).answer(call_id, True)
+
+        if status == "⬜️":
+            generated = event_message(event_id, False, message_id)
+        else:
+            event.status = res_status
+            generated = event_status_message(event)
+        generated.edit(chat_id, message_id)
+
+    elif call_prefix == "esr":  # event status remove
+        status, date, event_id = args_func(
+            {"status": "str", "date": "date", "event_id": "int"}
+        ).values()
+        response, event = request.user.get_event(event_id)
+
+        if not response:
+            return daily_message(date).edit(chat_id, message_id)
+
+        if status == "⬜️" or event.status == "⬜️":
+            return
+
+        statuses = event.status.split(",")
+        statuses.remove(status)
+        res_status = ",".join(statuses)
+
+        if not res_status:
+            res_status = "⬜️"
+
+        request.user.edit_event_status(event_id, res_status)
+        event.status = res_status
+        event_status_message(event).edit(chat_id, message_id)
+
+    elif call_prefix == "eet":  # event edit text
+        event_id, event_date = args_func({"event_id": "int", "date": "date"}).values()
+        text = message.text.split("\n", maxsplit=2)[-1]
+        response, error_text = request.user.edit_event_text(event_id, text)
+
+        if not response:
+            match error_text:
+                case "Text Is Too Big":
+                    text = get_translate("errors.message_is_too_long")
+                case "Limit Exceeded":
+                    text = get_translate("errors.limit_exceeded")
+                case _:
+                    text = get_translate("errors.error")
+
+            return CallBackAnswer(text).answer(call_id, True)
+
+        CallBackAnswer(get_translate("text.changes_saved")).answer(call_id)
+        generated = event_message(event_id, False, message_id)
+        # generated = daily_message(event_date)
+        generated.edit(chat_id, message_id)
+
+    elif call_prefix == "esdt":  # event select new date
+        event_id, date = args_func({"event_id": "int", "date": "date"}).values()
+        edit_event_date_message(event_id, date).edit(chat_id, message_id)
+
+    elif call_prefix == "eds":  # event new date set
+        event_id, date = args_func({"event_id": "int", "date": "date"}).values()
+        response, error_text = request.user.edit_event_date(event_id, f"{date:%d.%m.%Y}")
+        if response:
+            CallBackAnswer(get_translate("text.changes_saved")).answer(call_id)
+            generated = event_message(event_id, False, message_id)
+            generated.edit(chat_id, message_id)
+            # generated = daily_message(event_date)
+        elif error_text == "Limit Exceeded":
+            CallBackAnswer(get_translate("errors.limit_exceeded")).answer(call_id, True)
+        else:
+            CallBackAnswer(get_translate("errors.error")).answer(call_id)
+
+    elif call_prefix == "ebd":  # event before delete
+        event_id, date = args_func({"event_id": "int", "date": "date"}).values()
+        before_event_delete_message(event_id).edit(chat_id, message_id)
+        # daily_message(date).edit(chat_id, message_id)
+
+    elif call_prefix == "ed":  # event delete
+        event_id, date = args_func({"event_id": "int", "date": "date"}).values()
+        if not request.user.delete_event(event_id)[0]:
+            CallBackAnswer(get_translate("errors.error")).answer(call_id)
+        daily_message(date).edit(chat_id, message_id)
+
+    elif call_prefix == "edb":  # event delete to bin
+        event_id, date = args_func({"event_id": "int", "date": "date"}).values()
+        if not request.user.delete_event(event_id, True)[0]:
+            CallBackAnswer(get_translate("errors.error")).answer(call_id)
+        daily_message(date).edit(chat_id, message_id)
+
+    elif call_prefix == "eab":  # event about
+        event_id = args_func({"event_id": "int"})["event_id"]
+        about_event_message(event_id).edit(chat_id, message_id)
+
+    elif call_prefix == "esm":  # events message
+        id_list = args_func({"id_list": "str"})["id_list"]
+        if id_list == "_":
+            id_list = encode_id(
+                [
+                    int(i[0].callback_data.rsplit(maxsplit=1)[-1])
+                    for n, i in enumerate(message.reply_markup.keyboard)
+                    if i[0].text.startswith("👉")
+                ]
+            )
+        if id_list == "_":
+            text = get_translate("errors.no_events_to_interact")
+            return CallBackAnswer(text).answer(call_id, True)
+
+        generated = events_message(decode_id(id_list))
+        if generated:
+            generated.edit(chat_id, message_id)
+        else:
+            text = get_translate("errors.no_events_to_interact")
+            CallBackAnswer(text).answer(call_id, True)
+
+    elif call_prefix == "esbd":  # events before delete
+        id_list = args_func({"id_list": "str"})["id_list"]
+        before_events_delete_message(decode_id(id_list)).edit(chat_id, message_id)
+
+    elif call_prefix == "esd":  # events delete
+        id_list, date = args_func({"id_list": "str", "date": "date"}).values()
+        not_deleted: list[int] = []
+        for event_id in decode_id(id_list):
+            if not request.user.delete_event(event_id)[0]:
+                not_deleted.append(event_id)
+
+        if not_deleted:
+            CallBackAnswer(get_translate("errors.error")).answer(call_id)
+            return events_message(not_deleted).edit(chat_id, message_id)
+
+        # events_message([]).edit(chat_id, message_id)
+        daily_message(date).edit(chat_id, message_id)
+
+    elif call_prefix == "esdb":  # events delete to bin
+        id_list, date = args_func({"id_list": "str", "date": "date"}).values()
+        not_deleted: list[int] = []
+        for event_id in decode_id(id_list):
+            if not request.user.delete_event(event_id, True)[0]:
+                not_deleted.append(event_id)
+
+        if not_deleted:
+            CallBackAnswer(get_translate("errors.error")).answer(call_id, True)
+            # events_message(not_deleted).edit(chat_id, message_id)
+            return before_events_delete_message(not_deleted)
+
+        # events_message([]).edit(chat_id, message_id)
+        daily_message(date).edit(chat_id, message_id)
+
+    elif call_prefix == "essd":  # events select new date
+        id_list = args_func({"id_list": "str"})["id_list"]
+        edit_events_date_message(decode_id(id_list)).edit(chat_id, message_id)
+
+    elif call_prefix == "esds":  # events new date set
+        id_list, date = args_func({"id_list": "str", "date": "date"}).values()
+        not_edit: list[int] = []
+        for event_id in decode_id(id_list):
+            if not request.user.edit_event_date(event_id, f"{date:%d.%m.%Y}")[0]:
+                not_edit.append(event_id)
+
+        if not_edit:
+            CallBackAnswer(get_translate("errors.error")).answer(call_id, True)
+        else:
+            CallBackAnswer(get_translate("text.changes_saved")).answer(call_id)
+
+        events_message(decode_id(id_list)).edit(chat_id, message_id)
+
+    elif call_prefix == "se":  # select event
+        info, id_list = args_func({"info": "str", "id_list": "str"}).values()
+        back_data = call_data.removeprefix(f"{info} {id_list}").strip()
+        # TODO Добавить если поставить кавычки " или ', то можно внутри юзать пробел
+        generated = select_one_message(
+            decode_id(id_list),
+            back_data,
+            is_in_wastebasket="b" in info,
+            is_in_search="s" in info,
+            is_open="o" in info,
+            message_id=message_id,
+        )
+        if generated:
+            if "s" in info:
+                query = extract_search_query(message.text)
+                srch = get_translate("messages.search")
+                generated.text = f"🔍 {srch} <u>{query}</u>:\n{generated.text}"
+            generated.edit(chat_id, message_id)
+        else:
+            no_events = get_translate("errors.no_events_to_interact")
+            CallBackAnswer(no_events).answer(call_id, True)
+
+    elif call_prefix == "ses":  # select events
+        info, id_list = args_func({"info": "str", "id_list": "str"}).values()
+        back_data = call_data.removeprefix(f"{info} {id_list}").strip()
+        generated = select_events_message(
+            decode_id(id_list),
+            back_data,
+            is_in_wastebasket="b" in info,
+            is_in_search="s" in info,
+        )
+        if generated:
+            if "s" in info:
+                query = extract_search_query(message.text)
+                srch = get_translate("messages.search")
+                generated.text = f"🔍 {srch} <u>{query}</u>:\n{generated.text}"
+            generated.edit(chat_id, message_id)
+        else:
+            no_events = get_translate("errors.no_events_to_interact")
+            CallBackAnswer(no_events).answer(call_id, True)
+
+    elif call_prefix in ("sal", "sbal"):  # select all | select all in bin
+        for line in message.reply_markup.keyboard[:-1]:
+            for button in line:
+                button.text = (
+                    button.text.removeprefix("👉")
+                    if button.text.startswith("👉")
+                    else f"👉{button.text}"
+                )
+        generated = TextMessage(markup=message.reply_markup)
+        generated.edit(chat_id, message_id, only_markup=True)
+
+    elif call_prefix in ("son", "sbon"):  # select one | select one in bin
+        row, column = args_func({"row": "int", "column": ("int", 0)}).values()
+        button = message.reply_markup.keyboard[row][column]
+        button.text = (
+            button.text.removeprefix("👉")
+            if button.text.startswith("👉")
+            else f"👉{button.text}"
+        )
+        generated = TextMessage(markup=message.reply_markup)
+        generated.edit(chat_id, message_id, only_markup=True)
+
+    elif call_prefix == "pd":  # page daily
+        date, page, id_list = args_func(
+            {"date": "str", "page": ("int", 0), "id_list": ("str", "")}
+        ).values()
+        markup = message.reply_markup if page else None
+        if markup:
+            edit_button_data(markup, 0, 1, f"se _ {id_list} pd {date}")
+            edit_button_data(markup, 0, 2, f"ses _ {id_list} pd {date}")
+        try:
+            daily_message(
+                date, decode_id(id_list), page,
+            ).edit(chat_id, message_id, markup=markup)
+        except ApiTelegramException:
+            text = get_translate("errors.already_on_this_page")
+            CallBackAnswer(text).answer(call_id)
+
+    elif call_prefix == "pr":  # page recurring
+        date, page, id_list = args_func(
+            {"date": "str", "page": ("str", 0), "id_list": ("str", "")}
+        ).values()
+        markup = message.reply_markup if page else None
+        if markup:
+            edit_button_data(markup, 0, -1, f"se o {id_list} pr {date}")
+        try:
+            recurring_events_message(
+                date, decode_id(id_list), page,
+            ).edit(chat_id, message_id, markup=markup)
+        except ApiTelegramException:
+            text = get_translate("errors.already_on_this_page")
+            CallBackAnswer(text).answer(call_id)
+
+    elif call_prefix == "ps":  # page search
+        page, id_list = args_func(
+            {"page": ("str", 0), "id_list": ("str", "")}
+        ).values()
+        query = extract_search_query(message.text)
+        markup = message.reply_markup if page else None
+        if markup:
+            edit_button_data(markup, 0, 2, f"se os {id_list} us")
+            edit_button_data(markup, 0, 3, f"ses s {id_list} us")
+        try:
+            search_message(
+                query, decode_id(id_list), page,
+            ).edit(chat_id, message_id, markup=markup)
+        except ApiTelegramException:
+            text = get_translate("errors.already_on_this_page")
+            CallBackAnswer(text).answer(call_id)
+
+    elif call_prefix == "pw":  # page week event list
+        page, id_list = args_func(
+            {"page": ("str", 0), "id_list": ("str", ())}
+        ).values()
+        markup = message.reply_markup if page else None
+        if markup:
+            edit_button_data(markup, 0, 2, f"se o {id_list} mnw")
+        try:
+            week_event_list_message(
+                decode_id(id_list), page,
+            ).edit(chat_id, message_id, markup=markup)
+        except ApiTelegramException:
+            text = get_translate("errors.already_on_this_page")
+            CallBackAnswer(text).answer(call_id)
+
+    elif call_prefix == "pb":  # page bin
+        page, id_list = args_func(
+            {"page": ("str", 0), "id_list": ("str", ())}
+        ).values()
+        markup = message.reply_markup if page else None
+        if markup:
+            edit_button_data(markup, 0, 0, f"se b {id_list} mnb")
+            edit_button_data(markup, 0, 1, f"ses b {id_list} mnb")
+        try:
+            trash_can_message(
+                decode_id(id_list), page,
+            ).edit(chat_id, message_id, markup=markup)
+        except ApiTelegramException:
+            text = get_translate("errors.already_on_this_page")
+            CallBackAnswer(text).answer(call_id)
+
+    elif call_prefix == "pn":  # page notification
+        n_date, page, id_list = args_func(
+            {"date": "date", "page": ("str", 0), "id_list": ("str", ())}
+        ).values()
+        markup = message.reply_markup if page else None
+        if markup:
+            edit_button_data(markup, 0, -1, f"se o {id_list} mnn {n_date:%d.%m.%Y}")
+        try:
+            notification_message(
+                user_id=request.user.user_id,
+                n_date=n_date,
+                id_list=decode_id(id_list),
+                page=page,
+                from_command=True,
+            ).edit(chat_id, message_id, markup=markup)
+        except ApiTelegramException:
+            text = get_translate("errors.already_on_this_page")
+            CallBackAnswer(text).answer(call_id)
+
+    elif call_prefix == "cm":  # calendar month
+        sleep(0.5)
+        command, back, date, arguments = literal_eval(call_data)
+
+        if date == "now":
+            date = new_time_calendar()
+
+        if is_valid_year(date[0]):
+            markup = create_monthly_calendar_keyboard(date, command, back, arguments)
+            try:
+                TextMessage(markup=markup).edit(chat_id, message_id, only_markup=True)
+            except ApiTelegramException:
+                # Если нажата кнопка ⟳, но сообщение не изменено
+                now_date = now_time()
+
+                if command is not None and back is not None:
+                    call.data = f"{command}{f' {arguments}' if arguments else ''} {now_date:%d.%m.%Y}"
+                    return callback_handler(call)
+
+                daily_message(now_date).edit(chat_id, message_id)
+        else:
+            CallBackAnswer(get_translate("errors.invalid_date")).answer(call_id)
+
+    elif call_prefix == "cy":  # calendar year
+        sleep(0.5)
+        command, back, year, arguments = literal_eval(call_data)
+
+        if year == "now":
+            year = now_time().year
+
+        if is_valid_year(year):
+            markup = create_yearly_calendar_keyboard(year, command, back, arguments)
+            try:
+                TextMessage(markup=markup).edit(chat_id, message_id, only_markup=True)
+            except ApiTelegramException:
+                # Сообщение не изменено
+                date = new_time_calendar()
+                markup = create_monthly_calendar_keyboard(date, command, back, arguments)
+                TextMessage(markup=markup).edit(chat_id, message_id, only_markup=True)
+        else:
+            CallBackAnswer(get_translate("errors.invalid_date")).answer(call_id)
+
+    elif call_prefix == "ct":  # calendar twenty year
+        sleep(0.3)
+        command, back, decade, arguments = literal_eval(call_data)
+
+        if decade == "now":
+            decade = int(str(now_time().year)[:3])
+        else:
+            decade = int(decade)
+
+        if is_valid_year(int(str(decade) + "0")):
+            markup = create_twenty_year_calendar_keyboard(decade, command, back, arguments)
+            try:
+                TextMessage(markup=markup).edit(chat_id, message_id, only_markup=True)
+            except ApiTelegramException:
+                # Сообщение не изменено
+                year = now_time().year
+                markup = create_yearly_calendar_keyboard(year, command, back, arguments)
+                TextMessage(markup=markup).edit(chat_id, message_id, only_markup=True)
+        else:
+            CallBackAnswer(get_translate("errors.invalid_date")).answer(call_id)
+
+    elif call_prefix == "us":  # update search
+        query = extract_search_query(message.text)
+        try:
+            search_message(query).edit(chat_id, message_id)
+        except ApiTelegramException:
+            CallBackAnswer("ok").answer(call_id, True)
+
+    elif call_prefix == "md":  # message delete
+        delete_message_action(message)
+
+    elif call_prefix == "std":  # settings restore to default
+        old_lang = request.user.settings.lang
+        request.user.set_settings(
+            lang="ru",
+            sub_urls=1,
+            city="Москва",
+            timezone=3,
+            direction="DESC",
+            notifications=0,
+            notifications_time="08:00",
+            theme=0,
+        )
+
+        if old_lang != "ru":
+            set_bot_commands()
+
+        CallBackAnswer("ok").answer(call_id)
+
+        try:
+            settings_message().edit(chat_id, message_id)
+        except ApiTelegramException:
+            pass
+
+    elif call_prefix == "ste":  # settings set
+        par_name, par_val = args_func({"par_name": "str", "par_val": "str"}).values()
+
+        if par_name not in (
+            "lang",
+            "sub_urls",
+            "city",
+            "timezone",
+            "direction",
+            "user_status",
+            "notifications",
+            "notifications_time",
+            "theme",
+        ):
+            return
+
+        if not request.user.set_settings(**{par_name: par_val})[0]:
+            return CallBackAnswer(get_translate("errors.error")).answer(call_id)
+
+        try:
+            set_bot_commands()
+            settings_message().edit(chat_id, message_id)
+        except ApiTelegramException:
+            pass
+
+    elif call_prefix == "bcl":  # bin clear
+        if not request.user.clear_basket()[0]:
+            return CallBackAnswer(get_translate("errors.error")).answer(call_id)
+
+        try:
+            trash_can_message().edit(chat_id, message_id)
+        except ApiTelegramException:
+            CallBackAnswer("ok").answer(call_id, True)
+
+    elif call_prefix == "bem":  # event message bin
+        event_id = args_func({"event_id": "int"})["event_id"]
+        generated = event_message(event_id, True, message_id=message_id)
+        if generated:
+            try:
+                generated.edit(chat_id, message_id)
+            except ApiTelegramException:
+                CallBackAnswer("ok").answer(call_id, True)
+        else:
+            text = get_translate("errors.no_events_to_interact")
+            CallBackAnswer(text).answer(call_id, True)
+
+    elif call_prefix == "bed":  # event delete bin
+        event_id = args_func({"event_id": "int"})["event_id"]
+        if not request.user.delete_event(event_id)[0]:
+            CallBackAnswer(get_translate("errors.error")).answer(call_id)
+        try:
+            trash_can_message().edit(chat_id, message_id)
+        except ApiTelegramException:
+            pass
+
+    elif call_prefix == "ber":  # event recover bin
+        event_id, date = args_func({"event_id": "int", "date": "date"}).values()
+
+        if not request.user.recover_event(event_id)[0]:
+            CallBackAnswer(get_translate("errors.error")).answer(call_id, True)
+            return  # такого события нет
+
+        # daily_message(date).edit(chat_id, message_id)
+        trash_can_message().edit(chat_id, message_id)
+
+    elif call_prefix == "bsm":  # events message bin
+        id_list = args_func({"id_list": "str"})["id_list"]
+        if id_list == "_" or not id_list:
+            id_list = encode_id(
+                [
+                    int(i[0].callback_data.rsplit(maxsplit=1)[-1])
+                    for n, i in enumerate(message.reply_markup.keyboard)
+                    if i[0].text.startswith("👉")
+                ]
+            )
+        if id_list == "_":
+            text = get_translate("errors.no_events_to_interact")
+            return CallBackAnswer(text).answer(call_id, True)
+
+        generated = events_message(decode_id(id_list), True)
+        if generated:
+            generated.edit(chat_id, message_id)
+        else:
+            text = get_translate("errors.no_events_to_interact")
+            CallBackAnswer(text).answer(call_id, True)
+
+    elif call_prefix == "bsd":  # events delete bin
+        id_list = args_func({"id_list": "str"})["id_list"]
+        not_deleted: list[int] = []
+        for event_id in decode_id(id_list):
+            if not request.user.delete_event(event_id)[0]:
+                not_deleted.append(event_id)
+
+        if not_deleted:
+            CallBackAnswer(get_translate("errors.error")).answer(call_id)
+
+        trash_can_message().edit(chat_id, message_id)
+
+    elif call_prefix == "bsr":  # events recover bin
+        id_list, date = args_func({"id_list": "str", "date": "date"}).values()
+        not_recover: list[int] = []
+        for event_id in decode_id(id_list):
+            if not request.user.recover_event(event_id)[0]:
+                not_recover.append(event_id)
+
+        if not_recover:
+            CallBackAnswer(get_translate("errors.error")).answer(call_id, True)
+
+        # daily_message(date).edit(chat_id, message_id)
+        trash_can_message().edit(chat_id, message_id)
+
+    # elif call_action.startswith("limits"):
+    #     date = args_func({"date": ("date", "now")})["date"]
     #     from telebot.formatting import hide_link  # noqa
     #     bot.send_message(chat_id, hide_link("https://example.com"))
     #     limits_message(date, message)
