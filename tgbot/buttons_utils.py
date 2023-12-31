@@ -122,11 +122,12 @@ def create_monthly_calendar_keyboard(
         [
             {
                 get_theme_emoji("back"): (
-                    f"{back[1:-1]}"
-                    f"{f' {arguments[1:-1]}' if arguments else ''}"
+                    f"{back[1:-1]}{f' {arguments[1:-1]}' if arguments else ''}"
                 )
             }
-        ] if back else [],
+        ]
+        if back
+        else [],
     ]
 
     return generate_buttons(markup)
@@ -192,7 +193,11 @@ def create_yearly_calendar_keyboard(
             )
 
     markup = [
-        [{f"{YY} ({year_info(YY)})": f"ct ({command},{back},{str(YY)[:3]},{arguments})"}],
+        [
+            {
+                f"{YY} ({year_info(YY)})": f"ct ({command},{back},{str(YY)[:3]},{arguments})"
+            }
+        ],
         *month_buttons,
         [
             {text: f"cy ({command},{back},{year},{arguments})"}
@@ -201,11 +206,12 @@ def create_yearly_calendar_keyboard(
         [
             {
                 get_theme_emoji("back"): (
-                    f"{back[1:-1]}"
-                    f"{f' {arguments[1:-1]}' if arguments else ''}"
+                    f"{back[1:-1]}" f"{f' {arguments[1:-1]}' if arguments else ''}"
                 )
             }
-        ] if back else [],
+        ]
+        if back
+        else [],
     ]
 
     return generate_buttons(markup)
@@ -282,11 +288,12 @@ def create_twenty_year_calendar_keyboard(
             [
                 {
                     get_theme_emoji("back"): (
-                        f"{back[1:-1]}"
-                        f"{f' {arguments[1:-1]}' if arguments else ''}"
+                        f"{back[1:-1]}{f' {arguments[1:-1]}' if arguments else ''}"
                     )
                 }
-            ] if back else [],
+            ]
+            if back
+            else [],
         ]
     )
 
@@ -301,7 +308,9 @@ def edit_button_attrs(
     button.__setattr__(new, val)
 
 
-def edit_button_data(markup: InlineKeyboardMarkup, row: int, column: int, val: str) -> None:
+def edit_button_data(
+    markup: InlineKeyboardMarkup, row: int, column: int, val: str
+) -> None:
     markup.keyboard[row][column].callback_data = val
 
 

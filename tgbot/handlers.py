@@ -23,7 +23,9 @@ from tgbot.buttons_utils import (
     delmarkup,
     create_yearly_calendar_keyboard,
     create_twenty_year_calendar_keyboard,
-    decode_id, edit_button_data, encode_id,
+    decode_id,
+    edit_button_data,
+    encode_id,
 )
 from tgbot.bot_messages import (
     menu_message,
@@ -58,7 +60,8 @@ from tgbot.utils import (
     fetch_forecast,
     write_table_to_str,
     is_secure_chat,
-    html_to_markdown, extract_search_query,
+    html_to_markdown,
+    extract_search_query,
 )
 from todoapi.api import User
 from todoapi.types import db
@@ -338,7 +341,9 @@ def callback_handler(call: CallbackQuery):
         admin_message(page).edit(chat_id, message_id)
 
     elif call_prefix == "mnau" and is_secure_chat(message):  # user message
-        arguments = args_func({"user_id": "int", "action": "str", "key": "str", "val": "str"})
+        arguments = args_func(
+            {"user_id": "int", "action": "str", "key": "str", "val": "str"}
+        )
         user_id = arguments["user_id"]
         action: str = arguments["action"]
         key: str = arguments["key"]
@@ -362,8 +367,10 @@ def callback_handler(call: CallbackQuery):
                             error_dict = {
                                 "User Not Exist": "Пользователь не найден.",
                                 "Not Enough Authority": "Недостаточно прав.",
-                                "Unable To Remove Administrator": "Нельзя удалить администратора.\n"
-                                                                  "<code>/setuserstatus {user_id} 0</code>",
+                                "Unable To Remove Administrator": (
+                                    "Нельзя удалить администратора.\n"
+                                    "<code>/setuserstatus {user_id} 0</code>"
+                                ),
                                 "CSV Error": "Не получилось получить csv файл.",
                             }
                             if error_text in error_dict:
@@ -525,11 +532,11 @@ def callback_handler(call: CallbackQuery):
         ).values()
         response, event = request.user.get_event(event_id)
 
-        (
-            event_status_message(event, page)
-            if response
-            else daily_message(date)
-        ).edit(chat_id, message_id)
+        if response:
+            generated = event_status_message(event, page)
+        else:
+            generated = daily_message(date)
+        generated.edit(chat_id, message_id)
 
     elif call_prefix == "esa":  # event status add
         status, date, event_id = args_func(
@@ -623,7 +630,9 @@ def callback_handler(call: CallbackQuery):
 
     elif call_prefix == "eds":  # event new date set
         event_id, date = args_func({"event_id": "int", "date": "date"}).values()
-        response, error_text = request.user.edit_event_date(event_id, f"{date:%d.%m.%Y}")
+        response, error_text = request.user.edit_event_date(
+            event_id, f"{date:%d.%m.%Y}"
+        )
         if response:
             CallBackAnswer(get_translate("text.changes_saved")).answer(call_id)
             generated = event_message(event_id, False, message_id)
@@ -799,9 +808,9 @@ def callback_handler(call: CallbackQuery):
             edit_button_data(markup, 0, 1, f"se _ {id_list} pd {date}")
             edit_button_data(markup, 0, 2, f"ses _ {id_list} pd {date}")
         try:
-            daily_message(
-                date, decode_id(id_list), page,
-            ).edit(chat_id, message_id, markup=markup)
+            daily_message(date, decode_id(id_list), page).edit(
+                chat_id, message_id, markup=markup
+            )
         except ApiTelegramException:
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
@@ -814,57 +823,51 @@ def callback_handler(call: CallbackQuery):
         if markup:
             edit_button_data(markup, 0, -1, f"se o {id_list} pr {date}")
         try:
-            recurring_events_message(
-                date, decode_id(id_list), page,
-            ).edit(chat_id, message_id, markup=markup)
+            recurring_events_message(date, decode_id(id_list), page).edit(
+                chat_id, message_id, markup=markup
+            )
         except ApiTelegramException:
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
 
     elif call_prefix == "ps":  # page search
-        page, id_list = args_func(
-            {"page": ("str", 0), "id_list": ("str", "")}
-        ).values()
+        page, id_list = args_func({"page": ("str", 0), "id_list": ("str", "")}).values()
         query = extract_search_query(message.text)
         markup = message.reply_markup if page else None
         if markup:
             edit_button_data(markup, 0, 2, f"se os {id_list} us")
             edit_button_data(markup, 0, 3, f"ses s {id_list} us")
         try:
-            search_message(
-                query, decode_id(id_list), page,
-            ).edit(chat_id, message_id, markup=markup)
+            search_message(query, decode_id(id_list), page).edit(
+                chat_id, message_id, markup=markup
+            )
         except ApiTelegramException:
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
 
     elif call_prefix == "pw":  # page week event list
-        page, id_list = args_func(
-            {"page": ("str", 0), "id_list": ("str", ())}
-        ).values()
+        page, id_list = args_func({"page": ("str", 0), "id_list": ("str", ())}).values()
         markup = message.reply_markup if page else None
         if markup:
             edit_button_data(markup, 0, 2, f"se o {id_list} mnw")
         try:
-            week_event_list_message(
-                decode_id(id_list), page,
-            ).edit(chat_id, message_id, markup=markup)
+            week_event_list_message(decode_id(id_list), page).edit(
+                chat_id, message_id, markup=markup
+            )
         except ApiTelegramException:
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
 
     elif call_prefix == "pb":  # page bin
-        page, id_list = args_func(
-            {"page": ("str", 0), "id_list": ("str", ())}
-        ).values()
+        page, id_list = args_func({"page": ("str", 0), "id_list": ("str", ())}).values()
         markup = message.reply_markup if page else None
         if markup:
             edit_button_data(markup, 0, 0, f"se b {id_list} mnb")
             edit_button_data(markup, 0, 1, f"ses b {id_list} mnb")
         try:
-            trash_can_message(
-                decode_id(id_list), page,
-            ).edit(chat_id, message_id, markup=markup)
+            trash_can_message(decode_id(id_list), page).edit(
+                chat_id, message_id, markup=markup
+            )
         except ApiTelegramException:
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
@@ -925,7 +928,9 @@ def callback_handler(call: CallbackQuery):
             except ApiTelegramException:
                 # Сообщение не изменено
                 date = new_time_calendar()
-                markup = create_monthly_calendar_keyboard(date, command, back, arguments)
+                markup = create_monthly_calendar_keyboard(
+                    date, command, back, arguments
+                )
                 TextMessage(markup=markup).edit(chat_id, message_id, only_markup=True)
         else:
             CallBackAnswer(get_translate("errors.invalid_date")).answer(call_id)
@@ -940,7 +945,9 @@ def callback_handler(call: CallbackQuery):
             decade = int(decade)
 
         if is_valid_year(int(str(decade) + "0")):
-            markup = create_twenty_year_calendar_keyboard(decade, command, back, arguments)
+            markup = create_twenty_year_calendar_keyboard(
+                decade, command, back, arguments
+            )
             try:
                 TextMessage(markup=markup).edit(chat_id, message_id, only_markup=True)
             except ApiTelegramException:

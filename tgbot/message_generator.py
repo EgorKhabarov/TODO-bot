@@ -51,9 +51,7 @@ SELECT event_id,
         if (
             len(group) < max_group_len
             and group_sum + text_len <= max_group_symbols_count
-            and len(
-                encode_id([int(i) for i in group + [event_id]])
-            ) <= max_group_id_len
+            and len(encode_id([int(i) for i in group + [event_id]])) <= max_group_id_len
         ):
             group.append(event_id)
             group_sum += text_len
