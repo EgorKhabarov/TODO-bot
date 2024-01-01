@@ -246,9 +246,9 @@ def daily_message(
     generated = EventsMessage(f"{date:%d.%m.%Y}", reply_markup=markup, page=page)
 
     if id_list:
-        generated.get_events(WHERE=WHERE, values=id_list)
+        generated.get_page_events(WHERE, id_list)
     else:
-        generated.get_data(WHERE, lambda np, ids: f"pd {date:%d.%m.%Y} {np} {ids}")
+        generated.get_pages_data(WHERE, lambda np, ids: f"pd {date:%d.%m.%Y} {np} {ids}")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(
@@ -293,11 +293,10 @@ def event_message(
     Сообщение для взаимодействия с одним событием
     """
 
-    api_response = request.user.get_event(event_id, in_wastebasket)
-    if not api_response[0]:
+    response, event = request.user.get_event(event_id, in_wastebasket)
+    if not response:
         return None
 
-    event = api_response[1]
     day = DayInfo(event.date)
     if not in_wastebasket:
         relatively_date = day.relatively_date
@@ -317,10 +316,8 @@ def event_message(
                 {"🏷" or "🚩": f"esp 0 {event.date} {event_id}"},
                 {"🗑": f"ebd {event_id} {event.date}"},
             ],
-            [
-                # add_media = get_translate("add_media") {f"🖼 {add_media}": "None"}, # "✏️"
-                {f"📅 {edit_date}": f"esdt {event_id} {event.date}"},
-            ],
+            # add_media = get_translate("add_media") {f"🖼 {add_media}": "None"}, # "✏️"
+            [{f"📅 {edit_date}": f"esdt {event_id} {event.date}"}],
             [
                 {get_theme_emoji("back"): f"dl {event.date}"},
                 {"ℹ️": f"eab {event_id}"},
@@ -356,10 +353,8 @@ def events_message(
     """
 
     generated = EventsMessage()
-    generated.get_events(
-        WHERE=f"removal_time != {int(not is_in_wastebasket)}",
-        values=id_list,
-    )
+    # TODO Проверить is_in_wastebasket
+    generated.get_page_events(f"removal_time != {int(not is_in_wastebasket)}", id_list)
 
     string_id = encode_id(id_list)
     if generated.event_list:
@@ -585,9 +580,9 @@ AND
     generated = EventsMessage(date, reply_markup=backopenmarkup, page=page)
 
     if id_list:
-        generated.get_events(WHERE, id_list)
+        generated.get_page_events(WHERE, id_list)
     else:
-        generated.get_data(WHERE, lambda np, ids: f"pr {date} {np} {ids}")
+        generated.get_pages_data(WHERE, lambda np, ids: f"pr {date} {np} {ids}")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.reply_markup, 0, 1, f"se o {string_id} pr {date}")
@@ -688,7 +683,7 @@ def edit_events_date_message(id_list: list[int], date: datetime | None = None):
     if date is None:
         date = now_time()
     generated = EventsMessage()
-    generated.get_events("1", id_list)
+    generated.get_page_events("1", id_list)
     generated.format(
         title=f"<b>{get_translate('select.what_do_with_events')}:</b>",
         args=(
@@ -751,10 +746,8 @@ def before_events_delete_message(
     удаления в корзину (для премиум) и изменения даты.
     """
     generated = EventsMessage()
-    generated.get_events(
-        WHERE=f"removal_time != {int(not in_wastebasket)}",
-        values=id_list,
-    )
+    # TODO Проверить is_in_wastebasket
+    generated.get_page_events(f"removal_time != {int(not in_wastebasket)}", id_list)
 
     delete_permanently = get_translate("text.delete_permanently")
     trash_bin = get_translate("text.trash_bin")
@@ -848,9 +841,9 @@ def search_message(
     WHERE = f"(user_id = {request.chat_id} AND removal_time = 0) AND ({splitquery})"
 
     if id_list:
-        generated.get_events(WHERE=WHERE, values=id_list)
+        generated.get_page_events(WHERE, id_list)
     else:
-        generated.get_data(WHERE, lambda np, ids: f"ps {np} {ids}")
+        generated.get_pages_data(WHERE, lambda np, ids: f"ps {np} {ids}")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.reply_markup, 0, 2, f"se os {string_id} us")
@@ -913,11 +906,11 @@ def week_event_list_message(
     )
     generated = EventsMessage(reply_markup=markup, page=page)
     if id_list:
-        generated.get_events(WHERE=WHERE, values=id_list)
+        generated.get_page_events(WHERE, id_list)
     else:
-        generated.get_data(
+        generated.get_pages_data(
             WHERE=WHERE,
-            call_back_func=lambda np, ids: f"pw {np} {ids}",
+            callback_data=lambda np, ids: f"pw {np} {ids}",
             column="DAYS_BEFORE_EVENT(date, status), "
             "status LIKE '%📬%', status LIKE '%🗞%',status LIKE '%📅%', "
             "status LIKE '%📆%', status LIKE '%🎉%', status LIKE '%🎊%'",
@@ -962,9 +955,9 @@ def trash_can_message(id_list: list[int] = (), page: int | str = 0) -> EventsMes
     generated = EventsMessage(reply_markup=markup, page=page)
 
     if id_list:
-        generated.get_events(WHERE=WHERE, values=id_list)
+        generated.get_page_events(WHERE, id_list)
     else:
-        generated.get_data(WHERE, lambda np, ids: f"pb {np} {ids}")
+        generated.get_pages_data(WHERE, lambda np, ids: f"pb {np} {ids}")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.reply_markup, 0, 0, f"se b {string_id} mnb")
@@ -1081,11 +1074,11 @@ AND
 
     generated = EventsMessage(reply_markup=markup, page=page)
     if id_list:
-        generated.get_events(WHERE=WHERE, values=id_list)
+        generated.get_page_events(WHERE, id_list)
     else:
-        generated.get_data(
+        generated.get_pages_data(
             WHERE=WHERE,
-            call_back_func=lambda np, ids: f"pn {n_date:%d.%m.%Y} {np} {ids}",
+            callback_data=lambda np, ids: f"pn {n_date:%d.%m.%Y} {np} {ids}",
             column=(
                 "DAYS_BEFORE_EVENT(date, status), "
                 "status LIKE '%📬%', status LIKE '%🗞%', status LIKE '%📅%',"

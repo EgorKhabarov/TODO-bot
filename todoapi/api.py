@@ -654,7 +654,7 @@ SELECT user_id,
         timezone: int = None,
         direction: Literal["DESC", "ASC"] = None,
         user_status: Literal[-1, 0, 1, 2] = None,
-        notifications: Literal[0, 1] = None,
+        notifications: Literal[0, 1] | bool = None,
         notifications_time: str = None,
         theme: int = None,
     ) -> tuple[bool, str]:
@@ -728,7 +728,7 @@ SELECT user_id,
             self.settings.user_status = int(user_status)
 
         if notifications is not None:
-            if notifications not in (0, 1, "0", "1"):
+            if notifications not in (1, 0, "1", "0", True, False):
                 return False, "notifications must be in [0, 1]"
 
             update_list.append("notifications")

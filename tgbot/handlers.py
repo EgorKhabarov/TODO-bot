@@ -196,21 +196,21 @@ def command_handler(message: Message) -> None:
         if file_format not in ("csv", "xml", "json", "jsonl"):
             return TextMessage(get_translate("errors.export_format")).reply(message)
 
-        api_response = user.export_data(
+        response, file = user.export_data(
             f"events_{now_time():%Y-%m-%d_%H-%M-%S}.{file_format}",
             f"{file_format}",
         )
 
-        if api_response[0]:
+        if response:
             bot.send_chat_action(chat_id, "upload_document")
 
             try:
-                bot.send_document(chat_id, InputFile(api_response[1]))
+                bot.send_document(chat_id, InputFile(file))
             except ApiTelegramException as e:
                 logging.info(f'export ApiTelegramException "{e}"')
                 TextMessage(get_translate("errors.file_is_too_big")).send(chat_id)
         else:
-            if m := re.match(r"Wait (\d+) min", api_response[1]):
+            if m := re.match(r"Wait (\d+) min", file):
                 generated = TextMessage(get_translate("errors.export").format(t=m[1]))
             else:
                 generated = TextMessage(get_translate("errors.error"))
@@ -413,15 +413,13 @@ def callback_handler(call: CallbackQuery):
                             return
                 elif action == "edit" and key and val:
                     if key == "settings.notifications":
-                        api_response = user.set_settings(notifications=int(val))  # type: ignore
-                        if not api_response[0]:
-                            text = api_response[1]
-                            return CallBackAnswer(text).answer(call_id)
+                        response, error_text = user.set_settings(notifications=bool(int(val)))
+                        if not response:
+                            return CallBackAnswer(error_text).answer(call_id)
                     elif key == "settings.status":
-                        api_response = request.user.set_user_status(user_id, int(val))  # type: ignore
-                        if not api_response[0]:
-                            text = api_response[1]
-                            return CallBackAnswer(text).answer(call_id)
+                        response, error_text = request.user.set_user_status(user_id, int(val))
+                        if not response:
+                            return CallBackAnswer(error_text).answer(call_id)
                         set_bot_commands(user_id, int(val), user.settings.lang)
 
             generated = user_message(user_id)

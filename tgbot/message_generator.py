@@ -78,7 +78,9 @@ class TextMessage:
 
     def send(self, chat_id: int) -> Message:
         return bot.send_message(
-            chat_id=chat_id, text=self.text, reply_markup=self.reply_markup
+            chat_id=chat_id,
+            text=self.text,
+            reply_markup=self.reply_markup,
         )
 
     def edit(
@@ -131,8 +133,8 @@ class TextMessage:
 
     def reply(self, message):
         bot.reply_to(
-            message,
-            self.text,
+            message=message,
+            text=self.text,
             reply_markup=self.reply_markup,
         )
 
@@ -157,10 +159,10 @@ class EventsMessage(TextMessage):
         self.page = page
         self.page_signature_needed = True if page else False
 
-    def get_data(
+    def get_pages_data(
         self,
         WHERE: str,
-        call_back_func: Callable[[int, str], str],
+        callback_data: Callable[[int, str], str],
         column: str = sqlite_format_date("date"),
         direction: Literal["ASC", "DESC"] | None = None,
     ):
@@ -222,23 +224,21 @@ SELECT user_id,
                     page_diapason[-1].append((0, ""))
 
                 # Обрезаем до 8 строк кнопок чтобы не было слишком много строк кнопок
-                [
+                for row in page_diapason[:8]:
                     self.reply_markup.row(
                         *[
                             InlineKeyboardButton(
                                 f"{numpage}",
-                                callback_data=call_back_func(numpage, event_ids),
+                                callback_data=callback_data(numpage, event_ids),
                             )
                             if event_ids
                             else InlineKeyboardButton(" ", callback_data="None")
                             for numpage, event_ids in row
                         ]
                     )
-                    for row in page_diapason[:8]
-                ]
         return self
 
-    def get_events(self, WHERE: str, values: list | tuple[int | str]):
+    def get_page_events(self, WHERE: str, id_list: list[int]):
         """
         Возвращает события входящие в values с условием WHERE
         """
@@ -257,7 +257,7 @@ SELECT user_id,
        recent_changes_time
   FROM events
  WHERE user_id = {request.user.settings.user_id} AND
-       event_id IN ({', '.join(str(i) for i in values)}) AND
+       event_id IN ({', '.join(f"{event_id}" for event_id in id_list)}) AND
        ({WHERE}) 
  ORDER BY {sqlite_format_date('date')} {request.user.settings.direction};
 """,
