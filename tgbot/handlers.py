@@ -413,11 +413,15 @@ def callback_handler(call: CallbackQuery):
                             return
                 elif action == "edit" and key and val:
                     if key == "settings.notifications":
-                        response, error_text = user.set_settings(notifications=bool(int(val)))
+                        response, error_text = user.set_settings(
+                            notifications=bool(int(val))
+                        )
                         if not response:
                             return CallBackAnswer(error_text).answer(call_id)
                     elif key == "settings.status":
-                        response, error_text = request.user.set_user_status(user_id, int(val))
+                        response, error_text = request.user.set_user_status(
+                            user_id, int(val)
+                        )
                         if not response:
                             return CallBackAnswer(error_text).answer(call_id)
                         set_bot_commands(user_id, int(val), user.settings.lang)

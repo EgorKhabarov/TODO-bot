@@ -248,7 +248,9 @@ def daily_message(
     if id_list:
         generated.get_page_events(WHERE, id_list)
     else:
-        generated.get_pages_data(WHERE, lambda np, ids: f"pd {date:%d.%m.%Y} {np} {ids}")
+        generated.get_pages_data(
+            WHERE, lambda np, ids: f"pd {date:%d.%m.%Y} {np} {ids}"
+        )
 
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(
