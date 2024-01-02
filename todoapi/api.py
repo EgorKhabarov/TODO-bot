@@ -642,7 +642,7 @@ SELECT user_id,
                 case x if x in ("json", "jsonl"):
                     return export_json()
                 case _:
-                    return False, f"SQL Error"
+                    return False, "SQL Error"
         else:
             return False, f"Wait {t // 60} min"
 

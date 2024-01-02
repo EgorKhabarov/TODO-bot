@@ -41,10 +41,10 @@ COMMANDS = (
 callbackTab = "⠀⠀⠀"  # Специальные прозрачные символы для заполнения
 
 
-__version__ = "02.01.2024"
+__version__ = "03.01.2024"
 __autor__ = "EgorKhabarov"
 
 bot_settings = """
-Bot settings => Group Privacy => disabled
-Bot settings => Inline Mode   => disabled
+Bot Settings => Group Privacy => disabled
+Bot Settings => Inline Mode   => disabled
 """

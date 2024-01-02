@@ -66,26 +66,40 @@ def menu_message() -> TextMessage:
     """
     Генерирует сообщение меню
     """
+    (
+        translate_menu,
+        translate_help,
+        translate_calendar,
+        translate_account,
+        translate_groups,
+        translate_seven_days,
+        translate_notifications,
+        translate_Settings,
+        translate_wastebasket,
+        translate_admin,
+    ) = get_translate("messages.menu")
 
-    text = "Меню"
+    text = translate_menu
     markup = [
         [
-            {"📚 Помощь": "mnh"},
-            {"📆 Календарь": "mnc ('now',)"},
+            {f"📚 {translate_help}": "mnh"},
+            {f"📆 {translate_calendar}": "mnc ('now',)"},
         ],
         [
-            {"👤 Аккаунт": "mna"},
-            {"👥 Группы": "mngr"},
+            {f"👤 {translate_account}": "mna"},
+            {f"👥 {translate_groups}": "mngr"},
         ],
         [
-            {"📆 7 дней": "pw"},
-            {"🔔 Уведомления": "mnn"},
+            {f"📆 {translate_seven_days}": "pw"},
+            {f"🔔 {translate_notifications}": "mnn"},
         ],
         [
-            {"⚙️ Настройки": "mns"},
-            {"🗑 Корзина": "mnb"} if is_premium_user(request.user) else {},
+            {f"⚙️ {translate_Settings}": "mns"},
+            {f"🗑 {translate_wastebasket}": "mnb"}
+            if is_premium_user(request.user)
+            else {},
         ],
-        [{"😎 Админская": "mnad"}] if is_secure_chat(request.query) else [],
+        [{f"😎 {translate_admin}": "mnad"}] if is_secure_chat(request.query) else [],
     ]
     return TextMessage(text, generate_buttons(markup))
 
@@ -272,7 +286,7 @@ def daily_message(
         for x in db.execute(
             queries["select recurring_events"],
             params={
-                "user_id": request.chat_id,
+                "user_id": request.user.user_id,
                 "date": f"{date:%d.%m.%Y}",
                 "y_date": f"{date:%d.%m}.____",
                 "m_date": f"{date:%d}.__.____",
@@ -405,6 +419,7 @@ def about_event_message(event_id: int) -> TextMessage | None:
         return None
 
     day = DayInfo(event.date)
+    # TODO перевод
     text = f"""
 <b>{get_translate("text.event_about_info")}:
 {event.date}.{event_id}.</b>{event.status} <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})
@@ -982,7 +997,7 @@ def send_notifications_messages() -> None:
         settings = request.user.settings
 
         if settings.notifications:
-            generated = notification_message(user_id, from_command=True)
+            generated = notification_message(from_command=True)
             if generated.event_list:
                 try:
                     generated.send(user_id)
@@ -992,26 +1007,21 @@ def send_notifications_messages() -> None:
 
 
 def notification_message(
-    user_id: int,
     n_date: datetime | None = None,
     id_list: list[int] = (),
     page: int | str = 0,
     from_command: bool = False,
 ) -> EventsMessage | None:
-    request.user = User(user_id)
-    request.chat_id = user_id
-    settings = request.user.settings
-
     if n_date is None:
         n_date = datetime.utcnow()
 
     dates = [
-        n_date + timedelta(days=days, hours=settings.timezone)
+        n_date + timedelta(days=days, hours=request.user.settings.timezone)
         for days in (0, 1, 2, 3, 7)
     ]
     weekdays = ["0" if (w := date.weekday()) == 6 else f"{w + 1}" for date in dates[:2]]
     WHERE = f"""
-user_id = {user_id}
+user_id = {request.user.user_id}
 AND
 removal_time = 0
 AND
@@ -1132,6 +1142,7 @@ def admin_message(page: int = 1) -> TextMessage:
         text = "you are not admin\n"
         markup = generate_buttons([[{get_theme_emoji("back"): "mnm"}]])
     else:
+        # TODO перевод
         text = f"""
 😎 Админская 😎
 
@@ -1149,7 +1160,7 @@ m - max events count</i>
 ↖️ <i>reply</i> <u>int</u> <u>str</u>: ("user_id"? | "page")
 """
         users = db.execute(
-            f"""
+            """
 SELECT user_id,
        user_status,
        user_max_event_id - 1 as user_max_event_id,
@@ -1246,8 +1257,7 @@ SELECT COUNT(event_id) as events_count,
             WHERE settings.user_id = events.user_id
        ) as user_max_event_id,
        IFNULL(
-           MAX(MAX(recent_changes_time), MAX(adding_time)),
-           "0"
+           MAX(MAX(recent_changes_time), MAX(adding_time)), "0"
        ) as recent_changes_time
   FROM events
  WHERE user_id = {user_id};
@@ -1304,6 +1314,7 @@ name: {group.name}
             """.strip()
             for group in groups
         )
+        # TODO перевод
         text = f"""
 👥 Группы 👥
 
@@ -1334,6 +1345,7 @@ def account_message() -> TextMessage:
         [{"logout": "logout"}],
         [{get_theme_emoji("back"): "mnm"}],
     ]
+    # TODO перевод
     return TextMessage(
         f"""
 👤 Аккаунт 👤
@@ -1439,7 +1451,7 @@ def select_events_message(
         [
             {get_theme_emoji("back"): back_data},
             {"☑️": "sbal" if is_in_wastebasket else "sal"},
-            {"↗️": "bsm _" if is_in_wastebasket else f"esm _"},
+            {"↗️": "bsm _" if is_in_wastebasket else "esm _"},
         ]
     )
     generated = TextMessage(get_translate("select.events"), generate_buttons(markup))

@@ -81,6 +81,7 @@ def command_handler(message: Message) -> None:
     user, chat_id = request.user, request.chat_id
     settings, message_text = user.settings, message.text
     parsed_command = parse_command(message_text, {"arg": "long str"})
+    # TODO Local variable `command_arguments` is assigned to but never used
     command_text, command_arguments = (
         parsed_command["command"],
         parsed_command["arguments"],
@@ -150,6 +151,7 @@ def command_handler(message: Message) -> None:
                     caption=now_time_strftime(),
                 )
         except ApiTelegramException:
+            # TODO перевод
             TextMessage("Отправить файл не получилось").send(chat_id)
 
     elif command_text == "SQL" and is_secure_chat(message):
@@ -358,6 +360,7 @@ def callback_handler(call: CallbackQuery):
                         api_response = user.delete_user(user_id)
 
                         if api_response[0]:
+                            # TODO перевод
                             text = "Пользователь успешно удалён"
                             csv_file = api_response[1]
                         else:
@@ -376,7 +379,7 @@ def callback_handler(call: CallbackQuery):
                             if error_text in error_dict:
                                 return TextMessage(error_dict[error_text]).send(chat_id)
 
-                            text = "Ошибка при удалении."
+                            text = "Ошибка при удалении."  # TODO перевод
                             csv_file = api_response[1][1]
                         try:
                             bot.send_document(
@@ -387,7 +390,7 @@ def callback_handler(call: CallbackQuery):
                         except ApiTelegramException:
                             pass
                         else:
-                            text += "\n+файл"
+                            text += "\n+файл"  # TODO перевод
 
                         TextMessage(text).send(chat_id)
 
@@ -402,6 +405,7 @@ def callback_handler(call: CallbackQuery):
                             ]
                             for r in range(5)
                         ]
+                        # TODO перевод
                         generated = TextMessage(
                             f"Вы точно хотите удалить аккаунт id: "
                             f"<a href='tg://user?id={user_id}'>{user_id}</a>?",
@@ -479,13 +483,9 @@ def callback_handler(call: CallbackQuery):
 
         if n_date is None:
             return monthly_calendar_message(
-                "mnn", "mnm", "Выберите дату уведомления"
+                "mnn", "mnm", get_translate("select.notification_date")
             ).edit(chat_id, message_id)
-        notification_message(
-            request.user.user_id,
-            n_date,
-            from_command=True,
-        ).edit(chat_id, message_id)
+        notification_message(n_date, from_command=True).edit(chat_id, message_id)
 
     elif call_prefix == "dl":
         date = args_func({"date": "date"})["date"]
@@ -882,13 +882,8 @@ def callback_handler(call: CallbackQuery):
         if markup:
             edit_button_data(markup, 0, -1, f"se o {id_list} mnn {n_date:%d.%m.%Y}")
         try:
-            notification_message(
-                user_id=request.user.user_id,
-                n_date=n_date,
-                id_list=decode_id(id_list),
-                page=page,
-                from_command=True,
-            ).edit(chat_id, message_id, markup=markup)
+            generated = notification_message(n_date, decode_id(id_list), page, True)
+            generated.edit(chat_id, message_id, markup=markup)
         except ApiTelegramException:
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)

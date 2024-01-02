@@ -843,6 +843,32 @@ Visibility <b>{}</b>m""",
             "ru": "Напоминание",
             "en": "Notification",
         },
+        "menu": {
+            "ru": (
+                "Меню",
+                "Помощь",
+                "Календарь",
+                "Аккаунт",
+                "Группы",
+                "7 дней",
+                "Уведомления",
+                "Настройки",
+                "Корзина",
+                "Админская",
+            ),
+            "en": (
+                "Menu",
+                "Help",
+                "Calendar",
+                "Account",
+                "Groups",
+                "7 days",
+                "Notifications",
+                "Settings",
+                "Bin",
+                "Admin",
+            ),
+        },
     },
     "buttons": {
         "commands": {
@@ -1321,6 +1347,10 @@ Visibility <b>{}</b>m""",
         "status_to_event": {
             "ru": "Выберите статус для события:",
             "en": "Select a status for the event:",
+        },
+        "notification_date": {
+            "ru": "Выберите дату уведомления",
+            "en": "Select notification date",
         },
         "event_to_open": {
             "ru": "Выберите событие для открытия",

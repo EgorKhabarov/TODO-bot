@@ -29,7 +29,6 @@ def create_monthly_calendar_keyboard(
     :param back: Кнопка назад
     :param arguments: Аргументы у команды и back
     """
-    settings, chat_id = request.user.settings, request.chat_id
     command = f"'{command.strip()}'" if command else None
     back = f"'{back.strip()}'" if back else None
     arguments = f"'{arguments.strip()}'" if arguments else None
@@ -44,7 +43,7 @@ def create_monthly_calendar_keyboard(
         x[0]: x[1]
         for x in db.execute(
             queries["select day_number_with_events"],
-            params=(chat_id, f"__.{MM:0>2}.{YY}"),
+            params=(request.user.user_id, f"__.{MM:0>2}.{YY}"),
         )
     }
 
@@ -53,7 +52,7 @@ def create_monthly_calendar_keyboard(
         x[0]
         for x in db.execute(
             queries["select day_number_with_birthdays"],
-            params=(chat_id, f"{MM:0>2}"),
+            params=(request.user.user_id, f"{MM:0>2}"),
         )
     )
 
@@ -62,7 +61,7 @@ def create_monthly_calendar_keyboard(
         6 if x[0] == -1 else x[0]
         for x in db.execute(
             queries["select week_day_number_with_event_every_week"],
-            params=(chat_id,),
+            params=(request.user.user_id,),
         )
     )
 
@@ -142,7 +141,6 @@ def create_yearly_calendar_keyboard(
     """
     Создаёт календарь из месяцев на определённый год и возвращает inline клавиатуру
     """
-    chat_id = request.chat_id
     command = f"'{command.strip()}'" if command else None
     back = f"'{back.strip()}'" if back else None
     arguments = f"'{arguments.strip()}'" if arguments else None
@@ -152,7 +150,7 @@ def create_yearly_calendar_keyboard(
         x[0]: x[1]
         for x in db.execute(
             queries["select month_number_with_events"],
-            params=(chat_id, f"__.__.{YY}"),
+            params=(request.user.user_id, f"__.__.{YY}"),
         )
     }
 
@@ -161,7 +159,7 @@ def create_yearly_calendar_keyboard(
         x[0]
         for x in db.execute(
             queries["select month_number_with_birthdays"],
-            params=(chat_id,),
+            params=(request.user.user_id,),
         )
     ]
 
@@ -170,7 +168,7 @@ def create_yearly_calendar_keyboard(
         x[0]
         for x in db.execute(
             queries["select having_event_every_month"],
-            params=(chat_id,),
+            params=(request.user.user_id,),
         )
     ]
 
@@ -223,7 +221,6 @@ def create_twenty_year_calendar_keyboard(
     back: str | None = None,
     arguments: str | None = None,
 ) -> InlineKeyboardMarkup:
-    chat_id = request.chat_id
     command = f"'{command.strip()}'" if command else None
     back = f"'{back.strip()}'" if back else None
     # example: millennium, decade =  '20', 2
@@ -241,14 +238,14 @@ def create_twenty_year_calendar_keyboard(
         x[0]: x[1]
         for x in db.execute(
             queries["select year_number_with_events"],
-            params=(chat_id,),
+            params=(request.user.user_id,),
         )
     }
 
     # Повторение каждый год
     every_year = db.execute(
         queries["select year_number_with_birthdays"],
-        params=(chat_id,),
+        params=(request.user.user_id,),
     )
 
     if every_year:

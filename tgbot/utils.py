@@ -22,7 +22,7 @@ from tgbot import config
 from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.time_utils import DayInfo, convert_date_format, now_time
-from todoapi.types import db, Event
+from todoapi.types import db
 from todoapi.utils import is_admin_id
 
 re_edit_message = re.compile(r"\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)")
@@ -373,6 +373,7 @@ def fetch_forecast(city: str) -> str:
                 f"\n\n<b>{date}</b> <u><i>{day.str_date}  "
                 f"{day.week_date}</i></u> ({day.relatively_date})"
             )
+        # TODO перевод м/c
         result += (
             f"\n{city_time.split()[-1]} {weather_icon}<b>{temp:⠀>2.0f}°C "
             f"💨{wind_speed:.0f}м/с {wind_deg_icon}</b> "
@@ -497,51 +498,6 @@ def highlight_text_difference(_old_text, _new_text):
 
     result_text = "".join(result_parts)
     return result_text
-
-
-def parse_message(text: str) -> tuple[list[Event], bool]:
-    """
-    Парсит сообщение и возвращает список событий и на разные ли они даты
-    """
-    event_list: list[Event] = []
-    different_dates = False
-    msg_date = None
-
-    if m := re.match(r"\A\d{2}\.\d{2}\.\d{4}", text):
-        msg_date = m[0]
-
-    for str_event in text.split("\n\n")[1:]:
-        if m := re.match(
-            r"\A(\d{2}\.\d{2}\.\d{4})\."  # date
-            r"(\d+)\."  # event_id
-            r"(\S{1,6}(?:,\S{1,6}){0,4}) ",  # status
-            str_event,
-        ):
-            event_date = m[1]
-            different_dates = True
-
-        elif m := re.match(
-            r"\A(10|[1-9])\."  # номер события в сообщении
-            r"(\d+)\."  # event_id
-            r"(\S{1,6}(?:,\S{1,6}){0,4})\n",  # status
-            str_event,
-        ):
-            event_date = msg_date
-
-        else:
-            continue
-
-        event_list.append(
-            Event(
-                user_id=request.user.user_id,
-                event_id=int(m[2]),
-                date=event_date,
-                text=str_event.split("\n", maxsplit=1)[1],
-                status=m[3],
-            )
-        )
-
-    return event_list, different_dates
 
 
 def days_before_event(event_date: str, event_status: str) -> tuple[int, str, str]:
