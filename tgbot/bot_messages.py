@@ -1245,7 +1245,10 @@ SELECT COUNT(event_id) as events_count,
              FROM settings
             WHERE settings.user_id = events.user_id
        ) as user_max_event_id,
-       IFNULL(MAX(recent_changes_time), "0") as recent_changes_time
+       IFNULL(
+           MAX(MAX(recent_changes_time), MAX(adding_time)),
+           "0"
+       ) as recent_changes_time
   FROM events
  WHERE user_id = {user_id};
 """
@@ -1254,10 +1257,11 @@ SELECT COUNT(event_id) as events_count,
         2 if is_admin_id(user_id) else user.settings.user_status
     ]
     text = f"""👤 User 👤
-user_id: <a href='tg://user?id={user_id}'>{user_id}</a>
+user_id: {user_id}
+chat_id: <a href='tg://user?id={user_id}'>{user_id}</a>
 
-<pre><code class='language-user info'>events_count:  {events_count}
-max event_id:  {user_max_event_id}
+<pre><code class='language-user info'>events count:  {events_count}
+max event_id:  {user_max_event_id or "0"}
 last changes:  {parse_utc_datetime(recent_changes_time)}
 status:        {user_status}
 </code></pre><pre><code class='language-settings'>lang:          {user.settings.lang}

@@ -14,7 +14,7 @@ def delete_message_action(message: Message) -> None:
     try:
         bot.delete_message(message.chat.id, message.message_id)
     except ApiTelegramException:
-        if (time() - message.date) * 60 * 60 > 48:
+        if (time() - message.date) / 60 / 60 > 48:
             error_text = get_translate("errors.delete_messages_older_48_h")
             if isinstance(request.query, CallbackQuery):
                 return CallBackAnswer(error_text).answer(request.query.id, True)
