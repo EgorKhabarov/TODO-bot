@@ -1245,7 +1245,7 @@ SELECT COUNT(event_id) as events_count,
              FROM settings
             WHERE settings.user_id = events.user_id
        ) as user_max_event_id,
-       MAX(recent_changes_time) as recent_changes_time
+       IFNULL(MAX(recent_changes_time), "0") as recent_changes_time
   FROM events
  WHERE user_id = {user_id};
 """

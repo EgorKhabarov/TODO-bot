@@ -430,13 +430,13 @@ def callback_handler(call: CallbackQuery):
             try:
                 generated.edit(chat_id, message_id)
             except ApiTelegramException:
-                pass
+                CallBackAnswer("ok").answer(call_id, True)
 
     elif call_prefix == "mns":  # settings
         try:
             settings_message().edit(chat_id, message_id)
         except ApiTelegramException:
-            pass
+            CallBackAnswer("ok").answer(call_id, True)
 
     elif call_prefix == "mnw":  # week_event_list
         try:
