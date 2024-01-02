@@ -120,3 +120,12 @@ class DayInfo:
         self.date = date
         self.str_date = f"{y.day} {month_list[y.month - 1]}"
         self.week_date = week_days[y.weekday()]
+
+
+def parse_utc_datetime(time: str) -> str:
+    if time == "0":
+        return "NEVER"
+
+    time = datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
+    time += timedelta(hours=request.user.settings.timezone)
+    return f"{time:%Y.%m.%d %H:%M:%S}"

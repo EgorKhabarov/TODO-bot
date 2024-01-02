@@ -15,10 +15,10 @@ from tgbot.bot import bot
 from tgbot.queries import queries
 from tgbot.request import request
 from tgbot.limits import create_image
-from tgbot.time_utils import now_time, DayInfo
 from tgbot.bot_actions import delete_message_action
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.message_generator import EventsMessage, TextMessage
+from tgbot.time_utils import now_time, DayInfo, parse_utc_datetime
 from tgbot.buttons_utils import (
     delmarkup,
     create_monthly_calendar_keyboard,
@@ -353,7 +353,6 @@ def events_message(
     """
     Сообщение для взаимодействия с одним событием
     """
-
     generated = EventsMessage()
     # TODO Проверить is_in_wastebasket
     generated.get_page_events(f"removal_time != {int(not is_in_wastebasket)}", id_list)
@@ -401,21 +400,11 @@ def events_message(
 
 
 def about_event_message(event_id: int) -> TextMessage | None:
-    api_response = request.user.get_event(event_id, False)
-    if not api_response[0]:
+    response, event = request.user.get_event(event_id, False)
+    if not response:
         return None
 
-    event = api_response[1]
     day = DayInfo(event.date)
-
-    def parse_utc_datetime(time: str) -> str:
-        if time == "0":
-            return "NEVER"
-        time = datetime.strptime(time, "%Y-%m-%d %H:%M:%S") + timedelta(
-            hours=request.user.settings.timezone
-        )
-        return f"{time:%Y.%m.%d %H:%M:%S}"
-
     text = f"""
 <b>{get_translate("text.event_about_info")}:
 {event.date}.{event_id}.</b>{event.status} <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})
@@ -1248,19 +1237,37 @@ Error: "User Not Exist"
         return TextMessage(text, markup)
 
     user = User(user_id)
-    user_status = string_status[user.settings.user_status]
+    (events_count, user_max_event_id, recent_changes_time) = db.execute(
+        f"""
+SELECT COUNT(event_id) as events_count,
+       (
+           SELECT user_max_event_id - 1
+             FROM settings
+            WHERE settings.user_id = events.user_id
+       ) as user_max_event_id,
+       MAX(recent_changes_time) as recent_changes_time
+  FROM events
+ WHERE user_id = {user_id};
+"""
+    )[0]
+    user_status = string_status[
+        2 if is_admin_id(user_id) else user.settings.user_status
+    ]
     text = f"""👤 User 👤
-user_id: {user_id}
+user_id: <a href='tg://user?id={user_id}'>{user_id}</a>
 
-<pre><code class='language-settings'>lang:          {user.settings.lang}
+<pre><code class='language-user info'>events_count:  {events_count}
+max event_id:  {user_max_event_id}
+last changes:  {parse_utc_datetime(recent_changes_time)}
+status:        {user_status}
+</code></pre><pre><code class='language-settings'>lang:          {user.settings.lang}
 sub_urls:      {bool(user.settings.sub_urls)}
 city:          {html.escape(user.settings.city)}
 timezone:      {user.settings.timezone}
 direction:     {'⬇️' if user.settings.direction == 'DESC' else '⬆️'}
-status:        {user_status}
 notifications: {'🔔' if user.settings.notifications else '🔕'}
 n_time:        {user.settings.notifications_time}
-theme:         {'⬛️' if user.settings.theme else '⬜️'}</code></pre>
+theme:         {'dark' if user.settings.theme else 'white'}</code></pre>
 """
     markup = generate_buttons(
         [
