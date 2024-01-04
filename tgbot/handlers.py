@@ -578,7 +578,8 @@ def callback_handler(call: CallbackQuery):
         if status == "⬜️":
             generated = event_message(event_id, False, message_id)
         else:
-            event.status = res_status
+            if response:
+                event.status = res_status
             generated = event_status_message(event)
         generated.edit(chat_id, message_id)
 
