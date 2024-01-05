@@ -16,6 +16,14 @@ from todoapi.types import db, Event
 from todoapi.utils import sqlite_format_date
 
 
+event_formats = {
+    "dl": "<b>{numd}.{event_id}.</b>{status}\n{markdown_text}\n",
+    "dt": "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
+    "b": "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({days_before_delete})\n{markdown_text}\n",
+    "r": "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
+}
+
+
 def pagination(
     WHERE: str,
     direction: Literal["ASC", "DESC"] = "DESC",
@@ -277,7 +285,7 @@ SELECT user_id,
     def format(
         self,
         title: str = "{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n",
-        args: str = "<b>{numd}.{event_id}.</b>{status}\n{markdown_text}\n",
+        args: str = event_formats["dl"],
         ending: str = "",
         if_empty: str = "🕸🕷  🕸",
         **kwargs,

@@ -629,7 +629,10 @@ def callback_handler(call: CallbackQuery):
 
     elif call_prefix == "esdt":  # event select new date
         event_id, date = args_func({"event_id": "int", "date": "date"}).values()
-        edit_event_date_message(event_id, date).edit(chat_id, message_id)
+        generated = edit_event_date_message(event_id, date)
+        if generated is None:
+            generated = daily_message(date)
+        generated.edit(chat_id, message_id)
 
     elif call_prefix == "eds":  # event new date set
         event_id, date = args_func({"event_id": "int", "date": "date"}).values()
@@ -648,8 +651,10 @@ def callback_handler(call: CallbackQuery):
 
     elif call_prefix == "ebd":  # event before delete
         event_id, date = args_func({"event_id": "int", "date": "date"}).values()
-        before_event_delete_message(event_id).edit(chat_id, message_id)
-        # daily_message(date).edit(chat_id, message_id)
+        generated = before_event_delete_message(event_id)
+        if generated is None:
+            generated = daily_message(date)
+        generated.edit(chat_id, message_id)
 
     elif call_prefix == "ed":  # event delete
         event_id, date = args_func({"event_id": "int", "date": "date"}).values()
@@ -664,8 +669,11 @@ def callback_handler(call: CallbackQuery):
         daily_message(date).edit(chat_id, message_id)
 
     elif call_prefix == "eab":  # event about
-        event_id = args_func({"event_id": "int"})["event_id"]
-        about_event_message(event_id).edit(chat_id, message_id)
+        event_id, date = args_func({"event_id": "int", "date": "date"}).values()
+        generated = about_event_message(event_id)
+        if generated is None:
+            generated = daily_message(date)
+        generated.edit(chat_id, message_id)
 
     elif call_prefix == "esm":  # events message
         id_list = args_func({"id_list": "str"})["id_list"]
@@ -727,8 +735,9 @@ def callback_handler(call: CallbackQuery):
 
     elif call_prefix == "esds":  # events new date set
         id_list, date = args_func({"id_list": "str", "date": "date"}).values()
+        id_list = decode_id(id_list)
         not_edit: list[int] = []
-        for event_id in decode_id(id_list):
+        for event_id in id_list:
             if not request.user.edit_event_date(event_id, f"{date:%d.%m.%Y}")[0]:
                 not_edit.append(event_id)
 
@@ -737,7 +746,7 @@ def callback_handler(call: CallbackQuery):
         else:
             CallBackAnswer(get_translate("text.changes_saved")).answer(call_id)
 
-        events_message(decode_id(id_list)).edit(chat_id, message_id)
+        events_message(id_list).edit(chat_id, message_id)
 
     elif call_prefix == "se":  # select event
         info, id_list = args_func({"info": "str", "id_list": "str"}).values()
