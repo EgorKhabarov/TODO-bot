@@ -181,7 +181,7 @@ def rate_limit(
     max_calls: int,
     seconds: int,
     key_func: Callable = hashkey,
-    else_func: Callable = lambda arg, kwargs, key, sec: (key, sec),
+    else_func: Callable = lambda args, kwargs, key, sec: (key, sec),
 ):
     def decorator(func):
         @wraps(func)

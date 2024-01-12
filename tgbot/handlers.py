@@ -54,6 +54,7 @@ from tgbot.bot_messages import (
     edit_events_date_message,
     select_one_message,
     select_events_message,
+    event_show_mode_message,
 )
 from tgbot.utils import (
     fetch_weather,
@@ -222,7 +223,10 @@ def command_handler(message: Message) -> None:
         if message.reply_to_message:
             text = f"Message id <code>{message.reply_to_message.id}</code>"
         else:
-            text = f"Chat id <code>{chat_id}</code>"
+            text = (
+                f"User id <code>{request.user.user_id}</code>\n"
+                f"Chat id <code>{chat_id}</code>"
+            )
         TextMessage(text).reply(message)
 
     elif command_text == "limits":
@@ -355,17 +359,15 @@ def callback_handler(call: CallbackQuery):
         if user_id:
             if action:
                 if action == "del":
-                    if key == "account":
+                    if key in ("account", "quiet"):
                         delete_user_chat_id = user.user_id  # TODO user.telegram.chat_id
-                        api_response = user.delete_user(user_id)
+                        response, result = user.delete_user(user_id)
 
-                        if api_response[0]:
+                        if response:
                             # TODO перевод
                             text = "Пользователь успешно удалён"
-                            csv_file = api_response[1]
+                            csv_file = result
                         else:
-                            error_text = api_response[1]
-
                             # TODO перевод
                             error_dict = {
                                 "User Not Exist": "Пользователь не найден.",
@@ -376,14 +378,14 @@ def callback_handler(call: CallbackQuery):
                                 ),
                                 "CSV Error": "Не получилось получить csv файл.",
                             }
-                            if error_text in error_dict:
-                                return TextMessage(error_dict[error_text]).send(chat_id)
+                            if result in error_dict:
+                                return TextMessage(error_dict[result]).send(chat_id)
 
                             text = "Ошибка при удалении."  # TODO перевод
-                            csv_file = api_response[1][1]
+                            csv_file = result[1]
                         try:
                             bot.send_document(
-                                delete_user_chat_id,
+                                chat_id if key == "quiet" else delete_user_chat_id,
                                 InputFile(csv_file),
                                 caption=get_translate("text.account_has_been_deleted"),
                             )
@@ -395,15 +397,12 @@ def callback_handler(call: CallbackQuery):
                         TextMessage(text).send(chat_id)
 
                     else:
-                        default_button = {get_theme_emoji("back"): f"mnau {user_id}"}
                         markup = [
                             [
-                                {"🗑": f"mnau {user_id} del account"}
-                                if (r, c) == (3, 3)
-                                else default_button
-                                for c in range(5)
+                                {get_theme_emoji("back"): f"mnau {user_id}"},
+                                {"🗑": f"mnau {user_id} del account"},
+                                {"🤫🗑": f"mnau {user_id} del quiet"},
                             ]
-                            for r in range(5)
                         ]
                         # TODO перевод
                         generated = TextMessage(
@@ -596,7 +595,10 @@ def callback_handler(call: CallbackQuery):
             return
 
         statuses = event.status.split(",")
-        statuses.remove(status)
+        try:
+            statuses.remove(status)
+        except ValueError:  # Если попытаться удалить статус который уже не стоит
+            pass
         res_status = ",".join(statuses)
 
         if not res_status:
@@ -671,6 +673,13 @@ def callback_handler(call: CallbackQuery):
     elif call_prefix == "eab":  # event about
         event_id, date = args_func({"event_id": "int", "date": "date"}).values()
         generated = about_event_message(event_id)
+        if generated is None:
+            generated = daily_message(date)
+        generated.edit(chat_id, message_id)
+
+    elif call_prefix == "esh":  # event show
+        event_id, date = args_func({"event_id": "int", "date": "date"}).values()
+        generated = event_show_mode_message(event_id)
         if generated is None:
             generated = daily_message(date)
         generated.edit(chat_id, message_id)

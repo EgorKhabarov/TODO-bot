@@ -21,7 +21,16 @@ event_formats = {
     "dt": "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
     "b": "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({days_before_delete})\n{markdown_text}\n",
     "r": "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
+    "s": "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u>\n{markdown_text}\n",
 }
+"""
+"dl" - Шаблон для событий на один день
+"dt" - Шаблон для событий на разные дни
+"b" - Шаблон для корзины, показывает количество дней до уделения события
+"r" - Шаблон для событий которые могут повторяться,
+      показывает количество дней до следующего повторения
+"s" - Шаблон для показа событий, без относительных дат
+"""
 
 
 def pagination(
@@ -82,13 +91,13 @@ class TextMessage:
         markup: InlineKeyboardMarkup | None = None,
     ):
         self.text = text
-        self.reply_markup = markup
+        self.markup = markup
 
     def send(self, chat_id: int) -> Message:
         return bot.send_message(
             chat_id=chat_id,
             text=self.text,
-            reply_markup=self.reply_markup,
+            reply_markup=self.markup,
         )
 
     def edit(
@@ -102,11 +111,11 @@ class TextMessage:
         """
         :param chat_id: chat_id
         :param message_id: message_id
-        :param only_markup: обновить только клавиатуру self.reply_markup
+        :param only_markup: обновить только клавиатуру self.markup
         :param markup: обновить текст self.text и клавиатура markup
 
 
-        bot.edit_message_text(text, chat_id, message_id, reply_markup=self.reply_markup)
+        bot.edit_message_text(text, chat_id, message_id, reply_markup=self.markup)
 
         .edit(chat_id, message_id, markup=markup)
 
@@ -114,7 +123,7 @@ class TextMessage:
 
         .edit(chat_id, message_id, only_markup=True)
 
-        bot.edit_message_text(self.text, chat_id, message_id, reply_markup=self.reply_markup)
+        bot.edit_message_text(self.text, chat_id, message_id, reply_markup=self.markup)
 
         .edit(chat_id, message_id)
         """
@@ -122,7 +131,7 @@ class TextMessage:
             bot.edit_message_reply_markup(
                 chat_id=chat_id,
                 message_id=message_id,
-                reply_markup=self.reply_markup,
+                reply_markup=self.markup,
             )
         elif markup is not None:
             bot.edit_message_text(
@@ -136,14 +145,14 @@ class TextMessage:
                 text=self.text,
                 chat_id=chat_id,
                 message_id=message_id,
-                reply_markup=self.reply_markup,
+                reply_markup=self.markup,
             )
 
     def reply(self, message):
         bot.reply_to(
             message=message,
             text=self.text,
-            reply_markup=self.reply_markup,
+            reply_markup=self.markup,
         )
 
 
@@ -156,10 +165,12 @@ class EventsMessage(TextMessage):
         self,
         date: str = "now",
         event_list: tuple | list[Event, ...] = tuple(),
-        reply_markup: InlineKeyboardMarkup = InlineKeyboardMarkup(),
+        markup: InlineKeyboardMarkup = None,
         page: int = 0,
     ):
-        super().__init__("", deepcopy(reply_markup))
+        if markup is ...:
+            markup = InlineKeyboardMarkup()
+        super().__init__("", deepcopy(markup))
         if date == "now":
             date = now_time_strftime()
         self.event_list = event_list
@@ -233,7 +244,7 @@ SELECT user_id,
 
                 # Обрезаем до 8 строк кнопок чтобы не было слишком много строк кнопок
                 for row in page_diapason[:8]:
-                    self.reply_markup.row(
+                    self.markup.row(
                         *[
                             InlineKeyboardButton(
                                 f"{numpage}",
@@ -284,7 +295,7 @@ SELECT user_id,
 
     def format(
         self,
-        title: str = "{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n",
+        title: str,
         args: str = event_formats["dl"],
         ending: str = "",
         if_empty: str = "🕸🕷  🕸",
@@ -304,8 +315,6 @@ SELECT user_id,
 
 
         {numd}     - Порядковый номер (циферки)                                                 ["1 2 3"]
-
-        {nums}     - Порядковый номер (смайлики)                                                ["1 2 3"]
 
         {event_id} - Event_id                                                                   ["1"]
 
@@ -357,7 +366,6 @@ SELECT user_id,
                         weekday=day.week_date,
                         reldate=day.relatively_date,
                         numd=f"{num + 1}",
-                        nums=f"{num + 1}️⃣",  # создание смайлика с цифрой
                         event_id=f"{event.event_id}",
                         status=event.status,
                         markdown_text=add_status_effect(event.text, event.status)

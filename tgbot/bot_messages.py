@@ -257,7 +257,7 @@ def daily_message(
             ],
         ]
     )
-    generated = EventsMessage(f"{date:%d.%m.%Y}", reply_markup=markup, page=page)
+    generated = EventsMessage(f"{date:%d.%m.%Y}", markup=markup, page=page)
 
     if id_list:
         generated.get_page_events(WHERE, id_list)
@@ -267,12 +267,8 @@ def daily_message(
         )
 
     string_id = encode_id([event.event_id for event in generated.event_list])
-    edit_button_data(
-        generated.reply_markup, 0, 1, f"se _ {string_id} pd {date:%d.%m.%Y}"
-    )
-    edit_button_data(
-        generated.reply_markup, 0, 2, f"ses _ {string_id} pd {date:%d.%m.%Y}"
-    )
+    edit_button_data(generated.markup, 0, 1, f"se _ {string_id} pd {date:%d.%m.%Y}")
+    edit_button_data(generated.markup, 0, 2, f"ses _ {string_id} pd {date:%d.%m.%Y}")
 
     generated.format(
         title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})",
@@ -295,7 +291,7 @@ def daily_message(
     ]
 
     if daylist:
-        generated.reply_markup.row(
+        generated.markup.row(
             InlineKeyboardButton("📅", callback_data=f"pr {date:%d.%m.%Y}")
         )
 
@@ -317,6 +313,7 @@ def event_message(
     if not in_wastebasket:
         relatively_date = day.relatively_date
         edit_date = get_translate("text.edit_date")
+        show_mode = get_translate("text.event_show_mode")
         markup = [
             [
                 {
@@ -333,7 +330,10 @@ def event_message(
                 {"🗑": f"ebd {event_id} {event.date}"},
             ],
             # add_media = get_translate("add_media") {f"🖼 {add_media}": "None"}, # "✏️"
-            [{f"📅 {edit_date}": f"esdt {event_id} {event.date}"}],
+            [
+                {f"📋 {show_mode}": f"esh {event_id} {event.date}"},
+                {f"📅 {edit_date}": f"esdt {event_id} {event.date}"},
+            ],
             [
                 {get_theme_emoji("back"): f"dl {event.date}"},
                 {"ℹ️": f"eab {event_id} {event.date}"},
@@ -404,7 +404,7 @@ def events_message(
         args=event_formats[args_key],
         if_empty=get_translate("errors.message_empty"),
     )
-    generated.reply_markup = generate_buttons(markup)
+    generated.markup = generate_buttons(markup)
     return generated
 
 
@@ -424,6 +424,18 @@ def about_event_message(event_id: int) -> TextMessage | None:
 """
     markup = [[{get_theme_emoji("back"): f"em {event_id}"}]]
     return TextMessage(text, generate_buttons(markup))
+
+
+def event_show_mode_message(event_id: int) -> TextMessage | None:
+    response, event = request.user.get_event(event_id, False)
+    if not response:
+        return None
+
+    markup = generate_buttons([[{get_theme_emoji("back"): f"em {event_id}"}]])
+    generated = EventsMessage(markup=markup)
+    generated.event_list = [event]
+    generated.format("", event_formats["s"])
+    return generated
 
 
 def confirm_changes_message(message: Message) -> None | int:
@@ -578,7 +590,7 @@ AND
     backopenmarkup = generate_buttons(
         [[{get_theme_emoji("back"): f"pd {date}"}, {"↖️": "None"}]]
     )
-    generated = EventsMessage(date, reply_markup=backopenmarkup, page=page)
+    generated = EventsMessage(date, markup=backopenmarkup, page=page)
 
     if id_list:
         generated.get_page_events(WHERE, id_list)
@@ -586,7 +598,7 @@ AND
         generated.get_pages_data(WHERE, lambda np, ids: f"pr {date} {np} {ids}")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
-    edit_button_data(generated.reply_markup, 0, 1, f"se o {string_id} pr {date}")
+    edit_button_data(generated.markup, 0, 1, f"se o {string_id} pr {date}")
     generated.format(
         title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})"
         + f'\n📅 {get_translate("text.recurring_events")}',
@@ -689,7 +701,7 @@ def edit_events_date_message(id_list: list[int], date: datetime | None = None):
         if_empty=get_translate("errors.message_empty"),
     )
     string_ids = encode_id(id_list)
-    generated.reply_markup = create_monthly_calendar_keyboard(
+    generated.markup = create_monthly_calendar_keyboard(
         (date.year, date.month), "esds", "esm", f"{string_ids}"
     )
     return generated
@@ -763,7 +775,7 @@ def before_events_delete_message(id_list: list[int]) -> TextMessage | None:
         args=event_formats["r"],
         if_empty=get_translate("errors.message_empty"),
     )
-    generated.reply_markup = generate_buttons(markup)
+    generated.markup = generate_buttons(markup)
     return generated
 
 
@@ -795,7 +807,7 @@ def search_message(
     translate_search = get_translate("messages.search")
 
     if query.isspace():
-        generated = EventsMessage(reply_markup=delmarkup())
+        generated = EventsMessage(markup=delmarkup())
         generated.format(
             title=f"🔍 {translate_search} ...:\n",
             if_empty=get_translate("errors.request_empty"),
@@ -811,7 +823,7 @@ def search_message(
     markup = generate_buttons(
         [[{get_theme_emoji("del"): "md"}, {"🔄": "us"}, {"↖️": "None"}, {"↕️": "None"}]]
     )
-    generated = EventsMessage(reply_markup=markup, page=page)
+    generated = EventsMessage(markup=markup, page=page)
 
     splitquery = " OR ".join(
         f"date LIKE '%{x}%' OR text LIKE '%{x}%' OR "
@@ -826,8 +838,8 @@ def search_message(
         generated.get_pages_data(WHERE, lambda np, ids: f"ps {np} {ids}")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
-    edit_button_data(generated.reply_markup, 0, 2, f"se os {string_id} us")
-    edit_button_data(generated.reply_markup, 0, 3, f"ses s {string_id} us")
+    edit_button_data(generated.markup, 0, 2, f"se os {string_id} us")
+    edit_button_data(generated.markup, 0, 3, f"ses s {string_id} us")
     generated.format(
         title=f"🔍 {translate_search} <u>{html.escape(query)}</u>:",
         args=event_formats["dt"],
@@ -883,7 +895,7 @@ def week_event_list_message(
     markup = generate_buttons(
         [[{get_theme_emoji("back"): "mnm"}, {"🔄": "mnw"}, {"↖️": "None"}]]
     )
-    generated = EventsMessage(reply_markup=markup, page=page)
+    generated = EventsMessage(markup=markup, page=page)
     if id_list:
         generated.get_page_events(WHERE, id_list)
     else:
@@ -898,9 +910,9 @@ def week_event_list_message(
             direction="ASC",
         )
     string_id = encode_id([event.event_id for event in generated.event_list])
-    edit_button_data(generated.reply_markup, 0, 2, f"se o {string_id} mnw")
+    edit_button_data(generated.markup, 0, 2, f"se o {string_id} mnw")
     generated.format(
-        title=f"📆 {get_translate('text.week_events')}",
+        title=f"7️⃣ {get_translate('text.week_events')}",
         args=event_formats["r"],
         if_empty=get_translate("errors.nothing_found"),
     )
@@ -932,7 +944,7 @@ def trash_can_message(id_list: list[int] = (), page: int | str = 0) -> EventsMes
             [{get_theme_emoji("back"): "mnm"}],
         ]
     )
-    generated = EventsMessage(reply_markup=markup, page=page)
+    generated = EventsMessage(markup=markup, page=page)
 
     if id_list:
         generated.get_page_events(WHERE, id_list)
@@ -940,8 +952,8 @@ def trash_can_message(id_list: list[int] = (), page: int | str = 0) -> EventsMes
         generated.get_pages_data(WHERE, lambda np, ids: f"pb {np} {ids}")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
-    edit_button_data(generated.reply_markup, 0, 0, f"se b {string_id} mnb")
-    edit_button_data(generated.reply_markup, 0, 1, f"ses b {string_id} mnb")
+    edit_button_data(generated.markup, 0, 0, f"se b {string_id} mnb")
+    edit_button_data(generated.markup, 0, 1, f"ses b {string_id} mnb")
 
     generated.format(
         title=f"🗑 {basket_translate} 🗑",
@@ -1046,7 +1058,7 @@ AND
         ]
     )
 
-    generated = EventsMessage(reply_markup=markup, page=page)
+    generated = EventsMessage(markup=markup, page=page)
     if id_list:
         generated.get_page_events(WHERE, id_list)
     else:
@@ -1061,9 +1073,7 @@ AND
             direction="ASC",
         )
         string_id = encode_id([event.event_id for event in generated.event_list])
-        edit_button_data(
-            generated.reply_markup, 0, -1, f"se o {string_id} mnn {n_date:%d.%m.%Y}"
-        )
+        edit_button_data(generated.markup, 0, -1, f"se o {string_id} mnn {n_date:%d.%m.%Y}")
 
     if generated.event_list or from_command:
         reminder_translate = get_translate("messages.reminder")

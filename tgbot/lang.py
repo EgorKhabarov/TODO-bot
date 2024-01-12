@@ -326,6 +326,10 @@ Please call up new messages using commands.</b>
             "ru": "Вы точно хотите изменить тест события на",
             "en": "Are you sure you want to change the event text to",
         },
+        "event_show_mode": {
+            "ru": "Режим просмотра",
+            "en": "Show mode",
+        },
     },
     "messages": {
         "start": {

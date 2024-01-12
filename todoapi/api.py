@@ -300,12 +300,9 @@ SELECT user_id,
         if len(text) >= 3800:
             return False, "Text Is Too Big"
 
-        api_response = self.get_event(event_id)
-
-        if not api_response[0]:
+        response, event = self.get_event(event_id)
+        if not response:
             return False, "Event Not Found"
-
-        event = api_response[1]
 
         # Вычисляем количество добавленных символов
         _len_text, _len_event_text = len(text), len(event.text)
@@ -350,12 +347,9 @@ SELECT user_id,
         if not is_valid_year(int(date[-4:])):
             return False, "Wrong Date"
 
-        api_response = self.get_event(event_id)
-
-        if not api_response[0]:
+        response, event = self.get_event(event_id)
+        if not response:
             return False, "Event Not Found"
-
-        event = api_response[1]
 
         if (
             self.check_limit(date, event_count=1, symbol_count=len(event.text))[1]
@@ -812,13 +806,10 @@ UPDATE settings
 
         tmp_user = User(user_id)
         tmp_user.__no_cooldown = True
-        api_response = tmp_user.export_data(f"{user_id}.csv")
-
-        if not api_response[0]:
-            logging.info(f"CSV Error {api_response[1]}")
+        response, csv_file = tmp_user.export_data(f"{user_id}.csv")
+        if not response:
+            logging.info(f"CSV Error {csv_file}")
             return False, "CSV Error"
-
-        csv_file = api_response[1]
 
         try:
             db.execute(
