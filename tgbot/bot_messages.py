@@ -499,9 +499,7 @@ def confirm_changes_message(message: Message) -> None | int:
         )
         return TextMessage(translate, markup).reply(message)
 
-    text_diff = highlight_text_difference(
-        html.escape(event.text), html.escape(text)
-    )
+    text_diff = highlight_text_difference(html.escape(event.text), html.escape(text))
     # Находим пересечения выделений изменений и html экранирования
     # Костыль для исправления старого экранирования
     # На случай если в базе данных окажется html экранированный текст
