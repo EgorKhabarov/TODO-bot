@@ -2,8 +2,12 @@ import logging
 
 # noinspection PyPackageRequirements
 from telebot import TeleBot
-from telebot.types import BotCommandScopeChat  # noqa
-from telebot.apihelper import ApiTelegramException  # noqa
+
+# noinspection PyPackageRequirements
+from telebot.types import BotCommandScopeChat
+
+# noinspection PyPackageRequirements
+from telebot.apihelper import ApiTelegramException
 
 from tgbot import config as bot_config
 from todoapi import config as api_config

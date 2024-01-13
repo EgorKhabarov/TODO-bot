@@ -22,6 +22,7 @@ event_formats = {
     "b": "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({days_before_delete})\n{markdown_text}\n",
     "r": "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
     "s": "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u>\n{markdown_text}\n",
+    "a": "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{text}\n",
 }
 """
 "dl" - Шаблон для событий на один день
@@ -30,6 +31,7 @@ event_formats = {
 "r" - Шаблон для событий которые могут повторяться,
       показывает количество дней до следующего повторения
 "s" - Шаблон для показа событий, без относительных дат
+"a" - Шаблон для показа сообщения о событии, без markdown разметки
 """
 
 
@@ -154,6 +156,56 @@ class TextMessage:
             text=self.text,
             reply_markup=self.markup,
         )
+
+
+class EventMessage(TextMessage):
+    """
+    Класс для взаимодействия с одним событием
+    """
+
+    def __init__(self, event_id: int, in_wastebasket: bool = False):
+        super().__init__()
+        self.event_id = event_id
+        response, result = request.user.get_event(event_id, in_wastebasket)
+        self.event: Event = result if response else None
+
+    def format(
+        self,
+        title: str = "",
+        event_date_representation: str = "",
+        markup: InlineKeyboardMarkup = None,
+    ):
+        day = DayInfo(self.event.date)
+        event_date_representation = event_date_representation.format(
+            date=day.date,
+            strdate=day.str_date,
+            weekday=day.week_date,
+            reldate=day.relatively_date,
+            event_id=f"{self.event.event_id}",
+            status=self.event.status,
+            markdown_text=add_status_effect(self.event.text, self.event.status)
+            if "{markdown_text" in event_date_representation
+            else "",
+            days_before=f"<b>({dbd})</b>"
+            if (
+                (
+                    dbd := (
+                        days_before_event(self.event.date, self.event.status)[-1]
+                        if "{days_before" in event_date_representation
+                        else ""
+                    )
+                )
+                != day.relatively_date
+            )
+            else "",
+            days_before_delete=""
+            if self.event.removal_time == "0"
+            else get_translate("func.deldate")(self.event.days_before_delete()),
+            text=self.event.text,
+        )
+        self.text = f"<b>{title}</b>\n{event_date_representation}".strip()
+        self.markup = markup
+        return self
 
 
 class EventsMessage(TextMessage):

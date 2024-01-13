@@ -1,7 +1,10 @@
 from time import time
 
-from telebot.apihelper import ApiTelegramException  # noqa
-from telebot.types import Message, CallbackQuery  # noqa
+# noinspection PyPackageRequirements
+from telebot.apihelper import ApiTelegramException
+
+# noinspection PyPackageRequirements
+from telebot.types import Message, CallbackQuery
 
 from tgbot.bot import bot
 from tgbot.request import request

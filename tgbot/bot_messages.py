@@ -3,13 +3,14 @@ import html
 import logging
 from datetime import timedelta, datetime
 
-from telebot.apihelper import ApiTelegramException  # noqa
-from telebot.types import (  # noqa
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    InputMediaPhoto,
-    Message,
-)
+# noinspection PyPackageRequirements
+from telebot.apihelper import ApiTelegramException
+
+# noinspection PyPackageRequirements
+from telebot import formatting
+
+# noinspection PyPackageRequirements
+from telebot.types import InlineKeyboardButton, InputMediaPhoto, Message
 
 from tgbot.bot import bot
 from tgbot.queries import queries
@@ -17,8 +18,13 @@ from tgbot.request import request
 from tgbot.limits import create_image
 from tgbot.bot_actions import delete_message_action
 from tgbot.lang import get_translate, get_theme_emoji
-from tgbot.time_utils import now_time, DayInfo, parse_utc_datetime
-from tgbot.message_generator import EventsMessage, TextMessage, event_formats
+from tgbot.time_utils import now_time, parse_utc_datetime
+from tgbot.message_generator import (
+    TextMessage,
+    EventMessage,
+    EventsMessage,
+    event_formats,
+)
 from tgbot.buttons_utils import (
     delmarkup,
     create_monthly_calendar_keyboard,
@@ -28,7 +34,6 @@ from tgbot.buttons_utils import (
 from tgbot.utils import (
     sqlite_format_date2,
     is_secure_chat,
-    add_status_effect,
     html_to_markdown,
     re_edit_message,
     highlight_text_difference,
@@ -187,7 +192,6 @@ def help_message(path: str = "page 1") -> TextMessage:
     """
     Сообщение помощи
     """
-
     translate = get_translate(f"messages.help.{path}")
     title = get_translate("messages.help.title")
 
@@ -201,15 +205,12 @@ def help_message(path: str = "page 1") -> TextMessage:
         # Изменяем последнюю кнопку
         last_button: dict = keyboard[-1][-1]
         k, v = last_button.popitem()
-
         new_k = (
             k
             if not k.startswith("🔙")
             else get_theme_emoji("back") + k.removeprefix("🔙")
         )
-
         last_button[new_k] = v
-
         markup = generate_buttons(keyboard)
         generated = TextMessage(f"{title}\n{text}", markup)
     else:
@@ -300,20 +301,19 @@ def daily_message(
 
 def event_message(
     event_id: int, in_wastebasket: bool = False, message_id: int | None = None
-) -> TextMessage | None:
+) -> EventMessage | None:
     """
     Сообщение для взаимодействия с одним событием
     """
-
-    response, event = request.user.get_event(event_id, in_wastebasket)
-    if not response:
+    generated = EventMessage(event_id, in_wastebasket)
+    event = generated.event
+    if not event:
         return None
 
-    day = DayInfo(event.date)
     if not in_wastebasket:
-        relatively_date = day.relatively_date
         edit_date = get_translate("text.edit_date")
         show_mode = get_translate("text.event_show_mode")
+        # add_media = get_translate("text.add_media")
         markup = [
             [
                 {
@@ -329,9 +329,9 @@ def event_message(
                 {"🏷" or "🚩": f"esp 0 {event.date} {event_id}"},
                 {"🗑": f"ebd {event_id} {event.date}"},
             ],
-            # add_media = get_translate("add_media") {f"🖼 {add_media}": "None"}, # "✏️"
             [
                 {f"📋 {show_mode}": f"esh {event_id} {event.date}"},
+                # {f"🖼 {add_media}": "None"},
                 {f"📅 {edit_date}": f"esdt {event_id} {event.date}"},
             ],
             [
@@ -340,8 +340,8 @@ def event_message(
                 {"🔄": f"em {event_id}"},
             ],
         ]
+        format_key = "dt"
     else:
-        relatively_date = get_translate("func.deldate")(event.days_before_delete())
         delete_permanently_translate = get_translate("text.delete_permanently")
         recover_translate = get_translate("text.recover")
         markup = [
@@ -351,31 +351,29 @@ def event_message(
             ],
             [{get_theme_emoji("back"): "mnb"}],
         ]
-    text = f"""
-<b>{get_translate("select.what_do_with_event")}:
-{event.date}.{event_id}.</b>{event.status} <u><i>{day.str_date}  {day.week_date}</i></u> ({relatively_date})
-{add_status_effect(event.text, event.status)}
-"""
-    return TextMessage(text, generate_buttons(markup))
+        format_key = "b"
+
+    generated.format(
+        f"{get_translate('select.what_do_with_event')}:",
+        event_formats[format_key],
+        generate_buttons(markup),
+    )
+    return generated
 
 
 def events_message(
     id_list: list[int],
     is_in_wastebasket: bool = False,
     is_in_search: bool = False,
-) -> EventsMessage | None:
+) -> EventsMessage:
     """
     Сообщение для взаимодействия с одним событием
     """
     generated = EventsMessage()
     WHERE = "removal_time != 0" if is_in_wastebasket else "removal_time = 0"
     generated.get_page_events(WHERE, id_list)
-
+    date = generated.event_list[0].date if generated.event_list else ""
     string_id = encode_id(id_list)
-    if generated.event_list:
-        date = generated.event_list[0].date
-    else:
-        date = ""
 
     if is_in_wastebasket:
         args_key = "b"
@@ -408,33 +406,37 @@ def events_message(
     return generated
 
 
-def about_event_message(event_id: int) -> TextMessage | None:
-    response, event = request.user.get_event(event_id, False)
-    if not response:
+def about_event_message(event_id: int) -> EventMessage | None:
+    generated = EventMessage(event_id)
+    event = generated.event
+    if not event:
         return None
 
-    day = DayInfo(event.date)
-    # TODO перевод
     text = f"""
-<b>{get_translate("text.event_about_info")}:
-{event.date}.{event_id}.</b>{event.status} <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})
-<pre><code class='language-event-metadata'>{len(event.text)} - длинна текста
+{len(event.text)} - длинна текста
 {parse_utc_datetime(event.adding_time)} - время добавления
-{parse_utc_datetime(event.recent_changes_time)} - время последних изменений</code></pre>
+{parse_utc_datetime(event.recent_changes_time)} - время последних изменений
 """
-    markup = [[{get_theme_emoji("back"): f"em {event_id}"}]]
-    return TextMessage(text, generate_buttons(markup))
+    event.text = formatting.hpre(text.strip(), language="language-event-metadata")
+    generated.format(
+        f"{get_translate('text.event_about_info')}:",
+        event_formats["a"],
+        generate_buttons([[{get_theme_emoji("back"): f"em {event_id}"}]]),
+    )
+    return generated
 
 
-def event_show_mode_message(event_id: int) -> TextMessage | None:
-    response, event = request.user.get_event(event_id, False)
-    if not response:
+def event_show_mode_message(event_id: int) -> EventMessage | None:
+    generated = EventMessage(event_id)
+    event = generated.event
+    if not event:
         return None
 
-    markup = generate_buttons([[{get_theme_emoji("back"): f"em {event_id}"}]])
-    generated = EventsMessage(markup=markup)
-    generated.event_list = [event]
-    generated.format("", event_formats["s"])
+    generated.format(
+        "",
+        event_formats["s"],
+        generate_buttons([[{get_theme_emoji("back"): f"em {event_id}"}]]),
+    )
     return generated
 
 
@@ -444,16 +446,12 @@ def confirm_changes_message(message: Message) -> None | int:
 
     Возвращает 1 если есть ошибка.
     """
-    user, chat_id = request.user, request.chat_id
-
     markdown_text = html_to_markdown(message.html_text)
+    event_id, message_id = map(int, re_edit_message.findall(markdown_text)[0])
+    generated = EventMessage(event_id)
+    event = generated.event
 
-    event_id, message_id = re_edit_message.findall(markdown_text)[0]
-    event_id, message_id = int(event_id), int(message_id)
-
-    response, event = user.get_event(event_id)
-
-    if not response:
+    if not event:
         return 1  # Этого события нет
 
     text = markdown_text.split("\n", maxsplit=1)[-1].strip("\n")
@@ -462,25 +460,12 @@ def confirm_changes_message(message: Message) -> None | int:
 
     if len(message.text.split("\n")) == 1:
         try:
-            before_event_delete_message(event_id).send(chat_id)
+            before_event_delete_message(event_id).send(request.chat_id)
             return 1
         except ApiTelegramException:
             pass
         delete_message_action(message)
         return 1
-
-    markup = generate_buttons(
-        [
-            [
-                {
-                    f"{event_id} {text[:20]}".ljust(60, "⠀"): {
-                        "switch_inline_query_current_chat": edit_text
-                    }
-                },
-                {get_theme_emoji("del"): "md"},
-            ]
-        ]
-    )
 
     # Уменьшится ли длинна события
     new_event_len = len(text)
@@ -490,57 +475,66 @@ def confirm_changes_message(message: Message) -> None | int:
 
     # Вычисляем сколько символов добавил пользователь. Если символов стало меньше, то 0.
     added_length = 0 if tag_len_less else new_event_len - len_old_event
-
     tag_limit_exceeded = (
-        user.check_limit(event.date, symbol_count=added_length)[1] is True
+        request.user.check_limit(event.date, symbol_count=added_length)[1] is True
     )
 
-    if tag_len_max:
-        translate = get_translate("errors.message_is_too_long")
-        TextMessage(translate, markup).reply(message)
-    elif tag_limit_exceeded:
-        translate = get_translate("errors.exceeded_limit")
-        TextMessage(translate, markup).reply(message)
-    else:
-        day = DayInfo(event.date)
-        text_diff = highlight_text_difference(
-            html.escape(event.text), html.escape(text)
-        )
-        # Находим пересечения выделений изменений и html экранирования
-        # Костыль для исправления старого экранирования
-        # На случай если в базе данных окажется html экранированный текст
-        text_diff = re.sub(
-            r"&(<(/?)u>)(lt|gt|quot|#39);",
-            lambda m: (
-                f"&{m.group(3)};{m.group(1)}"
-                if m.group(2) == "/"
-                else f"{m.group(1)}&{m.group(3)};"
-            ),
-            text_diff,
-        )
-        text = f"""
-<b>{get_translate("text.are_you_sure_edit")}:
-{event.date} {event_id}</b> <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})
-<i>{text_diff}</i>
-"""
-        generated = TextMessage(
-            text,
-            markup=generate_buttons(
+    if tag_len_max or tag_limit_exceeded:
+        if tag_len_max:
+            translate = get_translate("errors.message_is_too_long")
+        else:
+            translate = get_translate("errors.exceeded_limit")
+
+        markup = generate_buttons(
+            [
                 [
-                    [
-                        {get_theme_emoji("back"): f"em {event.event_id}"},
-                        {"📝": {"switch_inline_query_current_chat": edit_text}},
-                        {"💾": f"eet {event.event_id} {event.date}"},
-                    ]
+                    {
+                        f"{event_id} {text[:20]}".ljust(60, "⠀"): {
+                            "switch_inline_query_current_chat": edit_text
+                        }
+                    },
+                    {get_theme_emoji("del"): "md"},
                 ]
-            ),
+            ]
         )
-        try:
-            generated.edit(chat_id, message_id)
-        except ApiTelegramException as e:
-            if "message is not modified" not in f"{e}":
-                logging.info(f'ApiTelegramException "{e}"')
-                return 1
+        return TextMessage(translate, markup).reply(message)
+
+    text_diff = highlight_text_difference(
+        html.escape(event.text), html.escape(text)
+    )
+    # Находим пересечения выделений изменений и html экранирования
+    # Костыль для исправления старого экранирования
+    # На случай если в базе данных окажется html экранированный текст
+    text_diff = re.sub(
+        r"&(<(/?)u>)(lt|gt|quot|#39);",
+        lambda m: (
+            f"&{m.group(3)};{m.group(1)}"
+            if m.group(2) == "/"
+            else f"{m.group(1)}&{m.group(3)};"
+        ),
+        text_diff,
+    )
+    event.text = f"<i>{text_diff}</i>"
+    markup = generate_buttons(
+        [
+            [
+                {get_theme_emoji("back"): f"em {event.event_id}"},
+                {"📝": {"switch_inline_query_current_chat": edit_text}},
+                {"💾": f"eet {event.event_id} {event.date}"},
+            ]
+        ]
+    )
+    generated.format(
+        f"{get_translate('text.are_you_sure_edit')}:",
+        event_formats["a"],
+        markup,
+    )
+    try:
+        generated.edit(request.chat_id, message_id)
+    except ApiTelegramException as e:
+        if "message is not modified" not in f"{e}":
+            logging.info(f'ApiTelegramException "{e}"')
+            return 1
 
 
 def recurring_events_message(
@@ -608,7 +602,7 @@ AND
     return generated
 
 
-def event_status_message(event: Event, path: str = "0") -> TextMessage:
+def event_status_message(event: Event, path: str = "0") -> EventMessage:
     if path == "0":
         sl = event.status.split(",")
         sl.extend([""] * (5 - len(sl)))
@@ -662,35 +656,33 @@ def event_status_message(event: Event, path: str = "0") -> TextMessage:
                 [{get_theme_emoji("back"): f"esp 0 {event.date} {event.event_id}"}],
             ]
         )
-    day = DayInfo(event.date)
-    text = f"""
-<b>{get_translate("select.status_to_event")}
-{event.date}.{event.event_id}.</b>{event.status} <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})
-{add_status_effect(event.text, event.status)}
-"""
-    return TextMessage(text, markup)
+
+    generated = EventMessage(event.event_id)
+    generated.format(
+        f"{get_translate('select.status_to_event')}", event_formats["dt"], markup
+    )
+    return generated
 
 
-def edit_event_date_message(
-    event_id: int, date: datetime
-) -> TextMessage | None:
-    response, event = request.user.get_event(event_id)
-    if not response:
+def edit_event_date_message(event_id: int, date: datetime) -> EventMessage | None:
+    generated = EventMessage(event_id)
+    event = generated.event
+    if not event:
         return None
 
-    day = DayInfo(event.date)
-    text = f"""
-<b>{get_translate("select.new_date")}:
-{event.date}.{event_id}.</b>{event.status}  <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})
-{add_status_effect(event.text, event.status)}
-    """
-    markup = create_monthly_calendar_keyboard(
-        (date.year, date.month), "eds", "em", f"{event_id}"
+    generated.format(
+        f"{get_translate('select.new_date')}:",
+        event_formats["dt"],
+        create_monthly_calendar_keyboard(
+            (date.year, date.month), "eds", "em", f"{event_id}"
+        ),
     )
-    return TextMessage(text, markup)
+    return generated
 
 
-def edit_events_date_message(id_list: list[int], date: datetime | None = None):
+def edit_events_date_message(
+    id_list: list[int], date: datetime | None = None
+) -> EventsMessage:
     if date is None:
         date = now_time()
     generated = EventsMessage()
@@ -707,24 +699,21 @@ def edit_events_date_message(id_list: list[int], date: datetime | None = None):
     return generated
 
 
-def before_event_delete_message(event_id: int) -> TextMessage | None:
+def before_event_delete_message(event_id: int) -> EventMessage | None:
     """
     Генерирует сообщение с кнопками удаления,
     удаления в корзину (для премиум) и изменения даты.
     """
-    # Если события нет, то обновляем сообщение
-    response, event = request.user.get_event(event_id)
-
-    if not response:
+    generated = EventMessage(event_id)
+    event = generated.event
+    if not event:
         return None
 
     delete_permanently = get_translate("text.delete_permanently")
     trash_bin = get_translate("text.trash_bin")
-
     is_wastebasket_available = (
         is_admin_id(request.chat_id) or request.user.settings.user_status == 1
     )
-
     markup = generate_buttons(
         [
             [
@@ -736,17 +725,13 @@ def before_event_delete_message(event_id: int) -> TextMessage | None:
             [{get_theme_emoji("back"): f"em {event_id}"}],
         ]
     )
-
-    day = DayInfo(event.date)
-    text = f"""
-<b>{get_translate("select.what_do_with_event")}:
-{event.date}.{event_id}.</b>{event.status} <u><i>{day.str_date}  {day.week_date}</i></u> ({day.relatively_date})
-{add_status_effect(event.text, event.status)}
-"""
-    return TextMessage(text, markup)
+    generated.format(
+        f"{get_translate('select.what_do_with_event')}:", event_formats["dt"], markup
+    )
+    return generated
 
 
-def before_events_delete_message(id_list: list[int]) -> TextMessage | None:
+def before_events_delete_message(id_list: list[int]) -> EventsMessage:
     """
     Генерирует сообщение с кнопками удаления,
     удаления в корзину (для премиум) и изменения даты.
@@ -1073,7 +1058,9 @@ AND
             direction="ASC",
         )
         string_id = encode_id([event.event_id for event in generated.event_list])
-        edit_button_data(generated.markup, 0, -1, f"se o {string_id} mnn {n_date:%d.%m.%Y}")
+        edit_button_data(
+            generated.markup, 0, -1, f"se o {string_id} mnn {n_date:%d.%m.%Y}"
+        )
 
     if generated.event_list or from_command:
         reminder_translate = get_translate("messages.reminder")

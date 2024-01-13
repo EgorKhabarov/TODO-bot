@@ -1,6 +1,7 @@
 import html
 
-from telebot.types import Message  # noqa
+# noinspection PyPackageRequirements
+from telebot.types import Message
 
 # from todoapi.utils import html_to_markdown
 

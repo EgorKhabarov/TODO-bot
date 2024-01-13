@@ -6,8 +6,11 @@ from io import StringIO
 from sqlite3 import Error
 from ast import literal_eval
 
-from telebot.apihelper import ApiTelegramException  # noqa
-from telebot.types import Message, CallbackQuery, InputFile  # noqa
+# noinspection PyPackageRequirements
+from telebot.apihelper import ApiTelegramException
+
+# noinspection PyPackageRequirements
+from telebot.types import Message, CallbackQuery, InputFile
 
 from tgbot import config as bot_config
 from todoapi import config as api_config

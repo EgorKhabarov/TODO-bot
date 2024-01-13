@@ -1,6 +1,7 @@
 from typing import Literal, Any
 
-from telebot.types import (  # noqa
+# noinspection PyPackageRequirements
+from telebot.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
     ReplyKeyboardMarkup,

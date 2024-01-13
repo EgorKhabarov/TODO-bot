@@ -10,13 +10,13 @@ from typing import Literal, Callable
 from textwrap import wrap as textwrap
 from datetime import timedelta, datetime, timezone
 
+# noinspection PyPackageRequirements
+from telebot.types import Message, CallbackQuery
 import requests
 from cachetools.keys import hashkey
 from requests import ConnectionError
 from cachetools import TTLCache, LRUCache, cached
 from requests.exceptions import MissingSchema
-from telebot.apihelper import ApiTelegramException  # noqa
-from telebot.types import Message, CallbackQuery  # noqa
 
 from tgbot import config
 from tgbot.request import request
@@ -24,6 +24,7 @@ from tgbot.lang import get_translate
 from tgbot.time_utils import DayInfo, convert_date_format, now_time
 from todoapi.types import db
 from todoapi.utils import is_admin_id
+
 
 re_edit_message = re.compile(r"\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)")
 link_sub = re.compile(r"<a href=\"(.+?)\">(.+?)(\n*?)</a>")

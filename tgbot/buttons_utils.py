@@ -1,7 +1,10 @@
 from calendar import monthcalendar
 
-from telebot.util import chunks  # noqa
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton  # noqa
+# noinspection PyPackageRequirements
+from telebot.util import chunks
+
+# noinspection PyPackageRequirements
+from telebot.types import InlineKeyboardMarkup
 
 from tgbot.queries import queries
 from tgbot.request import request

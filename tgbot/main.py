@@ -5,8 +5,9 @@ from threading import Thread
 
 import requests
 from cachetools import LRUCache
-from telebot.apihelper import ApiTelegramException  # noqa
-from telebot.types import CallbackQuery, Message, BotCommandScopeDefault  # noqa
+
+# noinspection PyPackageRequirements
+from telebot.types import CallbackQuery, Message, BotCommandScopeDefault
 
 from tgbot import config
 from tgbot.request import request
