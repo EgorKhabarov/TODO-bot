@@ -113,7 +113,7 @@ def check_user(func):
 
 def telegram_log(action: str, text: str):
     text = text.replace("\n", "\\n")
-    thread_id = getattr(request.query, 'message', request.query).message_thread_id
+    thread_id = getattr(request.query, "message", request.query).message_thread_id
     logging.info(
         f"[{request.user.user_id:<10}"
         + (f":{thread_id}" if thread_id else "")
