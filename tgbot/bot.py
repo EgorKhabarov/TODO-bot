@@ -89,5 +89,5 @@ def set_bot_commands(
             get_translate(target, lang), BotCommandScopeChat(chat_id)
         )
     except (ApiTelegramException, KeyError) as e:
-        logging.info(f'set_bot_commands (ApiTelegramException, KeyError) "{e}"')
+        logging.error(f'set_bot_commands (ApiTelegramException, KeyError) "{e}"')
         return False

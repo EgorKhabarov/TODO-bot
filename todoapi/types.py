@@ -241,12 +241,6 @@ class UserSettings:
             )
         return db.execute(query, params=(self.user_id,))[0]
 
-    # def __setattr__(self, key, value):
-    #     setattr(self, key, value)
-    def log(self, action: str, text: str):
-        text = text.replace("\n", "\\n")
-        logging.info(f"[{self.user_id:<10}][{self.user_status}] {action:<7} {text}")
-
     def to_json(self) -> str:
         return json.dumps(self.__dict__, ensure_ascii=False)
 

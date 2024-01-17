@@ -111,6 +111,16 @@ def check_user(func):
     return check_argument
 
 
+def telegram_log(action: str, text: str):
+    text = text.replace("\n", "\\n")
+    thread_id = getattr(request.query, 'message', request.query).message_thread_id
+    logging.info(
+        f"[{request.user.user_id:<10}"
+        + (f":{thread_id}" if thread_id else "")
+        + f"][{request.user.settings.user_status}] {action:<7} {text}"
+    )
+
+
 @bot.message_handler(content_types=["migrate_to_chat_id"], chat_types=["group"])
 @check_user
 def migrate_chat(message: Message):
@@ -145,7 +155,7 @@ def bot_command_handler(message: Message):
     """
     Ловит команды от пользователей
     """
-    request.user.settings.log("send", html_to_markdown(message.html_text))
+    telegram_log("send", html_to_markdown(message.html_text))
     command_handler(message)
 
 
@@ -155,7 +165,7 @@ def bot_callback_query_handler(call: CallbackQuery):
     """
     Ловит нажатия на кнопки
     """
-    request.user.settings.log("pressed", call.data)
+    telegram_log("pressed", call.data)
     callback_handler(call)
 
 
@@ -170,8 +180,7 @@ def processing_search_message(message: Message):
     #!  (И)
     """
     query = html_to_markdown(message.html_text).removeprefix("#")
-
-    request.user.settings.log("search", query)
+    telegram_log("search", query)
     generated = search_message(query)
     generated.send(request.chat_id)
 
@@ -182,8 +191,7 @@ def processing_edit_message(message: Message):
     """
     Ловит сообщения для изменения событий
     """
-    request.user.settings.log("send", "edit event text")
-
+    telegram_log("send", "edit event text")
     if confirm_changes_message(message) is None:
         delete_message_action(message)
 
@@ -202,8 +210,7 @@ def processing_reply_to_message(message: Message):
     Изменение города пользователя
     """
     message_start = message.reply_to_message.text.split("\n", 1)[0]
-    request.user.settings.log("send", f"reply {message_start}")
-
+    telegram_log("send", f"reply {message_start}")
     reply_handler(message, message.reply_to_message)
 
 
@@ -220,9 +227,7 @@ def add_event_handler(message: Message):
     Ловит сообщение если пользователь хочет добавить событие
     """
     markdown_text = html_to_markdown(message.html_text)
-
-    request.user.settings.log("send", "add event")
-
+    telegram_log("send", "add event")
     new_event_date = db.execute(
         queries["select add_event_date"], params=(request.chat_id,)
     )[0][0].split(",")[0]

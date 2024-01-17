@@ -140,7 +140,10 @@ def command_handler(message: Message) -> None:
         search_message(query).send(chat_id)
 
     elif command_text == "dice":
-        value = bot.send_dice(chat_id).json["dice"]["value"]
+        value = bot.send_dice(
+            chat_id,
+            message_thread_id=request.query.message_thread_id or None
+        ).json["dice"]["value"]
         sleep(4)
         TextMessage(value).send(chat_id)
 
@@ -211,7 +214,11 @@ def command_handler(message: Message) -> None:
             bot.send_chat_action(chat_id, "upload_document")
 
             try:
-                bot.send_document(chat_id, InputFile(file))
+                bot.send_document(
+                    chat_id,
+                    InputFile(file),
+                    message_thread_id=request.query.message_thread_id or None
+                )
             except ApiTelegramException as e:
                 logging.info(f'export ApiTelegramException "{e}"')
                 TextMessage(get_translate("errors.file_is_too_big")).send(chat_id)

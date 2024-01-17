@@ -28,7 +28,11 @@ def filter_function(test_line: str) -> bool:
 
 def clear_logs():
     log_folder, utc_time = Path(input_file_path).parent, datetime.utcnow()
-    output_file_path = rf"{log_folder}\old_logs\{utc_time:%Y.%m.%d-%H.%M.%S}.log"
+    output_file_path = os.path.join(
+        log_folder,
+        "old_logs",
+        f"{utc_time:%Y%m%d%H%M%S}.log"
+    )
     output_errors_file_path = rf"{output_file_path.removesuffix('.log')}_errors.log"
     Path(output_file_path).parent.mkdir(parents=True, exist_ok=True)
 

@@ -531,7 +531,7 @@ def confirm_changes_message(message: Message) -> None | int:
         generated.edit(request.chat_id, message_id)
     except ApiTelegramException as e:
         if "message is not modified" not in f"{e}":
-            logging.info(f'ApiTelegramException "{e}"')
+            logging.error(f'confirm_changes_message ApiTelegramException "{e}"')
             return 1
 
 
@@ -946,34 +946,6 @@ def trash_can_message(id_list: list[int] = (), page: int | str = 0) -> EventsMes
     return generated
 
 
-def send_notifications_messages() -> None:
-    n_date = datetime.utcnow()
-    with db.connection(), db.cursor():
-        user_id_list = [
-            int(user_id)
-            for user in db.execute(
-                queries["select user_ids_for_sending_notifications"],
-                params=(n_date.hour, n_date.minute),
-            )
-            if user[0]
-            for user_id in user[0].split(",")
-        ]  # [('id1,id2,id3',)] -> [id1, id2, id3]
-
-    for user_id in user_id_list:
-        request.user = User(user_id)
-        request.chat_id = user_id
-        settings = request.user.settings
-
-        if settings.notifications:
-            generated = notification_message(from_command=True)
-            if generated.event_list:
-                try:
-                    generated.send(user_id)
-                    logging.info(f"notifications -> {user_id} -> Ok")
-                except ApiTelegramException:
-                    logging.info(f"notifications -> {user_id} -> Error")
-
-
 def notification_message(
     n_date: datetime | None = None,
     id_list: list[int] = (),
@@ -1063,12 +1035,40 @@ AND
     if generated.event_list or from_command:
         reminder_translate = get_translate("messages.reminder")
         generated.format(
-            title=f"🔔 {reminder_translate} <b>{n_date:%d.%m.%Y}</b>🔔",
+            title=f"🔔 {reminder_translate} <b>{n_date:%d.%m.%Y}</b>",
             args=event_formats["r"],
             if_empty=get_translate("errors.message_empty"),
         )
         return generated
     return None
+
+
+def send_notifications_messages() -> None:
+    n_date = datetime.utcnow()
+    with db.connection(), db.cursor():
+        user_id_list = [
+            int(user_id)
+            for user in db.execute(
+                queries["select user_ids_for_sending_notifications"],
+                params=(n_date.hour, n_date.minute),
+            )
+            if user[0]
+            for user_id in user[0].split(",")
+        ]  # [('id1,id2,id3',)] -> [id1, id2, id3]
+
+    for user_id in user_id_list:
+        request.user = User(user_id)
+        request.chat_id = user_id
+        settings = request.user.settings
+
+        if settings.notifications:
+            generated = notification_message(from_command=True)
+            if generated.event_list:
+                try:
+                    generated.send(user_id)
+                    logging.info(f"notifications -> {user_id} -> Ok")
+                except ApiTelegramException:
+                    logging.info(f"notifications -> {user_id} -> Error")
 
 
 def monthly_calendar_message(
@@ -1101,7 +1101,12 @@ def limits_message(
             reply_markup=markup,
         )
     else:
-        bot.send_photo(chat_id, image, reply_markup=markup)
+        bot.send_photo(
+            chat_id,
+            image,
+            reply_markup=markup,
+            message_thread_id=request.query.message_thread_id or None,
+        )
 
 
 def admin_message(page: int = 1) -> TextMessage:

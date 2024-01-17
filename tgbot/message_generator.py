@@ -100,6 +100,7 @@ class TextMessage:
             chat_id=chat_id,
             text=self.text,
             reply_markup=self.markup,
+            message_thread_id=request.query.message_thread_id or None,
         )
 
     def edit(
@@ -155,6 +156,7 @@ class TextMessage:
             message=message,
             text=self.text,
             reply_markup=self.markup,
+            message_thread_id=request.query.message_thread_id or None,
         )
 
 

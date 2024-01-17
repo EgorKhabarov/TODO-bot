@@ -10,13 +10,14 @@ from typing import Literal, Callable
 from textwrap import wrap as textwrap
 from datetime import timedelta, datetime, timezone
 
-# noinspection PyPackageRequirements
-from telebot.types import Message, CallbackQuery
 import requests
 from cachetools.keys import hashkey
 from requests import ConnectionError
 from cachetools import TTLCache, LRUCache, cached
 from requests.exceptions import MissingSchema
+
+# noinspection PyPackageRequirements
+from telebot.types import Message, CallbackQuery, MessageEntity
 
 from tgbot import config
 from tgbot.request import request
@@ -133,7 +134,7 @@ def add_status_effect(text: str, statuses: str) -> str:
 
             return f"<a href='{url}'>{urlparse(url).netloc}</a>"
 
-        return re.sub(r"(http?s?://[^\"\'\n ]+)", la, _text)  # r"(http?s?://\S+)"
+        return re.sub(r"(http?s?://[^\"\')\n ]+)", la, _text)  # r"(http?s?://\S+)"
 
     def format_code(code: str) -> str:
         return f"<pre>{code}</pre>"
@@ -399,9 +400,9 @@ def poke_link() -> None:
     try:
         requests.get(config.LINK, headers=config.headers)
     except MissingSchema as e:
-        logging.error(f"{e}")
+        logging.error(f"poke_link {e}")
     except ConnectionError:
-        logging.error("404")
+        logging.error("poke_link 404")
 
 
 def write_table_to_str(
@@ -566,13 +567,16 @@ def html_to_markdown(html_text: str) -> str:
         return f"https://{url}"
 
     def replace_url(m: re.Match) -> str:
-        url = prepare_url(m.group(1))
-        caption = m.group(2).strip()
+        # Экранируем символы []() для правильного взаимодействия с markdown ссылками
+        url = prepare_url(m.group(1)).replace("(", "%28").replace(")", "%29")
+        caption = str(m.group(2)).strip().replace("[", "\[").replace("]", "\]")
 
+        # Проверяем, что caption не совпадает с доменом ссылки
         condition = caption != urlparse(m.group(1)).netloc
-        text = f" ({caption})" if condition else ""
-
-        return f"{url}{text}{m.group(3)}"
+        if condition:
+            return f"[{caption}]({url}){m.group(3)}"
+        else:
+            return f"{url}{m.group(3)}"
 
     html_text = html.unescape(link_sub.sub(replace_url, html_text))
     return html_text
