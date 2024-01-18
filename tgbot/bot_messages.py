@@ -542,14 +542,9 @@ def recurring_events_message(
     :param date: дата у сообщения
     :param id_list: Список из event_id
     :param page: Номер страницы
-
-    Вызвать сообщение с повторяющимися событиями:
-        recurring(settings=settings, date=date, chat_id=chat_id)
-    Изменить страницу:
-        recurring(settings=settings, date=date, chat_id=chat_id, id_list=id_list, page=page)
     """
     WHERE = f"""
-user_id = {request.chat_id} AND removal_time = 0
+user_id = {request.user.user_id} AND removal_time = 0
 AND 
 (
     ( -- Каждый год
@@ -710,7 +705,7 @@ def before_event_delete_message(event_id: int) -> EventMessage | None:
     delete_permanently = get_translate("text.delete_permanently")
     trash_bin = get_translate("text.trash_bin")
     is_wastebasket_available = (
-        is_admin_id(request.chat_id) or request.user.settings.user_status == 1
+        request.user.settings.user_status == 1 or is_admin_id(request.user.user_id)
     )
     markup = generate_buttons(
         [
@@ -738,7 +733,7 @@ def before_events_delete_message(id_list: list[int]) -> EventsMessage:
     generated.get_page_events("removal_time = 0", id_list)
 
     is_wastebasket_available = (
-        is_admin_id(request.chat_id) or request.user.settings.user_status == 1
+        request.user.settings.user_status == 1 or is_admin_id(request.user.user_id)
     )
     string_id = encode_id(id_list)
     date = generated.event_list[0].date if generated.event_list else ""
@@ -769,21 +764,6 @@ def search_message(
     :param query: поисковый запрос
     :param id_list: Список из event_id
     :param page: Номер страницы
-
-    Вызвать сообщение с поиском:
-        search(
-            settings=settings,
-            chat_id=chat_id,
-            query=query
-        )
-    Изменить страницу:
-        search(
-            settings=settings,
-            chat_id=chat_id,
-            query=query,
-            id_list=id_list,
-            page=page
-        )
     TODO шаблоны для поиска
     """
     query = query.replace("\n", " ").replace("--", "").strip()
@@ -813,7 +793,7 @@ def search_message(
         f"status LIKE '%{x}%' OR event_id LIKE '%{x}%'"
         for x in query.replace("\n", " ").strip().split()
     )
-    WHERE = f"(user_id = {request.chat_id} AND removal_time = 0) AND ({splitquery})"
+    WHERE = f"(user_id = {request.user.user_id} AND removal_time = 0) AND ({splitquery})"
 
     if id_list:
         generated.get_page_events(WHERE, id_list)
@@ -837,11 +817,6 @@ def week_event_list_message(
     """
     :param id_list: Список из event_id
     :param page: Номер страницы
-
-    Вызвать сообщение с событиями в эту неделю:
-        week_event_list(settings=settings, chat_id=chat_id)
-    Изменить страницу:
-        week_event_list(settings=settings, chat_id=chat_id, id_list=id_list, page=page)
     """
     tz = f"'{request.user.settings.timezone:+} hours'"
     WHERE = f"""
@@ -906,13 +881,8 @@ def trash_can_message(id_list: list[int] = (), page: int | str = 0) -> EventsMes
     """
     :param id_list: Список из event_id
     :param page: Номер страницы
-
-    Вызвать сообщение с корзиной:
-        deleted(settings=settings, chat_id=chat_id)
-    Изменить страницу:
-        deleted(settings=settings, chat_id=chat_id, id_list=id_list, page=page)
     """
-    WHERE = f"user_id = {request.chat_id} AND removal_time != 0"
+    WHERE = f"user_id = {request.user.user_id} AND removal_time != 0"
     # Удаляем события старше 30 дней
     db.execute(queries["delete events_older_30_days"], commit=True)
 
@@ -1057,18 +1027,18 @@ def send_notifications_messages() -> None:
         ]  # [('id1,id2,id3',)] -> [id1, id2, id3]
 
     for user_id in user_id_list:
+        # TODO обработать ошибку в случае если user не найден
         request.user = User(user_id)
-        request.chat_id = user_id
-        settings = request.user.settings
 
-        if settings.notifications:
+        if request.user.settings.notifications:
             generated = notification_message(from_command=True)
-            if generated.event_list:
+            if generated and generated.event_list:
                 try:
-                    generated.send(user_id)
-                    logging.info(f"notifications -> {user_id} -> Ok")
+                    generated.send(request.user.user_id)
+                    status = "Ok"
                 except ApiTelegramException:
-                    logging.info(f"notifications -> {user_id} -> Error")
+                    status = "Error"
+                logging.info(f"notifications -> {request.user.user_id} -> {status}")
 
 
 def monthly_calendar_message(
@@ -1082,12 +1052,11 @@ def monthly_calendar_message(
 def limits_message(
     date: datetime | str | None = None, message: Message | None = None
 ) -> None:
-    chat_id = request.chat_id
     if date is None or date == "now":
         date = now_time()
 
     if not is_valid_year(date.year):
-        TextMessage(get_translate("errors.error")).send(chat_id)
+        TextMessage(get_translate("errors.error")).send(request.chat_id)
         return
 
     image = create_image(date.year, date.month, date.day)
@@ -1096,14 +1065,14 @@ def limits_message(
         # Может изменять только сообщения с фотографией
         bot.edit_message_media(
             media=InputMediaPhoto(image),
-            chat_id=chat_id,
+            chat_id=request.chat_id,
             message_id=message.message_id,
             reply_markup=markup,
         )
     else:
         bot.send_photo(
-            chat_id,
-            image,
+            chat_id=request.chat_id,
+            photo=image,
             reply_markup=markup,
             message_thread_id=request.query.message_thread_id or None,
         )

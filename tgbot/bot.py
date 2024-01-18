@@ -70,23 +70,21 @@ def set_bot_commands(
     """
     Ставит список команд для пользователя chat_id
     """
-    if not chat_id:
-        chat_id = request.chat_id
-
     if not user_status:
         user_status = request.user.settings.user_status
 
     if not lang:
         lang = request.user.settings.lang
 
-    if is_admin_id(chat_id) and user_status != -1:
+    # Переделать на проверку user-а
+    if is_admin_id(chat_id or request.chat_id) and user_status != -1:
         user_status = 2
 
     target = f"buttons.commands.{user_status}"
 
     try:
         return bot.set_my_commands(
-            get_translate(target, lang), BotCommandScopeChat(chat_id)
+            get_translate(target, lang), BotCommandScopeChat(chat_id or request.chat_id)
         )
     except (ApiTelegramException, KeyError) as e:
         logging.error(f'set_bot_commands (ApiTelegramException, KeyError) "{e}"')
