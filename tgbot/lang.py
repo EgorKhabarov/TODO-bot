@@ -302,14 +302,6 @@ Please call up new messages using commands.</b>
             "ru": "Очистить корзину",
             "en": "Clear basket",
         },
-        "edit_date": {
-            "ru": "Изменить дату",
-            "en": "Edit date",
-        },
-        "add_media": {
-            "ru": "Добавить медиа",
-            "en": "Add media",
-        },
         "send_event_text": {
             "ru": "Отправьте текст события",
             "en": "Send the text of the event",
@@ -325,10 +317,6 @@ Please call up new messages using commands.</b>
         "are_you_sure_edit": {
             "ru": "Вы точно хотите изменить тест события на",
             "en": "Are you sure you want to change the event text to",
-        },
-        "event_show_mode": {
-            "ru": "Режим просмотра",
-            "en": "Show mode",
         },
     },
     "messages": {

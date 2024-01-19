@@ -311,9 +311,6 @@ def event_message(
         return None
 
     if not in_wastebasket:
-        edit_date = get_translate("text.edit_date")
-        show_mode = get_translate("text.event_show_mode")
-        # add_media = get_translate("text.add_media")
         markup = [
             [
                 {
@@ -330,9 +327,10 @@ def event_message(
                 {"🗑": f"ebd {event_id} {event.date}"},
             ],
             [
-                {f"📋 {show_mode}": f"esh {event_id} {event.date}"},
+                {"📜": f"esh {event_id} {event.date}"},
                 # {f"🖼 {add_media}": "None"},
-                {f"📅 {edit_date}": f"esdt {event_id} {event.date}"},
+                {" ": "None"},
+                {"📅": f"esdt {event_id} {event.date}"},
             ],
             [
                 {get_theme_emoji("back"): f"dl {event.date}"},
@@ -362,9 +360,7 @@ def event_message(
 
 
 def events_message(
-    id_list: list[int],
-    is_in_wastebasket: bool = False,
-    is_in_search: bool = False,
+    id_list: list[int], is_in_wastebasket: bool = False
 ) -> EventsMessage:
     """
     Сообщение для взаимодействия с одним событием
@@ -394,7 +390,7 @@ def events_message(
                 {"📅": f"essd {string_id}"},  # events edit date
                 {"🗑": f"esbd {string_id}"},  # events before delete
             ],
-            [{get_theme_emoji("back"): "us" if is_in_search else f"dl {date}"}],
+            [{get_theme_emoji("back"): f"dl {date}"}],
         ]
 
     generated.format(
@@ -704,8 +700,8 @@ def before_event_delete_message(event_id: int) -> EventMessage | None:
 
     delete_permanently = get_translate("text.delete_permanently")
     trash_bin = get_translate("text.trash_bin")
-    is_wastebasket_available = (
-        request.user.settings.user_status == 1 or is_admin_id(request.user.user_id)
+    is_wastebasket_available = request.user.settings.user_status == 1 or is_admin_id(
+        request.user.user_id
     )
     markup = generate_buttons(
         [
@@ -732,8 +728,8 @@ def before_events_delete_message(id_list: list[int]) -> EventsMessage:
     generated = EventsMessage()
     generated.get_page_events("removal_time = 0", id_list)
 
-    is_wastebasket_available = (
-        request.user.settings.user_status == 1 or is_admin_id(request.user.user_id)
+    is_wastebasket_available = request.user.settings.user_status == 1 or is_admin_id(
+        request.user.user_id
     )
     string_id = encode_id(id_list)
     date = generated.event_list[0].date if generated.event_list else ""
@@ -793,7 +789,9 @@ def search_message(
         f"status LIKE '%{x}%' OR event_id LIKE '%{x}%'"
         for x in query.replace("\n", " ").strip().split()
     )
-    WHERE = f"(user_id = {request.user.user_id} AND removal_time = 0) AND ({splitquery})"
+    WHERE = (
+        f"(user_id = {request.user.user_id} AND removal_time = 0) AND ({splitquery})"
+    )
 
     if id_list:
         generated.get_page_events(WHERE, id_list)

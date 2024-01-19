@@ -21,6 +21,7 @@ bot = TeleBot(bot_config.BOT_TOKEN)
 bot.parse_mode = "html"
 bot.disable_web_page_preview = True
 bot.protect_content = False
+bot_webhook_info = bot.get_webhook_info()
 
 
 def bot_log_info():
@@ -31,6 +32,7 @@ def bot_log_info():
             "log_file": api_config.LOG_FILE,
             "notifications": bot_config.NOTIFICATIONS,
             "__version__": bot_config.__version__,
+            **({"webhook_url": bot_webhook_info.url} if bot_webhook_info.url else {}),
         }
     )
 
