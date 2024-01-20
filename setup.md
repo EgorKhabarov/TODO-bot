@@ -1,8 +1,15 @@
-
 # Установка
+
+### HTTPS
 
 ```shell
 git clone https://github.com/EgorKhabarov/TODO-bot.git .
+```
+
+### SSH
+
+```shell
+git clone git@github.com:EgorKhabarov/TODO-bot.git .
 ```
 
 # Подготовка
@@ -10,13 +17,13 @@ git clone https://github.com/EgorKhabarov/TODO-bot.git .
 ### Linux
 
 ```shell
-mv tgbot/.env.example tgbot/.env
+cp config.example.yaml config.yaml
 ```
 
 ### Windows
 
 ```shell
-move tgbot\.env.example tgbot\.env
+copy config.example.yaml config.yaml
 ```
 
 # Скачиваем библиотеки
@@ -27,21 +34,11 @@ pip install -r requirements.txt
 
 # Настройка
 
-Изменить `.env` в директории бота.
+Изменить `config.yaml` в директории бота.
 
 ```.env
-BOT_TOKEN=        # Токен телеграм бота у t.me/BotFather
-WEATHER_API_KEY=  # Получить на home.openweathermap.org/api_keys
-POKE_LINK=        # Тыкать ли url сервера? (1 или 0)
-LINK=             # url сервера
-```
-
-```shell
-echo BOT_TOKEN=...>>tgbot\.env
-```
-
-```shell
-echo WEATHER_API_KEY=...>>tgbot\.env
+BOT_TOKEN: ""        # Токен телеграм бота у https://t.me/BotFather
+WEATHER_API_KEY: ""  # Получить на https://home.openweathermap.org/api_keys
 ```
 
 Настроить бота в https://t.me/BotFather.
@@ -54,8 +51,16 @@ Bot Settings -> Inline Mode   -> disabled
 
 # Запуск
 
+### Бота
+
 ```shell
 python start_bot.py
+```
+
+# Сервера
+
+```shell
+python -c "from server import app; app.run('0.0.0.0')"
 ```
 
 # Получение прав админа
@@ -63,13 +68,14 @@ python start_bot.py
 Получить свой telegram **chat_id**.
 
 Запустить бота и отправить команду `/id`.
-Добавить полученный **user_id** в `todoapi/config.py` `admin_id` и перезагрузить бота.
+Добавить полученный **user_id** в `config.py` `admin_id` и перезагрузить бота.
 
 ## Важно!
-**Добавляйте только chat_id личных аккаунтов (приватных чатов)!
-Этим chat_id будет доступна приватная информация о пользователях.
 
-Любое взаимодействие любого человека в телеграм-группе с ботом воспринимается как от лица группы.**
+**Добавляйте только chat_id личных аккаунтов (приватных чатов)!**
+**Этим chat_id будет доступна приватная информация о пользователях.**
+
+**Любое взаимодействие любого человека в телеграм-группе с ботом воспринимается как от лица группы.**
 
 # Настройка PythonAnyWhere
 
