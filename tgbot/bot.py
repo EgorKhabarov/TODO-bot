@@ -26,6 +26,7 @@ Bot Settings => Group Privacy => disabled
 Bot Settings => Inline Mode   => disabled
 """
 
+
 def bot_log_info():
     bot_dict = bot.user.to_dict()
     bot_dict.update(

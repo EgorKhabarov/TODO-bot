@@ -3,7 +3,7 @@ from threading import Thread
 
 from flask import Flask, request, abort
 
-from todoapi import config
+import config
 
 if config.TELEGRAM_WEBHOOK:
     import logging
@@ -34,19 +34,8 @@ if (
         if request.headers.get("content-type") != "application/json":
             return abort(403)
 
-        update = Update.de_json(request.json)
-        # Пока сервер просыпался, телеграм мог успеть прислать
-        # один и тот же update несколько раз
-        # Для защиты от этого применяется атрибут функции
-        if (not hasattr(process_updates, "last_update_id")) or (
-            update.update_id > process_updates.last_update_id
-        ):
-            process_updates.last_update_id = update.update_id
-        else:
-            return  # ?
-
         logging.info(f"{request.headers} {request.data}")
-        bot.process_new_updates([update])
+        bot.process_new_updates([Update.de_json(request.json)])
         return "ok", 200
 
     if bot_webhook_info.url != config.TELEGRAM_WEBHOOK_URL:

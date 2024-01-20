@@ -85,7 +85,7 @@ def add_status_effect(text: str, statuses: str) -> str:
         # Получаем длину отступа чтобы не съезжало
         width = len(str(len(tuple(line for line in lst if not is_comment_line(line)))))
 
-        # Заполняем с отступами числа + текст, а если двойной перенос строки то ts
+        # Заполняем с отступами числа + текст, а если двойной перенос строки то ""
         return "\n".join(
             (
                 (
@@ -97,8 +97,8 @@ def add_status_effect(text: str, statuses: str) -> str:
                 if not is_comment_line(line)
                 else remove_comment_prefix(line)
             )
-            if line not in ("", ts)
-            else ts
+            if line
+            else ""
             for line in lst
         )
 
@@ -117,8 +117,8 @@ def add_status_effect(text: str, statuses: str) -> str:
                 if not is_comment_line(line)
                 else remove_comment_prefix(line)
             )
-            if line not in ("", ts)
-            else ts
+            if line
+            else ""
             for line in lst
         )
 
@@ -149,7 +149,7 @@ def add_status_effect(text: str, statuses: str) -> str:
     text = html.escape(text)
 
     # Сокращаем несколько подряд переносов строки
-    text = re.sub(r"\n(\n*)\n", f"\n{ts}\n", text)  # Прозрачный символ chr(10240)
+    text = re.sub(r"\n(\n*)\n", f"\n\n", text)
 
     if ("🔗" in statuses and "⛓" not in statuses) or (
         request.user.settings.sub_urls and ("💻" not in statuses and "⛓" not in statuses)

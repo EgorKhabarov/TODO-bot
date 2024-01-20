@@ -269,7 +269,11 @@ def schedule_loop():
         if config.BOT_NOTIFICATIONS and minute in (0, 10, 20, 30, 40, 50):
             Thread(target=send_notifications_messages, daemon=True).start()
 
-        if config.POKE_SERVER_URL and config.SERVER_URL and minute in (0, 10, 20, 30, 40, 50):
+        if (
+            config.POKE_SERVER_URL
+            and config.SERVER_URL
+            and minute in (0, 10, 20, 30, 40, 50)
+        ):
             Thread(target=poke_link, daemon=True).start()
 
         if weekday == hour == minute == 0:  # Monday 00:00
