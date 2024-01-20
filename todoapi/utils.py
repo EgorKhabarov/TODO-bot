@@ -1,6 +1,6 @@
 import re
 
-import todoapi.config as config
+import config
 
 
 re_date = re.compile(r"\A\d{2}\.\d{2}\.\d{4}\Z")

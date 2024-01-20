@@ -6,16 +6,15 @@ from telegram_utils.patch import PathedMessage
 with mock.patch("telebot.types.Message", PathedMessage):
     from threading import Thread
 
+    import config
     from tgbot.bot import bot, bot_webhook_info
     from tgbot.main import schedule_loop
-    from tgbot import config as tgbot_config
-    from todoapi import config as todoapi_config
 
     if __name__ == "__main__":
-        if tgbot_config.NOTIFICATIONS or tgbot_config.POKE_LINK:
+        if config.BOT_NOTIFICATIONS or config.POKE_SERVER_URL:
             Thread(target=schedule_loop, daemon=True).start()
 
-        if not todoapi_config.TELEGRAM_WEBHOOK:
+        if not config.TELEGRAM_WEBHOOK:
             if not bot_webhook_info.url:
                 bot.remove_webhook()
             bot.infinity_polling()

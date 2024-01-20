@@ -9,29 +9,31 @@ from telebot.types import BotCommandScopeChat
 # noinspection PyPackageRequirements
 from telebot.apihelper import ApiTelegramException
 
-from tgbot import config as bot_config
-from todoapi import config as api_config
+import config
 from tgbot.request import request
 from tgbot.lang import get_translate
 from todoapi.utils import is_admin_id
 
 
-bot = TeleBot(bot_config.BOT_TOKEN)
+bot = TeleBot(config.BOT_TOKEN)
 
 bot.parse_mode = "html"
 bot.disable_web_page_preview = True
 bot.protect_content = False
 bot_webhook_info = bot.get_webhook_info()
-
+bot_settings = """
+Bot Settings => Group Privacy => disabled
+Bot Settings => Inline Mode   => disabled
+"""
 
 def bot_log_info():
     bot_dict = bot.user.to_dict()
     bot_dict.update(
         {
-            "database": api_config.DATABASE_PATH,
-            "log_file": api_config.LOG_FILE,
-            "notifications": bot_config.NOTIFICATIONS,
-            "__version__": bot_config.__version__,
+            "database": config.DATABASE_PATH,
+            "log_file": config.LOG_FILE_PATH,
+            "notifications": config.BOT_NOTIFICATIONS,
+            "__version__": config.__version__,
             **({"webhook_url": bot_webhook_info.url} if bot_webhook_info.url else {}),
         }
     )
@@ -48,7 +50,7 @@ def bot_log_info():
                 f"{k}\n"
                 f"Should be {key_list[k]}\n"
                 f"Actually is {bot_dict[k]}\n\n"
-                f"{bot_config.bot_settings.strip()}"
+                f"{bot_settings.strip()}"
             )
 
     max_len_left = max(len(k) for k in bot_dict.keys())

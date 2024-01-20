@@ -8,7 +8,7 @@ from contextlib import contextmanager
 
 from vedis import Vedis
 
-import todoapi.config as config
+import config
 from todoapi.queries import queries
 from todoapi.utils import sql_date_pattern
 

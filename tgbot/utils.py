@@ -17,9 +17,10 @@ from cachetools import TTLCache, LRUCache, cached
 from requests.exceptions import MissingSchema
 
 # noinspection PyPackageRequirements
-from telebot.types import Message, CallbackQuery, MessageEntity
+from telebot.types import Message, CallbackQuery
 
-from tgbot import config
+import config
+from config import ts
 from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.time_utils import DayInfo, convert_date_format, now_time
@@ -56,7 +57,7 @@ def add_status_effect(text: str, statuses: str) -> str:
         Проверяет строку на комментарий для списков ("🗒") и сортированный список ("🧮").
         Комментарий не будет работать если в статусе стоит язык, в котором это часть синтаксиса.
         """
-        return line == "⠀" or (
+        return line == ts or (
             line.startswith("— ")
             or (line.startswith("-- ") and not check_comment_in_status("--"))
             or (line.startswith("## ") and not check_comment_in_status("##"))
@@ -84,7 +85,7 @@ def add_status_effect(text: str, statuses: str) -> str:
         # Получаем длину отступа чтобы не съезжало
         width = len(str(len(tuple(line for line in lst if not is_comment_line(line)))))
 
-        # Заполняем с отступами числа + текст, а если двойной перенос строки то "⠀"
+        # Заполняем с отступами числа + текст, а если двойной перенос строки то ts
         return "\n".join(
             (
                 (
@@ -96,8 +97,8 @@ def add_status_effect(text: str, statuses: str) -> str:
                 if not is_comment_line(line)
                 else remove_comment_prefix(line)
             )
-            if line not in ("", "⠀")
-            else "⠀"
+            if line not in ("", ts)
+            else ts
             for line in lst
         )
 
@@ -116,8 +117,8 @@ def add_status_effect(text: str, statuses: str) -> str:
                 if not is_comment_line(line)
                 else remove_comment_prefix(line)
             )
-            if line not in ("", "⠀")
-            else "⠀"
+            if line not in ("", ts)
+            else ts
             for line in lst
         )
 
@@ -148,7 +149,7 @@ def add_status_effect(text: str, statuses: str) -> str:
     text = html.escape(text)
 
     # Сокращаем несколько подряд переносов строки
-    text = re.sub(r"\n(\n*)\n", "\n⠀\n", text)  # Прозрачный символ chr(10240)
+    text = re.sub(r"\n(\n*)\n", f"\n{ts}\n", text)  # Прозрачный символ chr(10240)
 
     if ("🔗" in statuses and "⛓" not in statuses) or (
         request.user.settings.sub_urls and ("💻" not in statuses and "⛓" not in statuses)
@@ -377,7 +378,7 @@ def fetch_forecast(city: str) -> str:
             )
         # TODO перевод м/c
         result += (
-            f"\n{city_time.split()[-1]} {weather_icon}<b>{temp:⠀>2.0f}°C "
+            f"\n{city_time.split()[-1]} {weather_icon}<b>{temp:{ts}>2.0f}°C "
             f"💨{wind_speed:.0f}м/с {wind_deg_icon}</b> "
             f"<u>{weather_description}</u>."
         )
@@ -398,7 +399,7 @@ def is_secure_chat(message: Message | CallbackQuery):
 
 def poke_link() -> None:
     try:
-        requests.get(config.LINK, headers=config.headers)
+        requests.get(config.SERVER_URL, headers=config.headers)
     except MissingSchema as e:
         logging.error(f"poke_link {e}")
     except ConnectionError:

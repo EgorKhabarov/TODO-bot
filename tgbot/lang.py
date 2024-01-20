@@ -3,8 +3,8 @@ from typing import Any, Literal
 # noinspection PyPackageRequirements
 from telebot.types import BotCommand
 
+from config import ts
 from tgbot.request import request
-from tgbot.config import callbackTab
 
 
 def end(lang: str):
@@ -423,7 +423,7 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 Кнопки с текстом помечаются эмодзи 📄. Папка для кнопок помечается 📁. Вернуться назад из папки можно нажав  🔙.
 """,
                     [
-                        [{k + (callbackTab * 20): v}]
+                        [{k.ljust(60, ts): v}]
                         for k, v in {
                             "📄 События": "Events",
                             "📄 Статусы": "Statuses",
@@ -440,7 +440,7 @@ Below you can select the topic button to read more.
 Buttons with text are marked with a smiley 📄. The button folder is marked with 📁. You can go back from a folder by pressing 🔙.
 """,
                     [
-                        [{k + (callbackTab * 20): v}]
+                        [{k.ljust(60, ts): v}]
                         for k, v in {
                             "📄 Events": "Events",
                             "📄 Statuses": "Statuses",
@@ -458,7 +458,7 @@ Buttons with text are marked with a smiley 📄. The button folder is marked wit
 Выберите кнопку с темой, чтобы прочитать подробнее.
 """,
                     [
-                        [{k + (callbackTab * 20): v}]
+                        [{k.ljust(60, ts): v}]
                         for k, v in {
                             "📄 Календарь": "Calendar",
                             "📄 1 день": "1_day",
@@ -477,7 +477,7 @@ The bot has different types of messages, each of which has its own characteristi
 Select a topic button to read more.
 """,
                     [
-                        [{k + (callbackTab * 20): v}]
+                        [{k.ljust(60, ts): v}]
                         for k, v in {
                             "📄 Calendar": "Calendar",
                             "📄 1 day": "1_day",

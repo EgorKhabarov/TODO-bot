@@ -1,10 +1,10 @@
 import logging
 
-import todoapi.config as config
+from config import LOG_FILE_PATH
 
 
 logging.basicConfig(
-    filename=config.LOG_FILE,
+    filename=LOG_FILE_PATH,
     format="%(asctime)s %(filename)s:%(lineno)d %(levelname)s %(message)s",
     datefmt="[%Y-%m-%d %H:%M:%S]",
     level=logging.INFO,

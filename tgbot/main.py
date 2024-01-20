@@ -9,7 +9,7 @@ from cachetools import LRUCache
 # noinspection PyPackageRequirements
 from telebot.types import CallbackQuery, Message, BotCommandScopeDefault
 
-from tgbot import config
+import config
 from tgbot.request import request
 from tgbot.queries import queries
 from tgbot.lang import get_translate
@@ -266,10 +266,10 @@ def schedule_loop():
         hour = while_time.hour
         minute = while_time.minute
 
-        if config.NOTIFICATIONS and minute in (0, 10, 20, 30, 40, 50):
+        if config.BOT_NOTIFICATIONS and minute in (0, 10, 20, 30, 40, 50):
             Thread(target=send_notifications_messages, daemon=True).start()
 
-        if config.POKE_LINK and config.LINK and minute in (0, 10, 20, 30, 40, 50):
+        if config.POKE_SERVER_URL and config.SERVER_URL and minute in (0, 10, 20, 30, 40, 50):
             Thread(target=poke_link, daemon=True).start()
 
         if weekday == hour == minute == 0:  # Monday 00:00
@@ -282,5 +282,5 @@ def schedule_loop():
         sleep(60)
 
 
-if config.POKE_LINK and config.LINK:
-    atexit.register(lambda: requests.get(config.LINK))
+if config.POKE_SERVER_URL and config.SERVER_URL:
+    atexit.register(lambda: requests.get(config.SERVER_URL))

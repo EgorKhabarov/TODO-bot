@@ -12,8 +12,7 @@ from telebot.apihelper import ApiTelegramException
 # noinspection PyPackageRequirements
 from telebot.types import Message, CallbackQuery, InputFile
 
-from tgbot import config as bot_config
-from todoapi import config as api_config
+from config import DATABASE_PATH, __version__
 from tgbot.queries import queries
 from tgbot.request import request
 from tgbot.bot import bot, set_bot_commands
@@ -114,7 +113,7 @@ def command_handler(message: Message) -> None:
         daily_message(now_time()).send(chat_id)
 
     elif command_text == "version":
-        TextMessage(f"Version {bot_config.__version__}").send(chat_id)
+        TextMessage(f"Version {__version__}").send(chat_id)
 
     elif command_text in ("weather", "forecast"):
         # Проверяем есть ли аргументы
@@ -150,7 +149,7 @@ def command_handler(message: Message) -> None:
         bot.send_chat_action(chat_id, "upload_document")
 
         try:
-            with open(api_config.DATABASE_PATH, "rb") as file:
+            with open(DATABASE_PATH, "rb") as file:
                 bot.send_document(
                     chat_id,
                     file,
