@@ -1,0 +1,15 @@
+DATABASE_PATH: "data/database.sqlite3"
+VEDIS_PATH: "data/export_cooldown.vedis"
+LOG_FILE: "logs/latest.log"
+
+BOT_TOKEN: ""  # https://t.me/BotFather
+WEATHER_API_KEY: ""  # https://home.openweathermap.org/api_keys
+
+BOT_NOTIFICATIONS: True
+POKE_SERVER_URL: False  # Тыкать ли ссылку SERVER_URL
+SERVER_URL: ""
+TELEGRAM_WEBHOOK: False
+TELEGRAM_WEBHOOK_URL: ""
+TELEGRAM_WEBHOOK_FLASK_PATH: ""
+GITHUB_WEBHOOK: False
+GITHUB_WEBHOOK_URL: ""
