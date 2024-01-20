@@ -11,58 +11,266 @@ Birthdays and holidays are marked on the calendar (you need to set an emoji stat
 
 ---
 
-The `/calendar` command gives you access to the calendar.
-You can immediately select a date or scroll to another month or year using the `<` `>` and `<<` `>>` buttons, respectively.<br>
-The `⟳` button returns the calendar to the current date if it is on another, otherwise it goes one step down the menu and eventually opens a message with the current date.<br>
-By pressing the topmost button with the name of the month and information about the year, you can open a list of months.
-
-<img alt="calendar.png" src="images/calendar.png" style="border-radius: 17px;">
-
-There are several symbols on the calendar.
-
-| Sign | Meaning                                                                                                                                                                                                                  |
-|:----:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `#`  | Today's day number (shown in any months)                                                                                                                                                                                 |
-| `*`  | There are events on this day                                                                                                                                                                                             |
-| `!`  | On this day or on this day of another year there is an event with the status or a birthday `🎉`<br>or a holiday `🎊`<br/> <details><summary>More</summary>It helps not to forget, that someone has a birthday.</details> |
-
-
-<img alt="calendar.png" src="images/calendar_elements.png" style="border-radius: 10px;">
-
-When you click on the button in the calendar with the date, today's date opens.
-
-| Button  | Action                           |
-|:-------:|:---------------------------------|
-|   `➕`   | Add event                        |
-|  `📝`   | Edit event                       |
-|  `🚩`   | Set status for event             |
-|  `🗑`   | Delete event                     |
-|  `🔙`   | Back                             |
-| `<` `>` | 1 day ahead or back              |
-|   `✖`   | Delete this message from the bot |
+# Commands
+  * [/start](#start)
+  * [/menu](#menu)
+    * [/help](#help)
+    * [/calendar](#calendar)
+    * [account](#account)
+    * [groups](#groups)
+    * [/week_event_list](#week_event_list)
+    * [notifications](#notifications)
+    * [/settings](#settings)
+    * [trash](#trash)
+    * [admin](#admin)
+  * [/calendar](#calendar)
+  * [/today](#today)
+  * [/weather](#weather)
+  * [/forecast](#forecast)
+  * [/week_event_list](#week_event_list)
+  * [/export](#export)
 
 
-<img alt="calendar.png" src="images/date.png" style="border-radius: 16px;">
+## start
 
-# [Limits](/todoapi/types.py#L14&L55)
+Greets the user
 
-The bot has limits for different user groups.
+| Buttons                  | Actions                                     |
+|:-------------------------|---------------------------------------------|
+| [/menu](#menu)           | Same as /menu command                       |
+| [/calendar](#calendar)   | Same as /calendar command                   |
+| [Add a bot to a group]() | Calls up a dialog box for selecting a group |
 
-| user_status | price | maximum characters/day | maximum events/day |
-|:------------|:------|:-----------------------|:-------------------|
-| default     | 0     | 4000                   | 20                 |
-| premium     | 🤷    | 8000                   | 40                 |
-| admin       | -     | ∞                      | ∞                  |
 
-# [Search](/tgbot/bot_messages.py#L24&L99)
+## menu
 
-The bot has a search by events. You can search with `#query` or `/search query` commands.
-This search tries to find all matches.<br>
-The query `#1 2` searches for all events that contain the digits 1 <b>OR</b> 2 (`t1ext`, `tex2t`, `2te1xt`)<br>
-There is also a search for <b>AND</b>. It searches only for those events in which all conditions are exactly the same. You can search with such a search with the `#!query` command or `/search! query`.<br>
-The `#!1 2` request will return only those events that have 1 <b>AND</b> 2 (`text12`, `te2xt1`).
+Navigation through bot functions
 
-You can use wildcards in your search query
+| Buttons          | Actions                                               |
+|:-----------------|-------------------------------------------------------|
+| 📚 Help          | Same as /help                                         |
+| 📆Calendar       | Same as /calendar                                     |
+| 👤 Account       | Personal account and data export                      |
+| 👥 Groups        | Group settings                                        |
+| 📆 7 days        | Events in the next 7 days                             |
+| 🔔 Notifications | View events that will be included in the notification |
+| ⚙️Settings       | Same as /settings                                     |
+| 🗑 Cart          | Recycle bin with deleted events (premium)             |
+| 😎 Admin         | Admin panel (admin)                                   |
+
+## help
+
+Gives access to information about the bot's capabilities
+
+## calendar
+
+Calendar
+
+<table>
+    <tr><th colspan="7">January (1.2000) (Leap 🐲) (52-5)</th></tr>
+    <tr><th>  Mo </th><th> Tu! </th><th> We </th><th> Th </th><th> Fr </th><th> Sa </th><th> Su </th></tr>
+    <tr><th>     </th><th>     </th><th>    </th><th>    </th><th>    </th><th> #1 </th><th>  2 </th></tr>
+    <tr><th>   3 </th><th> 4!* </th><th>  5 </th><th> 6* </th><th>  7 </th><th>  8 </th><th>  9 </th></tr>
+    <tr><th> 10! </th><th>  11 </th><th> 12 </th><th> 13 </th><th> 14 </th><th> 15 </th><th> 16 </th></tr>
+    <tr><th>  17 </th><th>  18 </th><th> 19 </th><th> 20 </th><th> 21 </th><th> 22 </th><th> 23 </th></tr>
+    <tr><th>  24 </th><th>  25 </th><th> 26 </th><th> 27 </th><th> 28 </th><th> 29 </th><th> 30 </th></tr>
+    <tr><th>  31 </th><th>     </th><th>    </th><th>    </th><th>    </th><th>    </th><th>    </th></tr>
+    <tr><th colspan="2"><<</th><th><</th><th>⟳</th><th>></th><th colspan="2">>></th></tr>
+</table>
+
+### Designations
+
+#### First button
+
+When pressed, a yearly calendar appears.
+
+| Designation | Meaning                                       |
+|-------------|-----------------------------------------------|
+| January     | Names of the month                            |
+| (1.2000)    | Month and year numbers                        |
+| (Leap 🐲)   | Is it a leap year and the animal of this year |
+| (52-5)      | Numbers of the first and last week            |
+
+#### Days of the week
+
+When pressed, they do nothing.
+The text on the button may end with the `!` character.
+This means that on this day of the week there are repeating events with an interval of a week ([more about statuses](#Event-statuses)).
+
+#### Button for the day
+
+When pressed, it calls up [message for one day](#message-for-one-day)
+
+| Sign | Designation                                                                                                                              |
+|:----:|------------------------------------------------------------------------------------------------------------------------------------------|
+| `#`  | Today                                                                                                                                    |
+| `*`  | There are events on this day<br>If there are less than 10 events then it will consist of degree icons<br>indicating the number of events |
+| `!`  | There is an important event on this day<br>For example, with the status birthday `🎉` or holiday `🎊`                                    |
+
+#### Navigation buttons
+
+| Sign | Designation                          |
+|------|--------------------------------------|
+| `<<` | Show calendar for **one year ago**   |
+| `<`  | Show calendar for **one month ago**  |
+| `⟳`  | Show calendar for **current date**   |
+| `>`  | Show calendar **one month ahead**    |
+| `>>` | Show calendar for **one year ahead** |
+
+## account
+
+
+## groups
+
+## week_event_list
+
+Message with events in the next 7 days.
+
+## notifications
+
+Message with events for today, tomorrow, after tomorrow, after after tomorrow and in a week.
+
+## settings
+
+Message with settings.
+
+<table>
+    <tr>
+        <th>🗣 ru </th>
+        <th>🔗 True </th>
+        <th>⬆️ </th>
+        <th>🔕 </th>
+        <th>⬛️ </th>
+    </tr>
+    <tr>
+        <th>-3 </th>
+        <th>-1 </th>
+        <th>3 🌍 </th>
+        <th>+1 </th>
+        <th>+3 </th>
+    </tr>
+    <tr>
+        <th>-1h </th>
+        <th>-10m </th>
+        <th>08:00 ⏰ </th>
+        <th>+10m </th>
+        <th>+1h </th>
+    </tr>
+    <tr><th colspan="5">Default settings</th></tr>
+</table>
+
+|    Sign     | Designation                                                                                                                     |
+|:-----------:|:--------------------------------------------------------------------------------------------------------------------------------|
+|     🗣      | Language (default `ru`)                                                                                                         |
+|    `🔗`     | Should I shorten links (https://en.wikipedia.org/wiki/Hyperlink -> [en.wikipedia.org](https://en.wikipedia.org/wiki/Hyperlink)) |
+| `⬇️` / `⬆️` | Event sort order                                                                                                                | |
+|    `🔕`     | Whether to enable notifications (disabled by default)                                                                           |
+| `⬜️` / `⬛️` | Bot theme (replaces dark emoticons with light ones)                                                                             |
+|     🌍      | Your time zone                                                                                                                  |
+|      ⏰      | Notification Time                                                                                                               |
+
+
+## trash
+
+List of deleted events.
+
+| 🔼 | ↕️ |
+|----|----|
+| 🧹 | 🔄 |
+
+| Sign | Designation            |
+|------|------------------------|
+| 🔼   | Select one event       |
+| ↕️   | Select multiple events |
+| 🧹   | Empty Trash            |
+| 🔄   | Update cart            |
+
+## admin
+
+## today
+
+| ➕  | 🔼 | ↕️   | Menu |
+|----|----|------|------|
+| 🔙 | <  | &gt; | 🔄   |
+
+| Sign   | Designation                |
+|--------|----------------------------|
+| `➕`    | Add event                  |
+| `🔼`   | Select one event           |
+| `↕️`   | Select multiple events     |
+| `Menu` | Return to menu             |
+| `🔙`   | Return to calendar         |
+| `<`    | Show message for yesterday |
+| `>`    | Show message for tomorrow  |
+| `🔄`   | Update message             |
+
+## weather
+
+## forecast
+
+## export
+
+Export events in different file formats `csv`, `xml`, `json`, `jsonl`.
+
+## Message for one day
+
+<table>
+    <tr><th>📝</th><th><code>🏷</code> / <code>🚩</code></th><th>🗑</th></tr>
+    <tr><th colspan="3">📅 Change date</th></tr>
+    <tr><th>🔙</th><th>ℹ️</th><th>🔄</th></tr>
+</table>
+
+When you click on a button in the calendar with a date, today's date opens.
+
+|   Button    | Action                        |
+|:-----------:|:------------------------------|
+|    `📝`     | Edit event text               |
+| `🏷` / `🚩` | Add status to event           |
+|    `🗑`     | Delete event                  |
+|    `📅`     | Change event date             |
+|    `🔙`     | Return to message for the day |
+|    `ℹ️`     | Event Information             |
+|    `🔄`     | Update message                |
+
+## Event statuses
+
+A status is one or more emoji to mark an event or add different effects.
+**An event can have a maximum of 5 statuses.**
+
+There are incompatible statuses.
+They cannot be placed together in the same event.
+If you have one event from a pair, then you will not be able to place the second one.
+
+| Incompatible statuses                    |
+|------------------------------------------|
+| `🔗` (Link) and `💻` (Code)              |
+| `🪞` (Hidden) and `💻` (Code)            |
+| `🔗` (Link) and `⛓` (No link shortening) |
+| `🧮` (Numbered List) and `🗒` (List)     |
+
+Effects on statuses are applied only when displaying events in a message. The event text itself does not change in the database.
+
+## Limits
+
+There are limits for different user groups
+
+### Maximum possible values
+
+| user_status | event<br>day | symbol<br>day | event<br>month | symbol<br>month | event<br>year | symbol<br>year | event<br>all | symbol<br>all |
+|:------------|--------------|---------------|----------------|-----------------|---------------|----------------|--------------|---------------|
+| default     | 20           | 4000          | 75             | 10000           | 500           | 80000          | 500          | 100000        |
+| premium     | 40           | 8000          | 100            | 15000           | 750           | 100000         | 900          | 150000        |
+| admin       | 60           | 20000         | 200            | 65000           | 1000          | 120000         | 2000         | 200000        |
+
+## Search
+
+The bot has a search by events. You can search using the commands `#query` or `/search query`.
+This search attempts to find all matches.<br>
+Query `#1 2` searches for all events that contain the numbers 1 <b>OR</b> 2 (`t1ext`, `tex2t`, `2te1xt`)<br>
+There is also a search for <b>AND</b>. It searches only for those events in which all conditions completely match. You can search with this search using the command `#!query` or `/search! query`.<br>
+The `#!1 2` request will return only those events that contain 1 <b>AND</b> 2 (`text12`, `te2xt1`).
+
+You can use templates in your search query
 
 | What to look for | template/s                                                             |
 |:-----------------|:-----------------------------------------------------------------------|
@@ -73,115 +281,14 @@ You can use wildcards in your search query
 | Event Status     | `status=⬜️`                                                            |
 | event id         | `id=0`                                                                 |
 
-For example `#date=1.2023 status=🎧 youtube.com` to search for all events with music status for January 2023 that have a link to YouTube.
+For example, `#date=1.2023 status=🎧 youtube.com` to search for all events with music status for January 2023 that have a link to youtube.
 
+# TODO
 
-
-
-<details>
-<summary>Commands</summary>
-
-# [Commands](/tgbot/config.py#L21&L44)
-| Command          | Description                 |
-|:-----------------|:----------------------------|
-| /start           | Start                       |
-| /calendar        | Calendar                    |
-| /today           | Today's message             |
-| /weather {city}  | Weather                     |
-| /forecast {city} | Weather forecast for 5 days |
-| /week_event_list | Weekly events               |
-| /dice            | Roll the dice (randomizer)  |      
-| /export          | Save my data in csv         |     
-| /help            | Help                        |                          
-| /settings        | Settings                    |
-| /search {query}  | Search                      |
-| #{query}         | Search                      |
-
-</details>
-
-<details>
-<summary>DataBase</summary>
-
-# [DataBase](/todoapi/db_creator.py#L5&L116)
-
-* ### [events](/todoapi/db_creator.py#L29&L60)
-| name         | data type | default value |
-|:-------------|:----------|:--------------|
-| event_id     | INT       | _NULL_        |
-| user_id      | INT       | _NULL_        |
-| date         | TEXT      | _NULL_        |
-| text         | TEXT      | _NULL_        |
-| removal_time | INT       | 0             |
-| status       | TEXT      | ⬜️            |
-
-* ### [settings](/todoapi/db_creator.py#L90&L112)
-| name              | data type | default value |
-|:------------------|:----------|:--------------|
-| user_id           | INT       | _NULL_        |
-| lang              | TEXT      | ru            |
-| sub_urls          | INT       | 1             |
-| city              | TEXT      | Москва        |
-| timezone          | INT       | 3             |
-| direction         | TEXT      | ⬇️            |
-| user_status       | INT       | 0             |
-| user_max_event_id | INT       | 1             |
-
-</details>
-
-# #TODO
-* [ ] Comment and clean up the code.
-* [ ] Ability to search by the date of the selected event
-* [ ] Add templates to search<br>
-  `#date=dd.mm.yyyy` or `#date=dd.mm` or `#date=mm.yyyy` or `#date=dd..yyyy`<br>
-  `#day=00`<br>
-  `#month=0`<br>
-  `#year=0000`<br>
-  `#status=⬜️`<br>
-  `#id=0`<br>
-  For example `#date=1.2023 status=🎧` to search for all events with music status for January 2023.<br>
-  Add support for special characters sql LIKE (%, _ etc.).<br>
-  Search <b><u>AND</u></b> `#!query` only what is in the search without variations.
-* [ ] Add the ability to convert currencies via api.
-
-
-* [ ] Explorer (Similar file system)<br>
-  For storing large text files or images (<u>admin only</u>).<br>
-  <b>Can be done via Google|Yandex drive api</b>
-* [ ] When you add an event, let if a photo or a file is attached to the message, then the bot adds a link to the file to the text, and takes the text from `message.caption`.
-* [ ] When you delete a file, then let all bindings to it be deleted.
-
-* [ ] Full notifications.
-
-
-# Already done
-* [X] Groups for event statuses.
-* [X] Instead of parsing from the message, make a database query
-* [X] Ability to view _recurring events_ in the `/week_event_list` command.
-* [X] Sort in week_event_list by date
-* [X] Schedule statuses. Repeat every week and year. Similar to birthday status.
-* [X] Ability to remove from cart.
-* [X] Ability to restore an event from the trash.
-* [X] Add weather for 5 days `/forecast {city}`
-* [X] SQL ORM with ranges.
-* [X] Generation of messages according to the template `"{template}"`.
-* [X] Change user_status for admins, add status -1 it's banned (ignore messages).<br>
-  Changing the list of commands for a user depending on user_status
-
-
-# Removed from TODO
-* <s>The `/account` command. Number of messages.<br>
-  As in GitHub, a graph of the presence of events with colored emoticons `⬜️(0) 🟩(1,3) 🟨(4,6) 🟧(7,9) 🟥(>=10)`</s>
-* <s>_Remove the ability to forward regular messages_</s>
-* <s>Insert holidays for previous years</s>
-* <s>Add the ability to share results via search</s>
-* <s>Holidays for every day</s>
-
----
-
-```bash
-git clone https://github.com/EgorKhabarov/TODO-bot .
-```
-
-```bash
-pip install -r requirements.txt
-```
+* [ ] Add action when select more
+* [ ] Make a closure for the argument parser
+* [ ] DB schema
+* [ ] Transfer event IDs directly to buttons
+* [ ] Your own condition language parser for effective search
+* [ ] Make webhooks and test so that requests when falling asleep are not repeated twice
+* [ ] Set up custom autodeploy
