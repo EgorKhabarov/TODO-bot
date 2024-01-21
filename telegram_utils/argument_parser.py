@@ -2,12 +2,21 @@ from typing import Any, Literal, TypeAlias, Callable
 from datetime import datetime
 
 
-_data_types: TypeAlias = Literal["str", "int", "float", "date", "long str"]
-_return_types: TypeAlias = str | int | float | datetime
+_data_types: TypeAlias = (
+    str
+    | Literal[
+        "str",
+        "int",
+        "float",
+        "date",
+        "long str",
+    ]
+)
+_return_types: TypeAlias = str | int | float | datetime | list[int] | None | Any
 
 
 def get_arguments(
-    text: str, arguments: dict[str, str | tuple[str, Any]]
+    text: str, arguments: dict[str, _data_types | tuple[_data_types, Any]]
 ) -> dict[str, _return_types]:
     """
     >>> try: get_arguments("", {"arg1": "long str", "arg2": "str"})
@@ -131,8 +140,12 @@ def __process_value(
 
 def getargs(
     __func: Callable, text: str
-) -> Callable[[dict[str, str | tuple[str, Any]]], dict[str, _return_types]]:
-    def closure(arg: dict[str, str | tuple[str, Any]]) -> dict[str, _return_types]:
+) -> Callable[
+    [dict[str, _data_types | tuple[_data_types, Any]]], dict[str, _return_types]
+]:
+    def closure(
+        arg: dict[str, _data_types | tuple[_data_types, Any]]
+    ) -> dict[str, _return_types]:
         return get_arguments(text, arg)
 
     return closure

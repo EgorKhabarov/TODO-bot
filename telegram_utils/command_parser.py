@@ -1,10 +1,7 @@
 import re
-from typing import Any, Literal, TypeAlias
+from typing import Any
 
-from telegram_utils.argument_parser import get_arguments
-
-
-_data_types: TypeAlias = Literal["str", "int", "float", "date", "long str"]
+from telegram_utils.argument_parser import get_arguments, _data_types
 
 
 class __CommandRegex:
@@ -34,7 +31,7 @@ command_regex = __CommandRegex()
 
 
 def get_command_arguments(
-    message: str, arguments: dict[str, str | tuple[str, Any]]
+    message: str, arguments: dict[str, _data_types | tuple[_data_types, Any]]
 ) -> dict[str, Any]:
     """
     >>> try: get_command_arguments("", {"arg1": "long str", "arg2": "str"})
@@ -84,7 +81,7 @@ def get_command_arguments(
 
 
 def parse_command(
-    message: str, arguments: dict[str, str | tuple[str, Any]]
+    message: str, arguments: dict[str, _data_types | tuple[_data_types, Any]]
 ) -> dict[str, Any]:
     """
     >>> try: parse_command("", {"arg1": "long str", "arg2": "str"})
