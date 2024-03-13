@@ -9,6 +9,8 @@ You can tag a note with an emoji.
 Convenient search by emoji statuses and dates.
 Birthdays and holidays are marked on the calendar (you need to set an emoji status).</i>
 
+[Installation instructions](/setup.md)
+
 ---
 
 # Commands

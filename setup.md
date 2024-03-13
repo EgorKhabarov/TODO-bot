@@ -1,4 +1,9 @@
-# Установка
+<table>
+    <td><a href="/setup.md">EN</a></td>
+    <td><a href="/setup_ru.md">RU</a></td>
+</table>
+
+# Download
 
 ### HTTPS
 
@@ -12,7 +17,7 @@ git clone https://github.com/EgorKhabarov/TODO-bot.git .
 git clone git@github.com:EgorKhabarov/TODO-bot.git .
 ```
 
-# Подготовка
+# Preparation
 
 ### Linux
 
@@ -26,22 +31,22 @@ cp config.example.yaml config.yaml
 copy config.example.yaml config.yaml
 ```
 
-# Скачиваем библиотеки
+# Downloading libraries
 
 ```shell
 pip install -r requirements.txt
 ```
 
-# Настройка
+# Settings
 
-Изменить `config.yaml` в директории бота.
+Edit `config.yaml` in the bot directory.
 
 ```.env
-BOT_TOKEN: ""        # Токен телеграм бота у https://t.me/BotFather
-WEATHER_API_KEY: ""  # Получить на https://home.openweathermap.org/api_keys
+BOT_TOKEN: ""        # Telegram bot token from https://t.me/BotFather
+WEATHER_API_KEY: ""  # Get it from https://home.openweathermap.org/api_keys
 ```
 
-Настроить бота в https://t.me/BotFather.
+Set up a bot at https://t.me/BotFather.
 
 `/mybots` -> `@your_bot_username`
 ```
@@ -49,36 +54,36 @@ Bot Settings -> Group Privacy -> disabled
 Bot Settings -> Inline Mode   -> disabled
 ```
 
-# Запуск
+# Launch
 
-### Бота
+### Bot
 
 ```shell
 python start_bot.py
 ```
 
-## Сервера
+### Server
 
 ```shell
 python -c "from server import app; app.run('0.0.0.0')"
 ```
 
-# Получение прав админа
+# Obtaining administrator rights
 
-### Получите свой telegram **chat_id**.
+### Get your telegram **chat_id**.
 
-Запустите бота и отправьте команду `/id`.
-Добавьте полученный **chat_id** в `admin_id` в `config.py` и перезагрузите бота.
+Launch the bot and send the command `/id`.
+Add the resulting **chat_id** to `admin_id` in `config.py` and restart the bot.
 
-## Важно!
+## Important!
 
-**Добавляйте только chat_id личных аккаунтов (приватных чатов)!**
-**Этим chat_id будет доступна приватная информация о пользователях.**
+**Add only chat_id of personal accounts (private chats)!**
+**Private information about users will be available with this chat_id.**
 
-**Любое взаимодействие любого человека в телеграм-группе с ботом воспринимается как от лица группы.**
+**Any interaction of any person in a telegram group with a bot is perceived as on behalf of the group.**
 
-# Настройка PythonAnyWhere
+# Setting up PythonAnyWhere
 
-- Создать веб сервер на последней доступной версии Python
-- В категории `Code` изменить `Working directory` на путь до папки с `server.py`
-- В категории `Security` изменить `Force HTTPS` на `Enabled`
+- Create a web server using the latest available version of Python
+- In the `Code` category change `Working directory` to the path to the folder with `server.py`
+- In the `Security` category change `Force HTTPS` to `Enabled`
