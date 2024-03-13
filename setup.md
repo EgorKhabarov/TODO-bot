@@ -57,7 +57,7 @@ Bot Settings -> Inline Mode   -> disabled
 python start_bot.py
 ```
 
-# Сервера
+## Сервера
 
 ```shell
 python -c "from server import app; app.run('0.0.0.0')"
@@ -65,10 +65,10 @@ python -c "from server import app; app.run('0.0.0.0')"
 
 # Получение прав админа
 
-Получить свой telegram **chat_id**.
+### Получите свой telegram **chat_id**.
 
-Запустить бота и отправить команду `/id`.
-Добавить полученный **user_id** в `config.py` `admin_id` и перезагрузить бота.
+Запустите бота и отправьте команду `/id`.
+Добавьте полученный **chat_id** в `admin_id` в `config.py` и перезагрузите бота.
 
 ## Важно!
 

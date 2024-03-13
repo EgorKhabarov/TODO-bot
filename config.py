@@ -29,7 +29,6 @@ headers = {
 COMMANDS = (
     "calendar",
     "start",
-    "deleted",
     "version",
     "forecast",
     "week_event_list",
@@ -44,7 +43,6 @@ COMMANDS = (
     "SQL",
     "export",
     "id",
-    "idinfo",
     "commands",
     "menu",
     "clear_logs",
@@ -52,5 +50,5 @@ COMMANDS = (
 # Специальный прозрачный символ для заполнения пустого места в кнопках
 ts = chr(10240)  # transparent symbol
 
-__version__ = "21.01.2024"
+__version__ = "14.03.2024"
 __autor__ = "EgorKhabarov"

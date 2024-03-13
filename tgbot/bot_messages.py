@@ -161,7 +161,7 @@ def settings_message() -> TextMessage:
         bool(settings.sub_urls),
         html.escape(settings.city),
         str_utz,
-        f"{now_time():%H:%M  %d.%m.%Y}",
+        f"{now_time():%Y.%m.%d  <u>%H:%M</u>}",
         {"DESC": "⬇️", "ASC": "⬆️"}[settings.direction],
         "🔔" if settings.notifications else "🔕",
         f"{n_hours:0>2}:{n_minutes:0>2}" if settings.notifications else "",
@@ -921,12 +921,9 @@ def notification_message(
     from_command: bool = False,
 ) -> EventsMessage | None:
     if n_date is None:
-        n_date = datetime.utcnow()
+        n_date = now_time()
 
-    dates = [
-        n_date + timedelta(days=days, hours=request.user.settings.timezone)
-        for days in (0, 1, 2, 3, 7)
-    ]
+    dates = [n_date + timedelta(days=days) for days in (0, 1, 2, 3, 7)]
     weekdays = ["0" if (w := date.weekday()) == 6 else f"{w + 1}" for date in dates[:2]]
     WHERE = f"""
 user_id = {request.user.user_id}
@@ -1040,10 +1037,13 @@ def send_notifications_messages() -> None:
 
 
 def monthly_calendar_message(
-    command: str | None = None, back: str | None = None, custom_text: str | None = None
+    YY_MM: list | tuple[int, int] | None = None,
+    command: str | None = None,
+    back: str | None = None,
+    custom_text: str | None = None,
 ) -> TextMessage:
     text = custom_text if custom_text else get_translate("select.date")
-    markup = create_monthly_calendar_keyboard(command=command, back=back)
+    markup = create_monthly_calendar_keyboard(YY_MM, command, back)
     return TextMessage(text, markup)
 
 

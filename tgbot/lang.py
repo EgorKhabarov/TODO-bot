@@ -214,12 +214,12 @@ Please call up new messages using commands.</b>
             "ru": (
                 """
 /start - Старт
+/menu - Меню
 /calendar - Календарь
 /today - События на сегодня
 /weather {city} - Погода сейчас
 /forecast {city} - Прогноз погоды
 /week_event_list - Список событий на ближайшие 7 дней
-/deleted - Корзина
 /dice - Кинуть кубик
 /export - Сохранить мои события в csv
 /help - Помощь
@@ -232,23 +232,19 @@ Please call up new messages using commands.</b>
                 """
 /version - Версия бота
 /sqlite - Бекап базы данных
-/files - Сохранить все файлы
 /SQL {...} - Выполнить sql запрос к базе данных
-/idinfo {id}/None - Получить файл с id всех пользователей или информацию о id
-/setuserstatus {id} {status} - Поставить пользователю id команды для статуса status
-/deleteuser {id} - Удалить пользователя
 /clear_logs - Очистить логи
 """,
             ),
             "en": (
                 """
 /start - Start
+/menu - Menu
 /calendar - Calendar
 /today - Events for today
 /weather {city} - Weather now
 /forecast {city} - Weather forecast
 /week_event_list - List of events for the next 7 days
-/deleted - Trash
 /dice - Roll a die
 /export - Save my events to csv
 /help - Help
@@ -261,11 +257,7 @@ Please call up new messages using commands.</b>
                 """
 /version - Bot version
 /sqlite - Database backup
-/files - Save all files
 /SQL {...} - Execute an sql query to the database
-/idinfo {id}/None - Get a file with the id of all users or information about id
-/setuserstatus {id} {status} - Set the command id to the user for the status status
-/deleteuser {id} - Delete a user
 /clear_logs - Clear logs
 """,
             ),

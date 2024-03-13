@@ -94,7 +94,7 @@ def command_handler(message: Message) -> None:
         menu_message().send(chat_id)
 
     elif command_text == "calendar":
-        monthly_calendar_message().send(chat_id)
+        monthly_calendar_message(None, "dl", "mnm").send(chat_id)
 
     elif command_text == "start":
         set_bot_commands()
@@ -465,9 +465,8 @@ def callback_handler(call: CallbackQuery):
         sleep(0.5)
         date = literal_eval(call_data)[0]
         date = new_time_calendar() if date == "now" else date
-        markup = create_monthly_calendar_keyboard(date)
         text = get_translate("select.date")
-        TextMessage(text, markup).edit(chat_id, message_id)
+        monthly_calendar_message(date, "dl", "mnm", text).edit(chat_id, message_id)
 
     elif call_prefix == "mnh":  # help
         page = args_func({"page": ("long str", "page 1")})["page"]
@@ -490,7 +489,7 @@ def callback_handler(call: CallbackQuery):
 
         if n_date is None:
             return monthly_calendar_message(
-                "mnn", "mnm", get_translate("select.notification_date")
+                None, "mnn", "mnm", get_translate("select.notification_date")
             ).edit(chat_id, message_id)
         notification_message(n_date, from_command=True).edit(chat_id, message_id)
 
