@@ -21,7 +21,8 @@ TELEGRAM_WEBHOOK_FLASK_PATH = config.get("TELEGRAM_WEBHOOK_FLASK_PATH", "")
 GITHUB_WEBHOOK = config.get("GITHUB_WEBHOOK", False)
 GITHUB_WEBHOOK_URL = config.get("GITHUB_WEBHOOK_URL", "")
 
-admin_id = (1563866138,)
+ADMIN_IDS = tuple(config.get("ADMIN_IDS", ()))
+
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36 Edg/113.0.1774.42"

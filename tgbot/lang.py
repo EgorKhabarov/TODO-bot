@@ -1226,8 +1226,8 @@ Visibility <b>{}</b>m""",
     },
     "errors": {
         "many_attempts": {
-            "ru": "Извините, слишком много попыток. Пожалуйста, повторите попытку через {} секунд.",
-            "en": "Sorry, too many attempts. Please try again in {} seconds.",
+            "ru": "Извините, слишком много обращений. Пожалуйста, повторите попытку через {} секунд.",
+            "en": "Sorry, too many requests. Please try again in {} seconds.",
         },
         "many_attempts_weather": {
             "ru": "Погоду запрашивали слишком часто. Повторите через {} секунд.",

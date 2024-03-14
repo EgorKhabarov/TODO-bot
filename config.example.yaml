@@ -5,8 +5,8 @@ LOG_FILE_PATH: "logs/latest.log"
 BOT_TOKEN: ""  # https://t.me/BotFather
 WEATHER_API_KEY: ""  # https://home.openweathermap.org/api_keys
 
-BOT_NOTIFICATIONS: True
-POKE_SERVER_URL: False  # Тыкать ли ссылку SERVER_URL
+BOT_NOTIFICATIONS: True  # Are notifications enabled at the bot level
+POKE_SERVER_URL: False  # Should server poke the link SERVER_URL
 SERVER_URL: ""
 
 TELEGRAM_WEBHOOK: False  # Is webhook enabled?
@@ -14,3 +14,6 @@ TELEGRAM_WEBHOOK_URL: ""  # Full webhook url
 TELEGRAM_WEBHOOK_FLASK_PATH: ""  # Flask webhook path
 GITHUB_WEBHOOK: False  # Is GitHub CI/CD pipeline enabled?
 GITHUB_WEBHOOK_URL: ""  # GitHub CI/CD webhook url
+
+ADMIN_IDS:  # list of admins chat_id
+  - admin_chat_id

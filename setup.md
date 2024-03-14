@@ -73,7 +73,7 @@ python -c "from server import app; app.run('0.0.0.0')"
 ### Get your telegram **chat_id**.
 
 Launch the bot and send the command `/id`.
-Add the resulting **chat_id** to `admin_id` in `config.py` and restart the bot.
+Add the resulting **chat_id** to `ADMIN_IDS` in `config.yaml` and restart the bot.
 
 ## Important!
 

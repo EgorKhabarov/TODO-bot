@@ -26,7 +26,7 @@ def is_admin_id(chat_id: int) -> bool:
     Проверка на админа
     Админом могут быть только люди, чьи id записаны в config.admin_id
     """
-    return chat_id in config.admin_id
+    return chat_id in config.ADMIN_IDS
 
 
 def is_premium_user(user) -> bool:
