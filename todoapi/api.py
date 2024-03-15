@@ -8,7 +8,7 @@ from io import StringIO, BytesIO
 import xml.etree.ElementTree as xml  # noqa
 
 from todoapi.queries import queries
-from todoapi.types import Event, UserSettings, Limit, db, export_cooldown
+from todoapi.types import User, Group, Event, Settings, Limit, db, export_cooldown
 from todoapi.utils import (
     sqlite_format_date,
     is_premium_user,
@@ -18,10 +18,29 @@ from todoapi.utils import (
 )
 
 
-class User:
+class Api:
+    def __init__(
+        self,
+        account_type: Literal["user", "group"],
+        token: str = None,
+        chat_id: int = None,
+    ):
+        self.type = account_type
+        match account_type:
+            case "user":
+                self.entity = User.get_user(token) if token else User.get_user_from_telegram_chat_id(chat_id)
+            case "group":
+                self.entity = Group.get_group(token) if token else Group.get(chat_id)
+            case "":
+                pass
+
+# quit()
+# print()
+
+class __User:
     def __init__(self, user_id: int | str):
         self.user_id = int(user_id)
-        self.settings: UserSettings = UserSettings(user_id)
+        self.settings: Settings = Settings(user_id)
         self.__no_cooldown = False
 
     def check_event(
@@ -113,10 +132,10 @@ SELECT 1
 
         :param date:
         """
-        limit = Limit(self.user_id, self.settings.user_status, date)
-        return True, limit.now_limit_percent()
+        limit = Limit(user_id=self.user_id, group_id=self.settings.user_status)
+        return True, limit.now_limit_percent(date)
 
-    def get_settings(self) -> UserSettings:
+    def get_settings(self) -> Settings:
         """
         :return:
         """

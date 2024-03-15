@@ -47,6 +47,9 @@ COMMANDS = (
     "commands",
     "menu",
     "clear_logs",
+    "login",
+    "signup",
+    "logout",
 )
 # Специальный прозрачный символ для заполнения пустого места в кнопках
 ts = chr(10240)  # transparent symbol

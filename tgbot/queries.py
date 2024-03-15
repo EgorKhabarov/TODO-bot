@@ -3,10 +3,13 @@ from todoapi.utils import sqlite_format_date
 queries = {
     # Миграция chat.id группы в супергруппу
     "update settings_migrate_chat_id": """
-UPDATE settings
-   SET user_id = :to_chat_id
- WHERE user_id = :from_chat_id;
-    """,
+UPDATE users
+  JOIN groups
+    ON groups.chat_id = users.chat_id
+   SET users.chat_id = :to_chat_id,
+       groups.chat_id = :to_chat_id
+ WHERE users.chat_id = :from_chat_id;
+""",
     "update events_migrate_chat_id": """
 UPDATE events
    SET user_id = :to_chat_id
@@ -15,13 +18,13 @@ UPDATE events
     # Дата для добавления события
     "select add_event_date": """
 SELECT add_event_date
-  FROM settings
- WHERE user_id = ?;
+  FROM tg_settings
+ WHERE user_id = ? OR group_id = ?;
 """,
     "update add_event_date": """
-UPDATE settings
+UPDATE tg_settings
    SET add_event_date = ?
- WHERE user_id = ?;
+ WHERE user_id = ? OR group_id = ?;
 """,
     # Для кнопок
     "select day_number_with_events": """
@@ -152,8 +155,8 @@ LIMIT 1;
 """,
     "select user_ids_for_sending_notifications": """
 -- id людей через запятую, которым нужно сейчас прислать уведомление
-SELECT GROUP_CONCAT(user_id, ',') AS user_id_list
-  FROM settings
+SELECT GROUP_CONCAT(IFNULL(user_id, group_id), ',') AS user_id_list
+  FROM tg_settings
  WHERE notifications = 1 AND 
        user_status != -1 AND 
        ((CAST(SUBSTR(notifications_time, 1, 2) AS INT) - timezone + 24) % 24) = ? AND 

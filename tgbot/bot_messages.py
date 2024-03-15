@@ -700,7 +700,7 @@ def before_event_delete_message(event_id: int) -> EventMessage | None:
 
     delete_permanently = get_translate("text.delete_permanently")
     trash_bin = get_translate("text.trash_bin")
-    is_wastebasket_available = request.user.settings.user_status == 1 or is_admin_id(
+    is_wastebasket_available = request.user.user_status == 1 or is_admin_id(
         request.user.user_id
     )
     markup = generate_buttons(
@@ -728,7 +728,7 @@ def before_events_delete_message(id_list: list[int]) -> EventsMessage:
     generated = EventsMessage()
     generated.get_page_events("removal_time = 0", id_list)
 
-    is_wastebasket_available = request.user.settings.user_status == 1 or is_admin_id(
+    is_wastebasket_available = request.user.user_status == 1 or is_admin_id(
         request.user.user_id
     )
     string_id = encode_id(id_list)
@@ -1203,7 +1203,7 @@ SELECT COUNT(event_id) as events_count,
 """
     )[0]
     user_status = string_status[
-        2 if is_admin_id(user_id) else user.settings.user_status
+        2 if is_admin_id(user_id) else user.user_status
     ]
     text = f"""👤 User 👤
 user_id: {user_id}

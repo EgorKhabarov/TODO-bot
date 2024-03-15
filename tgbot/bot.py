@@ -76,7 +76,7 @@ def set_bot_commands(
     Ставит список команд для пользователя chat_id
     """
     if not user_status:
-        user_status = request.user.settings.user_status
+        user_status = request.user.user_status
 
     if not lang:
         lang = request.user.settings.lang

@@ -18,15 +18,16 @@ from tgbot.bot import bot, bot_log_info
 from tgbot.buttons_utils import delmarkup
 from tgbot.bot_actions import delete_message_action
 from tgbot.message_generator import TextMessage, CallBackAnswer
-from tgbot.handlers import command_handler, callback_handler, reply_handler, clear_state
 from tgbot.utils import poke_link, re_edit_message, html_to_markdown, rate_limit
+from tgbot.handlers import command_handler, callback_handler, not_login_handler, reply_handler, clear_state
 from tgbot.bot_messages import (
     search_message,
     send_notifications_messages,
     confirm_changes_message,
 )
-from todoapi.api import User
-from todoapi.types import db
+from todoapi.api import Api
+from todoapi.exceptions import UserNotFound
+from todoapi.types import db, User
 from todoapi.logger import logging
 from todoapi.utils import is_admin_id
 from todoapi.log_cleaner import clear_logs
@@ -70,9 +71,11 @@ def check_user(func):
     @wraps(func)
     def check_argument(_x: Message | CallbackQuery):
         if isinstance(_x, Message):
+            # TODO migrate_to_chat_id
             if _x.content_type != "migrate_to_chat_id" and (
                 _x.text.startswith("/") and not command_regex.match(_x.text)
             ):
+                # Если команда будет обращена к другим ботам, то не реагировать
                 return
         elif isinstance(_x, CallbackQuery):
             if _x.data == "None":
@@ -84,27 +87,45 @@ def check_user(func):
         @rate_limit(rate_limit_30_60, 30, 60, key_func, else_func)
         def wrapper(x: Message | CallbackQuery):
             if isinstance(x, Message):
-                chat_id = x.chat.id
+                message = x
+                chat_id = message.chat.id
+                # TODO migrate_to_chat_id
                 if x.content_type != "migrate_to_chat_id" and (
                     x.text.startswith("/") and not command_regex.match(_x.text)
                 ):
                     return
             elif isinstance(x, CallbackQuery):
-                chat_id = x.message.chat.id
+                message = x.message
+                chat_id = message.chat.id
                 if x.data == "None":
                     return 0
             else:
                 return
 
             with db.connection(), db.cursor():
-                user = User(chat_id)
-                if user.settings.user_status == -1 and not is_admin_id(chat_id):
-                    return
-                request.user = user
-                request.chat_id = chat_id
-                request.query = x
-                res = func(x)
-            return res
+                try:
+                    api = Api(
+                        "user" if message.chat.type == "private" else "group",
+                        chat_id=chat_id,
+                    )
+                except UserNotFound:
+                    if isinstance(x, Message) and message.chat.type == "private" and message.text.startswith(("/login", "/signup")):
+                        not_login_handler(x)
+                    else:
+                        bot.reply_to(message, get_translate("errors.no_account"))
+                else:
+                    if api.entity.user_status == -1 and not is_admin_id(chat_id):
+                        return
+
+                    if message.text.startswith("/logout"):
+                        user = User.get_user_from_telegram_chat_id(chat_id)
+                        user.set_user_telegram_chat_id(None)
+                        bot.reply_to(message, get_translate("text.success"))
+
+                    request.user = api.entity
+                    request.chat_id = chat_id
+                    request.query = x
+                    return func(x)
 
         return wrapper(_x)
 
@@ -117,7 +138,7 @@ def telegram_log(action: str, text: str):
     logging.info(
         f"[{request.user.user_id:<10}"
         + (f":{thread_id}" if thread_id else "")
-        + f"][{request.user.settings.user_status}] {action:<7} {text}"
+        + f"][{request.user.user_status}] {action:<7} {text}"
     )
 
 
@@ -125,7 +146,7 @@ def telegram_log(action: str, text: str):
 @check_user
 def migrate_chat(message: Message):
     logging.info(
-        f"[{message.chat.id:<10}][{request.user.settings.user_status}] "
+        f"[{message.chat.id:<10}][{request.user.user_status}] "
         f"migrate_to_chat_id {message.migrate_to_chat_id}"
     )
     params = {

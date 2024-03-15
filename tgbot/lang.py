@@ -182,6 +182,14 @@ translation = {
         },
     },
     "text": {
+        "success": {
+            "ru": "Успешно",
+            "en": "Success",
+        },
+        "failure": {
+            "ru": "Неудача",
+            "en": "Failure",
+        },
         "page": {
             "ru": "Страница",
             "en": "Page",
@@ -1225,6 +1233,10 @@ Visibility <b>{}</b>m""",
         },
     },
     "errors": {
+        "no_account": {
+            "ru": "Вы не вошли в аккаунт. Войдите\n<code>/login &lt;username&gt; &lt;password&gt;</code>\nили создайте аккаунт\n<code>/signup &lt;email&gt; &lt;username&gt; &lt;password&gt;</code>",
+            "en": "You are not logged in to your account. Login\n<code>/login &lt;username&gt; &lt;password&gt;</code>\nor create an account\n<code>/signup &lt;email&gt; &lt;username&gt; &lt;password&gt;</code>",
+        },
         "many_attempts": {
             "ru": "Извините, слишком много обращений. Пожалуйста, повторите попытку через {} секунд.",
             "en": "Sorry, too many requests. Please try again in {} seconds.",

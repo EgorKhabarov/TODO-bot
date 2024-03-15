@@ -66,13 +66,72 @@ from tgbot.utils import (
     html_to_markdown,
     extract_search_query,
 )
-from todoapi.api import User
-from todoapi.types import db
+from todoapi.api import Api
+from todoapi.exceptions import ApiError
+from todoapi.types import db, User
 from todoapi.log_cleaner import clear_logs
-from todoapi.utils import is_admin_id, is_premium_user, is_valid_year
 from telegram_utils.argument_parser import get_arguments, getargs
 from telegram_utils.buttons_generator import generate_buttons
 from telegram_utils.command_parser import parse_command, get_command_arguments
+from todoapi.utils import is_admin_id, is_premium_user, is_valid_year, re_email, re_username
+
+
+def not_login_handler(message: Message) -> None:
+    """
+    /login <username> <password>
+    /signup <email> <username> <password>
+    """
+
+    if message.text.startswith("/login"):
+        arguments = get_command_arguments(
+            message.text,
+            {"username": "str", "password": "str"},
+        )
+        username, password = arguments["username"], arguments["password"]
+
+        if not (username and password):
+            bot.reply_to(message, get_translate("errors.no_account"))
+        elif not re_username.match(username):
+            bot.reply_to(message, "Wrong username")
+        else:
+            print(f"/login {username} {password}")
+            try:
+                user = User.get_user_from_password(username, password)
+                user.set_user_telegram_chat_id(message.chat.id)
+            except ApiError:
+                bot.reply_to(message, get_translate("text.failure"))
+            else:
+                bot.send_message(message.chat.id, get_translate("text.success"))
+                bot.delete_message(message.chat.id, message.message_id)
+
+    elif message.text.startswith("/signup"):
+        arguments = get_command_arguments(
+            message.text,
+            {"email": "str", "username": "str", "password": "str"},
+        )
+        email, username, password = arguments["email"], arguments["username"], arguments["password"]
+
+        if not (email and username and password):
+            bot.reply_to(message, get_translate("errors.no_account"))
+        elif not re_email.match(email):
+            bot.reply_to(message, "Wrong email")
+        elif not re_username.match(username):
+            bot.reply_to(message, "Wrong username")
+        else:
+            print(f"/signup {email} {username} {password}")
+            try:
+                User.create_user(email, username, password)
+            except ApiError:
+                bot.reply_to(message, get_translate("text.failure"))
+            else:
+                try:
+                    user = User.get_user_from_password(username, password)
+                    user.set_user_telegram_chat_id(message.chat.id)
+                except ApiError:
+                    bot.reply_to(message, get_translate("text.failure"))
+                else:
+                    bot.send_message(message.chat.id, get_translate("text.success"))
+                    bot.delete_message(message.chat.id, message.message_id)
 
 
 def command_handler(message: Message) -> None:
@@ -1030,7 +1089,7 @@ def callback_handler(call: CallbackQuery):
         ):
             return
 
-        if not request.user.set_settings(**{par_name: par_val})[0]:
+        if not request.user.set_user_settings(**{par_name: par_val})[0]:
             return CallBackAnswer(get_translate("errors.error")).answer(call_id)
 
         try:
