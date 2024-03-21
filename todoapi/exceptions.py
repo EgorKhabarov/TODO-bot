@@ -21,3 +21,15 @@ class LimitExceeded(Exception):
 
 class TextIsTooBig(Exception):
     pass
+
+class WrongDate(Exception):
+    pass
+
+class StatusConflict(Exception):
+    pass
+
+class StatusLengthExceeded(Exception):
+    pass
+
+class StatusRepeats(Exception):
+    pass

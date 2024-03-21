@@ -182,14 +182,6 @@ translation = {
         },
     },
     "text": {
-        "success": {
-            "ru": "Успешно",
-            "en": "Success",
-        },
-        "failure": {
-            "ru": "Неудача",
-            "en": "Failure",
-        },
         "page": {
             "ru": "Страница",
             "en": "Page",
@@ -865,116 +857,236 @@ Visibility <b>{}</b>m""",
     "buttons": {
         "commands": {
             "-1": {
-                "ru": [
-                    BotCommand("_", "Вы забанены"),
-                ],
-                "en": [
-                    BotCommand("_", "You are banned"),
-                ],
+                "user": {
+                    "ru": [
+                        BotCommand("_", "Вы забанены"),
+                    ],
+                    "en": [
+                        BotCommand("_", "You are banned"),
+                    ],
+                },
+                "group": {
+                    "ru": [
+                        BotCommand("_", "Вы забанены"),
+                    ],
+                    "en": [
+                        BotCommand("_", "You are banned"),
+                    ],
+                },
             },
             "0": {
-                "ru": [
-                    BotCommand("start", "Старт"),
-                    BotCommand("menu", "Меню"),
-                    BotCommand("calendar", "Календарь"),
-                    BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
-                    BotCommand("weather", "{city} Погода"),
-                    BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
-                    BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
-                    BotCommand("dice", "Кинуть кубик"),
-                    BotCommand(
-                        "export",
-                        "{format} Сохранить мои данные в формат. (csv, xml, json, jsonl)",
-                    ),
-                    BotCommand("help", "Помощь"),
-                    BotCommand("settings", "Настройки"),
-                ],
-                "en": [
-                    BotCommand("start", "Start"),
-                    BotCommand("menu", "Menu"),
-                    BotCommand("calendar", "Calendar"),
-                    BotCommand("today", "Today's message"),
-                    BotCommand("weather", "{city} Weather"),
-                    BotCommand("forecast", "{city} Weather forecast for 5 days"),
-                    BotCommand("week_event_list", "Weekly events"),
-                    BotCommand("dice", "Roll the dice (randomizer)"),
-                    BotCommand(
-                        "export",
-                        "{format} Save my data in format. (csv, xml, json, jsonl)",
-                    ),
-                    BotCommand("help", "Help"),
-                    BotCommand("settings", "Settings"),
-                ],
+                "user": {
+                    "ru": [
+                        BotCommand("start", "Старт"),
+                        BotCommand("menu", "Меню"),
+                        BotCommand("calendar", "Календарь"),
+                        BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
+                        BotCommand("weather", "{city} Погода"),
+                        BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
+                        BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
+                        BotCommand("dice", "Кинуть кубик"),
+                        BotCommand(
+                            "export",
+                            "{format} Сохранить мои данные в формат. (csv, xml, json, jsonl)",
+                        ),
+                        BotCommand("help", "Помощь"),
+                        BotCommand("settings", "Настройки"),
+                    ],
+                    "en": [
+                        BotCommand("start", "Start"),
+                        BotCommand("menu", "Menu"),
+                        BotCommand("calendar", "Calendar"),
+                        BotCommand("today", "Today's message"),
+                        BotCommand("weather", "{city} Weather"),
+                        BotCommand("forecast", "{city} Weather forecast for 5 days"),
+                        BotCommand("week_event_list", "Weekly events"),
+                        BotCommand("dice", "Roll the dice (randomizer)"),
+                        BotCommand(
+                            "export",
+                            "{format} Save my data in format. (csv, xml, json, jsonl)",
+                        ),
+                        BotCommand("help", "Help"),
+                        BotCommand("settings", "Settings"),
+                    ],
+                },
+                "group": {
+                    "ru": [
+                        BotCommand("start", "Старт"),
+                        BotCommand("menu", "Меню"),
+                        BotCommand("calendar", "Календарь"),
+                        BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
+                        BotCommand("weather", "{city} Погода"),
+                        BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
+                        BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
+                        BotCommand("dice", "Кинуть кубик"),
+                        BotCommand(
+                            "export",
+                            "{format} Сохранить мои данные в формат. (csv, xml, json, jsonl)",
+                        ),
+                        BotCommand("help", "Помощь"),
+                        BotCommand("settings", "Настройки"),
+                    ],
+                    "en": [
+                        BotCommand("start", "Start"),
+                        BotCommand("menu", "Menu"),
+                        BotCommand("calendar", "Calendar"),
+                        BotCommand("today", "Today's message"),
+                        BotCommand("weather", "{city} Weather"),
+                        BotCommand("forecast", "{city} Weather forecast for 5 days"),
+                        BotCommand("week_event_list", "Weekly events"),
+                        BotCommand("dice", "Roll the dice (randomizer)"),
+                        BotCommand(
+                            "export",
+                            "{format} Save my data in format. (csv, xml, json, jsonl)",
+                        ),
+                        BotCommand("help", "Help"),
+                        BotCommand("settings", "Settings"),
+                    ],
+                },
             },
             "1": {
-                "ru": [
-                    BotCommand("start", "Старт"),
-                    BotCommand("menu", "Меню"),
-                    BotCommand("calendar", "Календарь"),
-                    BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
-                    BotCommand("weather", "{city} Погода"),
-                    BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
-                    BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
-                    BotCommand("dice", "Кинуть кубик"),
-                    BotCommand(
-                        "export",
-                        "{format} Сохранить мои данные в формат. (csv, xml, json, jsonl)",
-                    ),
-                    BotCommand("help", "Помощь"),
-                    BotCommand("settings", "Настройки"),
-                ],
-                "en": [
-                    BotCommand("start", "Start"),
-                    BotCommand("menu", "Menu"),
-                    BotCommand("calendar", "Calendar"),
-                    BotCommand("today", "Today's message"),
-                    BotCommand("weather", "{city} Weather"),
-                    BotCommand("forecast", "{city} Weather forecast for 5 days"),
-                    BotCommand("week_event_list", "Weekly events"),
-                    BotCommand("dice", "Roll the dice (randomizer)"),
-                    BotCommand(
-                        "export",
-                        "{format} Save my data in format. (csv, xml, json, jsonl)",
-                    ),
-                    BotCommand("help", "Help"),
-                    BotCommand("settings", "Settings"),
-                ],
+                "user": {
+                    "ru": [
+                        BotCommand("start", "Старт"),
+                        BotCommand("menu", "Меню"),
+                        BotCommand("calendar", "Календарь"),
+                        BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
+                        BotCommand("weather", "{city} Погода"),
+                        BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
+                        BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
+                        BotCommand("dice", "Кинуть кубик"),
+                        BotCommand(
+                            "export",
+                            "{format} Сохранить мои данные в формат. (csv, xml, json, jsonl)",
+                        ),
+                        BotCommand("help", "Помощь"),
+                        BotCommand("settings", "Настройки"),
+                    ],
+                    "en": [
+                        BotCommand("start", "Start"),
+                        BotCommand("menu", "Menu"),
+                        BotCommand("calendar", "Calendar"),
+                        BotCommand("today", "Today's message"),
+                        BotCommand("weather", "{city} Weather"),
+                        BotCommand("forecast", "{city} Weather forecast for 5 days"),
+                        BotCommand("week_event_list", "Weekly events"),
+                        BotCommand("dice", "Roll the dice (randomizer)"),
+                        BotCommand(
+                            "export",
+                            "{format} Save my data in format. (csv, xml, json, jsonl)",
+                        ),
+                        BotCommand("help", "Help"),
+                        BotCommand("settings", "Settings"),
+                    ],
+                },
+                "group": {
+                    "ru": [
+                        BotCommand("start", "Старт"),
+                        BotCommand("menu", "Меню"),
+                        BotCommand("calendar", "Календарь"),
+                        BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
+                        BotCommand("weather", "{city} Погода"),
+                        BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
+                        BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
+                        BotCommand("dice", "Кинуть кубик"),
+                        BotCommand(
+                            "export",
+                            "{format} Сохранить мои данные в формат. (csv, xml, json, jsonl)",
+                        ),
+                        BotCommand("help", "Помощь"),
+                        BotCommand("settings", "Настройки"),
+                    ],
+                    "en": [
+                        BotCommand("start", "Start"),
+                        BotCommand("menu", "Menu"),
+                        BotCommand("calendar", "Calendar"),
+                        BotCommand("today", "Today's message"),
+                        BotCommand("weather", "{city} Weather"),
+                        BotCommand("forecast", "{city} Weather forecast for 5 days"),
+                        BotCommand("week_event_list", "Weekly events"),
+                        BotCommand("dice", "Roll the dice (randomizer)"),
+                        BotCommand(
+                            "export",
+                            "{format} Save my data in format. (csv, xml, json, jsonl)",
+                        ),
+                        BotCommand("help", "Help"),
+                        BotCommand("settings", "Settings"),
+                    ],
+                },
             },
             "2": {
-                "ru": [
-                    BotCommand("start", "Старт"),
-                    BotCommand("menu", "Меню"),
-                    BotCommand("calendar", "Календарь"),
-                    BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
-                    BotCommand("weather", "{city} Погода"),
-                    BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
-                    BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
-                    BotCommand("dice", "Кинуть кубик"),
-                    BotCommand(
-                        "export",
-                        "{format} Сохранить мои данные в формат. (csv, xml, json, jsonl)",
-                    ),
-                    BotCommand("help", "Помощь"),
-                    BotCommand("settings", "Настройки"),
-                    BotCommand("commands", "Список команд"),
-                ],
-                "en": [
-                    BotCommand("start", "Start"),
-                    BotCommand("menu", "Menu"),
-                    BotCommand("calendar", "Calendar"),
-                    BotCommand("today", "Today's message"),
-                    BotCommand("weather", "{city} Weather"),
-                    BotCommand("forecast", "{city} Weather forecast for 5 days"),
-                    BotCommand("week_event_list", "Weekly events"),
-                    BotCommand("dice", "Roll the dice (randomizer)"),
-                    BotCommand(
-                        "export",
-                        "{format} Save my data in format. (csv, xml, json, jsonl)",
-                    ),
-                    BotCommand("help", "Help"),
-                    BotCommand("settings", "Settings"),
-                    BotCommand("commands", "Command list"),
-                ],
+                "user": {
+                    "ru": [
+                        BotCommand("start", "Старт"),
+                        BotCommand("menu", "Меню"),
+                        BotCommand("calendar", "Календарь"),
+                        BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
+                        BotCommand("weather", "{city} Погода"),
+                        BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
+                        BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
+                        BotCommand("dice", "Кинуть кубик"),
+                        BotCommand(
+                            "export",
+                            "{format} Сохранить мои данные в формат. (csv, xml, json, jsonl)",
+                        ),
+                        BotCommand("help", "Помощь"),
+                        BotCommand("settings", "Настройки"),
+                        BotCommand("commands", "Список команд"),
+                    ],
+                    "en": [
+                        BotCommand("start", "Start"),
+                        BotCommand("menu", "Menu"),
+                        BotCommand("calendar", "Calendar"),
+                        BotCommand("today", "Today's message"),
+                        BotCommand("weather", "{city} Weather"),
+                        BotCommand("forecast", "{city} Weather forecast for 5 days"),
+                        BotCommand("week_event_list", "Weekly events"),
+                        BotCommand("dice", "Roll the dice (randomizer)"),
+                        BotCommand(
+                            "export",
+                            "{format} Save my data in format. (csv, xml, json, jsonl)",
+                        ),
+                        BotCommand("help", "Help"),
+                        BotCommand("settings", "Settings"),
+                        BotCommand("commands", "Command list"),
+                    ],
+                },
+                "group": {
+                    "ru": [
+                        BotCommand("start", "Старт"),
+                        BotCommand("menu", "Меню"),
+                        BotCommand("calendar", "Календарь"),
+                        BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
+                        BotCommand("weather", "{city} Погода"),
+                        BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
+                        BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
+                        BotCommand("dice", "Кинуть кубик"),
+                        BotCommand(
+                            "export",
+                            "{format} Сохранить мои данные в формат. (csv, xml, json, jsonl)",
+                        ),
+                        BotCommand("help", "Помощь"),
+                        BotCommand("settings", "Настройки"),
+                        BotCommand("commands", "Список команд"),
+                    ],
+                    "en": [
+                        BotCommand("start", "Start"),
+                        BotCommand("menu", "Menu"),
+                        BotCommand("calendar", "Calendar"),
+                        BotCommand("today", "Today's message"),
+                        BotCommand("weather", "{city} Weather"),
+                        BotCommand("forecast", "{city} Weather forecast for 5 days"),
+                        BotCommand("week_event_list", "Weekly events"),
+                        BotCommand("dice", "Roll the dice (randomizer)"),
+                        BotCommand(
+                            "export",
+                            "{format} Save my data in format. (csv, xml, json, jsonl)",
+                        ),
+                        BotCommand("help", "Help"),
+                        BotCommand("settings", "Settings"),
+                        BotCommand("commands", "Command list"),
+                    ],
+                },
             },
         },
         "status page": {
@@ -1233,6 +1345,18 @@ Visibility <b>{}</b>m""",
         },
     },
     "errors": {
+        "success": {
+            "ru": "Успешно",
+            "en": "Success",
+        },
+        "failure": {
+            "ru": "Неудача",
+            "en": "Failure",
+        },
+        "forbidden_to_log_account_in_group": {
+            "ru": "В группе нельзя войти в аккаунт",
+            "en": "You can't log into your account in a group.",
+        },
         "no_account": {
             "ru": "Вы не вошли в аккаунт. Войдите\n<code>/login &lt;username&gt; &lt;password&gt;</code>\nили создайте аккаунт\n<code>/signup &lt;email&gt; &lt;username&gt; &lt;password&gt;</code>",
             "en": "You are not logged in to your account. Login\n<code>/login &lt;username&gt; &lt;password&gt;</code>\nor create an account\n<code>/signup &lt;email&gt; &lt;username&gt; &lt;password&gt;</code>",
@@ -1388,8 +1512,8 @@ def get_translate(target: str, lang_iso: str | None = None) -> str | Any:
     for key in target.split("."):
         result = result[key]
 
-    user = request.user
-    lang_iso: str = lang_iso or (user.settings.lang if user else "en")
+    entity = request.entity
+    lang_iso: str = lang_iso or (entity.settings.lang if entity else "en")
     try:
         return result[lang_iso]
     except KeyError:

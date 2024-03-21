@@ -12,6 +12,7 @@ from telebot import formatting
 # noinspection PyPackageRequirements
 from telebot.types import InlineKeyboardButton, InputMediaPhoto, Message
 
+import tgbot.dispatcher
 from tgbot.bot import bot
 from tgbot.queries import queries
 from tgbot.request import request
@@ -101,7 +102,7 @@ def menu_message() -> TextMessage:
         [
             {f"⚙️ {translate_Settings}": "mns"},
             {f"🗑 {translate_wastebasket}": "mnb"}
-            if is_premium_user(request.user)
+            if (request.is_user and request.entity.is_premium) or (request.is_group and ...)
             else {},
         ],
         [{f"😎 {translate_admin}": "mnad"}] if is_secure_chat(request.query) else [],
@@ -1177,7 +1178,7 @@ def user_message(user_id: int) -> TextMessage | None:
     if not is_admin_id(request.user.user_id):
         return None
 
-    if not all(request.user.check_user(user_id)):
+    if not all(tgbot.dispatcher.process_account(user_id)):
         text = f"""👤 User 👤
 user_id: {user_id}
 

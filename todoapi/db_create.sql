@@ -15,14 +15,14 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS groups (
     group_id          TEXT PRIMARY KEY NOT NULL,
-    user_id           INT  UNIQUE NOT NULL,  -- владелец группы
-    chat_id           INT  UNIQUE DEFAULT NULL,
-    token             TEXT UNIQUE NOT NULL,
     name              TEXT NOT NULL,  -- Название группы
-    icon              BLOB DEFAULT NULL,
-    max_event_id      INT  DEFAULT (1),
+    token             TEXT UNIQUE NOT NULL,
     token_create_time TEXT NOT NULL DEFAULT (DATETIME()),
-    FOREIGN KEY (user_id) REFERENCES users(user_id)
+    admin_user_id     INT  UNIQUE NOT NULL,  -- владелец группы
+    max_event_id      INT  DEFAULT (1),
+    icon              BLOB DEFAULT NULL,
+    chat_id           INT  UNIQUE DEFAULT NULL,
+    FOREIGN KEY (admin_user_id) REFERENCES users(user_id)
 );
 
 CREATE TABLE IF NOT EXISTS members (
@@ -68,8 +68,8 @@ CREATE TABLE IF NOT EXISTS tg_settings (
 ------------------------------------------------------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS events (
-    user_id             INT  UNIQUE,
-    group_id            TEXT UNIQUE,
+    user_id             INT,
+    group_id            TEXT,
     event_id            INT  NOT NULL,
     date                TEXT NOT NULL,
     text                TEXT NOT NULL,
@@ -78,7 +78,12 @@ CREATE TABLE IF NOT EXISTS events (
     recent_changes_time TEXT DEFAULT '',
     removal_time        TEXT DEFAULT '',
     history             TEXT DEFAULT '[]',
-    UNIQUE (user_id, group_id, event_id),
+    CHECK (
+        (user_id IS NOT NULL AND group_id IS NULL) OR
+        (user_id IS NULL AND group_id IS NOT NULL)
+    ),
+    UNIQUE (user_id, event_id),
+    UNIQUE (group_id, event_id),
     FOREIGN KEY (user_id) REFERENCES users(user_id),
     FOREIGN KEY (group_id) REFERENCES groups(group_id)
 );
@@ -92,7 +97,12 @@ CREATE TABLE IF NOT EXISTS media (
     media           BLOB NOT NULL,
     url             TEXT DEFAULT '',
     url_create_time TEXT DEFAULT '',
-    UNIQUE (media_id, group_id, event_id),
+    CHECK (
+        (user_id IS NOT NULL AND group_id IS NULL) OR
+        (user_id IS NULL AND group_id IS NOT NULL)
+    ),
+    UNIQUE (user_id, event_id),
+    UNIQUE (group_id, event_id),
     FOREIGN KEY (user_id, group_id, event_id) REFERENCES events(user_id, group_id, event_id),
     FOREIGN KEY (user_id) REFERENCES users(user_id),
     FOREIGN KEY (group_id) REFERENCES groups(group_id)

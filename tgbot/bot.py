@@ -69,23 +69,21 @@ def bot_log_info():
     )
 
 
-def set_bot_commands(
-    chat_id: int | None = None, user_status: int | None = None, lang: str | None = None
-) -> bool:
+def set_bot_commands(chat_id: int | None = None, status: int | None = None, lang: str | None = None) -> bool:
     """
     Ставит список команд для пользователя chat_id
     """
-    if not user_status:
-        user_status = request.user.user_status
+    if not status:
+        status = request.user.user_status
 
     if not lang:
-        lang = request.user.settings.lang
+        lang = request.entity.settings.lang
 
     # Переделать на проверку user-а
-    if is_admin_id(chat_id or request.chat_id) and user_status != -1:
-        user_status = 2
+    if is_admin_id(chat_id or request.chat_id) and status != -1:
+        status = 2
 
-    target = f"buttons.commands.{user_status}"
+    target = f"buttons.commands.{status}"
 
     try:
         return bot.set_my_commands(

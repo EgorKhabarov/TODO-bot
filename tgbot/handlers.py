@@ -98,10 +98,11 @@ def not_login_handler(message: Message) -> None:
             try:
                 user = User.get_user_from_password(username, password)
                 user.set_user_telegram_chat_id(message.chat.id)
-            except ApiError:
-                bot.reply_to(message, get_translate("text.failure"))
+            except ApiError as e:
+                print(e)
+                bot.reply_to(message, get_translate("errors.failure"))
             else:
-                bot.send_message(message.chat.id, get_translate("text.success"))
+                bot.send_message(message.chat.id, get_translate("errors.success"))
                 bot.delete_message(message.chat.id, message.message_id)
 
     elif message.text.startswith("/signup"):
@@ -121,16 +122,18 @@ def not_login_handler(message: Message) -> None:
             print(f"/signup {email} {username} {password}")
             try:
                 User.create_user(email, username, password)
-            except ApiError:
-                bot.reply_to(message, get_translate("text.failure"))
+            except ApiError as e:
+                print(e)
+                bot.reply_to(message, get_translate("failure.failure"))
             else:
                 try:
                     user = User.get_user_from_password(username, password)
                     user.set_user_telegram_chat_id(message.chat.id)
-                except ApiError:
-                    bot.reply_to(message, get_translate("text.failure"))
+                except ApiError as e:
+                    print(e)
+                    bot.reply_to(message, get_translate("errors.failure"))
                 else:
-                    bot.send_message(message.chat.id, get_translate("text.success"))
+                    bot.send_message(message.chat.id, get_translate("errors.success"))
                     bot.delete_message(message.chat.id, message.message_id)
 
 
@@ -140,8 +143,7 @@ def command_handler(message: Message) -> None:
     Метод message.text.startswith("")
     используется и для групп (в них сообщение приходит в формате /command{bot.user.username})
     """
-    user, chat_id = request.user, request.chat_id
-    settings, message_text = user.settings, message.text
+    chat_id, message_text = request.chat_id, message.text
     parsed_command = parse_command(message_text, {"arg": "long str"})
     # TODO Local variable `command_arguments` is assigned to but never used
     command_text, command_arguments = (
@@ -177,7 +179,7 @@ def command_handler(message: Message) -> None:
     elif command_text in ("weather", "forecast"):
         # Проверяем есть ли аргументы
         nowcity = get_command_arguments(
-            message_text, {"city": ("long str", settings.city)}
+            message_text, {"city": ("long str", request.entity.settings.city)}
         )["city"]
 
         func = fetch_weather if command_text == "weather" else fetch_forecast
@@ -262,7 +264,7 @@ def command_handler(message: Message) -> None:
         if file_format not in ("csv", "xml", "json", "jsonl"):
             return TextMessage(get_translate("errors.export_format")).reply(message)
 
-        response, file = user.export_data(
+        response, file = request.entity.export_data(
             f"events_{now_time():%Y-%m-%d_%H-%M-%S}.{file_format}",
             f"{file_format}",
         )
@@ -320,6 +322,11 @@ def command_handler(message: Message) -> None:
             text += admin_commands
 
         TextMessage(text).send(chat_id)
+
+    elif command_text == "logout":
+        if request.entity_type == "user":
+            request.entity.set_user_telegram_chat_id(None)
+            bot.reply_to(message, get_translate("errors.success"))
 
 
 def callback_handler(call: CallbackQuery):
@@ -537,7 +544,7 @@ def callback_handler(call: CallbackQuery):
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
 
-    elif call_prefix == "mnb" and is_premium_user(request.user):  # bin
+    elif call_prefix == "mnb" and ((request.is_user and request.entity.is_premium) or (request.is_group and ...)):  # bin
         try:
             trash_can_message().edit(chat_id, message_id)
         except ApiTelegramException:

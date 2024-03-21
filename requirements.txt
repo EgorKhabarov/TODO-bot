@@ -7,3 +7,4 @@ vedis~=0.7.1
 Flask~=2.3.2
 cachetools~=5.3.0
 PyYAML~=6.0
+oauthlib~=3.2.2

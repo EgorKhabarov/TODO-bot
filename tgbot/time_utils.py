@@ -9,8 +9,8 @@ def now_time() -> datetime:
     """
     Возвращает datetime.utcnow() с учётом часового пояса пользователя
     """
-    user = request.user
-    return datetime.utcnow() + timedelta(hours=user.settings.timezone if user else 0)
+    entity = request.entity
+    return datetime.utcnow() + timedelta(hours=entity.settings.timezone if entity else 0)
 
 
 def now_time_strftime() -> str:

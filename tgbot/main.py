@@ -1,15 +1,14 @@
 import atexit
 from time import sleep
-from functools import wraps
 from threading import Thread
 
 import requests
-from cachetools import LRUCache
 
 # noinspection PyPackageRequirements
 from telebot.types import CallbackQuery, Message, BotCommandScopeDefault
 
 import config
+from tgbot.dispatcher import process_account
 from tgbot.request import request
 from tgbot.queries import queries
 from tgbot.lang import get_translate
@@ -17,19 +16,15 @@ from tgbot.time_utils import now_time
 from tgbot.bot import bot, bot_log_info
 from tgbot.buttons_utils import delmarkup
 from tgbot.bot_actions import delete_message_action
-from tgbot.message_generator import TextMessage, CallBackAnswer
-from tgbot.utils import poke_link, re_edit_message, html_to_markdown, rate_limit
-from tgbot.handlers import command_handler, callback_handler, not_login_handler, reply_handler, clear_state
+from tgbot.utils import poke_link, re_edit_message, html_to_markdown
+from tgbot.handlers import command_handler, callback_handler, reply_handler, clear_state
 from tgbot.bot_messages import (
     search_message,
     send_notifications_messages,
     confirm_changes_message,
 )
-from todoapi.api import Api
-from todoapi.exceptions import UserNotFound
-from todoapi.types import db, User
+from todoapi.types import db
 from todoapi.logger import logging
-from todoapi.utils import is_admin_id
 from todoapi.log_cleaner import clear_logs
 from todoapi.db_creator import create_tables
 from telegram_utils.command_parser import command_regex
@@ -39,111 +34,23 @@ create_tables()
 logging.info(bot_log_info())
 bot.set_my_commands(get_translate("buttons.commands.0", "ru"), BotCommandScopeDefault())
 command_regex.set_username(bot.user.username)
-rate_limit_200_1800 = LRUCache(maxsize=100)
-rate_limit_30_60 = LRUCache(maxsize=100)
-rate_limit_else = LRUCache(maxsize=100)
-
-
-def key_func(x: Message | CallbackQuery) -> int:
-    return (x if isinstance(x, Message) else x.message).chat.id
-
-
-@rate_limit(
-    rate_limit_else,
-    10,
-    60,
-    lambda *args, **kwargs: request.user.user_id,
-    lambda *args, **kwargs: None,
-)
-def else_func(args, kwargs, key, sec) -> None:
-    x = kwargs.get("x") or args[0]
-    text = get_translate("errors.many_attempts").format(sec)
-
-    if isinstance(x, CallbackQuery):
-        func, arg = CallBackAnswer(text).answer, x.id
-    else:
-        func, arg = TextMessage(text).send, key
-
-    func(arg)
-
-
-def check_user(func):
-    @wraps(func)
-    def check_argument(_x: Message | CallbackQuery):
-        if isinstance(_x, Message):
-            # TODO migrate_to_chat_id
-            if _x.content_type != "migrate_to_chat_id" and (
-                _x.text.startswith("/") and not command_regex.match(_x.text)
-            ):
-                # Если команда будет обращена к другим ботам, то не реагировать
-                return
-        elif isinstance(_x, CallbackQuery):
-            if _x.data == "None":
-                return
-        else:
-            return
-
-        @rate_limit(rate_limit_200_1800, 200, 60 * 30, key_func, else_func)
-        @rate_limit(rate_limit_30_60, 30, 60, key_func, else_func)
-        def wrapper(x: Message | CallbackQuery):
-            if isinstance(x, Message):
-                message = x
-                chat_id = message.chat.id
-                # TODO migrate_to_chat_id
-                if x.content_type != "migrate_to_chat_id" and (
-                    x.text.startswith("/") and not command_regex.match(_x.text)
-                ):
-                    return
-            elif isinstance(x, CallbackQuery):
-                message = x.message
-                chat_id = message.chat.id
-                if x.data == "None":
-                    return 0
-            else:
-                return
-
-            with db.connection(), db.cursor():
-                try:
-                    api = Api(
-                        "user" if message.chat.type == "private" else "group",
-                        chat_id=chat_id,
-                    )
-                except UserNotFound:
-                    if isinstance(x, Message) and message.chat.type == "private" and message.text.startswith(("/login", "/signup")):
-                        not_login_handler(x)
-                    else:
-                        bot.reply_to(message, get_translate("errors.no_account"))
-                else:
-                    if api.entity.user_status == -1 and not is_admin_id(chat_id):
-                        return
-
-                    if message.text.startswith("/logout"):
-                        user = User.get_user_from_telegram_chat_id(chat_id)
-                        user.set_user_telegram_chat_id(None)
-                        bot.reply_to(message, get_translate("text.success"))
-
-                    request.user = api.entity
-                    request.chat_id = chat_id
-                    request.query = x
-                    return func(x)
-
-        return wrapper(_x)
-
-    return check_argument
 
 
 def telegram_log(action: str, text: str):
     text = text.replace("\n", "\\n")
     thread_id = getattr(request.query, "message", request.query).message_thread_id
     logging.info(
-        f"[{request.user.user_id:<10}"
-        + (f":{thread_id}" if thread_id else "")
-        + f"][{request.user.user_status}] {action:<7} {text}"
+        f"[{request.entity_type.capitalize()}]"
+        f"[{request.entity.get_id():<10}"
+        f":{thread_id}" if thread_id else ""
+        f"]"
+        f"[{request.entity.user_status}]" if request.entity_type == "user" else ""
+        f" {action:<7} {text}"
     )
 
 
 @bot.message_handler(content_types=["migrate_to_chat_id"], chat_types=["group"])
-@check_user
+@process_account
 def migrate_chat(message: Message):
     logging.info(
         f"[{message.chat.id:<10}][{request.user.user_status}] "
@@ -171,7 +78,7 @@ def migrate_chat(message: Message):
 
 
 @bot.message_handler(commands=[*config.COMMANDS])
-@check_user
+@process_account
 def bot_command_handler(message: Message):
     """
     Ловит команды от пользователей
@@ -181,7 +88,7 @@ def bot_command_handler(message: Message):
 
 
 @bot.callback_query_handler(func=lambda call: call.data != "None")
-@check_user
+@process_account
 def bot_callback_query_handler(call: CallbackQuery):
     """
     Ловит нажатия на кнопки
@@ -193,7 +100,7 @@ def bot_callback_query_handler(call: CallbackQuery):
 @bot.message_handler(
     func=lambda m: m.text.startswith("#") and not m.text.startswith("#️⃣")
 )
-@check_user
+@process_account
 def processing_search_message(message: Message):
     """
     Ловит сообщения поиска
@@ -207,7 +114,7 @@ def processing_search_message(message: Message):
 
 
 @bot.message_handler(func=lambda m: re_edit_message.search(m.text))
-@check_user
+@process_account
 def processing_edit_message(message: Message):
     """
     Ловит сообщения для изменения событий
@@ -224,7 +131,7 @@ def processing_edit_message(message: Message):
         and m.reply_to_message.from_user.id == bot.user.id
     )
 )
-@check_user
+@process_account
 def processing_reply_to_message(message: Message):
     """
     Ловит сообщения ответ на сообщение бота с настройками
@@ -242,7 +149,7 @@ def add_event_func(msg) -> int:
 
 
 @bot.message_handler(func=add_event_func)
-@check_user
+@process_account
 def add_event_handler(message: Message):
     """
     Ловит сообщение если пользователь хочет добавить событие
