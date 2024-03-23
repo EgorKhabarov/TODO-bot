@@ -310,6 +310,18 @@ Please call up new messages using commands.</b>
             "ru": "Вы точно хотите изменить тест события на",
             "en": "Are you sure you want to change the event text to",
         },
+        "edit_username": {
+            "ru": "Изменить имя пользователя",
+            "en": "Change username",
+        },
+        "edit_password": {
+            "ru": "Изменить пароль",
+            "en": "Change password",
+        },
+        "logout": {
+            "ru": "Выйти",
+            "en": "Logout",
+        },
     },
     "messages": {
         "start": {
@@ -1358,8 +1370,18 @@ Visibility <b>{}</b>m""",
             "en": "You can't log into your account in a group.",
         },
         "no_account": {
-            "ru": "Вы не вошли в аккаунт. Войдите\n<code>/login &lt;username&gt; &lt;password&gt;</code>\nили создайте аккаунт\n<code>/signup &lt;email&gt; &lt;username&gt; &lt;password&gt;</code>",
-            "en": "You are not logged in to your account. Login\n<code>/login &lt;username&gt; &lt;password&gt;</code>\nor create an account\n<code>/signup &lt;email&gt; &lt;username&gt; &lt;password&gt;</code>",
+            "ru": """
+Вы не вошли в аккаунт. Войдите
+<code>/login </code>&lt;username&gt; &lt;password&gt;
+или создайте аккаунт
+<code>/signup </code>&lt;email&gt; &lt;username&gt; &lt;password&gt;
+""",
+            "en": """
+You are not logged in to your account. Login
+<code>/login </code>&lt;username&gt; &lt;password&gt;
+or create an account
+<code>/signup </code>&lt;email&gt; &lt;username&gt; &lt;password&gt;
+""",
         },
         "many_attempts": {
             "ru": "Извините, слишком много обращений. Пожалуйста, повторите попытку через {} секунд.",
@@ -1512,8 +1534,8 @@ def get_translate(target: str, lang_iso: str | None = None) -> str | Any:
     for key in target.split("."):
         result = result[key]
 
-    entity = request.entity
-    lang_iso: str = lang_iso or (entity.settings.lang if entity else "en")
+    lang_iso: str = lang_iso or (request.entity.settings.lang if request.entity else "en")
+
     try:
         return result[lang_iso]
     except KeyError:
@@ -1526,7 +1548,7 @@ def get_theme_emoji(target: Literal["back", "add", "del"]) -> str:
 
     add
     """
-    theme: int = request.user.settings.theme
+    theme: int = request.entity.settings.theme
     match target:
         case "back":
             match theme:

@@ -18,11 +18,11 @@ CREATE TABLE IF NOT EXISTS groups (
     name              TEXT NOT NULL,  -- Название группы
     token             TEXT UNIQUE NOT NULL,
     token_create_time TEXT NOT NULL DEFAULT (DATETIME()),
-    admin_user_id     INT  UNIQUE NOT NULL,  -- владелец группы
+    owner_id          INT  UNIQUE NOT NULL,  -- владелец группы
     max_event_id      INT  DEFAULT (1),
     icon              BLOB DEFAULT NULL,
     chat_id           INT  UNIQUE DEFAULT NULL,
-    FOREIGN KEY (admin_user_id) REFERENCES users(user_id)
+    FOREIGN KEY (owner_id) REFERENCES users(user_id)
 );
 
 CREATE TABLE IF NOT EXISTS members (
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS users_settings (
     user_id            INT  UNIQUE NOT NULL,
     lang               TEXT DEFAULT 'ru',
     sub_urls           INT  CHECK (sub_urls IN (0, 1)) DEFAULT (1),
-    city               TEXT DEFAULT 'Москва',
+    city               TEXT DEFAULT 'Moscow',
     timezone           INT  CHECK (-13 < timezone < 13) DEFAULT (3),
     direction          TEXT CHECK (direction IN ('DESC', 'ASC')) DEFAULT 'DESC',
     notifications      INT  CHECK (notifications IN (0, 1)) DEFAULT (0),
@@ -54,13 +54,13 @@ CREATE TABLE IF NOT EXISTS tg_settings (
     group_id           TEXT UNIQUE,
     lang               TEXT DEFAULT 'ru',
     sub_urls           INT  CHECK (sub_urls IN (0, 1)) DEFAULT (1),
-    city               TEXT DEFAULT 'Москва',
+    city               TEXT DEFAULT 'Moscow',
     timezone           INT  CHECK (-13 < timezone < 13) DEFAULT (3),
     direction          TEXT CHECK (direction IN ('DESC', 'ASC')) DEFAULT 'DESC',
     notifications      INT  CHECK (notifications IN (0, 1)) DEFAULT (0),
     notifications_time TEXT DEFAULT '08:00',
     theme              INT  DEFAULT (0),
-    add_event_date     INT  DEFAULT "",
+    add_event_date     TEXT DEFAULT "",
     FOREIGN KEY (user_id) REFERENCES users(user_id),
     FOREIGN KEY (group_id) REFERENCES groups(group_id)
 );
@@ -75,8 +75,8 @@ CREATE TABLE IF NOT EXISTS events (
     text                TEXT NOT NULL,
     status              TEXT DEFAULT '⬜️',
     adding_time         TEXT DEFAULT (DATETIME()),
-    recent_changes_time TEXT DEFAULT '',
-    removal_time        TEXT DEFAULT '',
+    recent_changes_time TEXT DEFAULT NULL,
+    removal_time        TEXT DEFAULT NULL,
     history             TEXT DEFAULT '[]',
     CHECK (
         (user_id IS NOT NULL AND group_id IS NULL) OR
@@ -127,9 +127,9 @@ BEGIN
     DELETE FROM media WHERE user_id = OLD.user_id OR group_id = OLD.group_id;
     DELETE FROM users_settings WHERE user_id = OLD.user_id;
     -- Порядок важен!
-    DELETE FROM tg_settings WHERE user_id = OLD.user_id OR group_id IN (SELECT group_id FROM groups WHERE user_id = OLD.user_id);
-    DELETE FROM members WHERE group_id IN (SELECT group_id FROM groups WHERE user_id = OLD.user_id);
-    DELETE FROM groups WHERE user_id = OLD.user_id;
+    DELETE FROM tg_settings WHERE user_id = OLD.user_id OR group_id IN (SELECT group_id FROM groups WHERE owner_id = OLD.owner_id);
+    DELETE FROM members WHERE group_id IN (SELECT group_id FROM groups WHERE owner_id = OLD.owner_id);
+    DELETE FROM groups WHERE owner_id = OLD.owner_id;
 END;
 
 -- Триггер обновления времени последнего изменения токена
@@ -173,7 +173,7 @@ CREATE TRIGGER IF NOT EXISTS trigger_add_group_member
 AFTER INSERT ON groups FOR EACH ROW
 BEGIN
     INSERT INTO members (group_id, user_id, entry_date)
-    VALUES (NEW.group_id, NEW.user_id, DATETIME());
+    VALUES (NEW.group_id, NEW.owner_id, DATETIME());
 END;
 
 -- При удалении группы, удаляем все строки из members связанные с этой группой.

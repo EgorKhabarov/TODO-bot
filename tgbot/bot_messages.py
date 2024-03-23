@@ -12,7 +12,6 @@ from telebot import formatting
 # noinspection PyPackageRequirements
 from telebot.types import InlineKeyboardButton, InputMediaPhoto, Message
 
-import tgbot.dispatcher
 from tgbot.bot import bot
 from tgbot.queries import queries
 from tgbot.request import request
@@ -32,6 +31,7 @@ from tgbot.buttons_utils import (
     encode_id,
     edit_button_data,
 )
+from tgbot.types import get_user_from_chat_id
 from tgbot.utils import (
     sqlite_format_date2,
     is_secure_chat,
@@ -39,14 +39,9 @@ from tgbot.utils import (
     re_edit_message,
     highlight_text_difference,
 )
-from todoapi.api import User
+from todoapi.exceptions import EventNotFound, GroupNotFound
 from todoapi.types import db, string_status, Event
-from todoapi.utils import (
-    sqlite_format_date,
-    is_valid_year,
-    is_admin_id,
-    is_premium_user,
-)
+from todoapi.utils import sqlite_format_date, is_valid_year, is_admin_id
 from telegram_utils.buttons_generator import generate_buttons
 
 
@@ -93,7 +88,7 @@ def menu_message() -> TextMessage:
         ],
         [
             {f"👤 {translate_account}": "mna"},
-            {f"👥 {translate_groups}": "mngr"},
+            {f"👥 {translate_groups}": "mngrs"},
         ],
         [
             {f"📆 {translate_seven_days}": "pw"},
@@ -102,7 +97,7 @@ def menu_message() -> TextMessage:
         [
             {f"⚙️ {translate_Settings}": "mns"},
             {f"🗑 {translate_wastebasket}": "mnb"}
-            if (request.is_user and request.entity.is_premium) or (request.is_group and ...)
+            if (request.is_user and request.entity.is_premium) or (request.is_member and ...)
             else {},
         ],
         [{f"😎 {translate_admin}": "mnad"}] if is_secure_chat(request.query) else [],
@@ -114,7 +109,7 @@ def settings_message() -> TextMessage:
     """
     Ставит настройки для пользователя chat_id
     """
-    settings = request.user.settings
+    settings = request.entity.settings
     not_lang = "ru" if settings.lang == "en" else "en"
     not_sub_urls = 1 if settings.sub_urls == 0 else 0
     not_direction_smile = {"DESC": "⬆️", "ASC": "⬇️"}[settings.direction]
@@ -232,11 +227,18 @@ def daily_message(
     """
     if isinstance(date, str):
         date = datetime.strptime(date, "%d.%m.%Y")
-    WHERE = (
-        f"user_id = {request.user.user_id} "
-        f"AND date = '{date:%d.%m.%Y}' "
-        f"AND removal_time = 0"
-    )
+
+    WHERE = """
+user_id IS :user_id
+AND group_id IS :group_id
+AND date = :date
+AND removal_time IS NULL
+"""
+    params = {
+        "user_id": request.entity.safe_user_id,
+        "group_id": request.entity.group_id,
+        "date": f"{date:%d.%m.%Y}",
+    }
 
     y = date - timedelta(days=1)
     t = date + timedelta(days=1)
@@ -262,10 +264,10 @@ def daily_message(
     generated = EventsMessage(f"{date:%d.%m.%Y}", markup=markup, page=page)
 
     if id_list:
-        generated.get_page_events(WHERE, id_list)
+        generated.get_page_events(WHERE, params, id_list)
     else:
         generated.get_pages_data(
-            WHERE, lambda np, ids: f"pd {date:%d.%m.%Y} {np} {ids}"
+            WHERE, params, lambda np, ids: f"pd {date:%d.%m.%Y} {np} {ids}"
         )
 
     string_id = encode_id([event.event_id for event in generated.event_list])
@@ -284,8 +286,7 @@ def daily_message(
         for x in db.execute(
             queries["select recurring_events"],
             params={
-                "user_id": request.user.user_id,
-                "date": f"{date:%d.%m.%Y}",
+                **params,
                 "y_date": f"{date:%d.%m}.____",
                 "m_date": f"{date:%d}.__.____",
             },
@@ -367,8 +368,16 @@ def events_message(
     Сообщение для взаимодействия с одним событием
     """
     generated = EventsMessage()
-    WHERE = "removal_time != 0" if is_in_wastebasket else "removal_time = 0"
-    generated.get_page_events(WHERE, id_list)
+    WHERE = f"""
+user_id IS :user_id
+AND group_id IS :group_id
+AND removal_time IS {'NOT' if is_in_wastebasket else ''} NULL
+"""
+    params = {
+        "user_id": request.entity.safe_user_id,
+        "group_id": request.entity.group_id,
+    }
+    generated.get_page_events(WHERE, params, id_list)
     date = generated.event_list[0].date if generated.event_list else ""
     string_id = encode_id(id_list)
 
@@ -472,9 +481,7 @@ def confirm_changes_message(message: Message) -> None | int:
 
     # Вычисляем сколько символов добавил пользователь. Если символов стало меньше, то 0.
     added_length = 0 if tag_len_less else new_event_len - len_old_event
-    tag_limit_exceeded = (
-        request.user.check_limit(event.date, symbol_count=added_length)[1] is True
-    )
+    tag_limit_exceeded = request.entity.limit.is_exceeded_for_events(date=event.date, symbol_count=added_length)
 
     if tag_len_max or tag_limit_exceeded:
         if tag_len_max:
@@ -541,7 +548,9 @@ def recurring_events_message(
     :param page: Номер страницы
     """
     WHERE = f"""
-user_id = {request.user.user_id} AND removal_time = 0
+user_id IS :user_id
+AND group_id IS :group_id
+AND removal_time IS NULL
 AND 
 (
     ( -- Каждый год
@@ -571,15 +580,20 @@ AND
     )
 )
 """
+    params = {
+        "user_id": request.entity.safe_user_id,
+        "group_id": request.entity.group_id,
+    }
+
     backopenmarkup = generate_buttons(
         [[{get_theme_emoji("back"): f"pd {date}"}, {"↖️": "None"}]]
     )
     generated = EventsMessage(date, markup=backopenmarkup, page=page)
 
     if id_list:
-        generated.get_page_events(WHERE, id_list)
+        generated.get_page_events(WHERE, params, id_list)
     else:
-        generated.get_pages_data(WHERE, lambda np, ids: f"pr {date} {np} {ids}")
+        generated.get_pages_data(WHERE, params, lambda np, ids: f"pr {date} {np} {ids}")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.markup, 0, 1, f"se o {string_id} pr {date}")
@@ -675,8 +689,16 @@ def edit_events_date_message(
 ) -> EventsMessage:
     if date is None:
         date = now_time()
+    WHERE = """
+user_id IS :user_id
+AND group_id IS :group_id
+"""
+    params = {
+        "user_id": request.entity.safe_user_id,
+        "group_id": request.entity.group_id,
+    }
     generated = EventsMessage()
-    generated.get_page_events("1", id_list)
+    generated.get_page_events(WHERE, params, id_list)
     generated.format(
         title=f"<b>{get_translate('select.what_do_with_events')}:</b>",
         args=event_formats["r"],
@@ -701,15 +723,12 @@ def before_event_delete_message(event_id: int) -> EventMessage | None:
 
     delete_permanently = get_translate("text.delete_permanently")
     trash_bin = get_translate("text.trash_bin")
-    is_wastebasket_available = request.user.user_status == 1 or is_admin_id(
-        request.user.user_id
-    )
     markup = generate_buttons(
         [
             [
                 {f"❌ {delete_permanently}": f"ed {event.event_id} {event.date}"},
                 {f"🗑 {trash_bin}": f"edb {event.event_id} {event.date}"}
-                if is_wastebasket_available
+                if request.entity.is_premium
                 else {},
             ],
             [{get_theme_emoji("back"): f"em {event_id}"}],
@@ -726,12 +745,19 @@ def before_events_delete_message(id_list: list[int]) -> EventsMessage:
     Генерирует сообщение с кнопками удаления,
     удаления в корзину (для премиум) и изменения даты.
     """
+    WHERE = """
+user_id IS :user_id
+AND group_id IS :group_id
+AND removal_time IS NULL
+"""
+    params = {
+        "user_id": request.entity.safe_user_id,
+        "group_id": request.entity.group_id,
+    }
     generated = EventsMessage()
-    generated.get_page_events("removal_time = 0", id_list)
+    generated.get_page_events(WHERE, params, id_list)
 
-    is_wastebasket_available = request.user.user_status == 1 or is_admin_id(
-        request.user.user_id
-    )
+    is_wastebasket_available = request.entity.is_premium
     string_id = encode_id(id_list)
     date = generated.event_list[0].date if generated.event_list else ""
     delete_permanently = get_translate("text.delete_permanently")
@@ -790,14 +816,21 @@ def search_message(
         f"status LIKE '%{x}%' OR event_id LIKE '%{x}%'"
         for x in query.replace("\n", " ").strip().split()
     )
-    WHERE = (
-        f"(user_id = {request.user.user_id} AND removal_time = 0) AND ({splitquery})"
-    )
+    WHERE = f"""
+user_id IS :user_id
+AND group_id IS :group_id
+AND removal_time IS NULL
+AND ({splitquery})
+"""
+    params = {
+        "user_id": request.entity.safe_user_id,
+        "group_id": request.entity.group_id,
+    }
 
     if id_list:
-        generated.get_page_events(WHERE, id_list)
+        generated.get_page_events(WHERE, params, id_list)
     else:
-        generated.get_pages_data(WHERE, lambda np, ids: f"ps {np} {ids}")
+        generated.get_pages_data(WHERE, params, lambda np, ids: f"ps {np} {ids}")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.markup, 0, 2, f"se os {string_id} us")
@@ -817,9 +850,12 @@ def week_event_list_message(
     :param id_list: Список из event_id
     :param page: Номер страницы
     """
-    tz = f"'{request.user.settings.timezone:+} hours'"
+    tz = f"'{request.entity.settings.timezone:+} hours'"
     WHERE = f"""
-(user_id = {request.user.user_id} AND removal_time = 0) AND (
+user_id IS :user_id
+AND group_id IS :group_id
+AND removal_time IS NULL
+AND (
     (
         {sqlite_format_date('date')}
         BETWEEN DATE('now', {tz})
@@ -848,16 +884,21 @@ def week_event_list_message(
     OR status LIKE '%📬%' -- Каждый день
 )
     """
+    params = {
+        "user_id": request.entity.safe_user_id,
+        "group_id": request.entity.group_id,
+    }
 
     markup = generate_buttons(
         [[{get_theme_emoji("back"): "mnm"}, {"🔄": "mnw"}, {"↖️": "None"}]]
     )
     generated = EventsMessage(markup=markup, page=page)
     if id_list:
-        generated.get_page_events(WHERE, id_list)
+        generated.get_page_events(WHERE, params, id_list)
     else:
         generated.get_pages_data(
             WHERE=WHERE,
+            params=params,
             callback_data=lambda np, ids: f"pw {np} {ids}",
             column=(
                 "DAYS_BEFORE_EVENT(date, status), "
@@ -881,7 +922,15 @@ def trash_can_message(id_list: list[int] = (), page: int | str = 0) -> EventsMes
     :param id_list: Список из event_id
     :param page: Номер страницы
     """
-    WHERE = f"user_id = {request.user.user_id} AND removal_time != 0"
+    WHERE = f"""
+user_id IS :user_id
+AND group_id IS :group_id
+AND removal_time IS NOT NULL
+"""
+    params = {
+        "user_id": request.entity.safe_user_id,
+        "group_id": request.entity.group_id,
+    }
     # Удаляем события старше 30 дней
     db.execute(queries["delete events_older_30_days"], commit=True)
 
@@ -899,9 +948,9 @@ def trash_can_message(id_list: list[int] = (), page: int | str = 0) -> EventsMes
     generated = EventsMessage(markup=markup, page=page)
 
     if id_list:
-        generated.get_page_events(WHERE, id_list)
+        generated.get_page_events(WHERE, params, id_list)
     else:
-        generated.get_pages_data(WHERE, lambda np, ids: f"pb {np} {ids}")
+        generated.get_pages_data(WHERE, params, lambda np, ids: f"pb {np} {ids}")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.markup, 0, 0, f"se b {string_id} mnb")
@@ -927,13 +976,11 @@ def notification_message(
     dates = [n_date + timedelta(days=days) for days in (0, 1, 2, 3, 7)]
     weekdays = ["0" if (w := date.weekday()) == 6 else f"{w + 1}" for date in dates[:2]]
     WHERE = f"""
-user_id = {request.user.user_id}
-AND
-removal_time = 0
-AND
-status NOT LIKE '%🔕%'
-AND
-(
+user_id IS :user_id
+AND group_id IS :group_id
+AND removal_time IS NULL
+AND status NOT LIKE '%🔕%'
+AND (
     ( -- На сегодня и +1 день
         date IN ('{dates[0]:%d.%m.%Y}', '{dates[1]:%d.%m.%Y}')
     )
@@ -969,6 +1016,11 @@ AND
     )
 )
     """
+    params = {
+        "user_id": request.entity.safe_user_id,
+        "group_id": request.entity.group_id,
+    }
+
     markup = generate_buttons(
         [
             [
@@ -981,10 +1033,11 @@ AND
 
     generated = EventsMessage(markup=markup, page=page)
     if id_list:
-        generated.get_page_events(WHERE, id_list)
+        generated.get_page_events(WHERE, params, id_list)
     else:
         generated.get_pages_data(
             WHERE=WHERE,
+            params=params,
             callback_data=lambda np, ids: f"pn {n_date:%d.%m.%Y} {np} {ids}",
             column=(
                 "DAYS_BEFORE_EVENT(date, status), "
@@ -1024,17 +1077,17 @@ def send_notifications_messages() -> None:
 
     for user_id in user_id_list:
         # TODO обработать ошибку в случае если user не найден
-        request.user = User(user_id)
+        request.entity = User(user_id)
 
-        if request.user.settings.notifications:
+        if request.entity.settings.notifications:
             generated = notification_message(from_command=True)
             if generated and generated.event_list:
                 try:
-                    generated.send(request.user.user_id)
+                    generated.send(request.entity.user_id)
                     status = "Ok"
                 except ApiTelegramException:
                     status = "Error"
-                logging.info(f"notifications -> {request.user.user_id} -> {status}")
+                logging.info(f"notifications -> {request.entity.user_id} -> {status}")
 
 
 def monthly_calendar_message(
@@ -1078,7 +1131,7 @@ def limits_message(
 
 
 def admin_message(page: int = 1) -> TextMessage:
-    if not is_admin_id(request.user.user_id):
+    if not request.entity.is_admin:
         text = "you are not admin\n"
         markup = generate_buttons([[{get_theme_emoji("back"): "mnm"}]])
     else:
@@ -1102,14 +1155,17 @@ m - max events count</i>
         users = db.execute(
             """
 SELECT user_id,
+       chat_id,
        user_status,
-       user_max_event_id - 1 as user_max_event_id,
+       username,
+       max_event_id - 1 as max_event_id,
        (
           SELECT COUNT(event_id)
             FROM events
-           WHERE settings.user_id = events.user_id
-       ) as event_count
-  FROM settings
+           WHERE users.user_id = events.user_id
+       ) as event_count,
+       reg_date
+  FROM users
  LIMIT 11
 OFFSET :page;
 """,
@@ -1120,24 +1176,31 @@ OFFSET :page;
         markup = generate_buttons(
             [
                 *[
-                    [{user: f"mnau {user_id}"}]
-                    for user, user_id in (
+                    [{user: f"mnau {chat_id}"}]
+                    for user, chat_id in (
                         (
                             template.format(
                                 user_id,
+                                chat_id,
                                 (
                                     string_status[2]
-                                    if is_admin_id(user_id)
+                                    if is_admin_id(chat_id)
                                     else string_status[user_status]
                                 )[0],
                                 event_count,
-                                user_event_count,
+                                max_event_id,
                             ),
-                            user_id,
+                            chat_id,
                         )
-                        for user_id, user_status, user_event_count, event_count in users[
-                            :10
-                        ]
+                        for (
+                            user_id,
+                            chat_id,
+                            user_status,
+                            username,
+                            max_event_id,
+                            event_count,
+                            reg_date,
+                        ) in users[:10]
                     )
                 ],
                 [
@@ -1161,7 +1224,7 @@ OFFSET :page;
     return TextMessage(text, markup)
 
 
-def user_message(user_id: int) -> TextMessage | None:
+def user_message(chat_id: int) -> TextMessage | None:
     """
     lang
     sub_urls
@@ -1175,43 +1238,44 @@ def user_message(user_id: int) -> TextMessage | None:
     add_event_date
     theme
     """
-    if not is_admin_id(request.user.user_id):
+
+    if not request.entity.is_admin:
         return None
 
-    if not all(tgbot.dispatcher.process_account(user_id)):
+    # TODO ???
+    if not chat_id:
         text = f"""👤 User 👤
-user_id: {user_id}
+chat_id: {chat_id}
 
 Error: "User Not Exist"
 """
         markup = generate_buttons([[{get_theme_emoji("back"): "mnad"}]])
         return TextMessage(text, markup)
 
-    user = User(user_id)
-    (events_count, user_max_event_id, recent_changes_time) = db.execute(
-        f"""
+    user = get_user_from_chat_id(chat_id)
+    (events_count, max_event_id, recent_changes_time) = db.execute(
+        """
 SELECT COUNT(event_id) as events_count,
        (
-           SELECT user_max_event_id - 1
-             FROM settings
-            WHERE settings.user_id = events.user_id
-       ) as user_max_event_id,
+           SELECT max_event_id - 1
+             FROM users
+            WHERE users.user_id = events.user_id
+       ) as max_event_id,
        IFNULL(
            MAX(MAX(recent_changes_time), MAX(adding_time)), "0"
        ) as recent_changes_time
   FROM events
- WHERE user_id = {user_id};
-"""
+ WHERE user_id = :user_id;
+""",
+        params={"user_id": user.user_id},
     )[0]
-    user_status = string_status[
-        2 if is_admin_id(user_id) else user.user_status
-    ]
+    user_status = string_status[2 if user.is_admin else user.user_status]
     text = f"""👤 User 👤
-user_id: {user_id}
-chat_id: <a href='tg://user?id={user_id}'>{user_id}</a>
+user_id: {user.user_id}
+chat_id: <a href='tg://user?id={user.chat_id}'>{user.chat_id}</a>
 
 <pre><code class='language-user info'>events count:  {events_count}
-max event_id:  {user_max_event_id or "0"}
+max event_id:  {max_event_id or "0"}
 last changes:  {parse_utc_datetime(recent_changes_time)}
 status:        {user_status}
 </code></pre><pre><code class='language-settings'>lang:          {user.settings.lang}
@@ -1226,32 +1290,53 @@ theme:         {'dark' if user.settings.theme else 'white'}</code></pre>
     markup = generate_buttons(
         [
             [
-                {"🗑": f"mnau {user_id} del"},
+                {"🗑": f"mnau {user.chat_id} del"},
                 {
                     f"{'🔔' if not user.settings.notifications else '🔕'}": (
-                        f"mnau {user_id} edit settings.notifications {int(not user.settings.notifications)}"
+                        f"mnau {user.chat_id} edit settings.notifications {int(not user.settings.notifications)}"
                     )
                 },
             ],
             [
-                {"ban": f"mnau {user_id} edit settings.status -1"},
-                {"normal": f"mnau {user_id} edit settings.status 0"},
-                {"premium": f"mnau {user_id} edit settings.status 1"},
+                {"ban": f"mnau {user.chat_id} edit settings.status -1"},
+                {"normal": f"mnau {user.chat_id} edit settings.status 0"},
+                {"premium": f"mnau {user.chat_id} edit settings.status 1"},
             ],
-            [{get_theme_emoji("back"): "mnad"}, {"🔄": f"mnau {user_id}"}],
+            [{get_theme_emoji("back"): "mnad"}, {"🔄": f"mnau {user.chat_id}"}],
         ]
     )
     return TextMessage(text, markup)
 
 
-def group_message() -> TextMessage:
-    groups = [][:5]  # request.user.get_groups()
+def group_message(group_id: str) -> TextMessage | None:
+    try:
+        group = request.entity.get_group(group_id)
+    except GroupNotFound:
+        return None
+
+    text = f"""
+👥 Group 👥
+
+<pre><code class='language-group info'>id:   {group.group_id}
+name: {group.name}</code></pre>
+"""
+    markup = generate_buttons(
+        [
+            [{"Telegram group": "None"}],
+            [{get_theme_emoji("back"): "mngrs"}],
+        ]
+    )
+    return TextMessage(text, markup)
+
+
+def groups_message() -> TextMessage:
+    groups = request.entity.groups
     if groups:
         string_groups = "\n\n".join(
             f"""
-id:   {group.group_id}
-name: {group.name}
-            """.strip()
+1) name: <code>{group.name}</code>
+     id: <code>{group.group_id}</code>
+""".strip()
             for group in groups
         )
         # TODO перевод
@@ -1263,36 +1348,37 @@ name: {group.name}
 {string_groups}
 """
         markup = [
-            *[[{f"id: {group.group_id}": "None"}] for group in groups],
-            [{"👥 Создать группу": "create_group"}] if len(groups) < 5 else [],
+            *[[{f"{group.name}": f"mngr {group.group_id}"}] for group in groups],
+            [{"👥 Создать группу": "crgb"}] if len(groups) < 5 else [],
             [{get_theme_emoji("back"): "mnm"}],
         ]
     else:
         text = "👥 Группы 👥\n\nУ вас групп: 0"
         markup = [
-            [{"👥 Создать группу": "create_group"}],
+            [{"👥 Создать группу": "crgb"}],
             [{get_theme_emoji("back"): "mnm"}],
         ]
     return TextMessage(text, generate_buttons(markup))
 
 
 def account_message() -> TextMessage:
-    email = "..."  # request.user.email
-    password = "..."  # request.user.password
-    string_email = "*" * len(email[:-3]) + email[-3:]
-    string_password = "*" * len(password)
     markup = [
-        [{"logout": "logout"}],
-        [{get_theme_emoji("back"): "mnm"}],
+        [{f"{get_translate('text.edit_username')}👤": "None"}],
+        [{f"{get_translate('text.edit_password')}🤫🔑": "None"}],
+        [
+            {get_theme_emoji("back"): "mnm"},
+            {f"{get_translate('text.logout')}🚪👈": "logout"},
+        ],
     ]
     # TODO перевод
     return TextMessage(
         f"""
 👤 Аккаунт 👤
 
-<pre><code class='language-account'>id:       {request.user.user_id}
-email:    {string_email}
-password: {string_password}</code></pre>
+<pre><code class='language-yaml'>id:       {request.entity.user_id}
+chat_id:  {request.entity.request_chat_id}
+username: {request.entity.username}
+reg_date: {request.entity.reg_date}</code></pre>
 """,
         generate_buttons(markup),
     )
@@ -1310,10 +1396,9 @@ def select_one_message(
     if len(id_list) == 0:
         return None
 
-    events_list = request.user.get_events(id_list, is_in_wastebasket)[1]
-
-    # Если событий нет
-    if len(events_list) == 0:
+    try:
+        events_list = request.entity.get_events(id_list, is_in_wastebasket)
+    except EventNotFound:
         return None
 
     # Если событие одно
@@ -1323,6 +1408,7 @@ def select_one_message(
             generated = daily_message(event.date)
         else:
             generated = event_message(event.event_id, is_in_wastebasket, message_id)
+
         return generated
 
     # Если событий несколько
@@ -1355,32 +1441,31 @@ def select_one_message(
 def select_events_message(
     id_list: list[int],
     back_data: str,
-    is_in_wastebasket: bool = False,
+    in_bin: bool = False,
     is_in_search: bool = False,
 ) -> TextMessage | None:
     # Если событий нет
     if len(id_list) == 0:
         return None
 
-    events_list = request.user.get_events(id_list, is_in_wastebasket)[1]
-
-    # Если событий нет
-    if len(events_list) == 0:
+    try:
+        events_list = request.entity.get_events(id_list, in_bin)
+    except EventNotFound:
         return None
 
     # Если событие одно
     if len(events_list) == 1:
-        return events_message([events_list[0].event_id], is_in_wastebasket)
+        return events_message([events_list[0].event_id], in_bin)
 
     # Если событий несколько
     markup = []
     for n, event in enumerate(events_list):
         button_title = f"{event.event_id}.{event.status} {event.text}"
         button_title = button_title.ljust(60, "⠀")[:60]
-        if is_in_wastebasket or is_in_search:
+        if in_bin or is_in_search:
             button_title = f"{event.date}.{button_title}"[:60]
 
-        if is_in_wastebasket:
+        if in_bin:
             button_data = f"sbon {n} 0 {event.event_id}"
         else:
             button_data = f"son {n} 0 {event.event_id}"
@@ -1390,8 +1475,8 @@ def select_events_message(
     markup.append(
         [
             {get_theme_emoji("back"): back_data},
-            {"☑️": "sbal" if is_in_wastebasket else "sal"},
-            {"↗️": "bsm _" if is_in_wastebasket else "esm _"},
+            {"☑️": "sbal" if in_bin else "sal"},
+            {"↗️": "bsm _" if in_bin else "esm _"},
         ]
     )
     generated = TextMessage(get_translate("select.events"), generate_buttons(markup))

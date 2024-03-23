@@ -127,5 +127,5 @@ def parse_utc_datetime(time: str) -> str:
         return "NEVER"
 
     time = datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
-    time += timedelta(hours=request.user.settings.timezone)
+    time += timedelta(hours=request.entity.settings.timezone)
     return f"{time:%Y.%m.%d %H:%M:%S}"

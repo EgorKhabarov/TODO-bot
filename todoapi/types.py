@@ -26,6 +26,8 @@ from todoapi.exceptions import (
 from config import DATABASE_PATH
 from todoapi.utils import re_date, is_valid_year, sql_date_pattern, re_username, re_email
 
+
+
 event_limits = {
     -1: {
         "max_event_day": 0,
@@ -70,20 +72,20 @@ event_limits = {
 }
 group_limits = {
     -1: {
-        "max_group": 0,
-        "max_group_create": 0,
+        "max_groups_participate": 0,
+        "max_groups_creator": 0,
     },
     0: {
-        "max_group": 50,
-        "max_group_create": 1,
+        "max_groups_participate": 50,  # количество групп, в которых пользователь может состоять
+        "max_groups_creator": 1,  # сколько групп можно иметь
     },
     1: {
-        "max_group": 100,
-        "max_group_create": 10,
+        "max_groups_participate": 100,
+        "max_groups_creator": 10,
     },
     2: {
-        "max_group": 200,
-        "max_group_create": 50,
+        "max_groups_participate": 200,
+        "max_groups_creator": 50,
     },
 }
 string_status = {-1: "ban", 0: "normal", 1: "premium", 2: "admin"}
@@ -150,6 +152,7 @@ class DataBase:
             result = [description] + result
         # self.sqlite_cursor.close()
         self.sqlite_connection.close()
+        # logging.info(f"{query} {params} {result}")
         # noinspection PyTypeChecker
         return result
 
@@ -171,48 +174,48 @@ class Limit:
 SELECT (
     SELECT IFNULL(COUNT( * ), 0) 
       FROM events
-     WHERE (user_id = :user_id OR group_id = :group_id) AND 
+     WHERE (user_id IS :user_id AND group_id IS :group_id) AND 
            date = :date
 ) AS count_today,
 (
     SELECT IFNULL(SUM(LENGTH(text)), 0) 
       FROM events
-     WHERE (user_id = :user_id OR group_id = :group_id) AND 
+     WHERE (user_id IS :user_id AND group_id IS :group_id) AND 
            date = :date
 ) AS sum_length_today,
 (
     SELECT IFNULL(COUNT( * ), 0) 
       FROM events
-     WHERE (user_id = :user_id OR group_id = :group_id) AND 
+     WHERE (user_id IS :user_id AND group_id IS :group_id) AND 
            SUBSTR(date, 4, 7) = :date_3
 ) AS count_month,
 (
     SELECT IFNULL(SUM(LENGTH(text)), 0) 
       FROM events
-     WHERE (user_id = :user_id OR group_id = :group_id) AND 
+     WHERE (user_id IS :user_id AND group_id IS :group_id) AND 
            SUBSTR(date, 4, 7) = :date_3
 ) AS sum_length_month,
 (
     SELECT IFNULL(COUNT( * ), 0) 
       FROM events
-     WHERE (user_id = :user_id OR group_id = :group_id) AND 
+     WHERE (user_id IS :user_id AND group_id IS :group_id) AND 
            SUBSTR(date, 7, 4) = :date_6
 ) AS count_year,
 (
     SELECT IFNULL(SUM(LENGTH(text)), 0) 
       FROM events
-     WHERE (user_id = :user_id OR group_id = :group_id) AND 
+     WHERE (user_id IS :user_id AND group_id IS :group_id) AND 
            SUBSTR(date, 7, 4) = :date_6
 ) AS sum_length_year,
 (
     SELECT IFNULL(COUNT( * ), 0) 
       FROM events
-     WHERE user_id = :user_id OR group_id = :group_id
+     WHERE user_id IS :user_id AND group_id IS :group_id
 ) AS total_count,
 (
     SELECT IFNULL(SUM(LENGTH(text)), 0) 
       FROM events
-     WHERE user_id = :user_id OR group_id = :group_id
+     WHERE user_id IS :user_id AND group_id IS :group_id
 ) AS total_length;
 """,
                 params={
@@ -226,7 +229,7 @@ SELECT (
         except Error:
             raise ApiError
 
-    def is_exceeded_events(self, *, date: str | datetime = None, event_count: int = 0, symbol_count: int = 0) -> bool:
+    def is_exceeded_for_events(self, *, date: str | datetime = None, event_count: int = 0, symbol_count: int = 0) -> bool:
         inf = float("inf")  # Бесконечность
         actual_limits = self.get_event_limits(date)
 
@@ -242,6 +245,40 @@ SELECT (
                 for actual_limit, max_limit in limits_symbol_count
             )
         )
+
+    def is_exceeded_for_groups(
+        self,
+        *,
+        create: bool = False,
+        participate: bool = False,
+    ) -> bool:
+        if not create and not participate:
+            raise ApiError
+
+        max_groups_participate, max_groups_creator = tuple(
+            group_limits[get_user_from_user_id(self.user_id).user_status].values()
+        )
+
+        try:
+            groups_participate, groups_creator = db.execute(
+                """
+SELECT (
+    SELECT COUNT(1)
+      FROM members
+     WHERE user_id = :user_id
+) as groups_participate,
+(
+    SELECT COUNT(1)
+      FROM groups
+     WHERE owner_id = :user_id
+) as groups_creator;
+""",
+                params={"user_id": self.user_id},
+            )[0]
+        except (Error, IndexError):
+            raise ApiError
+
+        return groups_participate + participate > max_groups_participate or groups_creator + create > max_groups_creator
 
     def now_limit_percent(self, date: str | datetime = None) -> list[int, int, int, int, int, int, int, int]:
         actual_limits = self.get_event_limits(date)
@@ -335,9 +372,9 @@ class Event:
         text: str,
         status: str,
         adding_time: str,
-        recent_changes_time: str,
-        removal_time: str,
-        history: str,
+        recent_changes_time: str | None,
+        removal_time: str | None,
+        history: str | None = None,
     ):
         self.user_id = user_id
         self.group_id = group_id
@@ -369,7 +406,7 @@ SELECT media_id,
        url_create_time
   FROM media
  WHERE event_id = :event_id AND (
-    user_id = :user_id OR group_id = :group_id
+    user_id IS :user_id AND group_id IS :group_id
 );
 """,
                 params={
@@ -436,17 +473,17 @@ class Group:
         self,
         group_id: str,
         name: str,
-        token: str,
-        token_create_time: str,
-        admin_user_id: int,
+        owner_id: int,
         max_event_id: int,
-        icon: bytes | None = None
+        token: str | None = None,
+        token_create_time: str | None = None,
+        icon: bytes | None = None,
     ):
         self.group_id = group_id
         self.name = name
         self.token = token
         self.token_create_time = token_create_time
-        self.admin_user_id = admin_user_id
+        self.owner_id = owner_id
         self.max_event_id = max_event_id
         self.__icon = icon
 
@@ -480,7 +517,7 @@ def allow_for(user: bool = False, member: bool = False):
             if user and not member and self.group_id:
                 raise ApiError("allow only for user")
 
-            return func(*args, **kwargs)
+            return func(self, *args, **kwargs)
 
         return wrapper
     return decorator
@@ -503,8 +540,8 @@ class SafeUser:
         self.__icon = icon
         self.__group_id = group_id
 
-        if self.group_id and not self.is_group_member(self.group_id):
-            raise NotGroupMember
+        if self.group_id:
+            int(self.member_status)
 
     @property
     def icon(self) -> bytes | None:
@@ -512,17 +549,17 @@ class SafeUser:
         return self.__icon or None
 
     @property
-    def group_id(self) -> str:
+    def group_id(self) -> str | None:
         return self.__group_id
 
     @group_id.setter
     def group_id(self, group_id: str):
-        if not self.is_group_member(group_id):
-            raise NotGroupMember
-
+        int(self.member_status)
         self.__group_id = group_id
 
-    def get_my_member_status(self, group_id: str) -> int:
+    @property
+    @allow_for(member=True)
+    def member_status(self) -> int:
         try:
             return db.execute(
                 """
@@ -532,7 +569,7 @@ SELECT member_status
        AND user_id = :user_id;
 """,
                 params={
-                    "group_id": group_id,
+                    "group_id": self.group_id,
                     "user_id": self.user_id,
                 },
             )[0]
@@ -549,12 +586,25 @@ SELECT member_status
     @property
     @allow_for(user=True)
     def is_premium(self) -> bool:
-        return self.user_status >= 1
+        return self.user_status >= 1 or self.is_admin
 
     @property
     @allow_for(member=True)
     def is_moderator(self) -> bool:
-        return False
+        return self.member_status >= 1
+
+    @property
+    @allow_for(member=True)
+    def is_owner(self) -> bool:
+        return self.member_status >= 2
+
+    @property
+    def safe_user_id(self):
+        """
+        self.user_id if not self.group_id else None
+        None if self.group_id else self.user_id
+        """
+        return None if self.group_id else self.user_id
 
 
 class User(SafeUser):
@@ -587,7 +637,7 @@ class User(SafeUser):
 
     @property
     def groups(self):
-        return self.get_groups_by_user_id()
+        return self.get_my_groups()
 
     def create_event(self, date: str, text: str) -> bool:
         text_len = len(text)
@@ -596,9 +646,11 @@ class User(SafeUser):
             raise TextIsTooBig
 
         if not re_date.match(date) or not is_valid_year(int(date[-4:])):
+            print(re_date.match(date))
+            print(is_valid_year(int(date[-4:])))
             raise WrongDate
 
-        if self.limit.is_exceeded_events(
+        if self.limit.is_exceeded_for_events(
             date=date,
             event_count=1,
             symbol_count=text_len,
@@ -614,7 +666,8 @@ INSERT INTO events (
     user_id,
     group_id,
     date,
-    text
+    text,
+    status
 )
 VALUES (
     COALESCE(
@@ -633,11 +686,12 @@ VALUES (
     :user_id,
     :group_id,
     :date,
-    :text
+    :text,
+    '⬜️'
 );
 """,
                 params={
-                    "user_id": self.user_id if not self.group_id else None,
+                    "user_id": self.safe_user_id,
                     "group_id": self.group_id,
                     "date": date,
                     "text": text,
@@ -681,12 +735,13 @@ UPDATE users
                 f"""
 SELECT *
   FROM events
- WHERE (user_id = ? AND group_id = ?)
+ WHERE user_id IS ?
+       AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in event_ids)})
-       AND (removal_time = "") = ?;
+       AND (removal_time IS NOT NULL) = ?;
 """,
                 params=(
-                    self.user_id if not self.group_id else None,
+                    self.safe_user_id,
                     self.group_id,
                     *event_ids,
                     in_bin,
@@ -712,7 +767,7 @@ SELECT *
             0 if new_text_len < old_text_len else new_text_len - old_text_len
         )
 
-        if self.limit.is_exceeded_events(date=event.date, symbol_count=new_symbol_count):
+        if self.limit.is_exceeded_for_events(date=event.date, symbol_count=new_symbol_count):
             raise LimitExceeded
 
         try:
@@ -721,12 +776,12 @@ SELECT *
 UPDATE events
    SET text = :text
  WHERE event_id = :event_id
-       AND (user_id = :user_id AND group_id = :group_id);
+       AND (user_id IS :user_id AND group_id IS :group_id);
 """,
                 params={
                     "text": text,
                     "event_id": event_id,
-                    "user_id": self.user_id if not self.group_id else None,
+                    "user_id": self.safe_user_id,
                     "group_id": self.group_id,
                 },
                 commit=True,
@@ -742,7 +797,7 @@ UPDATE events
 
         event = self.get_event(event_id)
 
-        if self.limit.is_exceeded_events(date=event.date, event_count=1, symbol_count=len(event.text)):
+        if self.limit.is_exceeded_for_events(date=event.date, event_count=1, symbol_count=len(event.text)):
             raise LimitExceeded
 
         try:
@@ -751,12 +806,12 @@ UPDATE events
 UPDATE events
    SET date = :date
  WHERE event_id = :event_id
-       AND (user_id = :user_id AND group_id = :group_id);
+       AND (user_id IS :user_id AND group_id IS :group_id);
 """,
                 params={
                     "date": date,
                     "event_id": event_id,
-                    "user_id": self.user_id if not self.group_id else None,
+                    "user_id": self.safe_user_id,
                     "group_id": self.group_id,
                 },
                 commit=True,
@@ -806,12 +861,12 @@ UPDATE events
                 """
 UPDATE events
    SET status = :status
- WHERE (user_id = :user_id AND group_id = :group_id) AND 
+ WHERE (user_id IS :user_id AND group_id IS :group_id) AND 
        event_id = :event_id;
 """,
                 params={
                     "status": status,
-                    "user_id": self.user_id if not self.group_id else None,
+                    "user_id": self.safe_user_id,
                     "group_id": self.group_id,
                     "event_id": event_id,
                 },
@@ -829,11 +884,11 @@ UPDATE events
             db.execute(
                 """
 DELETE FROM events
-      WHERE (user_id = :user_id AND group_id = :group_id)
+      WHERE (user_id IS :user_id AND group_id IS :group_id)
             AND event_id = :event_id;
 """,
                 params={
-                    "user_id": self.user_id if not self.group_id else None,
+                    "user_id": self.safe_user_id,
                     "group_id": self.group_id,
                     "event_id": event_id,
                 },
@@ -848,18 +903,19 @@ DELETE FROM events
         if not self.is_premium:
             raise NotEnoughPermissions
 
-        self.get_event(event_id, in_bin=True)
+        self.get_event(event_id)
 
         try:
             db.execute(
                 """
 UPDATE events
    SET removal_time = DATE() 
- WHERE (user_id = :user_id AND group_id = :group_id)
+ WHERE user_id IS :user_id
+       AND group_id IS :group_id
        AND event_id = :event_id;
 """,
                 params={
-                    "user_id": self.user_id if not self.group_id else None,
+                    "user_id": self.safe_user_id,
                     "group_id": self.group_id,
                     "event_id": event_id,
                 },
@@ -873,19 +929,19 @@ UPDATE events
     def recover_event(self, event_id: int) -> bool:
         event = self.get_event(event_id, in_bin=True)
 
-        if self.limit.is_exceeded_events(date=event.date, event_count=1, symbol_count=len(event.text)):
+        if self.limit.is_exceeded_for_events(date=event.date, event_count=1, symbol_count=len(event.text)):
             raise LimitExceeded
 
         try:
             db.execute(
                 """
 UPDATE events
-   SET removal_time = ''
- WHERE (user_id = :user_id AND group_id = :group_id)
+   SET removal_time = NULL
+ WHERE (user_id IS :user_id AND group_id IS :group_id)
        AND event_id = :event_id;
 """,
                 params={
-                    "user_id": self.user_id if not self.group_id else None,
+                    "user_id": self.safe_user_id,
                     "group_id": self.group_id,
                     "event_id": event_id,
                 },
@@ -901,11 +957,11 @@ UPDATE events
             db.execute(
                 """
 DELETE FROM events
-      WHERE (user_id = :user_id AND group_id = :group_id)
-            AND removal_time != '';
+      WHERE (user_id IS :user_id AND group_id IS :group_id)
+            AND removal_time IS NOT NULL;
 """,
                 params={
-                    "user_id": self.user_id if not self.group_id else None,
+                    "user_id": self.safe_user_id,
                     "group_id": self.group_id,
                 },
                 commit=True,
@@ -929,20 +985,77 @@ DELETE FROM events
     def delete_event_media(self, media_id: str) -> bool:
         pass
 
-    def edit_user_username(self) -> bool:
+    @allow_for(user=True)
+    def edit_user_username(self, username: str) -> bool:
+        if not re_username.match(username):
+            raise ApiError
+
         try:
-            pass
+            db.execute(
+                """
+UPDATE users
+   SET username = :username
+ WHERE user_id = :user_id;
+""",
+                params={
+                    "username": username,
+                    "user_id": self.user_id,
+                },
+            )
+        except Error:
+            raise ApiError("username is not unique")
+
+        return True
+
+    @allow_for(user=True)
+    def edit_user_password(self, password: str) -> bool:
+        if not password:
+            raise ApiError
+
+        # TODO хеширование пароля
+        if hash(password) != self.password:
+            raise ApiError
+
+        try:
+            db.execute(
+                """
+UPDATE users
+   SET password = :password
+ WHERE user_id = :user_id;
+""",
+                params={
+                    "password": password,
+                    "user_id": self.user_id,
+                },
+            )
         except Error:
             raise ApiError
 
         return True
 
-    def edit_user_password(self) -> bool:
-        pass
+    @allow_for(user=True)
+    def edit_user_icon(self, icon: bytes) -> bool:
+        if not icon:
+            raise ApiError
 
-    def edit_user_icon(self) -> bool:
-        pass
+        try:
+            db.execute(
+                """
+UPDATE users
+   SET icon = :icon
+ WHERE user_id = :user_id;
+""",
+                params={
+                    "icon": icon,
+                    "user_id": self.user_id,
+                },
+            )
+        except Error:
+            raise ApiError
 
+        return True
+
+    @allow_for(user=True)
     def reset_user_token(self) -> bool:
         pass
 
@@ -981,30 +1094,56 @@ SELECT lang,
             )[0]
         except Error:
             raise ApiError
-
-        if not settings:
-            raise ApiError
+        except IndexError:
+            raise UserNotFound
 
         return Settings(*settings)
 
+    @allow_for(user=True)
     def set_user_settings(self) -> Settings:
         pass
 
-    @classmethod
-    def get_group(cls, group_id: str) -> Group:
-        return cls.get_groups([group_id])[0]
+    def get_my_member_status(self, group_id: str) -> int:
+        try:
+            return db.execute(
+                """
+SELECT member_status
+  FROM members
+ WHERE group_id = :group_id
+       AND user_id = :user_id;
+""",
+                params={
+                    "group_id": group_id,
+                    "user_id": self.user_id,
+                },
+            )[0]
+        except IndexError:
+            raise NotGroupMember
+        except Error:
+            raise ApiError
 
-    @classmethod
-    def get_groups(cls, group_id: list[str]) -> list[Group]:
-        # TODO проверка прав
+    @allow_for(user=True)
+    def get_group(self, group_id: str) -> Group:
+        return self.get_groups([group_id])[0]
+
+    @allow_for(user=True)
+    def get_groups(self, group_ids: list[str]) -> list[Group]:
+        for group_id in group_ids:
+            self.get_my_member_status(group_id)
+
         try:
             groups = db.execute(
-                """
-SELECT *
+                f"""
+SELECT group_id,
+       name,
+       owner_id,
+       max_event_id,
+       token,
+       token_create_time
   FROM groups
- WHERE group_id = :group_id;
+ WHERE group_id IN ({','.join('?' for _ in group_ids)});
 """,
-                params={"group_id": group_id},
+                params=(*group_ids,),
             )
         except Error:
             raise ApiError
@@ -1014,11 +1153,17 @@ SELECT *
 
         return [Group(*group) for group in groups]
 
-    def get_groups_by_user_id(self, user_id: int | None = None) -> list[Group]:
+    @allow_for(user=True)
+    def get_my_groups(self) -> list[Group]:
         try:
             groups = db.execute(
                 """
-SELECT *
+SELECT group_id,
+       name,
+       owner_id,
+       max_event_id,
+       token,
+       token_create_time
   FROM groups
  WHERE group_id = (
     SELECT group_id
@@ -1026,19 +1171,19 @@ SELECT *
      WHERE user_id = :user_id
 );
 """,
-                params={"user_id": user_id or getattr(self, "user_id")},
+                params={"user_id": self.user_id},
             )
         except Error:
             raise ApiError
 
         return [Group(*group) for group in groups]
 
-    def edit_group_name(self, group_id: str, name: str) -> bool:
-        # TODO проверка прав
-        if getattr(self, "user_status", 0) > 0:
+    def edit_group_name(self, name: str, group_id: str | None = None) -> bool:
+        if self.group_id and not self.is_moderator:
             raise NotEnoughPermissions
 
-        # TODO проверка существования группы
+        if group_id and self.get_group(group_id).owner_id == self.user_id:
+            raise NotEnoughPermissions
 
         try:
             db.execute(
@@ -1047,7 +1192,10 @@ UPDATE groups
    SET name = :name
  WHERE group_id = :group_id;
 """,
-                params={"group_id": group_id, "name": name},
+                params={
+                    "name": name,
+                    "group_id": group_id or self.group_id,
+                },
                 commit=True,
             )
         except Error:
@@ -1055,9 +1203,11 @@ UPDATE groups
 
         return True
 
-    def edit_group_icon(self, group_id: str, icon: bytes) -> bool:
-        # TODO проверка прав
-        if getattr(self, "user_status", 0) > 0:
+    def edit_group_icon(self, icon: bytes, group_id: str) -> bool:
+        if self.group_id and not self.is_moderator:
+            raise NotEnoughPermissions
+
+        if group_id and self.get_group(group_id).owner_id == self.user_id:
             raise NotEnoughPermissions
 
         try:
@@ -1067,7 +1217,10 @@ UPDATE groups
    SET icon = :icon
  WHERE group_id = :group_id;
 """,
-                params={"group_id": group_id, "icon": icon},
+                params={
+                    "icon": icon,
+                    "group_id": group_id,
+                },
                 commit=True,
             )
         except Error:
@@ -1075,10 +1228,10 @@ UPDATE groups
 
         return True
 
-    def get_group_member(self, group_id: str, user_id: int) -> "SafeGroupMember":
+    def get_group_member(self, group_id: str, user_id: int) -> Member:
         pass
 
-    def get_group_members(self, group_id: str, user_id_list: list[int] = None) -> list["SafeGroupMember"]:
+    def get_group_members(self, group_id: str, user_id_list: list[int] = None) -> list[Member]:
         pass
 
     def add_group_member(self, group_id: str, user_id: int) -> bool:
@@ -1087,37 +1240,41 @@ UPDATE groups
 
 
 
+    @allow_for(user=True)
     def create_group(self, name: str, icon: bytes = None) -> bool:
-        # TODO Проверка лимита на количество групп
+        if self.limit.is_exceeded_for_groups(create=True):
+            raise LimitExceeded
+
         try:
             db.execute(
                 """
-INSERT INTO groups (group_id, admin_user_id, token, name, icon)
-VALUES (:group_id, :admin_user_id, :token, :name, :icon);
+INSERT INTO groups (group_id, owner_id, token, name, icon)
+VALUES (:group_id, :owner_id, :token, :name, :icon);
 """,
                 params={
-                    "group_id": uuid4(),
-                    "admin_user_id": self.user_id,
+                    "group_id": str(uuid4()).replace("-", ""),
+                    "owner_id": self.user_id,
                     "token": generate_token(length=32),
                     "name": name,
                     "icon": icon,
                 },
+                commit=True,
             )
         except Error:
             raise ApiError
 
         return True
 
-    def get_groups_where_i_admin(self) -> list["Group"]:
+    def get_groups_where_i_admin(self) -> list[Group]:
         try:
             groups = db.execute(
                 """
 SELECT group_id,
        name,
+       owner_id,
+       max_event_id,
        token,
-       token_create_time,
-       admin_user_id,
-       max_event_id
+       token_create_time
   FROM groups
  WHERE group_id = (
     SELECT group_id
@@ -1132,10 +1289,9 @@ SELECT group_id,
 
         return [Group(*group) for group in groups]
 
-    def edit_group_member_status(self, group_id: str, user_id: int, status: int) -> bool:
-        group = self.get_group(group_id)
-
-        if group.is_owner(user_id) or not group.is_moderator(getattr(self, "user_id")):
+    @allow_for(member=True)
+    def edit_group_member_status(self, user_id: int, status: int) -> bool:
+        if not self.is_owner or not self.is_moderator:
             raise NotEnoughPermissions
 
         try:
@@ -1148,7 +1304,7 @@ UPDATE members
 """,
                 params={
                     "status": status,
-                    "group_id": group_id,
+                    "group_id": self.group_id,
                     "user_id": user_id,
                 },
                 commit=True,
@@ -1158,10 +1314,9 @@ UPDATE members
 
         return True
 
-    def delete_group_member(self, group_id: str, user_id: int) -> bool:
-        group = self.get_group(group_id)
-
-        if group.is_owner(user_id) or not group.is_moderator(getattr(self, "user_id")):
+    @allow_for(member=True)
+    def delete_group_member(self, user_id: int) -> bool:
+        if not self.is_owner or not self.is_moderator:
             raise NotEnoughPermissions
 
         try:
@@ -1172,7 +1327,7 @@ DELETE FROM members
             AND user_id = :user_id;
 """,
                 params={
-                    "group_id": group_id,
+                    "group_id": self.group_id,
                     "user_id": user_id,
                 },
                 commit=True,
@@ -1182,11 +1337,9 @@ DELETE FROM members
 
         return True
 
-    def delete_group(self, group_id: str) -> bool:
-        group = self.get_group(group_id)
-        user_id = getattr(self, "user_id")
-
-        if not group.is_moderator(user_id):
+    @allow_for(member=True)
+    def delete_group(self) -> bool:
+        if not self.is_owner:
             raise NotEnoughPermissions
 
         try:
@@ -1195,7 +1348,7 @@ DELETE FROM members
 DELETE FROM groups
       WHERE group_id = :group_id;
 """,
-                params={"group_id": group_id},
+                params={"group_id": self.group_id},
                 commit=True,
             )
         except Error:
@@ -1203,25 +1356,43 @@ DELETE FROM groups
 
         return True
 
-    def edit_group_owner(self, group_id: str, new_owner_id: int) -> bool:
-        group = self.get_group(group_id)
-        user_id = getattr(self, "user_id")
-
-        if not group.is_owner(user_id):
+    @allow_for(user=True)
+    def edit_group_owner(self, new_owner_id: int) -> bool:
+        if not self.is_owner:
             raise NotEnoughPermissions
 
         try:
             db.execute(
                 """
 UPDATE groups
-   SET user_id = :new_owner_id
+   SET owner_id = :new_owner_id
  WHERE group_id = :group_id
-       AND user_id = :owner_id;
+       AND owner_id = :owner_id;
 """,
                 params={
-                    "group_id": group_id,
-                    "owner_id": user_id,
                     "new_owner_id": new_owner_id,
+                    "group_id": self.group_id,
+                    "owner_id": self.user_id,
+                },
+                commit=True,
+            )
+        except Error:
+            raise ApiError
+
+        return True
+
+    @allow_for(user=True)
+    def set_user_telegram_chat_id(self, chat_id: int | None = None) -> bool:
+        try:
+            db.execute(
+                """
+UPDATE users
+   SET chat_id = :chat_id
+ WHERE user_id = :user_id;
+""",
+                params={
+                    "chat_id": chat_id,
+                    "user_id": self.user_id,
                 },
                 commit=True,
             )
@@ -1234,15 +1405,11 @@ UPDATE groups
 
 
 
-
-
-
-
-
 def create_user(email: str, username: str, password: str) -> bool:
     if not re_email.match(email) or not re_username.match(username) or not password:
         raise ApiError
 
+    # TODO хеширование пароля
     try:
         db.execute(
             """
@@ -1288,6 +1455,7 @@ WHERE token = :token;
 
 def get_user_from_password(username: str, password: str, group_id: str | None = None) -> User:
     # TODO защита от перебора брутфорса и количества попыток
+    # TODO хеширование пароля
     try:
         user = db.execute(
             """
@@ -1344,7 +1512,7 @@ WHERE user_id = :user_id;
 
 db = DataBase()
 # create_user("example@gmail.com", "EgorKhabarov", "<password>")
-__user = get_user_from_password("EgorKhabarov", "<password>")
+# __user = get_user_from_password("EgorKhabarov", "<password>")
 # __user.create_event("21.03.2024", ".")
 # print(__user.get_event(1).to_json())
-print(__user.is_moderator)
+# print(__user.is_moderator)

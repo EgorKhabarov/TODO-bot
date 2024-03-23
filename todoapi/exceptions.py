@@ -4,10 +4,10 @@ class ApiError(Exception):
 class UserNotFound(Exception):
     pass
 
-class NotEnoughPermissions(Exception):
+class GroupNotFound(Exception):
     pass
 
-class GroupNotFound(Exception):
+class NotEnoughPermissions(Exception):
     pass
 
 class NotGroupMember(Exception):

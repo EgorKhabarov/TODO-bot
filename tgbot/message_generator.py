@@ -12,6 +12,7 @@ from tgbot.lang import get_translate
 from tgbot.buttons_utils import encode_id
 from tgbot.time_utils import now_time_strftime, DayInfo
 from tgbot.utils import add_status_effect, days_before_event
+from todoapi.exceptions import EventNotFound
 from todoapi.types import db, Event
 from todoapi.utils import sqlite_format_date
 
@@ -37,6 +38,7 @@ event_formats = {
 
 def pagination(
     WHERE: str,
+    params: dict,
     direction: Literal["ASC", "DESC"] = "DESC",
     max_group_len: int = 10,
     max_group_symbols_count: int = 2500,
@@ -44,6 +46,7 @@ def pagination(
 ) -> list[str]:
     """
     :param WHERE: SQL условие
+    :param params: параметры
     :param direction: Направление сортировки
     :param max_group_len: Максимальное количество элементов на странице
     :param max_group_symbols_count: Максимальное количество символов на странице
@@ -59,7 +62,8 @@ SELECT event_id,
  WHERE {WHERE}
  ORDER BY {sqlite_format_date('date')} {direction}
  LIMIT 400;
-"""
+""",
+        params=params,
     )
     _result = []
     group = []
@@ -168,8 +172,10 @@ class EventMessage(TextMessage):
     def __init__(self, event_id: int, in_wastebasket: bool = False):
         super().__init__()
         self.event_id = event_id
-        response, result = request.user.get_event(event_id, in_wastebasket)
-        self.event: Event = result if response else None
+        try:
+            self.event: Event = request.entity.get_event(event_id, in_wastebasket)
+        except EventNotFound:
+            self.event: Event | None = None
 
     def format(
         self,
@@ -201,8 +207,8 @@ class EventMessage(TextMessage):
             )
             else "",
             days_before_delete=""
-            if self.event.removal_time == "0"
-            else get_translate("func.deldate")(self.event.days_before_delete()),
+            if self.event.removal_time is None
+            else get_translate("func.deldate")(self.event.days_before_delete),
             text=self.event.text,
         )
         self.text = f"<b>{title}</b>\n{event_date_representation}".strip()
@@ -235,6 +241,7 @@ class EventsMessage(TextMessage):
     def get_pages_data(
         self,
         WHERE: str,
+        params: dict,
         callback_data: Callable[[int, str], str],
         column: str = sqlite_format_date("date"),
         direction: Literal["ASC", "DESC"] | None = None,
@@ -243,9 +250,9 @@ class EventsMessage(TextMessage):
         Получить список кортежей строк id по страницам
         """
         if not direction:
-            direction = request.user.settings.direction
+            direction = request.entity.settings.direction
 
-        data = pagination(WHERE, direction)
+        data = pagination(WHERE, params, direction)
 
         if data:
             first_message = [
@@ -253,18 +260,20 @@ class EventsMessage(TextMessage):
                 for event in db.execute(
                     f"""
 SELECT user_id,
+       group_id,
        event_id,
        date,
        text,
        status,
-       removal_time,
        adding_time,
-       recent_changes_time
+       recent_changes_time,
+       removal_time
   FROM events
  WHERE event_id IN ({data[0]}) AND 
        ({WHERE}) 
  ORDER BY {column} {direction};
 """,
+                    params=params,
                     func=(
                         "DAYS_BEFORE_EVENT",
                         2,
@@ -275,7 +284,7 @@ SELECT user_id,
                 )
             ]
 
-            if request.user.settings.direction == "ASC":
+            if request.entity.settings.direction == "ASC":
                 first_message = first_message[::-1]
             self.event_list = first_message
 
@@ -311,7 +320,7 @@ SELECT user_id,
                     )
         return self
 
-    def get_page_events(self, WHERE: str, id_list: list[int]):
+    def get_page_events(self, WHERE: str, params: dict, id_list: list[int]):
         """
         Возвращает события входящие в values с условием WHERE
         """
@@ -321,19 +330,21 @@ SELECT user_id,
                 for event in db.execute(
                     f"""
 SELECT user_id,
+       group_id,
        event_id,
        date,
        text,
        status,
-       removal_time,
        adding_time,
-       recent_changes_time
+       recent_changes_time,
+       removal_time
   FROM events
- WHERE user_id = {request.user.settings.user_id} AND
-       event_id IN ({', '.join(f"{event_id}" for event_id in id_list)}) AND
+ WHERE (user_id IS :user_id AND group_id IS :group_id)
+       AND event_id IN ({', '.join(f"{event_id}" for event_id in id_list)}) AND
        ({WHERE}) 
- ORDER BY {sqlite_format_date('date')} {request.user.settings.direction};
+ ORDER BY {sqlite_format_date('date')} {request.entity.settings.direction};
 """,
+                    params=params,
                 )
             ]
         except Error as e:
@@ -342,7 +353,7 @@ SELECT user_id,
             )
             self.event_list = []
         else:
-            if request.user.settings.direction == "ASC":
+            if request.entity.settings.direction == "ASC":
                 res = res[::-1]
             self.event_list = res
         return self
@@ -438,8 +449,8 @@ SELECT user_id,
                         )
                         else "",
                         days_before_delete=""
-                        if event.removal_time == "0"
-                        else get_translate("func.deldate")(event.days_before_delete()),
+                        if event.removal_time is None
+                        else get_translate("func.deldate")(event.days_before_delete),
                         **kwargs,
                         text=event.text,
                     )

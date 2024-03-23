@@ -24,16 +24,16 @@ SELECT event_id,
        text
   FROM events
  WHERE user_id = ? AND 
-       removal_time = 0;
+       removal_time IS NULL;
 """,
     "delete deleted_events": """
 DELETE FROM events
       WHERE user_id = ? AND 
-            removal_time != 0;
+            removal_time IS NOT NULL;
 """,
     "update restore_events": """
 UPDATE events
-   SET removal_time = 0
+   SET removal_time IS NULL
  WHERE user_id = ? AND 
        event_id = ?;
 """,

@@ -74,7 +74,7 @@ def set_bot_commands(chat_id: int | None = None, status: int | None = None, lang
     Ставит список команд для пользователя chat_id
     """
     if not status:
-        status = request.user.user_status
+        status = request.entity.user_status
 
     if not lang:
         lang = request.entity.settings.lang

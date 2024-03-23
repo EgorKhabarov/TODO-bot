@@ -8,7 +8,7 @@ from io import StringIO, BytesIO
 import xml.etree.ElementTree as xml  # noqa
 
 from todoapi.queries import queries
-from todoapi.types import User, Group, Event, Settings, Limit, db, export_cooldown
+from todoapi.types import User, Group, Event, Settings, Limit, db
 from todoapi.utils import (
     sqlite_format_date,
     is_premium_user,
@@ -67,7 +67,7 @@ SELECT 1
   FROM events
  WHERE user_id = ? AND 
        event_id = ?
-       {"AND removal_time != 0" if in_wastebasket else ""};
+       {"AND removal_time IS NOT NULL" if in_wastebasket else ""};
 """,
                     params=(
                         self.user_id,
@@ -229,7 +229,7 @@ SELECT user_id,
   FROM events
  WHERE user_id = ? AND 
        event_id = ? AND
-       removal_time {"!" if in_wastebasket else ""}= 0;
+       removal_time IS {"NOT" if in_wastebasket else ""} NULL;
 """,
                 params=(self.user_id, event_id),
             )
@@ -286,11 +286,11 @@ SELECT user_id,
   FROM events
  WHERE user_id = ? AND 
        event_id IN ({}) AND
-       removal_time {}= 0
+       removal_time IS {} NULL
  ORDER BY {} {};
 """.format(
                     ", ".join(str(int(e_id)) for e_id in events_id),
-                    ("!" if in_wastebasket else ""),
+                    ("NOT" if in_wastebasket else ""),
                     sqlite_format_date("date"),
                     direction,
                 ),

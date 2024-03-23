@@ -104,8 +104,8 @@ def add_status_effect(text: str, statuses: str) -> str:
 
     def format_list(_text: str) -> str:
         """Заменяет \n на :black_small_square: (эмодзи Telegram)"""
-        point = "▫️" if request.user.settings.theme == 1 else "▪️"
-        big_point = "◻️" if request.user.settings.theme == 1 else "◼️"
+        point = "▫️" if request.entity.settings.theme == 1 else "▪️"
+        big_point = "◻️" if request.entity.settings.theme == 1 else "◼️"
         lst = _text.splitlines()
 
         return "\n".join(
@@ -152,7 +152,7 @@ def add_status_effect(text: str, statuses: str) -> str:
     text = re.sub(r"\n(\n*)\n", f"\n\n", text)
 
     if ("🔗" in statuses and "⛓" not in statuses) or (
-        request.user.settings.sub_urls and ("💻" not in statuses and "⛓" not in statuses)
+        request.entity.settings.sub_urls and ("💻" not in statuses and "⛓" not in statuses)
     ):
         text = sub_urls(text)
 
@@ -209,18 +209,18 @@ def rate_limit(
 
 
 def _get_cache_city_key(city):
-    return city, request.user.settings.lang
+    return city, request.entity.settings.lang
 
 
 def _get_cache_city_key_user_id(city):
-    return city, request.user.settings.lang, request.user.user_id
+    return city, request.entity.settings.lang, request.entity.user_id
 
 
 @rate_limit(
     LRUCache(maxsize=100),
     10,
     60,
-    lambda *args, **kwargs: request.user.user_id,
+    lambda *args, **kwargs: request.entity.user_id,
     lambda *args, **kwargs: None,
 )
 def _else_func(args, kwargs, key, sec) -> str:  # noqa
@@ -241,7 +241,7 @@ def fetch_weather(city: str) -> str:
             "APPID": config.WEATHER_API_KEY,
             "q": city,
             "units": "metric",
-            "lang": request.user.settings.lang,
+            "lang": request.entity.settings.lang,
         },
     ).json()
     weather_icon = weather["weather"][0]["icon"]
@@ -322,7 +322,7 @@ def fetch_forecast(city: str) -> str:
             "APPID": config.WEATHER_API_KEY,
             "q": city,
             "units": "metric",
-            "lang": request.user.settings.lang,
+            "lang": request.entity.settings.lang,
         },
     ).json()
     dn = {"d": "☀", "n": "🌑"}

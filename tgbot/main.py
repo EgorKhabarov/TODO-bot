@@ -17,7 +17,7 @@ from tgbot.bot import bot, bot_log_info
 from tgbot.buttons_utils import delmarkup
 from tgbot.bot_actions import delete_message_action
 from tgbot.utils import poke_link, re_edit_message, html_to_markdown
-from tgbot.handlers import command_handler, callback_handler, reply_handler, clear_state
+from tgbot.handlers import command_handler, callback_handler, reply_handler, add_event_date
 from tgbot.bot_messages import (
     search_message,
     send_notifications_messages,
@@ -32,7 +32,7 @@ from telegram_utils.command_parser import command_regex
 
 create_tables()
 logging.info(bot_log_info())
-bot.set_my_commands(get_translate("buttons.commands.0", "ru"), BotCommandScopeDefault())
+# bot.set_my_commands(get_translate("buttons.commands.0.user", "ru"), BotCommandScopeDefault())
 command_regex.set_username(bot.user.username)
 
 
@@ -40,12 +40,12 @@ def telegram_log(action: str, text: str):
     text = text.replace("\n", "\\n")
     thread_id = getattr(request.query, "message", request.query).message_thread_id
     logging.info(
-        f"[{request.entity_type.capitalize()}]"
-        f"[{request.entity.get_id():<10}"
-        f":{thread_id}" if thread_id else ""
-        f"]"
-        f"[{request.entity.user_status}]" if request.entity_type == "user" else ""
-        f" {action:<7} {text}"
+        f"[{str(request.entity_type).capitalize()}]"
+        + f"[{request.entity.request_chat_id:<10}"
+        + (f":{thread_id}" if thread_id else "")
+        + f"]"
+        + (f"[{request.entity.user_status}]" if request.entity_type.user else "")
+        + f"[{action:<7}] {text}"
     )
 
 
@@ -53,7 +53,7 @@ def telegram_log(action: str, text: str):
 @process_account
 def migrate_chat(message: Message):
     logging.info(
-        f"[{message.chat.id:<10}][{request.user.user_status}] "
+        f"[{message.chat.id:<10}][{request.entity.user_status}] "
         f"migrate_to_chat_id {message.migrate_to_chat_id}"
     )
     params = {
@@ -142,10 +142,10 @@ def processing_reply_to_message(message: Message):
     reply_handler(message, message.reply_to_message)
 
 
+@process_account
 def add_event_func(msg) -> int:
     with db.connection(), db.cursor():
-        add_event_date = db.execute(queries["select add_event_date"], (msg.chat.id,))
-    return add_event_date[0][0] if add_event_date else 0
+        return add_event_date()  # db.execute(queries["select add_event_date"], (msg.chat.id,))
 
 
 @bot.message_handler(func=add_event_func)
@@ -156,9 +156,7 @@ def add_event_handler(message: Message):
     """
     markdown_text = html_to_markdown(message.html_text)
     telegram_log("send", "add event")
-    new_event_date = db.execute(
-        queries["select add_event_date"], params=(request.chat_id,)
-    )[0][0].split(",")[0]
+    new_event_date = add_event_date().split(",")[0]
 
     # Если сообщение длиннее 3800 символов, то ошибка
     if len(markdown_text) >= 3800:
@@ -166,24 +164,21 @@ def add_event_handler(message: Message):
         bot.reply_to(message, message_is_too_long, reply_markup=delmarkup())
         return
 
-    if (
-        request.user.check_limit(
-            new_event_date, event_count=1, symbol_count=len(markdown_text)
-        )[1]
-        is True
+    if request.entity.limit.is_exceeded_for_events(
+        date=new_event_date, event_count=1, symbol_count=len(markdown_text)
     ):
         exceeded_limit = get_translate("errors.exceeded_limit")
         bot.reply_to(message, exceeded_limit, reply_markup=delmarkup())
         return
 
     # Пытаемся создать событие
-    if request.user.add_event(new_event_date, markdown_text)[0]:
+    if request.entity.create_event(new_event_date, markdown_text):
         delete_message_action(message)
     else:
         error_translate = get_translate("errors.error")
         bot.reply_to(message, error_translate, reply_markup=delmarkup())
 
-    clear_state(request.chat_id)
+    add_event_date("")
 
 
 def schedule_loop():

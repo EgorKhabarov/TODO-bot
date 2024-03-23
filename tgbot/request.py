@@ -1,43 +1,45 @@
 # noinspection PyPackageRequirements
 from contextvars import ContextVar
+from dataclasses import dataclass
 from typing import Literal
 
 # noinspection PyPackageRequirements
 from telebot.types import Message, CallbackQuery
+from tgbot.types import TelegramUser
 
-from todoapi.types import User, Group
+
+@dataclass
+class EntityType:
+    user: bool = False
+    member: bool = False
+
+    def __repr__(self):
+        return "user" if self.user else "member"
 
 
 class Request:
     """
     Класс контекстных переменных
-
-    request.user: todoapi.api.User
-
-    request.chat_id: todoapi.api.User
-
-    request.query: telebot.types.Message | telebot.types.CallbackQuery
     """
-
     _entity = ContextVar("entity", default=None)
     _entity_type = ContextVar("entity_type", default=None)
     _chat_id = ContextVar("chat_id", default=None)
     _query = ContextVar("query", default=None)
 
     @property
-    def entity(self) -> User | Group:
+    def entity(self) -> TelegramUser:
         return self._entity.get()  # type: ignore
 
     @entity.setter
-    def entity(self, entity: User | Group) -> None:
+    def entity(self, entity: TelegramUser) -> None:
         self._entity.set(entity)  # type: ignore
 
     @property
-    def entity_type(self) -> Literal["user", "group"]:
+    def entity_type(self) -> EntityType:
         return self._entity_type.get()  # type: ignore
 
     @entity_type.setter
-    def entity_type(self, entity_type: Literal["user", "group"]) -> None:
+    def entity_type(self, entity_type: EntityType) -> None:
         self._entity_type.set(entity_type)  # type: ignore
 
     @property
@@ -58,11 +60,11 @@ class Request:
 
     @property
     def is_user(self):
-        return self.entity_type == "user"
+        return self.entity_type.user
 
     @property
-    def is_group(self):
-        return self.entity_type == "group"
+    def is_member(self):
+        return self.entity_type.member
 
 
 request = Request()

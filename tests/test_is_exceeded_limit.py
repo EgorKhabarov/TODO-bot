@@ -2,7 +2,6 @@ from unittest import mock
 
 import pytest
 
-from todoapi.api import User
 from tests.mocks import execute
 
 
