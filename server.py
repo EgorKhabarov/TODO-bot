@@ -1,7 +1,9 @@
 import os
 from threading import Thread
 
-from flask import Flask, request, abort
+from flask import Flask, request, abort, send_file
+
+from tgbot.limits import create_image_from_link
 
 import config
 
@@ -21,6 +23,28 @@ app = Flask(__name__)
 @app.route("/")
 def home():
     return "200", 200
+
+
+@app.route("/limit")
+def limit():
+    if len(str(request.args)) > 200:
+        return abort(413)
+
+    lang = request.args.get("lang")
+    data = request.args.get("data")
+    theme = request.args.get("theme")
+
+    if not data:
+        return abort(400)
+
+    try:
+        lst = [[int(x) for x in line.split("s")] for line in data.split("n")]
+        image = create_image_from_link(lang, lst, theme)
+    except ValueError as e:
+        print(e)
+        return abort(400)
+
+    return send_file(image, mimetype="image/png")
 
 
 if (

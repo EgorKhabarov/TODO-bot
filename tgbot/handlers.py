@@ -57,7 +57,6 @@ from tgbot.bot_messages import (
     select_events_message,
     event_show_mode_message, group_message,
 )
-from tgbot.types import get_user_from_chat_id
 from tgbot.utils import (
     fetch_weather,
     fetch_forecast,
@@ -298,10 +297,6 @@ def command_handler(message: Message) -> None:
             )
         TextMessage(text).reply(message)
 
-    elif command_text == "limits":
-        date = get_command_arguments(message_text, {"date": ("date", "now")})["date"]
-        limits_message(date)
-
     elif command_text == "clear_logs":
         try:
             clear_logs()
@@ -428,83 +423,84 @@ def callback_handler(call: CallbackQuery):
             {"chat_id": "int", "action": "str", "key": "str", "val": "str"}
         )
         chat_id = arguments["chat_id"]
-        action: str = arguments["action"]
-        key: str = arguments["key"]
-        val: str = arguments["val"]
-        user = get_user_from_chat_id(chat_id)
+        # action: str = arguments["action"]
+        # key: str = arguments["key"]
+        # val: str = arguments["val"]
+        # user = get_user_from_chat_id(chat_id)
 
         if chat_id:
-            if action:
-                if action == "del":
-                    if key in ("account", "quiet"):
-                        delete_user_chat_id = user.user_id  # TODO user.telegram.chat_id
-                        response, result = user.delete_user(user_id)
-
-                        if response:
-                            # TODO перевод
-                            text = "Пользователь успешно удалён"
-                            csv_file = result
-                        else:
-                            # TODO перевод
-                            error_dict = {
-                                "User Not Exist": "Пользователь не найден.",
-                                "Not Enough Authority": "Недостаточно прав.",
-                                "Unable To Remove Administrator": (
-                                    "Нельзя удалить администратора.\n"
-                                    "<code>/setuserstatus {user_id} 0</code>"
-                                ),
-                                "CSV Error": "Не получилось получить csv файл.",
-                            }
-                            if result in error_dict:
-                                return TextMessage(error_dict[result]).send(chat_id)
-
-                            text = "Ошибка при удалении."  # TODO перевод
-                            csv_file = result[1]
-                        try:
-                            bot.send_document(
-                                chat_id if key == "quiet" else delete_user_chat_id,
-                                InputFile(csv_file),
-                                caption=get_translate("text.account_has_been_deleted"),
-                            )
-                        except ApiTelegramException:
-                            pass
-                        else:
-                            text += "\n+файл"  # TODO перевод
-
-                        TextMessage(text).send(chat_id)
-
-                    else:
-                        markup = [
-                            [
-                                {get_theme_emoji("back"): f"mnau {user_id}"},
-                                {"🗑": f"mnau {user_id} del account"},
-                                {"🤫🗑": f"mnau {user_id} del quiet"},
-                            ]
-                        ]
-                        # TODO перевод
-                        generated = TextMessage(
-                            f"Вы точно хотите удалить аккаунт id: "
-                            f"<a href='tg://user?id={user_id}'>{user_id}</a>?",
-                            generate_buttons(markup),
-                        )
-                        try:
-                            return generated.edit(chat_id, message_id)
-                        except ApiTelegramException:
-                            return
-                elif action == "edit" and key and val:
-                    if key == "settings.notifications":
-                        response, error_text = user.set_settings(
-                            notifications=bool(int(val))
-                        )
-                        if not response:
-                            return CallBackAnswer(error_text).answer(call_id)
-                    elif key == "settings.status":
-                        response, error_text = request.entity.set_user_status(
-                            user_id, int(val)
-                        )
-                        if not response:
-                            return CallBackAnswer(error_text).answer(call_id)
-                        set_bot_commands(user_id, int(val), user.settings.lang)
+            # TODO переделать
+            # if action:
+            #     if action == "del":
+            #         if key in ("account", "quiet"):
+            #             delete_user_chat_id = user.user_id  # TODO user.telegram.chat_id
+            #             response, result = user.delete_user(user_id)
+            #
+            #             if response:
+            #                 # TODO перевод
+            #                 text = "Пользователь успешно удалён"
+            #                 csv_file = result
+            #             else:
+            #                 # TODO перевод
+            #                 error_dict = {
+            #                     "User Not Exist": "Пользователь не найден.",
+            #                     "Not Enough Authority": "Недостаточно прав.",
+            #                     "Unable To Remove Administrator": (
+            #                         "Нельзя удалить администратора.\n"
+            #                         "<code>/setuserstatus {user_id} 0</code>"
+            #                     ),
+            #                     "CSV Error": "Не получилось получить csv файл.",
+            #                 }
+            #                 if result in error_dict:
+            #                     return TextMessage(error_dict[result]).send(chat_id)
+            #
+            #                 text = "Ошибка при удалении."  # TODO перевод
+            #                 csv_file = result[1]
+            #             try:
+            #                 bot.send_document(
+            #                     chat_id if key == "quiet" else delete_user_chat_id,
+            #                     InputFile(csv_file),
+            #                     caption=get_translate("text.account_has_been_deleted"),
+            #                 )
+            #             except ApiTelegramException:
+            #                 pass
+            #             else:
+            #                 text += "\n+файл"  # TODO перевод
+            #
+            #             TextMessage(text).send(chat_id)
+            #
+            #         else:
+            #             markup = [
+            #                 [
+            #                     {get_theme_emoji("back"): f"mnau {user_id}"},
+            #                     {"🗑": f"mnau {user_id} del account"},
+            #                     {"🤫🗑": f"mnau {user_id} del quiet"},
+            #                 ]
+            #             ]
+            #             # TODO перевод
+            #             generated = TextMessage(
+            #                 f"Вы точно хотите удалить аккаунт id: "
+            #                 f"<a href='tg://user?id={user_id}'>{user_id}</a>?",
+            #                 generate_buttons(markup),
+            #             )
+            #             try:
+            #                 return generated.edit(chat_id, message_id)
+            #             except ApiTelegramException:
+            #                 return
+            #     elif action == "edit" and key and val:
+            #         if key == "settings.notifications":
+            #             response, error_text = user.set_settings(
+            #                 notifications=bool(int(val))
+            #             )
+            #             if not response:
+            #                 return CallBackAnswer(error_text).answer(call_id)
+            #         elif key == "settings.status":
+            #             response, error_text = request.entity.set_user_status(
+            #                 user_id, int(val)
+            #             )
+            #             if not response:
+            #                 return CallBackAnswer(error_text).answer(call_id)
+            #             set_bot_commands(user_id, int(val), user.settings.lang)
 
             generated = user_message(chat_id)
             try:
@@ -1222,6 +1218,15 @@ def callback_handler(call: CallbackQuery):
         # Ответьте на это сообщение, указав название группы
         markup = generate_buttons([[{get_theme_emoji("back"): "mngrs"}]])
         TextMessage(text, markup).edit(chat_id, message_id)
+
+    elif call_prefix == "lm":
+        date = args_func({"date": "date"})["date"]
+        if not date:
+            generated = monthly_calendar_message(
+                None, "lm", "mna", get_translate("select.date")
+            )
+            return generated.edit(chat_id, message_id)
+        limits_message(date).edit(chat_id, message_id, disable_web_page_preview=False)
 
     # elif call_action.startswith("limits"):
     #     date = args_func({"date": ("date", "now")})["date"]

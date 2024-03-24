@@ -1,9 +1,6 @@
 from calendar import monthcalendar
 
 # noinspection PyPackageRequirements
-from telebot.util import chunks
-
-# noinspection PyPackageRequirements
 from telebot.types import InlineKeyboardMarkup
 
 from tgbot.queries import queries
@@ -11,7 +8,7 @@ from tgbot.request import request
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.time_utils import new_time_calendar, year_info, now_time, get_week_number
 from todoapi.types import db
-from todoapi.utils import is_valid_year
+from todoapi.utils import is_valid_year, chunks
 from telegram_utils.buttons_generator import generate_buttons
 
 
@@ -289,7 +286,6 @@ def create_twenty_year_calendar_keyboard(
             [
                 {
                     get_theme_emoji("back"): (
-                        print(locals()) or
                         f"{back[1:-1]}{f' {arguments[1:-1]}' if arguments else ''}"
                     )
                 }

@@ -10,38 +10,22 @@ from telebot.apihelper import ApiTelegramException
 from telebot import formatting
 
 # noinspection PyPackageRequirements
-from telebot.types import InlineKeyboardButton, InputMediaPhoto, Message
+from telebot.types import InlineKeyboardButton, Message
 
 from tgbot.bot import bot
 from tgbot.queries import queries
 from tgbot.request import request
-from tgbot.limits import create_image
+from tgbot.limits import get_limit_link
+from tgbot.types import get_user_from_chat_id
 from tgbot.bot_actions import delete_message_action
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.time_utils import now_time, parse_utc_datetime
-from tgbot.message_generator import (
-    TextMessage,
-    EventMessage,
-    EventsMessage,
-    event_formats,
-)
-from tgbot.buttons_utils import (
-    delmarkup,
-    create_monthly_calendar_keyboard,
-    encode_id,
-    edit_button_data,
-)
-from tgbot.types import get_user_from_chat_id
-from tgbot.utils import (
-    sqlite_format_date2,
-    is_secure_chat,
-    html_to_markdown,
-    re_edit_message,
-    highlight_text_difference,
-)
-from todoapi.exceptions import EventNotFound, GroupNotFound
+from tgbot.message_generator import TextMessage, EventMessage, EventsMessage, event_formats
+from tgbot.buttons_utils import delmarkup, create_monthly_calendar_keyboard, encode_id, edit_button_data
+from tgbot.utils import sqlite_format_date2, is_secure_chat, html_to_markdown, re_edit_message, highlight_text_difference
 from todoapi.types import db, string_status, Event
 from todoapi.utils import sqlite_format_date, is_valid_year, is_admin_id
+from todoapi.exceptions import EventNotFound, GroupNotFound, UserNotFound
 from telegram_utils.buttons_generator import generate_buttons
 
 
@@ -124,19 +108,11 @@ def settings_message() -> TextMessage:
     )
 
     time_zone_dict = {}
-    time_zone_dict.__setitem__(
-        *("-3", f"ste timezone {utz - 3}") if utz > -10 else ("    ", "None")
-    )
-    time_zone_dict.__setitem__(
-        *("-1", f"ste timezone {utz - 1}") if utz > -12 else ("   ", "None")
-    )
+    time_zone_dict.__setitem__(*("-3", f"ste timezone {utz - 3}") if utz > -10 else ("    ", "None"))
+    time_zone_dict.__setitem__(*("-1", f"ste timezone {utz - 1}") if utz > -12 else ("   ", "None"))
     time_zone_dict[str_utz] = "ste timezone 3"
-    time_zone_dict.__setitem__(
-        *("+1", f"ste timezone {utz + 1}") if utz < 12 else ("   ", "None")
-    )
-    time_zone_dict.__setitem__(
-        *("+3", f"ste timezone {utz + 3}") if utz < 10 else ("    ", "None")
-    )
+    time_zone_dict.__setitem__(*("+1", f"ste timezone {utz + 1}") if utz < 12 else ("   ", "None"))
+    time_zone_dict.__setitem__(*("+3", f"ste timezone {utz + 3}") if utz < 10 else ("    ", "None"))
 
     notifications_time = {}
     if not_notifications_[0] == "🔕":
@@ -1065,29 +1041,31 @@ AND (
 def send_notifications_messages() -> None:
     n_date = datetime.utcnow()
     with db.connection(), db.cursor():
-        user_id_list = [
+        chat_id_list = [
             int(user_id)
-            for user in db.execute(
-                queries["select user_ids_for_sending_notifications"],
+            for id_list in db.execute(
+                queries["select chat_ids_for_sending_notifications"],
                 params=(n_date.hour, n_date.minute),
             )
-            if user[0]
-            for user_id in user[0].split(",")
+            if id_list[0]
+            for user_id in id_list[0].split(",")
         ]  # [('id1,id2,id3',)] -> [id1, id2, id3]
 
-    for user_id in user_id_list:
-        # TODO обработать ошибку в случае если user не найден
-        request.entity = User(user_id)
+    for chat_id in chat_id_list:
+        try:
+            request.entity = get_user_from_chat_id(chat_id)
+        except UserNotFound:
+            continue
 
         if request.entity.settings.notifications:
             generated = notification_message(from_command=True)
             if generated and generated.event_list:
                 try:
-                    generated.send(request.entity.user_id)
+                    generated.send(request.entity.request_chat_id)
                     status = "Ok"
                 except ApiTelegramException:
                     status = "Error"
-                logging.info(f"notifications -> {request.entity.user_id} -> {status}")
+                logging.info(f"notifications -> {request.entity.request_chat_id} -> {status}")
 
 
 def monthly_calendar_message(
@@ -1101,33 +1079,17 @@ def monthly_calendar_message(
     return TextMessage(text, markup)
 
 
-def limits_message(
-    date: datetime | str | None = None, message: Message | None = None
-) -> None:
+def limits_message(date: datetime | str | None = None) -> TextMessage:
     if date is None or date == "now":
         date = now_time()
 
     if not is_valid_year(date.year):
-        TextMessage(get_translate("errors.error")).send(request.chat_id)
-        return
+        return TextMessage(get_translate("errors.error"))
 
-    image = create_image(date.year, date.month, date.day)
-    markup = generate_buttons([[{get_theme_emoji("back"): "mnm"}]])
-    if message and message.content_type == "photo":
-        # Может изменять только сообщения с фотографией
-        bot.edit_message_media(
-            media=InputMediaPhoto(image),
-            chat_id=request.chat_id,
-            message_id=message.message_id,
-            reply_markup=markup,
-        )
-    else:
-        bot.send_photo(
-            chat_id=request.chat_id,
-            photo=image,
-            reply_markup=markup,
-            message_thread_id=request.query.message_thread_id or None,
-        )
+    return TextMessage(
+        get_limit_link(f"{date:%d.%m.%Y}"),
+        generate_buttons([[{get_theme_emoji("back"): "lm"}]])
+    )
 
 
 def admin_message(page: int = 1) -> TextMessage:
@@ -1365,6 +1327,7 @@ def account_message() -> TextMessage:
     markup = [
         [{f"{get_translate('text.edit_username')}👤": "None"}],
         [{f"{get_translate('text.edit_password')}🤫🔑": "None"}],
+        [{"📊": "lm"}],
         [
             {get_theme_emoji("back"): "mnm"},
             {f"{get_translate('text.logout')}🚪👈": "logout"},

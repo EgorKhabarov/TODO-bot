@@ -14,6 +14,7 @@ WEATHER_API_KEY = config.get("WEATHER_API_KEY", "")
 BOT_NOTIFICATIONS = config.get("BOT_NOTIFICATIONS", True)
 POKE_SERVER_URL = config.get("POKE_SERVER_URL", False)
 SERVER_URL = config.get("SERVER_URL", "")
+LIMIT_IMAGE_GENERATOR_URL = config.get("LIMIT_IMAGE_GENERATOR_URL")
 
 TELEGRAM_WEBHOOK = config.get("TELEGRAM_WEBHOOK", False)
 TELEGRAM_WEBHOOK_URL = config.get("TELEGRAM_WEBHOOK_URL", "")
@@ -40,7 +41,6 @@ COMMANDS = (
     "settings",
     "today",
     "sqlite",
-    "limits",
     "SQL",
     "export",
     "id",

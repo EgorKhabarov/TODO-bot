@@ -147,9 +147,9 @@ SELECT DISTINCT date
 )
 LIMIT 1;
 """,
-    "select user_ids_for_sending_notifications": """
+    "select chat_ids_for_sending_notifications": """
 -- id людей через запятую, которым нужно сейчас прислать уведомление
-SELECT GROUP_CONCAT(IFNULL(user_id, group_id), ',') AS user_id_list
+SELECT GROUP_CONCAT(IFNULL(user_id, group_id), ',') AS id_list
   FROM tg_settings
  WHERE notifications = 1 AND 
        user_status != -1 AND 

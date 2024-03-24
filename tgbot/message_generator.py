@@ -99,12 +99,13 @@ class TextMessage:
         self.text = text
         self.markup = markup
 
-    def send(self, chat_id: int) -> Message:
+    def send(self, chat_id: int, **kwargs) -> Message:
         return bot.send_message(
             chat_id=chat_id,
             text=self.text,
             reply_markup=self.markup,
             message_thread_id=getattr(request.query, "message_thread_id", None),
+            **kwargs,
         )
 
     def edit(
@@ -114,6 +115,7 @@ class TextMessage:
         *,
         only_markup: bool = False,
         markup: InlineKeyboardMarkup = None,
+        **kwargs,
     ) -> None:
         """
         :param chat_id: chat_id
@@ -139,6 +141,7 @@ class TextMessage:
                 chat_id=chat_id,
                 message_id=message_id,
                 reply_markup=self.markup,
+                **kwargs,
             )
         elif markup is not None:
             bot.edit_message_text(
@@ -146,6 +149,7 @@ class TextMessage:
                 chat_id=chat_id,
                 message_id=message_id,
                 reply_markup=markup,
+                **kwargs,
             )
         else:
             bot.edit_message_text(
@@ -153,14 +157,16 @@ class TextMessage:
                 chat_id=chat_id,
                 message_id=message_id,
                 reply_markup=self.markup,
+                **kwargs,
             )
 
-    def reply(self, message):
+    def reply(self, message, **kwargs):
         bot.reply_to(
             message=message,
             text=self.text,
             reply_markup=self.markup,
             message_thread_id=getattr(request.query, "message_thread_id", None),
+            **kwargs,
         )
 
 

@@ -1,6 +1,6 @@
 import json
 import logging
-from functools import wraps
+from functools import wraps, cached_property
 from io import StringIO
 from typing import Callable, Any
 from datetime import datetime
@@ -21,7 +21,8 @@ from todoapi.exceptions import (
     StatusRepeats,
     NotEnoughPermissions,
     UserNotFound,
-    GroupNotFound, NotGroupMember,
+    GroupNotFound,
+    NotGroupMember,
 )
 from config import DATABASE_PATH
 from todoapi.utils import re_date, is_valid_year, sql_date_pattern, re_username, re_email
@@ -152,7 +153,6 @@ class DataBase:
             result = [description] + result
         # self.sqlite_cursor.close()
         self.sqlite_connection.close()
-        # logging.info(f"{query} {params} {result}")
         # noinspection PyTypeChecker
         return result
 
@@ -167,55 +167,63 @@ class Limit:
     def get_event_limits(self, date: str | datetime = None) -> list[tuple[int]]:
         date = date if date else datetime.now().strftime("%d.%m.%Y")
 
-        # Убрать из выборки события в корзине
+        # TODO Убрать из выборки события в корзине
         try:
             return db.execute(
                 """
 SELECT (
     SELECT IFNULL(COUNT( * ), 0) 
       FROM events
-     WHERE (user_id IS :user_id AND group_id IS :group_id) AND 
-           date = :date
+     WHERE user_id IS :user_id
+           AND group_id IS :group_id
+           AND date = :date
 ) AS count_today,
 (
     SELECT IFNULL(SUM(LENGTH(text)), 0) 
       FROM events
-     WHERE (user_id IS :user_id AND group_id IS :group_id) AND 
-           date = :date
+     WHERE user_id IS :user_id
+           AND group_id IS :group_id
+           AND date = :date
 ) AS sum_length_today,
 (
     SELECT IFNULL(COUNT( * ), 0) 
       FROM events
-     WHERE (user_id IS :user_id AND group_id IS :group_id) AND 
-           SUBSTR(date, 4, 7) = :date_3
+     WHERE user_id IS :user_id
+           AND group_id IS :group_id
+           AND SUBSTR(date, 4, 7) = :date_3
 ) AS count_month,
 (
     SELECT IFNULL(SUM(LENGTH(text)), 0) 
       FROM events
-     WHERE (user_id IS :user_id AND group_id IS :group_id) AND 
-           SUBSTR(date, 4, 7) = :date_3
+     WHERE user_id IS :user_id
+           AND group_id IS :group_id
+           AND SUBSTR(date, 4, 7) = :date_3
 ) AS sum_length_month,
 (
     SELECT IFNULL(COUNT( * ), 0) 
       FROM events
-     WHERE (user_id IS :user_id AND group_id IS :group_id) AND 
-           SUBSTR(date, 7, 4) = :date_6
+     WHERE user_id IS :user_id
+           AND group_id IS :group_id
+           AND SUBSTR(date, 7, 4) = :date_6
 ) AS count_year,
 (
     SELECT IFNULL(SUM(LENGTH(text)), 0) 
       FROM events
-     WHERE (user_id IS :user_id AND group_id IS :group_id) AND 
-           SUBSTR(date, 7, 4) = :date_6
+     WHERE user_id IS :user_id
+           AND group_id IS :group_id
+           AND SUBSTR(date, 7, 4) = :date_6
 ) AS sum_length_year,
 (
     SELECT IFNULL(COUNT( * ), 0) 
       FROM events
-     WHERE user_id IS :user_id AND group_id IS :group_id
+     WHERE user_id IS :user_id
+           AND group_id IS :group_id
 ) AS total_count,
 (
     SELECT IFNULL(SUM(LENGTH(text)), 0) 
       FROM events
-     WHERE user_id IS :user_id AND group_id IS :group_id
+     WHERE user_id IS :user_id
+           AND group_id IS :group_id
 ) AS total_length;
 """,
                 params={
@@ -286,7 +294,7 @@ SELECT (
         # noinspection PyTypeChecker
         return [
             int((actual_limit / max_limit) * 100)
-            for actual_limit, max_limit in zip(actual_limits, self.user_max_limits)
+            for actual_limit, max_limit in zip(actual_limits, tuple(self.user_max_limits.values()))
         ]
 
 
@@ -631,7 +639,7 @@ class User(SafeUser):
         self.token_create_time = token_create_time
         self.limit = Limit(user_id=user_id, status=user_status)
 
-    @property
+    @cached_property
     def settings(self):
         return self.get_user_settings()
 
@@ -646,8 +654,6 @@ class User(SafeUser):
             raise TextIsTooBig
 
         if not re_date.match(date) or not is_valid_year(int(date[-4:])):
-            print(re_date.match(date))
-            print(is_valid_year(int(date[-4:])))
             raise WrongDate
 
         if self.limit.is_exceeded_for_events(

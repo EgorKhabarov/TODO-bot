@@ -48,3 +48,9 @@ def is_valid_year(year: int) -> bool:
 def isdigit(string: str) -> bool:
     """Замена str.isdigit()"""
     return string.isdigit() if string[:1] != "-" else string[1:].isdigit()
+
+
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
