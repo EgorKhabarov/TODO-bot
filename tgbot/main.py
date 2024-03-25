@@ -44,7 +44,7 @@ def telegram_log(action: str, text: str):
         + f"[{request.entity.request_chat_id:<10}"
         + (f":{thread_id}" if thread_id else "")
         + f"]"
-        + (f"[{request.entity.user_status}]" if request.entity_type.user else "")
+        + (f"[{request.entity.user_status}]" if request.is_user else "")
         + f"[{action:<7}] {text}"
     )
 

@@ -49,7 +49,7 @@ def get_limit_link(date: str = "now") -> str:
             + hide_link(noimage)
         )
     else:
-        f, b = "█", "░"
+        f, b = "▓", "░"
         lst = []
         for text, x, y in zip(
             get_translate("arrays.account"),

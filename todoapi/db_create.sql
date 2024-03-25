@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS groups (
     name              TEXT NOT NULL,  -- Название группы
     token             TEXT UNIQUE NOT NULL,
     token_create_time TEXT NOT NULL DEFAULT (DATETIME()),
-    owner_id          INT  UNIQUE NOT NULL,  -- владелец группы
+    owner_id          INT  NOT NULL,  -- владелец группы
     max_event_id      INT  DEFAULT (1),
     icon              BLOB DEFAULT NULL,
     chat_id           INT  UNIQUE DEFAULT NULL,
@@ -172,8 +172,8 @@ END;
 CREATE TRIGGER IF NOT EXISTS trigger_add_group_member
 AFTER INSERT ON groups FOR EACH ROW
 BEGIN
-    INSERT INTO members (group_id, user_id, entry_date)
-    VALUES (NEW.group_id, NEW.owner_id, DATETIME());
+    INSERT INTO members (group_id, user_id, entry_date, member_status)
+    VALUES (NEW.group_id, NEW.owner_id, DATETIME(), 2);
 END;
 
 -- При удалении группы, удаляем все строки из members связанные с этой группой.
@@ -197,21 +197,21 @@ BEGIN
 END;
 
 -- При добавлении chat_id в users то добавляет удаляет запись в tg_settings (login)
-CREATE TRIGGER IF NOT EXISTS trigger_add_chat_id
+CREATE TRIGGER IF NOT EXISTS trigger_add_user_chat_id
 AFTER UPDATE OF chat_id ON users FOR EACH ROW
-WHEN NEW.chat_id IS NULL
-BEGIN
-    DELETE FROM tg_settings
-          WHERE user_id = NEW.user_id;
-END;
-
--- При удалении chat_id в users то удаляет запись из tg_settings (logout)
-CREATE TRIGGER IF NOT EXISTS trigger_delete_chat_id
-AFTER UPDATE OF chat_id ON users FOR EACH ROW
-WHEN NEW.chat_id IS NOT NULL
+--WHEN NEW.chat_id IS NULL
 BEGIN
     INSERT INTO tg_settings (user_id)
          VALUES (NEW.user_id);
+END;
+
+-- При добавлении chat_id в groups то добавляет удаляет запись в tg_settings
+CREATE TRIGGER IF NOT EXISTS trigger_add_group_chat_id
+AFTER UPDATE OF chat_id ON groups FOR EACH ROW
+--WHEN NEW.chat_id IS NULL
+BEGIN
+    INSERT INTO tg_settings (group_id)
+         VALUES (NEW.group_id);
 END;
 
 -- индекс

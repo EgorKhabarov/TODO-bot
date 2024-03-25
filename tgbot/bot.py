@@ -69,20 +69,19 @@ def bot_log_info():
     )
 
 
-def set_bot_commands() -> bool:
+def set_bot_commands():
     """
     Ставит список команд для пользователя chat_id
     """
     status = request.entity.user_status
 
     # Переделать на проверку user-а
-    if request.entity.is_admin and status != -1:
+    if request.is_user and request.entity.is_admin and status != -1:
         status = 2
 
-    target = f"buttons.commands.{status}"
+    target = f"buttons.commands.{status}.{request.entity_type}"
 
     try:
-        return bot.set_my_commands(get_translate(target), BotCommandScopeChat(request.chat_id))
-    except (ApiTelegramException, KeyError) as e:
-        logging.error(f'set_bot_commands (ApiTelegramException, KeyError) "{e}"')
-        return False
+        bot.set_my_commands(get_translate(target), BotCommandScopeChat(request.chat_id))
+    except ApiTelegramException as e:
+        logging.error(f'set_bot_commands ApiTelegramException "{e}"')

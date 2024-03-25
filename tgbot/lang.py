@@ -877,7 +877,7 @@ Visibility <b>{}</b>m""",
                         BotCommand("_", "You are banned"),
                     ],
                 },
-                "group": {
+                "member": {
                     "ru": [
                         BotCommand("_", "Вы забанены"),
                     ],
@@ -921,7 +921,7 @@ Visibility <b>{}</b>m""",
                         BotCommand("settings", "Settings"),
                     ],
                 },
-                "group": {
+                "member": {
                     "ru": [
                         BotCommand("start", "Старт"),
                         BotCommand("menu", "Меню"),
@@ -991,7 +991,7 @@ Visibility <b>{}</b>m""",
                         BotCommand("settings", "Settings"),
                     ],
                 },
-                "group": {
+                "member": {
                     "ru": [
                         BotCommand("start", "Старт"),
                         BotCommand("menu", "Меню"),
@@ -1063,7 +1063,7 @@ Visibility <b>{}</b>m""",
                         BotCommand("commands", "Command list"),
                     ],
                 },
-                "group": {
+                "member": {
                     "ru": [
                         BotCommand("start", "Старт"),
                         BotCommand("menu", "Меню"),

@@ -30,6 +30,7 @@ from todoapi.utils import is_admin_id
 
 re_edit_message = re.compile(r"\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)")
 link_sub = re.compile(r"<a href=\"(.+?)\">(.+?)(\n*?)</a>")
+add_group_pattern = re.compile(r"\A/start@\w{5,32} addgroup-(\d+)-([a-z\d]{32})\Z")
 
 
 def add_status_effect(text: str, statuses: str) -> str:

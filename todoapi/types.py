@@ -549,7 +549,7 @@ class SafeUser:
         self.__group_id = group_id
 
         if self.group_id:
-            int(self.member_status)
+            self.__member_status = self.member_status
 
     @property
     def icon(self) -> bytes | None:
@@ -562,7 +562,7 @@ class SafeUser:
 
     @group_id.setter
     def group_id(self, group_id: str):
-        int(self.member_status)
+        self.__member_status = self.member_status
         self.__group_id = group_id
 
     @property
@@ -572,7 +572,7 @@ class SafeUser:
             return db.execute(
                 """
 SELECT member_status
-  FROM member
+  FROM members
  WHERE group_id = :group_id
        AND user_id = :user_id;
 """,
@@ -599,12 +599,12 @@ SELECT member_status
     @property
     @allow_for(member=True)
     def is_moderator(self) -> bool:
-        return self.member_status >= 1
+        return self.__member_status >= 1
 
     @property
     @allow_for(member=True)
     def is_owner(self) -> bool:
-        return self.member_status >= 2
+        return self.__member_status >= 2
 
     @property
     def safe_user_id(self):
@@ -642,10 +642,6 @@ class User(SafeUser):
     @cached_property
     def settings(self):
         return self.get_user_settings()
-
-    @property
-    def groups(self):
-        return self.get_my_groups()
 
     def create_event(self, date: str, text: str) -> bool:
         text_len = len(text)
@@ -1109,6 +1105,7 @@ SELECT lang,
     def set_user_settings(self) -> Settings:
         pass
 
+    # TODO удалить
     def get_my_member_status(self, group_id: str) -> int:
         try:
             return db.execute(
@@ -1122,11 +1119,36 @@ SELECT member_status
                     "group_id": group_id,
                     "user_id": self.user_id,
                 },
-            )[0]
+            )[0][0]
         except IndexError:
             raise NotGroupMember
         except Error:
             raise ApiError
+
+    @allow_for(user=True)
+    def create_group(self, name: str, icon: bytes = None) -> bool:
+        if self.limit.is_exceeded_for_groups(create=True):
+            raise LimitExceeded
+
+        try:
+            db.execute(
+                """
+INSERT INTO groups (group_id, owner_id, token, name, icon)
+VALUES (:group_id, :owner_id, :token, :name, :icon);
+""",
+                params={
+                    "group_id": str(uuid4()).replace("-", ""),
+                    "owner_id": self.user_id,
+                    "token": generate_token(length=32),
+                    "name": name,
+                    "icon": icon,
+                },
+                commit=True,
+            )
+        except Error:
+            raise ApiError
+
+        return True
 
     @allow_for(user=True)
     def get_group(self, group_id: str) -> Group:
@@ -1147,7 +1169,8 @@ SELECT group_id,
        token,
        token_create_time
   FROM groups
- WHERE group_id IN ({','.join('?' for _ in group_ids)});
+ WHERE group_id IN ({','.join('?' for _ in group_ids)})
+ ORDER BY name ASC;
 """,
                 params=(*group_ids,),
             )
@@ -1160,7 +1183,8 @@ SELECT group_id,
         return [Group(*group) for group in groups]
 
     @allow_for(user=True)
-    def get_my_groups(self) -> list[Group]:
+    def get_my_groups(self, page: int = 1) -> list[Group]:
+        page -= 1
         try:
             groups = db.execute(
                 """
@@ -1171,13 +1195,85 @@ SELECT group_id,
        token,
        token_create_time
   FROM groups
- WHERE group_id = (
-    SELECT group_id
-      FROM members
-     WHERE user_id = :user_id
-);
+ WHERE group_id IN (
+           SELECT group_id
+             FROM members
+            WHERE user_id = :user_id
+       )
+ORDER BY name ASC
+LIMIT :limit OFFSET :offset;
 """,
-                params={"user_id": self.user_id},
+                params={
+                    "user_id": self.user_id,
+                    "limit": 12,
+                    "offset": 12 * page,
+                },
+            )
+        except Error:
+            raise ApiError
+
+        return [Group(*group) for group in groups]
+
+    @allow_for(user=True)
+    def get_groups_where_i_moderator(self, page: int = 1) -> list[Group]:
+        page -= 1
+        try:
+            groups = db.execute(
+                """
+SELECT group_id,
+       name,
+       owner_id,
+       max_event_id,
+       token,
+       token_create_time
+  FROM groups
+ WHERE group_id IN (
+           SELECT group_id
+             FROM members
+            WHERE user_id = :user_id
+                  AND member_status >= 1
+       )
+ORDER BY name ASC
+LIMIT :limit OFFSET :offset;
+""",
+                params={
+                    "user_id": self.user_id,
+                    "limit": 12,
+                    "offset": 12 * page,
+                },
+            )
+        except Error:
+            raise ApiError
+
+        return [Group(*group) for group in groups]
+
+    @allow_for(user=True)
+    def get_groups_where_i_admin(self, page: int = 1) -> list[Group]:
+        page -= 1
+        try:
+            groups = db.execute(
+                """
+SELECT group_id,
+       name,
+       owner_id,
+       max_event_id,
+       token,
+       token_create_time
+  FROM groups
+ WHERE group_id IN (
+           SELECT group_id
+             FROM members
+            WHERE user_id = :user_id
+                  AND member_status >= 1
+       )
+ORDER BY name ASC
+LIMIT :limit OFFSET :offset;
+""",
+                params={
+                    "user_id": self.user_id,
+                    "limit": 12,
+                    "offset": 12 * page,
+                },
             )
         except Error:
             raise ApiError
@@ -1242,58 +1338,6 @@ UPDATE groups
 
     def add_group_member(self, group_id: str, user_id: int) -> bool:
         pass
-
-
-
-
-    @allow_for(user=True)
-    def create_group(self, name: str, icon: bytes = None) -> bool:
-        if self.limit.is_exceeded_for_groups(create=True):
-            raise LimitExceeded
-
-        try:
-            db.execute(
-                """
-INSERT INTO groups (group_id, owner_id, token, name, icon)
-VALUES (:group_id, :owner_id, :token, :name, :icon);
-""",
-                params={
-                    "group_id": str(uuid4()).replace("-", ""),
-                    "owner_id": self.user_id,
-                    "token": generate_token(length=32),
-                    "name": name,
-                    "icon": icon,
-                },
-                commit=True,
-            )
-        except Error:
-            raise ApiError
-
-        return True
-
-    def get_groups_where_i_admin(self) -> list[Group]:
-        try:
-            groups = db.execute(
-                """
-SELECT group_id,
-       name,
-       owner_id,
-       max_event_id,
-       token,
-       token_create_time
-  FROM groups
- WHERE group_id = (
-    SELECT group_id
-      FROM members
-     WHERE user_id = :user_id AND member_status >= 1;
-);
-""",
-                params={"user_id": self.user_id},
-            )
-        except Error:
-            raise ApiError
-
-        return [Group(*group) for group in groups]
 
     @allow_for(member=True)
     def edit_group_member_status(self, user_id: int, status: int) -> bool:

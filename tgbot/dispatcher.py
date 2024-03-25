@@ -7,13 +7,13 @@ from tgbot.bot import bot
 from cachetools import LRUCache
 from tgbot.request import request, EntityType
 from tgbot.types import get_user_from_chat_id
-from tgbot.utils import rate_limit
 from tgbot.lang import get_translate
 from tgbot.handlers import not_login_handler
+from tgbot.utils import rate_limit, add_group_pattern
 from tgbot.message_generator import CallBackAnswer, TextMessage
 from todoapi.types import db
 from todoapi.utils import is_admin_id
-from todoapi.exceptions import UserNotFound
+from todoapi.exceptions import UserNotFound, GroupNotFound
 from telegram_utils.command_parser import command_regex
 
 
@@ -68,26 +68,28 @@ def process_account(func):
         @rate_limit(rate_limit_30_60, 30, 60, key_func, else_func)
         def wrapper(x: Message | CallbackQuery):
             with db.connection(), db.cursor():
+                request.query = x
+                request.chat_id = chat_id
+                request.entity_type = EntityType(
+                    user=message.chat.type == "private",
+                    member=message.chat.type != "private",
+                )
                 try:
-                    request.query = x
-                    request.chat_id = chat_id
-                    request.entity_type = EntityType(
-                        user=message.chat.type == "private",
-                        member=message.chat.type != "private",
-                    )
-                    if request.entity_type.member:
-                        telegram_user_id = x.from_user.id
-                        telegram_group_chat_id = x.chat.id if isinstance(x, Message) else x.message.chat.id
-                        request.entity = get_user_from_chat_id(telegram_user_id, telegram_group_chat_id)
+                    if request.is_member:
+                        request.entity = get_user_from_chat_id(x.from_user.id, chat_id)
                     else:
                         request.entity = get_user_from_chat_id(chat_id)
-
-                except UserNotFound:
+                except (UserNotFound, GroupNotFound):
                     if isinstance(x, Message) and message.text.startswith(("/login", "/signup")):
-                        if message.chat.type == "private":
+                        if request.is_user:
                             return not_login_handler(x)
                         else:
                             bot.reply_to(message, get_translate("errors.forbidden_to_log_account_in_group"))
+                    elif isinstance(x, Message) and add_group_pattern.match(message.text):
+                        if request.is_member:
+                            not_login_handler(message)
+                        else:
+                            bot.reply_to(message, get_translate("errors.error"))
                     else:
                         bot.reply_to(message, get_translate("errors.no_account"))
 

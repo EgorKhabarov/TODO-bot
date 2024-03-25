@@ -2,6 +2,7 @@ import re
 import html
 import logging
 from datetime import timedelta, datetime
+from typing import Literal
 
 # noinspection PyPackageRequirements
 from telebot.apihelper import ApiTelegramException
@@ -23,8 +24,8 @@ from tgbot.time_utils import now_time, parse_utc_datetime
 from tgbot.message_generator import TextMessage, EventMessage, EventsMessage, event_formats
 from tgbot.buttons_utils import delmarkup, create_monthly_calendar_keyboard, encode_id, edit_button_data
 from tgbot.utils import sqlite_format_date2, is_secure_chat, html_to_markdown, re_edit_message, highlight_text_difference
-from todoapi.types import db, string_status, Event
-from todoapi.utils import sqlite_format_date, is_valid_year, is_admin_id
+from todoapi.types import db, string_status, Event, group_limits
+from todoapi.utils import sqlite_format_date, is_valid_year, is_admin_id, chunks
 from todoapi.exceptions import EventNotFound, GroupNotFound, UserNotFound
 from telegram_utils.buttons_generator import generate_buttons
 
@@ -73,7 +74,7 @@ def menu_message() -> TextMessage:
         [
             {f"👤 {translate_account}": "mna"},
             {f"👥 {translate_groups}": "mngrs"},
-        ],
+        ] if request.is_user else [],
         [
             {f"📆 {translate_seven_days}": "pw"},
             {f"🔔 {translate_notifications}": "mnn"},
@@ -1279,40 +1280,70 @@ def group_message(group_id: str) -> TextMessage | None:
     text = f"""
 👥 Group 👥
 
-<pre><code class='language-group info'>id:   {group.group_id}
-name: {group.name}</code></pre>
-"""
+<pre><code class='language-group info'>     id: {group.group_id}
+   name: {group.name}
+{f'chat_id: <code>{group.chat_id}</code>' if group.chat_id else ''}
+""".strip() + "</code></pre>"
+    startgroup_data = f"addgroup-{group.owner_id}-{group.group_id}"
     markup = generate_buttons(
         [
-            [{"Telegram group": "None"}],
+            [{"Изменить название группы": "None"}],
+            [
+                {"Удалить группу": "None"},
+                {"Удалить бота из группы": "None"}
+                if group.chat_id else
+                {
+                    get_translate("text.add_bot_to_group"): {
+                        "url": f"https://t.me/{bot.user.username}?startgroup={startgroup_data}"
+                    }
+                }
+            ],
             [{get_theme_emoji("back"): "mngrs"}],
         ]
     )
     return TextMessage(text, markup)
 
 
-def groups_message() -> TextMessage:
-    groups = request.entity.groups
+def groups_message(mode: Literal["al", "md", "ad"] = "al", page: int = 1) -> TextMessage:
+    match mode:
+        case "al":
+            groups = request.entity.get_my_groups()
+        case "md":
+            groups = request.entity.get_groups_where_i_moderator()
+        case "ad":
+            groups = request.entity.get_groups_where_i_admin()
+        case _:
+            raise ValueError
+
     if groups:
         string_groups = "\n\n".join(
             f"""
-1) name: <code>{group.name}</code>
+{n + 1}) name: <code>{group.name}</code>
      id: <code>{group.group_id}</code>
+     {f'chat_id: <code>{group.chat_id}</code>' if group.chat_id else ''}
 """.strip()
-            for group in groups
+            for n, group in enumerate(groups)
         )
         # TODO перевод
+        user_group_limits = group_limits[request.entity.user_status]["max_groups_participate" if mode == "al" else "max_groups_creator"]
         text = f"""
 👥 Группы 👥
 
-У вас групп: {len(groups)}
+У вас групп: {len(groups)}/{user_group_limits}
 
 {string_groups}
 """
         markup = [
-            *[[{f"{group.name}": f"mngr {group.group_id}"}] for group in groups],
-            [{"👥 Создать группу": "crgb"}] if len(groups) < 5 else [],
-            [{get_theme_emoji("back"): "mnm"}],
+            *[
+                [{f"{group.name}": f"mngr {group.group_id}"} for group in group_chunk]
+                for group_chunk in chunks(groups, 2)
+            ],
+            [
+                {("🔸" if mode == "al" else "") + "All": "mngrs al"},
+                {("🔸" if mode == "md" else "") + "Moderator": "mngrs md"},
+                {("🔸" if mode == "ad" else "") + "Admin": "mngrs ad"},
+            ],
+            [{get_theme_emoji("back"): "mnm"}, {"👥 Создать группу": "crgb"}],
         ]
     else:
         text = "👥 Группы 👥\n\nУ вас групп: 0"
@@ -1327,9 +1358,9 @@ def account_message() -> TextMessage:
     markup = [
         [{f"{get_translate('text.edit_username')}👤": "None"}],
         [{f"{get_translate('text.edit_password')}🤫🔑": "None"}],
-        [{"📊": "lm"}],
         [
             {get_theme_emoji("back"): "mnm"},
+            {"📊": "lm"},
             {f"{get_translate('text.logout')}🚪👈": "logout"},
         ],
     ]

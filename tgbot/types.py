@@ -3,7 +3,7 @@ from functools import cached_property
 
 from config import ADMIN_IDS
 from todoapi.types import User, db, Group, Settings, allow_for
-from todoapi.exceptions import ApiError, UserNotFound, GroupNotFound
+from todoapi.exceptions import ApiError, UserNotFound, GroupNotFound, NotEnoughPermissions
 
 
 class TelegramSettings(Settings):
@@ -21,6 +21,12 @@ class TelegramSettings(Settings):
     ):
         super().__init__(lang, sub_urls, city, timezone, direction, notifications, notifications_time, theme)
         self.add_event_date = add_event_date
+
+
+class TelegramGroup(Group):
+    def __init__(self, group_id: str, chat_id: int, name: str, owner_id: int, max_event_id: int):
+        super().__init__(group_id, name, owner_id, max_event_id)
+        self.chat_id = chat_id
 
 
 class TelegramUser(User):
@@ -78,15 +84,158 @@ SELECT lang,
         except Error:
             raise ApiError
         except IndexError:
-            raise UserNotFound
+            raise (GroupNotFound if self.group_id else UserNotFound)
 
         return TelegramSettings(*settings)
 
+    @allow_for(user=True)
+    def set_group_telegram_chat_id(self, group_id: str, chat_id: int | None = None) -> bool:
+        if self.get_my_member_status(group_id) != 2:
+            raise NotEnoughPermissions
 
-class TelegramGroup(Group):
-    def __init__(self, group_id: str, chat_id: int, name: str, owner_id: int, max_event_id: int):
-        super().__init__(group_id, name, owner_id, max_event_id)
-        self.chat_id = chat_id
+        try:
+            db.execute(
+                """
+UPDATE groups
+   SET chat_id = :chat_id
+ WHERE group_id = :group_id;
+""",
+                params={
+                    "chat_id": chat_id,
+                    "group_id": group_id,
+                },
+                commit=True,
+            )
+        except Error:
+            raise ApiError
+
+        return True
+
+    @allow_for(user=True)
+    def get_group(self, group_id: str) -> TelegramGroup:
+        return self.get_groups([group_id])[0]
+
+    @allow_for(user=True)
+    def get_groups(self, group_ids: list[str]) -> list[TelegramGroup]:
+        for group_id in group_ids:
+            self.get_my_member_status(group_id)
+
+        try:
+            groups = db.execute(
+                f"""
+SELECT group_id,
+       chat_id,
+       name,
+       owner_id,
+       max_event_id
+  FROM groups
+ WHERE group_id IN ({','.join('?' for _ in group_ids)})
+ ORDER BY name ASC;
+""",
+                params=(*group_ids,),
+            )
+        except Error:
+            raise ApiError
+
+        if not groups:
+            raise GroupNotFound
+
+        return [TelegramGroup(*group) for group in groups]
+
+    @allow_for(user=True)
+    def get_my_groups(self, page: int = 1) -> list[TelegramGroup]:
+        page -= 1
+        try:
+            groups = db.execute(
+                """
+SELECT group_id,
+       chat_id,
+       name,
+       owner_id,
+       max_event_id
+  FROM groups
+ WHERE group_id IN (
+           SELECT group_id
+             FROM members
+            WHERE user_id = :user_id
+       )
+ORDER BY name ASC
+LIMIT :limit OFFSET :offset;
+""",
+                params={
+                    "user_id": self.user_id,
+                    "limit": 12,
+                    "offset": 12 * page,
+                },
+            )
+        except Error:
+            raise ApiError
+
+        return [TelegramGroup(*group) for group in groups]
+
+    @allow_for(user=True)
+    def get_groups_where_i_moderator(self, page: int = 1) -> list[TelegramGroup]:
+        page -= 1
+        try:
+            groups = db.execute(
+                """
+SELECT group_id,
+       chat_id,
+       name,
+       owner_id,
+       max_event_id
+  FROM groups
+ WHERE group_id IN (
+           SELECT group_id
+             FROM members
+            WHERE user_id = :user_id
+                  AND member_status >= 1
+       )
+ORDER BY name ASC
+LIMIT :limit OFFSET :offset;
+""",
+                params={
+                    "user_id": self.user_id,
+                    "limit": 12,
+                    "offset": 12 * page,
+                },
+            )
+        except Error:
+            raise ApiError
+
+        return [TelegramGroup(*group) for group in groups]
+
+    @allow_for(user=True)
+    def get_groups_where_i_admin(self, page: int = 1) -> list[TelegramGroup]:
+        page -= 1
+        try:
+            groups = db.execute(
+                """
+SELECT group_id,
+       chat_id,
+       name,
+       owner_id,
+       max_event_id
+  FROM groups
+ WHERE group_id IN (
+           SELECT group_id
+             FROM members
+            WHERE user_id = :user_id
+                  AND member_status >= 1
+       )
+ORDER BY name ASC
+LIMIT :limit OFFSET :offset;
+""",
+                params={
+                    "user_id": self.user_id,
+                    "limit": 12,
+                    "offset": 12 * page,
+                },
+            )
+        except Error:
+            raise ApiError
+
+        return [TelegramGroup(*group) for group in groups]
 
 
 def get_group_from_chat_id(telegram_group_chat_id) -> TelegramGroup:

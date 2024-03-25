@@ -63,10 +63,11 @@ from tgbot.utils import (
     write_table_to_str,
     is_secure_chat,
     html_to_markdown,
-    extract_search_query,
+    extract_search_query, add_group_pattern,
 )
+from tgbot.types import get_user_from_chat_id
 from todoapi.exceptions import ApiError, UserNotFound, EventNotFound, LimitExceeded, TextIsTooBig, WrongDate, \
-    StatusConflict, StatusLengthExceeded, StatusRepeats, NotEnoughPermissions
+    StatusConflict, StatusLengthExceeded, StatusRepeats, NotEnoughPermissions, NotGroupMember
 from todoapi.types import db, create_user, get_user_from_password
 from todoapi.log_cleaner import clear_logs
 from telegram_utils.argument_parser import get_arguments, getargs
@@ -103,6 +104,7 @@ def not_login_handler(message: Message) -> None:
                 bot.send_message(message.chat.id, get_translate("errors.success"))
                 bot.delete_message(message.chat.id, message.message_id)
                 start_message().send(message.chat.id)
+                set_bot_commands()
 
     elif message.text.startswith("/signup"):
         arguments = get_command_arguments(
@@ -134,6 +136,28 @@ def not_login_handler(message: Message) -> None:
                     bot.send_message(message.chat.id, get_translate("errors.success"))
                     bot.delete_message(message.chat.id, message.message_id)
                     start_message().send(message.chat.id)
+                    set_bot_commands()
+
+    elif match := add_group_pattern.match(message.text):
+        owner_id, group_id = match.group(1), match.group(2)
+        try:
+            user = get_user_from_chat_id(message.from_user.id)
+        except UserNotFound:
+            return bot.reply_to(message, get_translate("errors.failure"))
+
+        if user.user_id != int(owner_id):
+            return bot.reply_to(message, get_translate("errors.failure"))
+
+        try:
+            user.set_group_telegram_chat_id(group_id, message.chat.id)
+        except (NotEnoughPermissions, NotGroupMember):
+            return bot.reply_to(message, get_translate("errors.failure"))
+
+        bot.reply_to(message, get_translate("errors.success"))
+        request.entity = user
+        start_message().send(message.chat.id)
+        set_bot_commands()
+
 
 
 def command_handler(message: Message) -> None:
@@ -319,7 +343,7 @@ def command_handler(message: Message) -> None:
         TextMessage(text).send(chat_id)
 
     elif command_text == "logout":
-        if request.entity_type.user:
+        if request.is_user:
             request.entity.set_user_telegram_chat_id(None)
             bot.reply_to(message, get_translate("errors.success", request.entity.settings.lang))
 
@@ -521,7 +545,8 @@ def callback_handler(call: CallbackQuery):
             CallBackAnswer("ok").answer(call_id, True)
 
     elif call_prefix == "mngrs":  # groups message
-        groups_message().edit(chat_id, message_id)
+        mode = args_func({"mode": ("str", "al")})["mode"]
+        groups_message(mode).edit(chat_id, message_id)
 
     elif call_prefix == "mngr":  # group message
         group_id = args_func({"group_id": "str"})["group_id"]
@@ -1204,11 +1229,16 @@ def callback_handler(call: CallbackQuery):
         trash_can_message().edit(chat_id, message_id)
 
     elif call_prefix == "logout":
-        if request.entity_type.user:
+        if request.is_user:
             request.entity.set_user_telegram_chat_id(None)
             TextMessage(get_translate("errors.success")).edit(chat_id, message_id)
 
     elif call_prefix == "crgb":  # before create group
+        if request.entity.limit.is_exceeded_for_groups(create=True):
+            return CallBackAnswer(
+                get_translate("errors.limit_exceeded")
+            ).answer(call_id, True)
+
         text = """
 ➕👥 Create Group
 
