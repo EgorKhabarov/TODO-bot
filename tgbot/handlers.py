@@ -67,7 +67,7 @@ from tgbot.utils import (
 )
 from tgbot.types import get_user_from_chat_id
 from todoapi.exceptions import ApiError, UserNotFound, EventNotFound, LimitExceeded, TextIsTooBig, WrongDate, \
-    StatusConflict, StatusLengthExceeded, StatusRepeats, NotEnoughPermissions, NotGroupMember
+    StatusConflict, StatusLengthExceeded, StatusRepeats, NotEnoughPermissions, NotGroupMember, GroupNotFound
 from todoapi.types import db, create_user, get_user_from_password
 from todoapi.log_cleaner import clear_logs
 from telegram_utils.argument_parser import get_arguments, getargs
@@ -1249,6 +1249,28 @@ def callback_handler(call: CallbackQuery):
         markup = generate_buttons([[{get_theme_emoji("back"): "mngrs"}]])
         TextMessage(text, markup).edit(chat_id, message_id)
 
+    elif call_prefix == "gren":
+        group_id = args_func({"group_id": "str"})["group_id"]
+        if not group_id:
+            return
+        try:
+            group = request.entity.get_group(group_id)
+        except GroupNotFound:
+            return None
+
+        text = f"""
+✏️👥 Edit Group Name
+
+id: `<code>{group.group_id}</code>`
+name: `<code>{group.name}</code>`
+
+<i>Reply to this message with the group name</i>
+"""
+        # TODO Перевод
+        # Ответьте на это сообщение, указав название группы
+        markup = generate_buttons([[{get_theme_emoji("back"): f"mngr {group_id}"}]])
+        TextMessage(text, markup).edit(chat_id, message_id)
+
     elif call_prefix == "lm":
         date = args_func({"date": "date"})["date"]
         if not date:
@@ -1315,6 +1337,19 @@ def reply_handler(message: Message, reply_to_message: Message) -> None:
             return
 
         generated.send(request.entity.request_chat_id)
+
+    elif reply_to_message.text.startswith("✏️👥"):
+        name = html_to_markdown(message.html_text)[:32]
+        group_id = reply_to_message.text.split("`", 2)[1]
+        try:
+            request.entity.edit_group_name(name, group_id)
+        except NotEnoughPermissions:
+            bot.reply_to(message, get_translate("errors.limit_exceeded"))
+        except (GroupNotFound, NotGroupMember):
+            bot.reply_to(message, get_translate("errors.error"))
+        else:
+            group_message(group_id).edit(reply_to_message.chat.id, reply_to_message.message_id)
+            bot.delete_message(message.chat.id, message.message_id)
 
 
 def add_event_date(state: str = None) -> str | bool:

@@ -31,19 +31,7 @@ from telegram_utils.buttons_generator import generate_buttons
 
 
 def start_message() -> TextMessage:
-    markup = generate_buttons(
-        [
-            [{"/menu": "mnm"}],
-            [{"/calendar": "mnc ('now',)"}],
-            [
-                {
-                    get_translate("text.add_bot_to_group"): {
-                        "url": f"https://t.me/{bot.user.username}?startgroup=AddGroup"
-                    }
-                },
-            ],
-        ]
-    )
+    markup = generate_buttons([[{"/menu": "mnm"}], [{"/calendar": "mnc ('now',)"}]])
     text = get_translate("messages.start")
     return TextMessage(text, markup)
 
@@ -1280,23 +1268,23 @@ def group_message(group_id: str) -> TextMessage | None:
     text = f"""
 👥 Group 👥
 
-<pre><code class='language-group info'>     id: {group.group_id}
-   name: {group.name}
-{f'chat_id: <code>{group.chat_id}</code>' if group.chat_id else ''}
-""".strip() + "</code></pre>"
+id: `<code>{group.group_id}</code>`
+name: `<code>{html.escape(group.name)}</code>`
+{f'chat_id: `<code>{group.chat_id}</code>`' if group.chat_id else ''}
+""".strip()
+
     startgroup_data = f"addgroup-{group.owner_id}-{group.group_id}"
+    startgroup_url = f"https://t.me/{bot.user.username}?startgroup={startgroup_data}"
+
     markup = generate_buttons(
         [
-            [{"Изменить название группы": "None"}],
+            [{"Изменить название группы": f"gren {group.group_id}"}],
             [
                 {"Удалить группу": "None"},
                 {"Удалить бота из группы": "None"}
-                if group.chat_id else
-                {
-                    get_translate("text.add_bot_to_group"): {
-                        "url": f"https://t.me/{bot.user.username}?startgroup={startgroup_data}"
-                    }
-                }
+                if group.chat_id
+                else
+                {get_translate("text.add_bot_to_group"): {"url": startgroup_url}}
             ],
             [{get_theme_emoji("back"): "mngrs"}],
         ]
@@ -1318,9 +1306,9 @@ def groups_message(mode: Literal["al", "md", "ad"] = "al", page: int = 1) -> Tex
     if groups:
         string_groups = "\n\n".join(
             f"""
-{n + 1}) name: <code>{group.name}</code>
-     id: <code>{group.group_id}</code>
-     {f'chat_id: <code>{group.chat_id}</code>' if group.chat_id else ''}
+{n + 1}) name: `<code>{html.escape(group.name)}</code>`
+     id: `<code>{group.group_id}</code>`
+     {f'chat_id: `<code>{group.chat_id}</code>`' if group.chat_id else ''}
 """.strip()
             for n, group in enumerate(groups)
         )

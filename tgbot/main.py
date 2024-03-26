@@ -5,7 +5,7 @@ from threading import Thread
 import requests
 
 # noinspection PyPackageRequirements
-from telebot.types import CallbackQuery, Message, BotCommandScopeDefault
+from telebot.types import CallbackQuery, Message
 
 import config
 from tgbot.dispatcher import process_account
@@ -45,13 +45,14 @@ def telegram_log(action: str, text: str):
         + (f":{thread_id}" if thread_id else "")
         + f"]"
         + (f"[{request.entity.user_status}]" if request.is_user else "")
-        + f"[{action:<7}] {text}"
+        + f"[{action:^7}] {text}"
     )
 
 
 @bot.message_handler(content_types=["migrate_to_chat_id"], chat_types=["group"])
 @process_account
 def migrate_chat(message: Message):
+    """Миграция chat.id группы в супергруппу"""
     logging.info(
         f"[{message.chat.id:<10}][{request.entity.user_status}] "
         f"migrate_to_chat_id {message.migrate_to_chat_id}"
@@ -61,12 +62,11 @@ def migrate_chat(message: Message):
         "to_chat_id": message.migrate_to_chat_id,
     }
     db.execute(
-        queries["update settings_migrate_chat_id"],
-        params=params,
-        commit=True,
-    )
-    db.execute(
-        queries["update events_migrate_chat_id"],
+        """
+UPDATE groups
+   SET chat_id = :to_chat_id
+ WHERE chat_id = :from_chat_id;
+""",
         params=params,
         commit=True,
     )

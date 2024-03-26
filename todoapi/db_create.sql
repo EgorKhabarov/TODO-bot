@@ -199,7 +199,7 @@ END;
 -- При добавлении chat_id в users то добавляет удаляет запись в tg_settings (login)
 CREATE TRIGGER IF NOT EXISTS trigger_add_user_chat_id
 AFTER UPDATE OF chat_id ON users FOR EACH ROW
---WHEN NEW.chat_id IS NULL
+WHEN NEW.chat_id IS NULL
 BEGIN
     INSERT INTO tg_settings (user_id)
          VALUES (NEW.user_id);
@@ -208,7 +208,7 @@ END;
 -- При добавлении chat_id в groups то добавляет удаляет запись в tg_settings
 CREATE TRIGGER IF NOT EXISTS trigger_add_group_chat_id
 AFTER UPDATE OF chat_id ON groups FOR EACH ROW
---WHEN NEW.chat_id IS NULL
+WHEN NEW.chat_id IS NULL
 BEGIN
     INSERT INTO tg_settings (group_id)
          VALUES (NEW.group_id);

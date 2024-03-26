@@ -238,6 +238,24 @@ LIMIT :limit OFFSET :offset;
         return [TelegramGroup(*group) for group in groups]
 
 
+class TelegramMember(TelegramUser):
+    def __init__(
+        self,
+        user_chat_id: int,
+        group_id: str,
+        group_chat_id: int,
+        member_status: int,
+        owner_id: int,
+    ):
+        super().__init__(owner_id, user_chat_id, "", member_status, "", group_id=group_id, group_chat_id=group_chat_id)
+        self.__member_status = member_status
+
+    @property
+    @allow_for(member=True)
+    def member_status(self) -> int:
+        return self.__member_status
+
+
 def get_group_from_chat_id(telegram_group_chat_id) -> TelegramGroup:
     try:
         group = db.execute(

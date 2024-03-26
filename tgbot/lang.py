@@ -197,13 +197,13 @@ translation = {
         "migrate": {
             "ru": """
 Группа (<code>{from_chat_id}</code>) обновилась до супергруппы (<code>{to_chat_id}</code>).
-<b>Из-за особенностей телеграма все предыдущие сообщения бота устарели и больше не могут быть использованы для взаимодействий с вашим аккаунтом.
-Вызовите новые сообщения командами.</b>
+<b>Из-за особенностей телеграма все предыдущие сообщения бота в этой группе устарели и больше не могут быть использованы для взаимодействий с вашим аккаунтом.
+Вызовите новые сообщения с помощью команд бота.</b>
 """,
             "en": """
-The group (<code>{from_chat_id}</code>) migrate into a supergroup (<code>{to_chat_id}</code>)
-<b>Due to the nature of Telegram, all previous bot messages are outdated and can no longer be used to interact with your account.
-Please call up new messages using commands.</b>
+The group (<code>{from_chat_id}</code>) migrate into a supergroup (<code>{to_chat_id}</code>).
+<b>Due to the nature of Telegram, all previous bot messages in this group are outdated and can no longer be used to interact with your account.
+Call up new messages using bot commands.</b>
 """,
         },
         "account_has_been_deleted": {

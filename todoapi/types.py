@@ -546,26 +546,18 @@ class SafeUser:
         self.user_status = user_status
         self.reg_date = reg_date
         self.__icon = icon
-        self.__group_id = group_id
+        self.group_id = group_id
 
         if self.group_id:
-            self.__member_status = self.member_status
+            if not self.is_member():
+                raise NotGroupMember
 
     @property
     def icon(self) -> bytes | None:
         # TODO из базы данных
         return self.__icon or None
 
-    @property
-    def group_id(self) -> str | None:
-        return self.__group_id
-
-    @group_id.setter
-    def group_id(self, group_id: str):
-        self.__member_status = self.member_status
-        self.__group_id = group_id
-
-    @property
+    @cached_property
     @allow_for(member=True)
     def member_status(self) -> int:
         try:
@@ -580,11 +572,29 @@ SELECT member_status
                     "group_id": self.group_id,
                     "user_id": self.user_id,
                 },
-            )[0]
+            )[0][0]
         except Error:
             raise ApiError
         except IndexError:
             raise NotGroupMember
+
+    @allow_for(member=True)
+    def is_member(self) -> bool:
+        try:
+            return bool(db.execute(
+                """
+SELECT 1
+  FROM members
+ WHERE group_id = :group_id
+       AND user_id = :user_id;
+""",
+                params={
+                    "group_id": self.group_id,
+                    "user_id": self.user_id,
+                },
+            ))
+        except Error:
+            raise ApiError
 
     @property
     @allow_for(user=True)
@@ -599,12 +609,12 @@ SELECT member_status
     @property
     @allow_for(member=True)
     def is_moderator(self) -> bool:
-        return self.__member_status >= 1
+        return self.member_status >= 1
 
     @property
     @allow_for(member=True)
     def is_owner(self) -> bool:
-        return self.__member_status >= 2
+        return self.member_status >= 2
 
     @property
     def safe_user_id(self):
@@ -642,6 +652,24 @@ class User(SafeUser):
     @cached_property
     def settings(self):
         return self.get_user_settings()
+
+    @allow_for(member=True)
+    def is_member(self, group_id: str = None) -> bool:
+        try:
+            return bool(db.execute(
+                """
+SELECT 1
+  FROM members
+ WHERE group_id = :group_id
+       AND user_id = :user_id;
+""",
+                params={
+                    "group_id": self.group_id or group_id,
+                    "user_id": self.user_id,
+                },
+            ))
+        except Error:
+            raise ApiError
 
     def create_event(self, date: str, text: str) -> bool:
         text_len = len(text)
@@ -1157,7 +1185,8 @@ VALUES (:group_id, :owner_id, :token, :name, :icon);
     @allow_for(user=True)
     def get_groups(self, group_ids: list[str]) -> list[Group]:
         for group_id in group_ids:
-            self.get_my_member_status(group_id)
+            if not self.is_member(group_id):
+                raise NotGroupMember
 
         try:
             groups = db.execute(
@@ -1281,10 +1310,7 @@ LIMIT :limit OFFSET :offset;
         return [Group(*group) for group in groups]
 
     def edit_group_name(self, name: str, group_id: str | None = None) -> bool:
-        if self.group_id and not self.is_moderator:
-            raise NotEnoughPermissions
-
-        if group_id and self.get_group(group_id).owner_id == self.user_id:
+        if not self.get_my_member_status(group_id or self.group_id) >= 2:
             raise NotEnoughPermissions
 
         try:
@@ -1341,7 +1367,7 @@ UPDATE groups
 
     @allow_for(member=True)
     def edit_group_member_status(self, user_id: int, status: int) -> bool:
-        if not self.is_owner or not self.is_moderator:
+        if not self.is_moderator:
             raise NotEnoughPermissions
 
         try:
@@ -1366,9 +1392,10 @@ UPDATE members
 
     @allow_for(member=True)
     def delete_group_member(self, user_id: int) -> bool:
-        if not self.is_owner or not self.is_moderator:
+        if not self.is_moderator:
             raise NotEnoughPermissions
 
+        # TODO проверить что user есть в группе
         try:
             db.execute(
                 """
