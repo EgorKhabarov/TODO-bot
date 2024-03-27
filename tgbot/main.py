@@ -10,7 +10,6 @@ from telebot.types import CallbackQuery, Message
 import config
 from tgbot.dispatcher import process_account
 from tgbot.request import request
-from tgbot.queries import queries
 from tgbot.lang import get_translate
 from tgbot.time_utils import now_time
 from tgbot.bot import bot, bot_log_info

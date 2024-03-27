@@ -1,11 +1,6 @@
 from todoapi.utils import sqlite_format_date
 
 queries = {
-    "update add_event_date": """
-UPDATE tg_settings
-   SET add_event_date = ?
- WHERE user_id = ? OR group_id = ?;
-""",
     # Для кнопок
     "select day_number_with_events": """
 -- Дни в которые есть события

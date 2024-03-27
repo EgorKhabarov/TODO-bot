@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS members (
     group_id      TEXT NOT NULL,
     user_id       INT  NOT NULL,  -- member_id
     entry_date    TEXT NOT NULL DEFAULT (DATETIME()),
-    member_status INT  NOT NULL DEFAULT (-1),
+    member_status INT  NOT NULL DEFAULT (0),
     FOREIGN KEY (user_id) REFERENCES users(user_id),
     FOREIGN KEY (group_id) REFERENCES groups(group_id)
 );
@@ -91,9 +91,10 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE TABLE IF NOT EXISTS media (
     media_id        TEXT PRIMARY KEY NOT NULL,
     event_id        INT  NOT NULL,
-    user_id         INT  NOT NULL,
-    group_id        TEXT NOT NULL,
+    user_id         INT,
+    group_id        TEXT,
     filename        TEXT NOT NULL,
+    media_type      TEXT NOT NULL,
     media           BLOB NOT NULL,
     url             TEXT DEFAULT '',
     url_create_time TEXT DEFAULT '',

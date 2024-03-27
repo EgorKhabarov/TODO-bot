@@ -1,4 +1,5 @@
 import re
+from hashlib import sha256
 
 import config
 
@@ -54,3 +55,7 @@ def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
+
+
+def hash_password(password: str):
+    return sha256(password.encode("utf-8")).hexdigest()

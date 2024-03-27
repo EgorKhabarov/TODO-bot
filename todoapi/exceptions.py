@@ -1,19 +1,25 @@
 class ApiError(Exception):
     pass
 
+class Forbidden(Exception):
+    pass
+
+class NotEnoughPermissions(Exception):
+    pass
+
 class UserNotFound(Exception):
     pass
 
 class GroupNotFound(Exception):
     pass
 
-class NotEnoughPermissions(Exception):
-    pass
-
 class NotGroupMember(Exception):
     pass
 
 class EventNotFound(Exception):
+    pass
+
+class MediaNotFound(Exception):
     pass
 
 class LimitExceeded(Exception):

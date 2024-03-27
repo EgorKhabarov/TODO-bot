@@ -2,8 +2,9 @@ from sqlite3 import Error
 from functools import cached_property
 
 from config import ADMIN_IDS
-from todoapi.types import User, db, Group, Settings, allow_for
+from todoapi.types import User, db, Group, Settings, Account
 from todoapi.exceptions import ApiError, UserNotFound, GroupNotFound, NotEnoughPermissions
+
 
 
 class TelegramSettings(Settings):
@@ -24,7 +25,14 @@ class TelegramSettings(Settings):
 
 
 class TelegramGroup(Group):
-    def __init__(self, group_id: str, chat_id: int, name: str, owner_id: int, max_event_id: int):
+    def __init__(
+        self,
+        group_id: str,
+        chat_id: int,
+        name: str,
+        owner_id: int,
+        max_event_id: int,
+    ):
         super().__init__(group_id, name, owner_id, max_event_id)
         self.chat_id = chat_id
 
@@ -34,18 +42,30 @@ class TelegramUser(User):
         self,
         user_id: int,
         chat_id: int,
-        username: str,
         user_status: int,
-        reg_date: str,
-        max_event_id: int | None = None,
-        *,
-        group_id: str | None = None,
-        group_chat_id: int | None = None,
+        username: str,
+        max_event_id: int = None,
+        reg_date: str = None,
+        group_id: str = None,
+        group_chat_id: int = None,
     ):
-        super().__init__(user_id, username, user_status, reg_date, max_event_id=max_event_id, group_id=group_id)
+        super().__init__(
+            user_id,
+            user_status,
+            username,
+            max_event_id=max_event_id,
+            reg_date=reg_date,
+            group_id=group_id,
+        )
         self.chat_id = chat_id
         self.group_chat_id = group_chat_id
 
+
+
+class TelegramAccount(Account):
+    def __init__(self):
+        super().__init__()
+        self.user = TelegramUser()
     @property
     def request_chat_id(self):
         return self.group_chat_id or self.chat_id
