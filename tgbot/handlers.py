@@ -1,3 +1,4 @@
+import html
 import re
 import logging
 import traceback
@@ -13,8 +14,8 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import Message, CallbackQuery, InputFile
 
 from config import DATABASE_PATH, __version__
+from tgbot.bot import bot
 from tgbot.request import request
-from tgbot.bot import bot, set_bot_commands
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.message_generator import TextMessage, CallBackAnswer
 from tgbot.time_utils import now_time_strftime, now_time, new_time_calendar
@@ -57,18 +58,18 @@ from tgbot.bot_messages import (
     select_events_message,
     event_show_mode_message, group_message,
 )
+from tgbot.types import TelegramAccount, set_user_telegram_chat_id, get_telegram_account_from_password
 from tgbot.utils import (
     fetch_weather,
     fetch_forecast,
     write_table_to_str,
     is_secure_chat,
     html_to_markdown,
-    extract_search_query, add_group_pattern,
+    extract_search_query, add_group_pattern, set_bot_commands
 )
-from tgbot.types import get_user_from_chat_id
 from todoapi.exceptions import ApiError, UserNotFound, EventNotFound, LimitExceeded, TextIsTooBig, WrongDate, \
     StatusConflict, StatusLengthExceeded, StatusRepeats, NotEnoughPermissions, NotGroupMember, GroupNotFound
-from todoapi.types import db, create_user, get_user_from_password
+from todoapi.types import db, create_user, get_account_from_password
 from todoapi.log_cleaner import clear_logs
 from telegram_utils.argument_parser import get_arguments, getargs
 from telegram_utils.buttons_generator import generate_buttons
@@ -95,14 +96,15 @@ def not_login_handler(message: Message) -> None:
             bot.reply_to(message, "Wrong username")
         else:
             try:
-                user = get_user_from_password(username, password)
-                user.set_user_telegram_chat_id(message.chat.id)
+                account = get_account_from_password(username, password)
+                set_user_telegram_chat_id(account, message.chat.id)
             except (ApiError, UserNotFound) as e:
-                print(e)
+                print(type(e), e)
                 bot.reply_to(message, get_translate("errors.failure"))
             else:
                 bot.send_message(message.chat.id, get_translate("errors.success"))
                 bot.delete_message(message.chat.id, message.message_id)
+                request.entity = get_telegram_account_from_password(username, password)
                 start_message().send(message.chat.id)
                 set_bot_commands()
 
@@ -127,34 +129,35 @@ def not_login_handler(message: Message) -> None:
                 bot.reply_to(message, get_translate("errors.failure"))
             else:
                 try:
-                    user = get_user_from_password(username, password)
-                    user.set_user_telegram_chat_id(message.chat.id)
+                    account = get_account_from_password(username, password)
+                    set_user_telegram_chat_id(account, message.chat.id)
                 except ApiError as e:
                     print(e)
                     bot.reply_to(message, get_translate("errors.failure"))
                 else:
                     bot.send_message(message.chat.id, get_translate("errors.success"))
                     bot.delete_message(message.chat.id, message.message_id)
+                    request.entity = get_telegram_account_from_password(username, password)
                     start_message().send(message.chat.id)
                     set_bot_commands()
 
     elif match := add_group_pattern.match(message.text):
         owner_id, group_id = match.group(1), match.group(2)
         try:
-            user = get_user_from_chat_id(message.from_user.id)
+            account = TelegramAccount(message.from_user.id)
         except UserNotFound:
             return bot.reply_to(message, get_translate("errors.failure"))
 
-        if user.user_id != int(owner_id):
+        if account.user_id != int(owner_id):
             return bot.reply_to(message, get_translate("errors.failure"))
 
         try:
-            user.set_group_telegram_chat_id(group_id, message.chat.id)
+            account.set_group_telegram_chat_id(group_id, message.chat.id)
         except (NotEnoughPermissions, NotGroupMember):
             return bot.reply_to(message, get_translate("errors.failure"))
 
         bot.reply_to(message, get_translate("errors.success"))
-        request.entity = user
+        request.entity = account
         start_message().send(message.chat.id)
         set_bot_commands()
 
@@ -344,7 +347,7 @@ def command_handler(message: Message) -> None:
 
     elif command_text == "logout":
         if request.is_user:
-            request.entity.set_user_telegram_chat_id(None)
+            set_user_telegram_chat_id(request.entity, None)
             bot.reply_to(message, get_translate("errors.success", request.entity.settings.lang))
 
     elif command_text in ("login", "signup"):
@@ -585,7 +588,10 @@ def callback_handler(call: CallbackQuery):
             return monthly_calendar_message(
                 None, "mnn", "mnm", get_translate("select.notification_date")
             ).edit(chat_id, message_id)
-        notification_message(n_date, from_command=True).edit(chat_id, message_id)
+        try:
+            notification_message(n_date, from_command=True).edit(chat_id, message_id)
+        except ApiTelegramException:
+            CallBackAnswer("ok").answer(call_id, True)
 
     elif call_prefix == "dl":
         add_event_date("")
@@ -815,7 +821,9 @@ def callback_handler(call: CallbackQuery):
         id_list, date = args_func({"id_list": "str", "date": "date"}).values()
         not_deleted: list[int] = []
         for event_id in decode_id(id_list):
-            if not request.entity.delete_event(event_id)[0]:
+            try:
+                request.entity.delete_event(event_id)
+            except EventNotFound:
                 not_deleted.append(event_id)
 
         if not_deleted:
@@ -1092,7 +1100,7 @@ def callback_handler(call: CallbackQuery):
 
     elif call_prefix == "std":  # settings restore to default
         old_lang = request.entity.settings.lang
-        request.entity.set_settings(
+        request.entity.set_telegram_user_settings(
             lang="ru",
             sub_urls=1,
             city="Москва",
@@ -1129,7 +1137,9 @@ def callback_handler(call: CallbackQuery):
         ):
             return
 
-        if not request.entity.set_user_settings(**{par_name: par_val})[0]:
+        try:
+            request.entity.set_telegram_user_settings(**{par_name: par_val})
+        except ValueError:
             return CallBackAnswer(get_translate("errors.error")).answer(call_id)
 
         try:
@@ -1139,8 +1149,7 @@ def callback_handler(call: CallbackQuery):
             pass
 
     elif call_prefix == "bcl":  # bin clear
-        if not request.entity.clear_basket()[0]:
-            return CallBackAnswer(get_translate("errors.error")).answer(call_id)
+        request.entity.clear_basket()
 
         try:
             trash_can_message().edit(chat_id, message_id)
@@ -1161,7 +1170,9 @@ def callback_handler(call: CallbackQuery):
 
     elif call_prefix == "bed":  # event delete bin
         event_id = args_func({"event_id": "int"})["event_id"]
-        if not request.entity.delete_event(event_id)[0]:
+        try:
+            request.entity.delete_event(event_id, in_bin=True)
+        except EventNotFound:
             CallBackAnswer(get_translate("errors.error")).answer(call_id)
         try:
             trash_can_message().edit(chat_id, message_id)
@@ -1205,7 +1216,9 @@ def callback_handler(call: CallbackQuery):
         id_list = args_func({"id_list": "str"})["id_list"]
         not_deleted: list[int] = []
         for event_id in decode_id(id_list):
-            if not request.entity.delete_event(event_id)[0]:
+            try:
+                request.entity.delete_event(event_id, in_bin=True)
+            except EventNotFound:
                 not_deleted.append(event_id)
 
         if not_deleted:
@@ -1230,7 +1243,8 @@ def callback_handler(call: CallbackQuery):
 
     elif call_prefix == "logout":
         if request.is_user:
-            request.entity.set_user_telegram_chat_id(None)
+            set_user_telegram_chat_id(request.entity, None)
+            set_bot_commands(True)
             TextMessage(get_translate("errors.success")).edit(chat_id, message_id)
 
     elif call_prefix == "crgb":  # before create group
@@ -1262,7 +1276,7 @@ def callback_handler(call: CallbackQuery):
 ✏️👥 Edit Group Name
 
 id: `<code>{group.group_id}</code>`
-name: `<code>{group.name}</code>`
+name: `<code>{html.escape(group.name)}</code>`
 
 <i>Reply to this message with the group name</i>
 """
@@ -1293,7 +1307,11 @@ def reply_handler(message: Message, reply_to_message: Message) -> None:
     """
 
     if reply_to_message.text.startswith("⚙️"):
-        if request.entity.set_settings(city=html_to_markdown(message.html_text)[:50])[0]:
+        try:
+            request.entity.set_telegram_user_settings(city=html_to_markdown(message.html_text)[:50])
+        except ValueError:
+            bot.reply_to(message, get_translate("errors.error"))
+        else:
             try:
                 settings_message().edit(request.chat_id, reply_to_message.message_id)
             except ApiTelegramException:

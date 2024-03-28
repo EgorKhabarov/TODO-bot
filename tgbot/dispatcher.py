@@ -1,16 +1,17 @@
 from functools import wraps
 
-from telebot.apihelper import ApiTelegramException
 # noinspection PyPackageRequirements
 from telebot.types import Message, CallbackQuery
+# noinspection PyPackageRequirements
+from telebot.apihelper import ApiTelegramException
 
 from tgbot.bot import bot
 from cachetools import LRUCache
-from tgbot.request import request, EntityType
-from tgbot.types import get_user_from_chat_id, TelegramMember, get_group_from_chat_id
 from tgbot.lang import get_translate
+from tgbot.types import TelegramAccount
 from tgbot.handlers import not_login_handler
-from tgbot.utils import rate_limit, add_group_pattern
+from tgbot.request import request, EntityType
+from tgbot.utils import rate_limit, add_group_pattern, set_bot_commands
 from tgbot.message_generator import CallBackAnswer, TextMessage
 from todoapi.types import db
 from todoapi.utils import is_admin_id
@@ -78,18 +79,17 @@ def process_account(func):
                 try:
                     if request.is_member:
                         try:
-                            request.entity = get_user_from_chat_id(x.from_user.id, chat_id)
-                        except (UserNotFound, GroupNotFound, NotGroupMember):
-                            group = get_group_from_chat_id(chat_id)
-                            try:
-                                status = bot.get_chat_member(chat_id, message.from_user.id).status
-                                member_status = ("member", "administrator", "creator").index(status)
-                                request.entity = TelegramMember(chat_id, group.group_id, group.chat_id, member_status, group.owner_id)
-                            except ApiTelegramException:
-                                pass
+                            request.entity = TelegramAccount(x.from_user.id, chat_id)
+                        except (UserNotFound, GroupNotFound, NotGroupMember, ApiTelegramException) as e:
+                            print(e)
                     else:
-                        request.entity = get_user_from_chat_id(chat_id)
+                        request.entity = TelegramAccount(chat_id)
                 except (UserNotFound, GroupNotFound):
+                    try:
+                        set_bot_commands(True)
+                    except ApiTelegramException:
+                        pass
+
                     if isinstance(x, Message) and message.text.startswith(("/login", "/signup")):
                         if request.is_user:
                             return not_login_handler(x)
@@ -104,7 +104,7 @@ def process_account(func):
                         bot.reply_to(message, get_translate("errors.no_account"))
 
                 else:
-                    if request.entity.user_status == -1 and not is_admin_id(chat_id):
+                    if request.entity.user.user_status == -1 and not is_admin_id(chat_id):
                         return
 
                     return func(x)

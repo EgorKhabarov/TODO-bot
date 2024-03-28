@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS users_settings (
     city               TEXT DEFAULT 'Moscow',
     timezone           INT  CHECK (-13 < timezone < 13) DEFAULT (3),
     direction          TEXT CHECK (direction IN ('DESC', 'ASC')) DEFAULT 'DESC',
-    notifications      INT  CHECK (notifications IN (0, 1)) DEFAULT (0),
+    notifications      INT  CHECK (notifications IN (0, 1, 2)) DEFAULT (0),
     notifications_time TEXT DEFAULT '08:00',
     theme              INT  DEFAULT (0),
     FOREIGN KEY (user_id) REFERENCES users(user_id)
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS tg_settings (
     city               TEXT DEFAULT 'Moscow',
     timezone           INT  CHECK (-13 < timezone < 13) DEFAULT (3),
     direction          TEXT CHECK (direction IN ('DESC', 'ASC')) DEFAULT 'DESC',
-    notifications      INT  CHECK (notifications IN (0, 1)) DEFAULT (0),
+    notifications      INT  CHECK (notifications IN (0, 1, 2)) DEFAULT (0),
     notifications_time TEXT DEFAULT '08:00',
     theme              INT  DEFAULT (0),
     add_event_date     TEXT DEFAULT "",
@@ -124,13 +124,11 @@ CREATE TABLE IF NOT EXISTS errors (
 CREATE TRIGGER IF NOT EXISTS trigger_delete_user
 AFTER DELETE ON users FOR EACH ROW
 BEGIN
-    DELETE FROM events WHERE user_id = OLD.user_id OR group_id = OLD.group_id;
-    DELETE FROM media WHERE user_id = OLD.user_id OR group_id = OLD.group_id;
+    DELETE FROM events WHERE user_id = OLD.user_id;
     DELETE FROM users_settings WHERE user_id = OLD.user_id;
-    -- Порядок важен!
-    DELETE FROM tg_settings WHERE user_id = OLD.user_id OR group_id IN (SELECT group_id FROM groups WHERE owner_id = OLD.owner_id);
-    DELETE FROM members WHERE group_id IN (SELECT group_id FROM groups WHERE owner_id = OLD.owner_id);
-    DELETE FROM groups WHERE owner_id = OLD.owner_id;
+    DELETE FROM tg_settings WHERE user_id = OLD.user_id;
+    DELETE FROM groups WHERE owner_id = OLD.user_id;
+    DELETE FROM members WHERE user_id = OLD.user_id;
 END;
 
 -- Триггер обновления времени последнего изменения токена
@@ -191,7 +189,7 @@ END;
 
 -- При добавлении пользователя добавлять запись в настройки.
 CREATE TRIGGER IF NOT EXISTS trigger_create_user
-AFTER INSERT ON users FOR EACH ROW
+BEFORE INSERT ON users FOR EACH ROW
 BEGIN
     INSERT INTO users_settings (user_id)
     VALUES (NEW.user_id);
@@ -199,19 +197,19 @@ END;
 
 -- При добавлении chat_id в users то добавляет удаляет запись в tg_settings (login)
 CREATE TRIGGER IF NOT EXISTS trigger_add_user_chat_id
-AFTER UPDATE OF chat_id ON users FOR EACH ROW
-WHEN NEW.chat_id IS NULL
+BEFORE UPDATE OF chat_id ON users FOR EACH ROW
+WHEN OLD.chat_id IS NULL
 BEGIN
-    INSERT INTO tg_settings (user_id)
+    INSERT OR IGNORE INTO tg_settings (user_id)
          VALUES (NEW.user_id);
 END;
 
 -- При добавлении chat_id в groups то добавляет удаляет запись в tg_settings
 CREATE TRIGGER IF NOT EXISTS trigger_add_group_chat_id
 AFTER UPDATE OF chat_id ON groups FOR EACH ROW
-WHEN NEW.chat_id IS NULL
+WHEN OLD.chat_id IS NULL
 BEGIN
-    INSERT INTO tg_settings (group_id)
+    INSERT OR IGNORE INTO tg_settings (group_id)
          VALUES (NEW.group_id);
 END;
 

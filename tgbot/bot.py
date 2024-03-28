@@ -1,18 +1,7 @@
-import logging
-
 # noinspection PyPackageRequirements
 from telebot import TeleBot
 
-# noinspection PyPackageRequirements
-from telebot.types import BotCommandScopeChat
-
-# noinspection PyPackageRequirements
-from telebot.apihelper import ApiTelegramException
-
 import config
-from tgbot.request import request
-from tgbot.lang import get_translate
-from todoapi.utils import is_admin_id
 
 
 bot = TeleBot(config.BOT_TOKEN)
@@ -67,21 +56,3 @@ def bot_log_info():
         )
         + f"+{'-' * max_len}+"
     )
-
-
-def set_bot_commands():
-    """
-    Ставит список команд для пользователя chat_id
-    """
-    status = request.entity.user_status
-
-    # Переделать на проверку user-а
-    if request.is_user and request.entity.is_admin and status != -1:
-        status = 2
-
-    target = f"buttons.commands.{status}.{request.entity_type}"
-
-    try:
-        bot.set_my_commands(get_translate(target), BotCommandScopeChat(request.chat_id))
-    except ApiTelegramException as e:
-        logging.error(f'set_bot_commands ApiTelegramException "{e}"')

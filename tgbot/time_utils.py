@@ -122,10 +122,15 @@ class DayInfo:
         self.week_date = week_days[y.weekday()]
 
 
-def parse_utc_datetime(time: str) -> str:
-    if time == "0":
+def parse_utc_datetime(time: str | None, relatively_date: bool = False) -> str:
+    if time is None:
         return "NEVER"
 
     time = datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
     time += timedelta(hours=request.entity.settings.timezone)
-    return f"{time:%Y.%m.%d %H:%M:%S}"
+    rel_date = (
+        " ({})".format(DayInfo(f"{time:%d.%m.%Y}").relatively_date)
+        if relatively_date
+        else ""
+    )
+    return f"{time:%Y.%m.%d %H:%M:%S}" + rel_date

@@ -237,8 +237,8 @@ SELECT (
                     "date_6": date[6:],
                 },
             )[0]
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def is_exceeded_for_events(self, date: str | datetime = None, event_count: int = 0, symbol_count: int = 0) -> bool:
         inf = float("inf")  # Бесконечность
@@ -316,8 +316,8 @@ SELECT event_id,
         }
         try:
             self.table = db.execute(self.query, params=self.params, column_names=True)
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def csv(self) -> StringIO:
         file = StringIO()
@@ -486,8 +486,8 @@ SELECT media_id,
                     "group_id": self.group_id,
                 },
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
         return [Media(*media) for media in media_list]
 
@@ -571,6 +571,7 @@ class User:
     reg_date: str = None
     icon: bytes = None
     group_id: str = None
+    member_status: int = None
 
     @classmethod
     def get_from_token(cls, token: str, group_id: str = None) -> "User":
@@ -587,14 +588,23 @@ SELECT user_id,
        email,
        max_event_id,
        token_create_time,
-       reg_date
+       reg_date,
+       :group_id,
+       (
+           SELECT member_status
+             FROM members
+            WHERE group_id = :group_id
+       )
   FROM users
  WHERE token = :token;
 """,
-                params={"token": token},
+                params={
+                    "token": token,
+                    "group_id": group_id,
+                },
             )[0]
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
         except IndexError:
             raise UserNotFound
 
@@ -615,18 +625,27 @@ SELECT user_id,
        email,
        max_event_id,
        token_create_time,
-       reg_date
+       reg_date,
+       :group_id,
+       (
+           SELECT member_status
+             FROM members
+            WHERE group_id = :group_id
+       )
   FROM users
  WHERE user_id = :user_id;
 """,
-                params={"user_id": user_id},
+                params={
+                    "user_id": user_id,
+                    "group_id": group_id,
+                },
             )[0]
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
         except IndexError:
             raise UserNotFound
 
-        return User(*user, group_id=group_id)
+        return User(*user)
 
     @classmethod
     def get_from_password(cls, username: str, password: str, group_id: str = None) -> "User":
@@ -643,7 +662,13 @@ SELECT user_id,
        email,
        max_event_id,
        token_create_time,
-       reg_date
+       reg_date,
+       :group_id,
+       (
+           SELECT member_status
+             FROM members
+            WHERE group_id = :group_id
+       )
   FROM users
  WHERE username = :username
        AND password = :password;
@@ -651,30 +676,30 @@ SELECT user_id,
                 params={
                     "username": username,
                     "password": hash_password(password),
+                    "group_id": group_id,
                 },
             )[0]
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
         except IndexError:
             raise UserNotFound
 
-        return User(*user, group_id=group_id)
+        return User(*user)
 
 
 class Account:
-    def __init__(self, user_id: int, user_status: int, group_id: str = None, member_status: int = None):
-        self.user_status, self.member_status = user_status, member_status
+    def __init__(self, user_id: int, group_id: str = None):
         self.user_id, self.group_id = user_id, group_id
-        self.limit = Limit(user_status, user_id, group_id)
         self.user = User.get_from_user_id(user_id, group_id)
+        self.limit = Limit(self.user.user_status, user_id, group_id)
 
     @property
     def is_admin(self) -> bool:
-        return self.user_status >= 2
+        return self.user.user_status >= 2
 
     @property
     def is_premium(self) -> bool:
-        return self.user_status >= 1 or self.is_admin
+        return self.user.user_status >= 1 or self.is_admin
 
     @property
     def safe_user_id(self):
@@ -701,8 +726,8 @@ SELECT 1
                     },
                 )
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def create_event(self, date: str, text: str, status: str = "⬜") -> int:
         text_len = len(text)
@@ -797,8 +822,8 @@ UPDATE users
                     params={"user_id": self.user_id},
                     commit=True,
                 )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
         return max_event_id
 
@@ -826,8 +851,8 @@ SELECT *
                     in_bin,
                 ),
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
         if not events:
             raise EventNotFound
@@ -866,8 +891,8 @@ UPDATE events
                 },
                 commit=True,
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def edit_event_date(self, event_id: int, date: str) -> None:
         if not re_date.match(date) or not is_valid_year(int(date[-4:])):
@@ -895,8 +920,8 @@ UPDATE events
                 },
                 commit=True,
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def edit_event_status(self, event_id: int, status: str = "⬜️") -> None:
         if not self.check_event_exists(event_id):
@@ -951,11 +976,11 @@ UPDATE events
                 },
                 commit=True,
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
-    def delete_event(self, event_id: int) -> None:
-        if not self.check_event_exists(event_id, in_bin=True):
+    def delete_event(self, event_id: int, in_bin=True) -> None:
+        if not self.check_event_exists(event_id, in_bin=in_bin):
             raise EventNotFound
 
         try:
@@ -973,14 +998,14 @@ DELETE FROM events
                 },
                 commit=True,
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def delete_event_to_bin(self, event_id: int) -> None:
         if not self.is_premium:
             raise NotEnoughPermissions
 
-        if not self.check_event_exists(event_id, in_bin=True):
+        if not self.check_event_exists(event_id):
             raise EventNotFound
 
         try:
@@ -999,8 +1024,8 @@ UPDATE events
                 },
                 commit=True,
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def recover_event(self, event_id: int) -> None:
         event = self.get_event(event_id, in_bin=True)
@@ -1024,8 +1049,8 @@ UPDATE events
                 },
                 commit=True,
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def clear_basket(self) -> None:
         try:
@@ -1042,8 +1067,8 @@ DELETE FROM events
                 },
                 commit=True,
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def export_data(self, filename: str, file_format: str = "csv") -> StringIO | BytesIO:
         if file_format not in ("csv", "xml", "json", "jsonl"):
@@ -1071,8 +1096,8 @@ SELECT 1
                     },
                 )
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def add_event_media(self, event_id: int, filename: str, media_type: str, media: bytes):
         if not media:
@@ -1102,8 +1127,8 @@ VALUES (
                     "media": media,
                 },
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def get_event_media(self, event_id: int, media_id: str) -> Media:
         return self.get_event_medias(event_id, [media_id])[0]
@@ -1134,8 +1159,8 @@ SELECT media_id,
                     "group_id": self.group_id,
                 },
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
         if not medias:
             raise MediaNotFound
@@ -1163,8 +1188,8 @@ DELETE FROM media
                 },
                 commit=True,
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def check_member_exists(self, user_id: int = None, group_id: str = None) -> bool:
         user_id = user_id or self.user_id
@@ -1185,8 +1210,8 @@ SELECT 1
                     },
                 )
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def is_moderator(self, group_id: str = None, user_id: int = None) -> bool:
         user_id = user_id or self.user_id
@@ -1194,8 +1219,8 @@ SELECT 1
         if group_id is not None:
             return self.get_group_member(user_id, group_id).member_status >= 1
 
-        if self.group_id and self.member_status:
-            return self.member_status >= 1
+        if self.group_id and self.user.member_status:
+            return self.user.member_status >= 1
 
         return False
 
@@ -1205,8 +1230,8 @@ SELECT 1
         if group_id is not None:
             return self.get_group_member(user_id, group_id).member_status >= 2
 
-        if self.group_id and self.member_status:
-            return self.member_status >= 2
+        if self.group_id and self.user.member_status:
+            return self.user.member_status >= 2
 
         return False
 
@@ -1231,8 +1256,8 @@ VALUES (:group_id, :owner_id, :token, :name, :icon);
                 },
                 commit=True,
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
         return group_id
 
@@ -1259,8 +1284,8 @@ SELECT group_id,
 """,
                 params=(*group_ids,),
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
         if not groups:
             raise GroupNotFound
@@ -1293,8 +1318,8 @@ LIMIT :limit OFFSET :offset;
                     "offset": 12 * page,
                 },
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
         return [Group(*group) for group in groups]
 
@@ -1325,8 +1350,8 @@ LIMIT :limit OFFSET :offset;
                     "offset": 12 * page,
                 },
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
         return [Group(*group) for group in groups]
 
@@ -1357,8 +1382,8 @@ LIMIT :limit OFFSET :offset;
                     "offset": 12 * page,
                 },
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
         return [Group(*group) for group in groups]
 
@@ -1384,8 +1409,8 @@ UPDATE groups
                 },
                 commit=True,
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def edit_group_icon(self, icon: bytes, group_id: str = None) -> None:
         group_id = group_id or self.group_id
@@ -1409,8 +1434,8 @@ UPDATE groups
                 },
                 commit=True,
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def get_group_member(self, user_id: int, group_id: str = None) -> Member:
         group_id = group_id or self.group_id
@@ -1435,8 +1460,8 @@ SELECT group_id,
 """,
                 params=(group_id, *user_ids),
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
         if not members:
             raise NotGroupMember
@@ -1461,8 +1486,8 @@ VALUES (:group_id, :user_id);
                 },
                 commit=True,
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def edit_group_member_status(self, status: int, user_id: int, group_id: str = None) -> None:
         group_id = group_id or self.group_id
@@ -1491,8 +1516,8 @@ UPDATE members
                 },
                 commit=True,
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def remove_group_member(self, user_id: int, group_id: str = None) -> None:
         group_id = group_id or self.group_id
@@ -1519,14 +1544,16 @@ DELETE FROM members
                 },
                 commit=True,
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
-    def delete_group(self) -> None:
-        if self.group_id is None:
+    def delete_group(self, group_id: str = None) -> None:
+        group_id = group_id or self.group_id
+
+        if group_id is None:
             raise Forbidden
 
-        if not self.is_owner:
+        if not self.is_owner(group_id):
             raise NotEnoughPermissions
 
         try:
@@ -1538,8 +1565,8 @@ DELETE FROM groups
                 params={"group_id": self.group_id},
                 commit=True,
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def edit_group_owner(self, new_owner_id: int) -> None:
         if self.group_id is None:
@@ -1566,14 +1593,14 @@ UPDATE groups
                 },
                 commit=True,
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     @cached_property
     def settings(self):
-        return self.get_settings()
+        return self.get_user_settings()
 
-    def get_settings(self) -> Settings:
+    def get_user_settings(self) -> Settings:
         try:
             settings = db.execute(
                 """
@@ -1590,8 +1617,8 @@ SELECT lang,
 """,
                 params={"user_id": self.user_id},
             )[0]
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
         except IndexError:
             raise UserNotFound
 
@@ -1604,7 +1631,7 @@ SELECT lang,
         city: str = None,
         timezone: int = None,
         direction: Literal["DESC", "ASC"] = None,
-        notifications: Literal[0, 1] | bool = None,
+        notifications: Literal[0, 1, 2] | bool = None,
         notifications_time: str = None,
         theme: int = None,
     ) -> None:
@@ -1615,7 +1642,7 @@ SELECT lang,
         city               TEXT DEFAULT 'Moscow',
         timezone           INT  CHECK (-13 < timezone < 13) DEFAULT (3),
         direction          TEXT CHECK (direction IN ('DESC', 'ASC')) DEFAULT 'DESC',
-        notifications      INT  CHECK (notifications IN (0, 1)) DEFAULT (0),
+        notifications      INT  CHECK (notifications IN (0, 1, 2)) DEFAULT (0),
         notifications_time TEXT DEFAULT '08:00',
         theme              INT  DEFAULT (0),
         """
@@ -1657,8 +1684,8 @@ SELECT lang,
             self.settings.direction = direction
 
         if notifications is not None:
-            if notifications not in (1, 0, "1", "0", True, False):
-                raise ValueError("notifications must be in [0, 1]")
+            if notifications not in (0, 1, 2, "0", "1", "2", True, False):
+                raise ValueError("notifications must be in [0, 1, 2]")
 
             update_list.append("notifications")
             self.settings.notifications = int(notifications)
@@ -1703,8 +1730,8 @@ UPDATE users_settings
                 },
                 commit=True,
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def edit_user_username(self, username: str) -> None:
         if self.group_id:
@@ -1725,8 +1752,8 @@ UPDATE users
                     "user_id": self.user_id,
                 },
             )
-        except Error:
-            raise ApiError("username is not unique")
+        except Error as e:
+            raise ApiError(e)
 
     def edit_user_password(self, password: str) -> None:
         if self.group_id:
@@ -1750,8 +1777,8 @@ UPDATE users
                     "user_id": self.user_id,
                 },
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def edit_user_icon(self, icon: bytes) -> None:
         if self.group_id:
@@ -1772,8 +1799,8 @@ UPDATE users
                     "user_id": self.user_id,
                 },
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
     def reset_user_token(self) -> str:
         if self.group_id:
@@ -1793,8 +1820,8 @@ UPDATE users
                     "user_id": self.user_id,
                 },
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
         return token
 
@@ -1811,8 +1838,8 @@ DELETE FROM users
                 params={"user_id": self.user_id},
                 commit=True,
             )
-        except Error:
-            raise ApiError
+        except Error as e:
+            raise ApiError(e)
 
 
 def create_user(email: str, username: str, password: str) -> None:
@@ -1839,88 +1866,51 @@ VALUES (
             },
             commit=True,
         )
-    except Error:
-        raise ApiError
+    except Error as e:
+        raise ApiError(e)
 
 def get_account_from_token(token: str, group_id: str = None) -> Account:
     try:
-        user_id, user_status, group_id, member_status = db.execute(
+        user_id = db.execute(
             """
-SELECT user_id,
-       user_status,
-       group_id,
-       member_status
+SELECT user_id
   FROM users
-  JOIN members
-    ON members.user_id = users.user_id
-       AND members.group_id = :group_id
  WHERE token = :token;
 """,
             params={
                 "token": token,
                 "group_id": group_id,
             },
-        )[0]
-    except Error:
-        raise ApiError
+        )[0][0]
+    except Error as e:
+        raise ApiError(e)
     except IndexError:
         raise UserNotFound
 
-    return Account(user_id, user_status, group_id, member_status)
+    return Account(user_id, group_id)
 
 def get_account_from_password(username: str, password: str, group_id: str = None) -> Account:
     try:
-        user_id, user_status, group_id, member_status = db.execute(
+        user_id = db.execute(
             """
-SELECT user_id,
-       user_status,
-       group_id,
-       member_status
+SELECT user_id
   FROM users
-  JOIN members
-    ON members.user_id = users.user_id
-       AND members.group_id = :group_id
  WHERE username = :username
        AND password = :password;
 """,
             params={
                 "username": username,
                 "password": hash_password(password),
-                "group_id": group_id,
             },
-        )
-    except Error:
-        raise ApiError
+        )[0][0]
+    except Error as e:
+        raise ApiError(e)
     except IndexError:
         raise UserNotFound
 
-    return Account(user_id, user_status, group_id, member_status)
+    return Account(user_id, group_id)
 
 def get_account_from_id(user_id: int, group_id: str = None) -> Account:
-    try:
-        user_id, user_status, group_id, member_status = db.execute(
-            """
-SELECT user_id,
-       user_status,
-       group_id,
-       member_status
-  FROM users
-  JOIN members
-    ON members.user_id = users.user_id
-       AND members.group_id = :group_id
- WHERE user_id = :user_id
-       AND group_id = :group_id;
-""",
-            params={
-                "user_id": user_id,
-                "group_id": group_id,
-            },
-        )
-    except Error:
-        raise ApiError
-    except IndexError:
-        raise UserNotFound
-
-    return Account(user_id, user_status, group_id, member_status)
+    return Account(user_id, group_id)
 
 db = DataBase()

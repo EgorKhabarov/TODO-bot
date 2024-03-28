@@ -128,15 +128,6 @@ SELECT DISTINCT date
 )
 LIMIT 1;
 """,
-    "select chat_ids_for_sending_notifications": """
--- id людей через запятую, которым нужно сейчас прислать уведомление
-SELECT GROUP_CONCAT(IFNULL(user_id, group_id), ',') AS id_list
-  FROM tg_settings
- WHERE notifications = 1 AND 
-       user_status != -1 AND 
-       ((CAST(SUBSTR(notifications_time, 1, 2) AS INT) - timezone + 24) % 24) = ? AND 
-       CAST(SUBSTR(notifications_time, 4, 2) AS INT) = ?;
-""",
     "delete events_older_30_days": """
 -- Удаляем события старше 30 дней
 DELETE FROM events

@@ -868,6 +868,16 @@ Visibility <b>{}</b>m""",
     },
     "buttons": {
         "commands": {
+            "not_login": {
+                "ru": [
+                    BotCommand("login", "<username> <password>"),
+                    BotCommand("signup", "<email> <username> <password>"),
+                ],
+                "en": [
+                    BotCommand("login", "<username> <password>"),
+                    BotCommand("signup", "<email> <username> <password>"),
+                ],
+            },
             "-1": {
                 "user": {
                     "ru": [

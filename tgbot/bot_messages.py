@@ -17,12 +17,12 @@ from tgbot.bot import bot
 from tgbot.queries import queries
 from tgbot.request import request
 from tgbot.limits import get_limit_link
-from tgbot.types import get_user_from_chat_id
 from tgbot.bot_actions import delete_message_action
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.time_utils import now_time, parse_utc_datetime
 from tgbot.message_generator import TextMessage, EventMessage, EventsMessage, event_formats
 from tgbot.buttons_utils import delmarkup, create_monthly_calendar_keyboard, encode_id, edit_button_data
+from tgbot.types import TelegramAccount
 from tgbot.utils import sqlite_format_date2, is_secure_chat, html_to_markdown, re_edit_message, highlight_text_difference
 from todoapi.types import db, string_status, Event, group_limits
 from todoapi.utils import sqlite_format_date, is_valid_year, is_admin_id, chunks
@@ -87,7 +87,8 @@ def settings_message() -> TextMessage:
     not_sub_urls = 1 if settings.sub_urls == 0 else 0
     not_direction_smile = {"DESC": "⬆️", "ASC": "⬇️"}[settings.direction]
     not_direction_sql = {"DESC": "ASC", "ASC": "DESC"}[settings.direction]
-    not_notifications_ = ("🔕", 0) if settings.notifications else ("🔔", 1)
+    not_notifications_ = (("🔕", 1), ("🔔", 2), ("📆", 0))[settings.notifications]
+    # not_notifications_ = ("🔕", 0) if settings.notifications else ("🔔", 1)
     n_hours, n_minutes = [int(i) for i in settings.notifications_time.split(":")]
     not_theme = ("⬜️", 0, "⬛️") if settings.theme else ("⬛️", 1, "⬜️")
 
@@ -104,7 +105,7 @@ def settings_message() -> TextMessage:
     time_zone_dict.__setitem__(*("+3", f"ste timezone {utz + 3}") if utz < 10 else ("    ", "None"))
 
     notifications_time = {}
-    if not_notifications_[0] == "🔕":
+    if settings.notifications != 0:
         now = datetime(2000, 6, 5, n_hours, n_minutes)
         notifications_time = {
             k: f"ste notifications_time {v}"
@@ -124,7 +125,7 @@ def settings_message() -> TextMessage:
         str_utz,
         f"{now_time():%Y.%m.%d  <u>%H:%M</u>}",
         {"DESC": "⬇️", "ASC": "⬆️"}[settings.direction],
-        "🔔" if settings.notifications else "🔕",
+        ("🔕", "🔔", "📆")[settings.notifications],
         f"{n_hours:0>2}:{n_minutes:0>2}" if settings.notifications else "",
         not_theme[2],
     )
@@ -990,7 +991,7 @@ AND (
         [
             [
                 {get_theme_emoji("back"): "mnn" if from_command else "mnm"},
-                {get_theme_emoji("del"): "md"} if not from_command else {},
+                {"🔄": f"mnn {n_date:%d.%m.%Y}"},
                 {"↖️": "None"},
             ]
         ]
@@ -1028,33 +1029,71 @@ AND (
 
 
 def send_notifications_messages() -> None:
+    # TODO для групп
     n_date = datetime.utcnow()
     with db.connection(), db.cursor():
-        chat_id_list = [
-            int(user_id)
-            for id_list in db.execute(
-                queries["select chat_ids_for_sending_notifications"],
-                params=(n_date.hour, n_date.minute),
-            )
-            if id_list[0]
-            for user_id in id_list[0].split(",")
-        ]  # [('id1,id2,id3',)] -> [id1, id2, id3]
+        chat_ids, notification_types = db.execute(
+            """
+-- id людей через запятую, которым нужно сейчас прислать уведомление
+SELECT GROUP_CONCAT(
+    COALESCE(
+        (
+            SELECT chat_id
+              FROM users
+             WHERE users.user_id = tg_settings.user_id
+        ),
+        (
+            SELECT chat_id
+              FROM groups
+             WHERE groups.group_id = tg_settings.group_id
+        )
+    ),
+    ','
+),
+       GROUP_CONCAT(notifications, ',')
+  FROM tg_settings
+ WHERE notifications != 0
+       AND (
+           (
+               CAST(SUBSTR(notifications_time, 1, 2) AS INT)
+               - timezone + 24
+           ) % 24
+       ) = :hour
+       AND CAST(SUBSTR(notifications_time, 4, 2) AS INT) = :minute;
+""",
+            params={
+                "hour": n_date.hour,
+                "minute": n_date.minute,
+            },
+        )[0]
+        chat_id_list = zip(
+            [int(x) for x in chat_ids.split(",")] if chat_ids else (),
+            [int(x) for x in notification_types.split(",")] if notification_types else (),
+        )  # [('id1,id2,id3',)] -> [id1, id2, id3]
 
-    for chat_id in chat_id_list:
+    for chat_id, n_type in chat_id_list:
         try:
-            request.entity = get_user_from_chat_id(chat_id)
+            request.entity = TelegramAccount(chat_id)
         except UserNotFound:
             continue
 
-        if request.entity.settings.notifications:
-            generated = notification_message(from_command=True)
-            if generated and generated.event_list:
-                try:
-                    generated.send(request.entity.request_chat_id)
-                    status = "Ok"
-                except ApiTelegramException:
-                    status = "Error"
-                logging.info(f"notifications -> {request.entity.request_chat_id} -> {status}")
+        if request.entity.user.user_status == -1:
+            continue
+
+        match n_type:
+            case 2:
+                generated = week_event_list_message()
+            case _:
+                generated = notification_message(from_command=True)
+
+        if generated and generated.event_list:
+            try:
+                generated.send(request.entity.request_chat_id)
+                status = "Ok"
+            except ApiTelegramException:
+                status = "Error"
+
+            logging.info(f"notifications -> {request.entity.request_chat_id} -> {status}")
 
 
 def monthly_calendar_message(
@@ -1117,6 +1156,7 @@ SELECT user_id,
        ) as event_count,
        reg_date
   FROM users
+ WHERE chat_id
  LIMIT 11
 OFFSET :page;
 """,
@@ -1203,57 +1243,58 @@ Error: "User Not Exist"
         markup = generate_buttons([[{get_theme_emoji("back"): "mnad"}]])
         return TextMessage(text, markup)
 
-    user = get_user_from_chat_id(chat_id)
-    (events_count, max_event_id, recent_changes_time) = db.execute(
+    account = TelegramAccount(chat_id)
+    (events_count, recent_changes_time) = db.execute(
         """
 SELECT COUNT(event_id) as events_count,
-       (
-           SELECT max_event_id - 1
-             FROM users
-            WHERE users.user_id = events.user_id
-       ) as max_event_id,
-       IFNULL(
-           MAX(MAX(recent_changes_time), MAX(adding_time)), "0"
+       MAX(
+           MAX(recent_changes_time),
+           MAX(adding_time)
        ) as recent_changes_time
   FROM events
  WHERE user_id = :user_id;
 """,
-        params={"user_id": user.user_id},
+        params={"user_id": account.user_id},
     )[0]
-    user_status = string_status[2 if user.is_admin else user.user_status]
-    text = f"""👤 User 👤
-user_id: {user.user_id}
-chat_id: <a href='tg://user?id={user.chat_id}'>{user.chat_id}</a>
+    user_status = string_status[2 if account.is_admin else account.user.user_status]
 
-<pre><code class='language-user info'>events count:  {events_count}
-max event_id:  {max_event_id or "0"}
+    text = f"""👤 User 👤
+user_id: {account.user_id}
+chat_id: <a href='tg://user?id={account.chat_id}'>{account.chat_id}</a>
+
+<pre><code class='language-user info'>username:      {account.user.username}
+events count:  {events_count}
+max event_id:  {account.user.max_event_id - 1}
 last changes:  {parse_utc_datetime(recent_changes_time)}
 status:        {user_status}
-</code></pre><pre><code class='language-settings'>lang:          {user.settings.lang}
-sub_urls:      {bool(user.settings.sub_urls)}
-city:          {html.escape(user.settings.city)}
-timezone:      {user.settings.timezone}
-direction:     {'⬇️' if user.settings.direction == 'DESC' else '⬆️'}
-notifications: {'🔔' if user.settings.notifications else '🔕'}
-n_time:        {user.settings.notifications_time}
-theme:         {'dark' if user.settings.theme else 'white'}</code></pre>
+reg_date:      {parse_utc_datetime(account.user.reg_date, relatively_date=True)}
+icon:          {bool(account.user.icon)}
+</code></pre><pre><code class='language-settings'>lang:          {account.settings.lang}
+sub_urls:      {bool(account.settings.sub_urls)}
+city:          {html.escape(account.settings.city)}
+timezone:      {account.settings.timezone}
+direction:     {'⬇️' if account.settings.direction == 'DESC' else '⬆️'}
+notifications: {'🔔' if account.settings.notifications else '🔕'}
+n_time:        {account.settings.notifications_time}
+theme:         {'dark' if account.settings.theme else 'white'}</code></pre>
 """
+
     markup = generate_buttons(
         [
-            [
-                {"🗑": f"mnau {user.chat_id} del"},
-                {
-                    f"{'🔔' if not user.settings.notifications else '🔕'}": (
-                        f"mnau {user.chat_id} edit settings.notifications {int(not user.settings.notifications)}"
-                    )
-                },
-            ],
-            [
-                {"ban": f"mnau {user.chat_id} edit settings.status -1"},
-                {"normal": f"mnau {user.chat_id} edit settings.status 0"},
-                {"premium": f"mnau {user.chat_id} edit settings.status 1"},
-            ],
-            [{get_theme_emoji("back"): "mnad"}, {"🔄": f"mnau {user.chat_id}"}],
+            # [
+            #     {"🗑": f"mnau {account.chat_id} del"},
+            #     {
+            #         f"{'🔔' if not account.settings.notifications else '🔕'}": (
+            #             f"mnau {account.chat_id} edit settings.notifications {int(not account.settings.notifications)}"
+            #         )
+            #     },
+            # ],
+            # [
+            #     {"ban": f"mnau {account.chat_id} edit settings.status -1"},
+            #     {"normal": f"mnau {account.chat_id} edit settings.status 0"},
+            #     {"premium": f"mnau {account.chat_id} edit settings.status 1"},
+            # ],
+            [{get_theme_emoji("back"): "mnad"}, {"🔄": f"mnau {account.chat_id}"}],
         ]
     )
     return TextMessage(text, markup)
@@ -1313,7 +1354,7 @@ def groups_message(mode: Literal["al", "md", "ad"] = "al", page: int = 1) -> Tex
             for n, group in enumerate(groups)
         )
         # TODO перевод
-        user_group_limits = group_limits[request.entity.user_status]["max_groups_participate" if mode == "al" else "max_groups_creator"]
+        user_group_limits = group_limits[request.entity.user.user_status]["max_groups_participate" if mode == "al" else "max_groups_creator"]
         text = f"""
 👥 Группы 👥
 
@@ -1359,8 +1400,8 @@ def account_message() -> TextMessage:
 
 <pre><code class='language-yaml'>id:       {request.entity.user_id}
 chat_id:  {request.entity.request_chat_id}
-username: {request.entity.username}
-reg_date: {request.entity.reg_date}</code></pre>
+username: {request.entity.user.username}
+reg_date: {request.entity.user.reg_date}</code></pre>
 """,
         generate_buttons(markup),
     )

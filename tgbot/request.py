@@ -1,11 +1,10 @@
 # noinspection PyPackageRequirements
 from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import Literal
 
 # noinspection PyPackageRequirements
 from telebot.types import Message, CallbackQuery
-from tgbot.types import TelegramUser
+from tgbot.types import TelegramAccount
 
 
 @dataclass
@@ -27,11 +26,11 @@ class Request:
     _query = ContextVar("query", default=None)
 
     @property
-    def entity(self) -> TelegramUser:
+    def entity(self) -> TelegramAccount:
         return self._entity.get()  # type: ignore
 
     @entity.setter
-    def entity(self, entity: TelegramUser) -> None:
+    def entity(self, entity: TelegramAccount) -> None:
         self._entity.set(entity)  # type: ignore
 
     @property

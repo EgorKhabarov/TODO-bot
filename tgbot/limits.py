@@ -34,7 +34,7 @@ def get_limit_link(date: str = "now") -> str:
 
     limits = zip(
         request.entity.limit.get_event_limits(date),
-        tuple(event_limits[request.entity.user_status].values())
+        tuple(event_limits[request.entity.user.user_status].values())
     )
     params = {
         # "date": date,
@@ -54,7 +54,7 @@ def get_limit_link(date: str = "now") -> str:
         for text, x, y in zip(
             get_translate("arrays.account"),
             request.entity.limit.get_event_limits(date),
-            tuple(event_limits[request.entity.user_status].values()),
+            tuple(event_limits[request.entity.user.user_status].values()),
         ):
             percent = int((x / y) * 100)
             lst.append(f"<b>{text}</b>\n<u>{x}/{y}</u> [{f*(percent//10)}{b*(10-(percent//10))}] ({percent}%)")

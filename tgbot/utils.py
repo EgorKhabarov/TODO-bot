@@ -17,10 +17,14 @@ from cachetools import TTLCache, LRUCache, cached
 from requests.exceptions import MissingSchema
 
 # noinspection PyPackageRequirements
-from telebot.types import Message, CallbackQuery
+from telebot.types import Message, CallbackQuery, BotCommandScopeChat
+
+# noinspection PyPackageRequirements
+from telebot.apihelper import ApiTelegramException
 
 import config
 from config import ts
+from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.time_utils import DayInfo, convert_date_format, now_time
@@ -593,3 +597,22 @@ def extract_search_query(message_text: str, html_escape=True) -> str:
     first_line = message_text.split("\n", maxsplit=1)[0]
     query = first_line.split(maxsplit=2)[-1][:-1]
     return html.escape(query) if html_escape else query
+
+
+def set_bot_commands(not_login: bool = False):
+    """
+    Ставит список команд для пользователя chat_id
+    """
+
+    if not_login:
+        target = f"buttons.commands.not_login"
+    else:
+        status = request.entity.user.user_status
+        if request.is_user and request.entity.is_admin and status != -1:
+            status = 2
+        target = f"buttons.commands.{status}.{request.entity_type}"
+
+    try:
+        bot.set_my_commands(get_translate(target), BotCommandScopeChat(request.chat_id))
+    except ApiTelegramException as e:
+        logging.error(f'set_bot_commands ApiTelegramException "{e}"')
