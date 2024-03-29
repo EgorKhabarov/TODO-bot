@@ -13,6 +13,7 @@ from contextlib import contextmanager
 from typing import Callable, Any, Literal
 
 from oauthlib.common import generate_token
+from vedis import Vedis
 
 from todoapi.exceptions import (
     ApiError,
@@ -28,7 +29,7 @@ from todoapi.exceptions import (
     GroupNotFound,
     NotGroupMember, Forbidden, MediaNotFound,
 )
-from config import DATABASE_PATH
+from config import DATABASE_PATH, VEDIS_PATH
 from todoapi.utils import re_date, is_valid_year, sql_date_pattern, re_username, re_email, hash_password
 
 
@@ -158,6 +159,24 @@ class DataBase:
         self.sqlite_connection.close()
         # noinspection PyTypeChecker
         return result
+
+
+class Cache:
+    def __init__(self, table: str):
+        self.table = table
+
+    def __getitem__(self, key: Any) -> None | str:
+        with vedisdb.transaction():
+            data = vedisdb.hget(self.table, key)
+            return data.decode() if data else None
+
+    def __setitem__(self, key, value):
+        with vedisdb.transaction():
+            vedisdb.hset(self.table, key, value)
+
+    def __delitem__(self, key):
+        with vedisdb.transaction():
+            vedisdb.hdel(self.table, key)
 
 
 class Limit:
@@ -442,7 +461,6 @@ class TelegramSettings:
     notifications: bool = False
     notifications_time: str = "08:00"
     theme: int = 0
-    add_event_date: str = ""
 
 
 @dataclass
@@ -549,6 +567,29 @@ class Group:
     token_create_time: str = None
     icon: bytes = None
 
+    @classmethod
+    def get_from_group_id(cls, group_id: str) -> "Group":
+        try:
+            group = db.execute(
+                """
+SELECT group_id,
+       name,
+       token,
+       token_create_time,
+       owner_id,
+       max_event_id
+  FROM groups
+ WHERE group_id = :group_id;
+""",
+                params={"group_id": group_id},
+            )[0]
+        except Error as e:
+            raise ApiError(e)
+        except IndexError:
+            raise GroupNotFound
+
+        return Group(*group)
+
 
 @dataclass
 class Member:
@@ -558,20 +599,39 @@ class Member:
     member_status: int
 
 
-@dataclass
 class User:
-    user_id: int
-    user_status: int
-    username: str
-    token: str = None
-    password: str = None
-    email: str = None
-    max_event_id: int = None
-    token_create_time: str = None
-    reg_date: str = None
-    icon: bytes = None
-    group_id: str = None
-    member_status: int = None
+    def __init__(
+        self,
+        user_id: int,
+        user_status: int,
+        username: str,
+        token: str = None,
+        password: str = None,
+        email: str = None,
+        max_event_id: int = None,
+        token_create_time: str = None,
+        reg_date: str = None,
+        icon: bytes = None,
+        group_id: str = None,
+        member_status: int = None,
+    ):
+        self.user_id = user_id
+        self.user_status = user_status
+        self.username = username
+        self.token = token
+        self.password = password
+        self.email = email
+        self.max_event_id = max_event_id
+        self.token_create_time = token_create_time
+        self.reg_date = reg_date
+        self.icon = icon
+        self.group_id = group_id
+        self.member_status = member_status
+
+        if group_id:
+            group = Group.get_from_group_id(group_id)
+        else:
+            group = None
 
     @classmethod
     def get_from_token(cls, token: str, group_id: str = None) -> "User":
@@ -1913,4 +1973,6 @@ SELECT user_id
 def get_account_from_id(user_id: int, group_id: str = None) -> Account:
     return Account(user_id, group_id)
 
+
 db = DataBase()
+vedisdb = Vedis(VEDIS_PATH)

@@ -69,7 +69,7 @@ from tgbot.utils import (
 )
 from todoapi.exceptions import ApiError, UserNotFound, EventNotFound, LimitExceeded, TextIsTooBig, WrongDate, \
     StatusConflict, StatusLengthExceeded, StatusRepeats, NotEnoughPermissions, NotGroupMember, GroupNotFound
-from todoapi.types import db, create_user, get_account_from_password
+from todoapi.types import db, create_user, get_account_from_password, Cache
 from todoapi.log_cleaner import clear_logs
 from telegram_utils.argument_parser import get_arguments, getargs
 from telegram_utils.buttons_generator import generate_buttons
@@ -549,11 +549,11 @@ def callback_handler(call: CallbackQuery):
 
     elif call_prefix == "mngrs":  # groups message
         mode = args_func({"mode": ("str", "al")})["mode"]
-        groups_message(mode).edit(chat_id, message_id)
+        groups_message(mode, message_id=message_id).edit(chat_id, message_id)
 
     elif call_prefix == "mngr":  # group message
         group_id = args_func({"group_id": "str"})["group_id"]
-        group_message(group_id).edit(chat_id, message_id)
+        group_message(group_id, message_id=message_id).edit(chat_id, message_id)
 
     elif call_prefix == "mna":  # account message
         account_message().edit(chat_id, message_id)
@@ -594,7 +594,7 @@ def callback_handler(call: CallbackQuery):
             CallBackAnswer("ok").answer(call_id, True)
 
     elif call_prefix == "dl":
-        add_event_date("")
+        cache_add_event_date("")
         date = args_func({"date": "date"})["date"]
         try:
             daily_message(date).edit(chat_id, message_id)
@@ -614,7 +614,7 @@ def callback_handler(call: CallbackQuery):
             CallBackAnswer(text).answer(call_id, True)
 
     elif call_prefix == "ea":  # event add
-        add_event_date("")
+        cache_add_event_date("")
         date = args_func({"date": "str"})["date"]
 
         # Проверяем будет ли превышен лимит для пользователя, если добавить 1 событие с 1 символом
@@ -623,7 +623,7 @@ def callback_handler(call: CallbackQuery):
             CallBackAnswer(text).answer(call_id, True)
             return
 
-        add_event_date(f"{date},{message_id}")
+        cache_add_event_date(f"{date},{message_id}")
 
         send_event_text = get_translate("text.send_event_text")
         CallBackAnswer(send_event_text).answer(call_id)
@@ -1247,44 +1247,6 @@ def callback_handler(call: CallbackQuery):
             set_bot_commands(True)
             TextMessage(get_translate("errors.success")).edit(chat_id, message_id)
 
-    elif call_prefix == "crgb":  # before create group
-        if request.entity.limit.is_exceeded_for_groups(create=True):
-            return CallBackAnswer(
-                get_translate("errors.limit_exceeded")
-            ).answer(call_id, True)
-
-        text = """
-➕👥 Create Group
-
-<i>Reply to this message with the group name</i>
-"""
-        # TODO Перевод
-        # Ответьте на это сообщение, указав название группы
-        markup = generate_buttons([[{get_theme_emoji("back"): "mngrs"}]])
-        TextMessage(text, markup).edit(chat_id, message_id)
-
-    elif call_prefix == "gren":
-        group_id = args_func({"group_id": "str"})["group_id"]
-        if not group_id:
-            return
-        try:
-            group = request.entity.get_group(group_id)
-        except GroupNotFound:
-            return None
-
-        text = f"""
-✏️👥 Edit Group Name
-
-id: `<code>{group.group_id}</code>`
-name: `<code>{html.escape(group.name)}</code>`
-
-<i>Reply to this message with the group name</i>
-"""
-        # TODO Перевод
-        # Ответьте на это сообщение, указав название группы
-        markup = generate_buttons([[{get_theme_emoji("back"): f"mngr {group_id}"}]])
-        TextMessage(text, markup).edit(chat_id, message_id)
-
     elif call_prefix == "lm":
         date = args_func({"date": "date"})["date"]
         if not date:
@@ -1293,12 +1255,6 @@ name: `<code>{html.escape(group.name)}</code>`
             )
             return generated.edit(chat_id, message_id)
         limits_message(date).edit(chat_id, message_id, disable_web_page_preview=False)
-
-    # elif call_action.startswith("limits"):
-    #     date = args_func({"date": ("date", "now")})["date"]
-    #     from telebot.formatting import hide_link  # noqa
-    #     bot.send_message(chat_id, hide_link("https://example.com"))
-    #     limits_message(date, message)
 
 
 def reply_handler(message: Message, reply_to_message: Message) -> None:
@@ -1350,7 +1306,7 @@ def reply_handler(message: Message, reply_to_message: Message) -> None:
         except LimitExceeded:
             generated = TextMessage(get_translate("errors.limit_exceeded"))
         else:
-            groups_message().edit(reply_to_message.chat.id, reply_to_message.message_id)
+            groups_message(message_id=reply_to_message.message_id).edit(reply_to_message.chat.id, reply_to_message.message_id)
             delete_message_action(message)
             return
 
@@ -1366,11 +1322,11 @@ def reply_handler(message: Message, reply_to_message: Message) -> None:
         except (GroupNotFound, NotGroupMember):
             bot.reply_to(message, get_translate("errors.error"))
         else:
-            group_message(group_id).edit(reply_to_message.chat.id, reply_to_message.message_id)
+            group_message(group_id, message_id=reply_to_message.message_id).edit(reply_to_message.chat.id, reply_to_message.message_id)
             bot.delete_message(message.chat.id, message.message_id)
 
 
-def add_event_date(state: str = None) -> str | bool:
+def cache_add_event_date(state: str = None) -> str | bool:
     """
     Очищает состояние приёма сообщения у пользователя
     и изменяет сообщение по id из add_event_date
@@ -1379,53 +1335,78 @@ def add_event_date(state: str = None) -> str | bool:
     if state is None - получить
     if state == "" - очистить
     """
+    table = "add_event"
+
     if state:
-        db.execute(
-            """
-UPDATE tg_settings
-SET add_event_date = :add_event_date
-WHERE user_id IS :user_id
-   OR group_id IS :group_id;
-""",
-            params={
-                "add_event_date": state,
-                "user_id": request.entity.safe_user_id,
-                "group_id": request.entity.group_id,
-            },
-            commit=True,
-        )
+        Cache(table)[request.entity.request_chat_id] = state
         return True
 
-    _add_event_date = db.execute(
-        """
-SELECT add_event_date
-  FROM tg_settings
- WHERE user_id IS :user_id AND group_id IS :group_id;
-""",
-        {
-            "user_id": request.entity.safe_user_id,
-            "group_id": request.entity.group_id,
-        }
-    )[0][0]
+    data = Cache(table)[request.entity.request_chat_id]
 
     if state is None:
-        return _add_event_date
+        return data
 
-    if _add_event_date:
-        msg_date, message_id = _add_event_date.split(",")
-        db.execute(
-            """
-UPDATE tg_settings
-SET add_event_date = :add_event_date
-WHERE user_id IS :user_id AND group_id IS :group_id;
-""",
-            params={
-                "add_event_date": "",
-                "user_id": request.entity.safe_user_id,
-                "group_id": request.entity.group_id,
-            },
-            commit=True,
-        )
+    if data:
+        msg_date, message_id = data.split(",")
+        del Cache(table)[request.entity.request_chat_id]
+        try:
+            daily_message(msg_date).edit(request.entity.request_chat_id, message_id)
+        except ApiTelegramException:
+            pass
+
+
+def cache_create_group(state: str = None) -> str | bool:
+    """
+    Очищает состояние приёма сообщения у пользователя
+    и изменяет сообщение по id из add_event_date
+
+    if state - поставить
+    if state is None - получить
+    if state == "" - очистить
+    """
+    table = "add_group"
+
+    if state:
+        Cache(table)[request.entity.request_chat_id] = state
+        return True
+
+    data = Cache(table)[request.entity.request_chat_id]
+
+    if state is None:
+        return data
+
+    if data:
+        msg_date, message_id = data.split(",")
+        del Cache(table)[request.entity.request_chat_id]
+        try:
+            daily_message(msg_date).edit(request.entity.request_chat_id, message_id)
+        except ApiTelegramException:
+            pass
+
+
+def cache_edit_group_name(state: str = None) -> str | bool:
+    """
+    Очищает состояние приёма сообщения у пользователя
+    и изменяет сообщение по id из add_event_date
+
+    if state - поставить
+    if state is None - получить
+    if state == "" - очистить
+    """
+    table = "edit_group_name"
+
+    if state:
+        Cache(table)[request.entity.request_chat_id] = state
+        return True
+
+    data = Cache(table)[request.entity.request_chat_id]
+
+    if state is None:
+        return data
+
+    if data:
+        msg_date, message_id = data.split(",")
+        del Cache(table)[request.entity.request_chat_id]
         try:
             daily_message(msg_date).edit(request.entity.request_chat_id, message_id)
         except ApiTelegramException:

@@ -33,6 +33,8 @@ from todoapi.utils import is_admin_id
 
 
 re_edit_message = re.compile(r"\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)")
+re_group_create_message = re.compile(r"\A@\w{5,32} group\((\d+)\)\.create(?:\n|\Z)")
+re_group_edit_name_message = re.compile(r"\A@\w{5,32} group\((\w{32}), (\d+)\)\.name(?:\n|\Z)")
 link_sub = re.compile(r"<a href=\"(.+?)\">(.+?)(\n*?)</a>")
 add_group_pattern = re.compile(r"\A/start@\w{5,32} addgroup-(\d+)-([a-z\d]{32})\Z")
 

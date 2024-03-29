@@ -3,26 +3,30 @@ from time import sleep
 from threading import Thread
 
 import requests
+from telebot.apihelper import ApiTelegramException
 
 # noinspection PyPackageRequirements
 from telebot.types import CallbackQuery, Message
 
 import config
 from tgbot.dispatcher import process_account
+from tgbot.message_generator import TextMessage
 from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.time_utils import now_time
 from tgbot.bot import bot, bot_log_info
 from tgbot.buttons_utils import delmarkup
 from tgbot.bot_actions import delete_message_action
-from tgbot.utils import poke_link, re_edit_message, html_to_markdown
-from tgbot.handlers import command_handler, callback_handler, reply_handler, add_event_date
+from tgbot.utils import poke_link, re_edit_message, html_to_markdown, re_group_create_message, \
+    re_group_edit_name_message
+from tgbot.handlers import command_handler, callback_handler, reply_handler, cache_add_event_date
 from tgbot.bot_messages import (
     search_message,
     send_notifications_messages,
-    confirm_changes_message,
+    confirm_changes_message, groups_message, group_message,
 )
-from todoapi.types import db
+from todoapi.exceptions import LimitExceeded, NotEnoughPermissions, GroupNotFound, NotGroupMember
+from todoapi.types import db, Cache
 from todoapi.logger import logging
 from todoapi.log_cleaner import clear_logs
 from todoapi.db_creator import create_tables
@@ -123,6 +127,60 @@ def processing_edit_message(message: Message):
         delete_message_action(message)
 
 
+@bot.message_handler(func=lambda m: (re_group_create_message.search(m.text)))
+@process_account
+def processing_group_create_message(message: Message):
+    """
+    Ловит сообщения для добавления группы
+    """
+    telegram_log("send", "group create")
+    match = re_group_create_message.match(message.text)
+    message_id = match.group(1)
+    name = html_to_markdown(message.html_text).split("\n", maxsplit=1)[-1].strip("\n").replace("\n", " ")[:32]
+
+    try:
+        request.entity.create_group(name)
+    except LimitExceeded:
+        try:
+            TextMessage(get_translate("errors.limit_exceeded")).send(request.entity.request_chat_id)
+        except ApiTelegramException:
+            pass
+    else:
+        try:
+            groups_message(message_id=message_id).edit(message.chat.id, message_id)
+            delete_message_action(message)
+        except ApiTelegramException as e:
+            if "Description: Bad Request: message is not modified" in str(e):
+                delete_message_action(message)
+
+
+@bot.message_handler(func=lambda m: (re_group_edit_name_message.search(m.text)))
+@process_account
+def processing_group_edit_name_message(message: Message):
+    """
+    Ловит сообщения для изменения имени группы
+    """
+    telegram_log("send", "group edit name")
+    match = re_group_edit_name_message.match(message.text)
+    group_id = match.group(1)
+    message_id = match.group(2)
+    name = html_to_markdown(message.html_text).split("\n", maxsplit=1)[-1].strip("\n").replace("\n", " ")[:32]
+
+    try:
+        request.entity.edit_group_name(name, group_id)
+    except NotEnoughPermissions:
+        bot.reply_to(message, get_translate("errors.limit_exceeded"))
+    except (GroupNotFound, NotGroupMember):
+        bot.reply_to(message, get_translate("errors.error"))
+    else:
+        try:
+            group_message(group_id, message_id=message_id).edit(message.chat.id, message_id)
+            delete_message_action(message)
+        except ApiTelegramException as e:
+            if "Description: Bad Request: message is not modified" in str(e):
+                delete_message_action(message)
+
+
 @bot.message_handler(
     func=lambda m: (
         m.reply_to_message
@@ -141,13 +199,7 @@ def processing_reply_to_message(message: Message):
     reply_handler(message, message.reply_to_message)
 
 
-@process_account
-def add_event_func(msg) -> int:
-    with db.connection(), db.cursor():
-        return add_event_date()  # db.execute(queries["select add_event_date"], (msg.chat.id,))
-
-
-@bot.message_handler(func=add_event_func)
+@bot.message_handler(func=lambda m: Cache("add_event")[m.chat.id])
 @process_account
 def add_event_handler(message: Message):
     """
@@ -155,7 +207,7 @@ def add_event_handler(message: Message):
     """
     markdown_text = html_to_markdown(message.html_text)
     telegram_log("send", "add event")
-    new_event_date = add_event_date().split(",")[0]
+    new_event_date = cache_add_event_date().split(",")[0]
 
     # Если сообщение длиннее 3800 символов, то ошибка
     if len(markdown_text) >= 3800:
@@ -177,7 +229,7 @@ def add_event_handler(message: Message):
         error_translate = get_translate("errors.error")
         bot.reply_to(message, error_translate, reply_markup=delmarkup())
 
-    add_event_date("")
+    cache_add_event_date("")
 
 
 def schedule_loop():

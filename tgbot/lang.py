@@ -298,6 +298,10 @@ Call up new messages using bot commands.</b>
             "ru": "Отправьте текст события",
             "en": "Send the text of the event",
         },
+        "send_group_name": {
+            "ru": "Отправьте название группы",
+            "en": "Send the name of the group",
+        },
         "recurring_events": {
             "ru": "Повторяющиеся события",
             "en": "Recurring events",
@@ -376,7 +380,7 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 [<u>Порядок событий в сообщении</u>]
 <b>{}</b> <i>(⬇️ по умолчанию)</i>
 
-[<u>Уведомления</u>]
+[<u>Уведомления</u>](🔕→🔔→📆)
 <b>{} {}</b> <i>(🔕 по умолчанию)</i>
 
 [<u>Тема</u>]***
@@ -403,7 +407,7 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 [<u>Order of events in a message</u>]
 <b>{}</b> <i>(⬇️ by default)</i>
 
-[<u>Notifications</u>]
+[<u>Notifications</u>](🔕→🔔→📆)
 <b>{} {}</b> <i>(🔕 by default)</i>
 
 [<u>Theme</u>]***

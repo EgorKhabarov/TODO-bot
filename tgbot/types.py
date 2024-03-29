@@ -20,10 +20,8 @@ class TelegramSettings(Settings):
         notifications: bool = False,
         notifications_time: str = "08:00",
         theme: int = 0,
-        add_event_date: str = "",
     ):
         super().__init__(lang, sub_urls, city, timezone, direction, notifications, notifications_time, theme)
-        self.add_event_date = add_event_date
 
 
 class TelegramGroup(Group):
@@ -239,8 +237,7 @@ SELECT lang,
        direction,
        notifications,
        notifications_time,
-       theme,
-       add_event_date
+       theme
   FROM tg_settings
  WHERE user_id IS :user_id
        AND group_id IS :group_id;

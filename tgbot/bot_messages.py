@@ -1226,7 +1226,6 @@ def user_message(chat_id: int) -> TextMessage | None:
     notifications
     notifications_time
     user_max_event_id
-    add_event_date
     theme
     """
 
@@ -1300,7 +1299,7 @@ theme:         {'dark' if account.settings.theme else 'white'}</code></pre>
     return TextMessage(text, markup)
 
 
-def group_message(group_id: str) -> TextMessage | None:
+def group_message(group_id: str, message_id: int = None) -> TextMessage | None:
     try:
         group = request.entity.get_group(group_id)
     except GroupNotFound:
@@ -1319,7 +1318,18 @@ name: `<code>{html.escape(group.name)}</code>`
 
     markup = generate_buttons(
         [
-            [{"Изменить название группы": f"gren {group.group_id}"}],
+            [
+                {
+                    "Изменить название группы": {
+                        "switch_inline_query_current_chat": (
+                            f"group({group.group_id}, {message_id}).name\n"
+                            f"{html.unescape(group.name)}"
+                        )
+                    }
+                }
+                if message_id
+                else {"Изменить название группы": "None"},
+            ],
             [
                 {"Удалить группу": "None"},
                 {"Удалить бота из группы": "None"}
@@ -1333,7 +1343,7 @@ name: `<code>{html.escape(group.name)}</code>`
     return TextMessage(text, markup)
 
 
-def groups_message(mode: Literal["al", "md", "ad"] = "al", page: int = 1) -> TextMessage:
+def groups_message(mode: Literal["al", "md", "ad"] = "al", page: int = 1, message_id: int = None) -> TextMessage:
     match mode:
         case "al":
             groups = request.entity.get_my_groups()
@@ -1343,6 +1353,14 @@ def groups_message(mode: Literal["al", "md", "ad"] = "al", page: int = 1) -> Tex
             groups = request.entity.get_groups_where_i_admin()
         case _:
             raise ValueError
+
+    create_button = {
+        "👥 Создать группу": {
+            "switch_inline_query_current_chat": (
+                f"group({message_id}).create\n"
+            ),
+        }
+    }
 
     if groups:
         string_groups = "\n\n".join(
@@ -1372,12 +1390,12 @@ def groups_message(mode: Literal["al", "md", "ad"] = "al", page: int = 1) -> Tex
                 {("🔸" if mode == "md" else "") + "Moderator": "mngrs md"},
                 {("🔸" if mode == "ad" else "") + "Admin": "mngrs ad"},
             ],
-            [{get_theme_emoji("back"): "mnm"}, {"👥 Создать группу": "crgb"}],
+            [{get_theme_emoji("back"): "mnm"}, create_button],
         ]
     else:
         text = "👥 Группы 👥\n\nУ вас групп: 0"
         markup = [
-            [{"👥 Создать группу": "crgb"}],
+            [create_button],
             [{get_theme_emoji("back"): "mnm"}],
         ]
     return TextMessage(text, generate_buttons(markup))

@@ -60,7 +60,6 @@ CREATE TABLE IF NOT EXISTS tg_settings (
     notifications      INT  CHECK (notifications IN (0, 1, 2)) DEFAULT (0),
     notifications_time TEXT DEFAULT '08:00',
     theme              INT  DEFAULT (0),
-    add_event_date     TEXT DEFAULT "",
     FOREIGN KEY (user_id) REFERENCES users(user_id),
     FOREIGN KEY (group_id) REFERENCES groups(group_id)
 );
