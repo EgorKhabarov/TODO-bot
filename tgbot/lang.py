@@ -1381,7 +1381,15 @@ Visibility <b>{}</b>m""",
         },
         "forbidden_to_log_account_in_group": {
             "ru": "В группе нельзя войти в аккаунт",
-            "en": "You can't log into your account in a group.",
+            "en": "You can't log into your account in a group",
+        },
+        "forbidden_to_log_group": {
+            "ru": "Эта телеграм группа не присоединена к группе пользователя",
+            "en": "This telegram group is not connected to the user's group",
+        },
+        "already_connected_group": {
+            "ru": "Эта телеграм группа уже присоединена к группе пользователя",
+            "en": "This telegram group is already connected to the user's group",
         },
         "no_account": {
             "ru": """

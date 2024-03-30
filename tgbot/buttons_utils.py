@@ -8,7 +8,7 @@ from tgbot.request import request
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.time_utils import new_time_calendar, year_info, now_time, get_week_number
 from todoapi.types import db
-from todoapi.utils import is_valid_year, chunks
+from todoapi.utils import is_valid_year, chunks, sqlite_format_date
 from telegram_utils.buttons_generator import generate_buttons
 
 
@@ -42,8 +42,22 @@ def create_monthly_calendar_keyboard(
     has_events = {
         x[0]: x[1]
         for x in db.execute(
-            queries["select day_number_with_events"],
-            params=(request.entity.user_id, f"__.{MM:0>2}.{YY}"),
+            """
+-- Дни в которые есть события
+SELECT CAST (SUBSTR(date, 1, 2) AS INT) AS day_number,
+       COUNT(event_id) AS event_count
+  FROM events
+ WHERE user_id IS :user_id
+       AND group_id IS :group_id
+       AND removal_time IS NULL
+       AND date LIKE :date
+ GROUP BY day_number;
+""",
+            params={
+                "user_id": request.entity.safe_user_id,
+                "group_id": request.entity.group_id,
+                "date": f"__.{MM:0>2}.{YY}",
+            },
         )
     }
 
@@ -51,8 +65,30 @@ def create_monthly_calendar_keyboard(
     every_year_or_month = tuple(
         x[0]
         for x in db.execute(
-            queries["select day_number_with_birthdays"],
-            params=(request.entity.user_id, f"{MM:0>2}"),
+            """
+-- Номера дней дней рождений в конкретном месяце
+SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT) 
+  FROM events
+ WHERE user_id IS :user_id
+       AND group_id IS :group_id 
+       AND removal_time IS NULL
+       AND (
+           status LIKE '%📅%'
+           OR (
+               (
+                   status LIKE '%🎉%'
+                   OR status LIKE '%🎊%'
+                   OR status LIKE '%📆%'
+               )
+               AND SUBSTR(date, 4, 2) = :date
+           )
+       );
+""",
+            params={
+                "user_id": request.entity.safe_user_id,
+                "group_id": request.entity.group_id,
+                "date": f"{MM:0>2}",
+            },
         )
     )
 
@@ -60,8 +96,19 @@ def create_monthly_calendar_keyboard(
     every_week = tuple(
         6 if x[0] == -1 else x[0]
         for x in db.execute(
-            queries["select week_day_number_with_event_every_week"],
-            params=(request.entity.user_id,),
+            f"""
+-- Номер дней недели в которых есть события повторяющиеся каждую неделю события
+SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT) 
+  FROM events
+ WHERE user_id IS :user_id
+       AND group_id IS :group_id
+       AND removal_time IS NULL
+       AND status LIKE '%🗞%';
+""",
+            params={
+                "user_id": request.entity.safe_user_id,
+                "group_id": request.entity.group_id,
+            },
         )
     )
 
@@ -149,8 +196,22 @@ def create_yearly_calendar_keyboard(
     month_list = {
         x[0]: x[1]
         for x in db.execute(
-            queries["select month_number_with_events"],
-            params=(request.entity.user_id, f"__.__.{YY}"),
+            """
+-- Месяцы в которых есть события
+SELECT CAST (SUBSTR(date, 4, 2) AS INT) AS month_number,
+       COUNT(event_id) AS event_count
+  FROM events
+ WHERE user_id IS :user_id
+       AND group_id IS :group_id
+       AND removal_time IS NULL
+       AND date LIKE :date
+ GROUP BY month_number;
+""",
+            params={
+                "user_id": request.entity.safe_user_id,
+                "group_id": request.entity.group_id,
+                "date": f"__.__.{YY}",
+            },
         )
     }
 
@@ -158,8 +219,23 @@ def create_yearly_calendar_keyboard(
     every_year = [
         x[0]
         for x in db.execute(
-            queries["select month_number_with_birthdays"],
-            params=(request.entity.user_id,),
+            """
+-- Номера месяцев дней рождений в конкретном месяце
+SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT) 
+  FROM events
+ WHERE user_id IS :user_id
+       AND group_id IS :group_id
+       AND removal_time IS NULL
+       AND (
+           status LIKE '%🎉%'
+           OR status LIKE '%🎊%'
+           OR status LIKE '%📆%'
+       );
+""",
+            params={
+                "user_id": request.entity.safe_user_id,
+                "group_id": request.entity.group_id,
+            },
         )
     ]
 
@@ -167,8 +243,20 @@ def create_yearly_calendar_keyboard(
     every_month = [
         x[0]
         for x in db.execute(
-            queries["select having_event_every_month"],
-            params=(request.entity.user_id,),
+            """
+-- Есть ли событие, которое повторяется каждый месяц
+SELECT date
+  FROM events
+ WHERE user_id IS :user_id
+       AND group_id IS :group_id
+       AND removal_time IS NULL
+       AND status LIKE '%📅%'
+ LIMIT 1;
+""",
+            params={
+                "user_id": request.entity.safe_user_id,
+                "group_id": request.entity.group_id,
+            },
         )
     ]
 
@@ -238,15 +326,42 @@ def create_twenty_year_calendar_keyboard(
     year_list = {
         x[0]: x[1]
         for x in db.execute(
-            queries["select year_number_with_events"],
-            params=(request.entity.user_id,),
+            """
+-- Года в которых есть события
+SELECT CAST (SUBSTR(date, 7, 4) AS INT) AS year_number,
+       COUNT(event_id) AS event_count
+  FROM events
+ WHERE user_id IS :user_id
+       AND group_id IS :group_id
+       AND removal_time IS NULL
+ GROUP BY year_number;
+""",
+            params={
+                "user_id": request.entity.safe_user_id,
+                "group_id": request.entity.group_id,
+            },
         )
     }
 
     # Повторение каждый год
     every_year = db.execute(
-        queries["select year_number_with_birthdays"],
-        params=(request.entity.user_id,),
+        """
+-- Номера месяцев дней рождений в конкретном месяце
+SELECT 1
+  FROM events
+ WHERE user_id IS :user_id
+       AND group_id IS :group_id
+       AND removal_time IS NULL
+       AND (
+           status LIKE '%🎉%'
+           OR status LIKE '%🎊%'
+           OR status LIKE '%📆%'
+       );
+""",
+        params={
+            "user_id": request.entity.safe_user_id,
+            "group_id": request.entity.group_id,
+        },
     )
 
     if every_year:

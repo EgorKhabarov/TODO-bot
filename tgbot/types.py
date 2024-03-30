@@ -10,18 +10,7 @@ from todoapi.utils import hash_password
 
 
 class TelegramSettings(Settings):
-    def __init__(
-        self,
-        lang: str = "ru",
-        sub_urls: bool = True,
-        city: str = "Москва",
-        timezone: int = 3,
-        direction: str = "DESC",
-        notifications: bool = False,
-        notifications_time: str = "08:00",
-        theme: int = 0,
-    ):
-        super().__init__(lang, sub_urls, city, timezone, direction, notifications, notifications_time, theme)
+    pass
 
 
 class TelegramGroup(Group):
@@ -32,9 +21,62 @@ class TelegramGroup(Group):
         name: str,
         owner_id: int,
         max_event_id: int,
+        entry_date: str = None,
+        member_status: int = None,
     ):
-        super().__init__(group_id, name, owner_id, max_event_id)
+        super().__init__(group_id, name, owner_id, max_event_id, entry_date, member_status)
         self.chat_id = chat_id
+
+    @classmethod
+    def get_from_group_id(cls, group_id: str, user_chat_id: int) -> "TelegramGroup":
+        try:
+            group = db.execute(
+                """
+SELECT group_id,
+       chat_id,
+       name,
+       owner_id,
+       max_event_id
+  FROM groups
+ WHERE group_id = :group_id;
+""",
+                params={"group_id": group_id},
+            )[0]
+        except Error as e:
+            raise ApiError(e)
+        except IndexError:
+            raise GroupNotFound
+
+
+        member_status = ("member", "administrator", "creator").index(
+            bot.get_chat_member(group[1], user_chat_id).status
+        )
+        return TelegramGroup(*group, "", member_status)
+
+    @classmethod
+    def get_from_chat_id(cls, group_chat_id: int, user_chat_id: int) -> "TelegramGroup":
+        try:
+            group = db.execute(
+                """
+SELECT group_id,
+       chat_id,
+       name,
+       owner_id,
+       max_event_id
+  FROM groups
+ WHERE chat_id = :group_chat_id;
+""",
+                params={"group_chat_id": group_chat_id},
+            )[0]
+        except Error as e:
+            raise ApiError(e)
+        except IndexError:
+            raise GroupNotFound
+
+        member_status = ("member", "administrator", "creator").index(
+            bot.get_chat_member(group_chat_id, user_chat_id).status
+        )
+        return TelegramGroup(*group, "", member_status)
 
 
 class TelegramUser(User):
@@ -46,29 +88,18 @@ class TelegramUser(User):
         username: str,
         max_event_id: int = None,
         reg_date: str = None,
-        group_id: str = None,
-        group_chat_id: int = None,
-        member_status: int = None,
     ):
-        if member_status is None and group_chat_id and chat_id:
-            member_status = ("member", "administrator", "creator").index(
-                bot.get_chat_member(group_chat_id, chat_id).status
-            )
-
+        self.chat_id = chat_id
         super().__init__(
             user_id,
             user_status,
             username,
             max_event_id=max_event_id,
             reg_date=reg_date,
-            group_id=group_id,
-            member_status=member_status,
         )
-        self.chat_id = chat_id
-        self.group_chat_id = group_chat_id
 
     @classmethod
-    def get_from_user_id(cls, user_id: int, group_id: str = None) -> "TelegramUser":
+    def get_from_user_id(cls, user_id: int) -> "TelegramUser":
         # TODO защита от перебора брутфорса и количества попыток
         # TODO хеширование пароля
         try:
@@ -79,29 +110,11 @@ SELECT user_id,
        user_status,
        username,
        max_event_id,
-       reg_date,
-       (
-           SELECT group_id
-             FROM groups
-            WHERE group_id = :group_id
-       ),
-       (
-           SELECT chat_id
-             FROM groups
-            WHERE group_id = :group_id
-       ),
-       (
-           SELECT member_status
-             FROM members
-            WHERE group_id = :group_id
-       )
+       reg_date
   FROM users
  WHERE user_id = :user_id;
 """,
-                params={
-                    "user_id": user_id,
-                    "group_id": group_id,
-                },
+                params={"user_id": user_id},
             )[0]
         except Error as e:
             raise ApiError(e)
@@ -111,7 +124,7 @@ SELECT user_id,
         return TelegramUser(*user)
 
     @classmethod
-    def get_from_chat_id(cls, chat_id: int, group_chat_id: str = None) -> "TelegramUser":
+    def get_from_chat_id(cls, chat_id: int) -> "TelegramUser":
         # TODO защита от перебора брутфорса и количества попыток
         # TODO хеширование пароля
         try:
@@ -122,33 +135,11 @@ SELECT user_id,
        user_status,
        username,
        max_event_id,
-       reg_date,
-       (
-           SELECT group_id
-             FROM groups
-            WHERE chat_id = :group_chat_id
-       ) as chat_id,
-       (
-           SELECT chat_id
-             FROM groups
-            WHERE chat_id = :group_chat_id
-       ) as group_chat_id,
-       (
-           SELECT member_status
-             FROM members
-            WHERE group_id = (
-               SELECT group_id
-                 FROM groups
-                WHERE chat_id = :group_chat_id
-           )
-       ) as member_status
+       reg_date
   FROM users
  WHERE chat_id = :chat_id;
 """,
-                params={
-                    "chat_id": chat_id,
-                    "group_chat_id": group_chat_id,
-                },
+                params={"chat_id": chat_id},
             )[0]
         except Error as e:
             raise ApiError(e)
@@ -158,7 +149,7 @@ SELECT user_id,
         return TelegramUser(*user)
 
     @classmethod
-    def get_from_password(cls, username: str, password: str, group_id: str = None) -> "TelegramUser":
+    def get_from_password(cls, username: str, password: str) -> "TelegramUser":
         # TODO защита от перебора брутфорса и количества попыток
         # TODO хеширование пароля
         try:
@@ -169,22 +160,7 @@ SELECT user_id,
        user_status,
        username,
        max_event_id,
-       reg_date,
-       (
-           SELECT group_id
-             FROM groups
-            WHERE group_id = :group_id
-       ),
-       (
-           SELECT chat_id
-             FROM groups
-            WHERE group_id = :group_id
-       ),
-       (
-           SELECT member_status
-             FROM members
-            WHERE group_id = :group_id
-       )
+       reg_date
   FROM users
  WHERE username = :username
        AND password = :password;
@@ -192,7 +168,6 @@ SELECT user_id,
                 params={
                     "username": username,
                     "password": hash_password(password),
-                    "group_id": group_id,
                 },
             )[0]
         except Error as e:
@@ -205,18 +180,27 @@ SELECT user_id,
 
 class TelegramAccount(Account):
     def __init__(self, chat_id: int, group_chat_id: int = None):
-        self.chat_id = chat_id
-        user = TelegramUser.get_from_chat_id(chat_id, group_chat_id)
-        super().__init__(user.user_id, user.group_id)
-        self.user = user
+        self.chat_id, self.group_chat_id = chat_id, group_chat_id
+        super().__init__(self.user.user_id, self.group.group_id if group_chat_id else None)
+
+    @cached_property
+    def user(self) -> TelegramUser:
+        return TelegramUser.get_from_chat_id(self.chat_id)
+
+    @cached_property
+    def group(self) -> TelegramGroup | None:
+        if self.group_chat_id:
+            return TelegramGroup.get_from_chat_id(self.group_chat_id, self.chat_id)
+        else:
+            return None
 
     @property
     def request_chat_id(self):
-        return self.user.group_chat_id or self.chat_id
+        return self.group_chat_id or self.chat_id
 
     @property
     def request_id(self):
-        return self.user.group_id or self.user_id
+        return self.group_id or self.user_id
 
     @property
     def is_admin(self) -> bool:
@@ -243,7 +227,7 @@ SELECT lang,
        AND group_id IS :group_id;
 """,
                 params={
-                    "user_id": None if self.group_id else self.user_id,
+                    "user_id": self.safe_user_id,
                     "group_id": self.group_id,
                 },
             )[0]
@@ -343,7 +327,8 @@ SELECT lang,
                 """
 UPDATE tg_settings
    SET {}
- WHERE user_id = :user_id;
+ WHERE user_id IS :user_id
+       AND group_id IS :group_id;
 """.format(
                     ", ".join(f"{update} = :{update}" for update in update_list)
                 ),
@@ -356,7 +341,8 @@ UPDATE tg_settings
                     "notifications": notifications,
                     "notifications_time": notifications_time,
                     "theme": theme,
-                    "user_id": self.user_id,
+                    "user_id": self.safe_user_id,
+                    "group_id": self.group_id,
                 },
                 commit=True,
             )
@@ -369,7 +355,7 @@ UPDATE tg_settings
         if group_id is None:
             raise Forbidden
 
-        if self.is_owner(group_id):
+        if not self.is_owner(group_id):
             raise NotEnoughPermissions
 
         try:
@@ -415,17 +401,29 @@ SELECT group_id,
 """,
                 params=(*group_ids,),
             )
+            members = db.execute(
+                f"""
+SELECT entry_date,
+       member_status
+  FROM members
+ WHERE group_id IN ({','.join('?' for _ in group_ids)})
+       AND user_id = :user_id;
+""",
+                params=(
+                    *group_ids,
+                    self.user_id,
+                ),
+            )
         except Error as e:
             raise ApiError(e)
 
         if not groups:
             raise GroupNotFound
 
-        tggroups = [
-            TelegramGroup(*group)
-            for group in groups
-            if self.check_member_exists(group_id=group[0])
-        ]
+        tggroups = []
+        for group, member in zip(groups, members):
+            if self.check_member_exists(group_id=group[0]):
+                tggroups.append(TelegramGroup(*group, *member))
 
         if not tggroups:
             raise GroupNotFound

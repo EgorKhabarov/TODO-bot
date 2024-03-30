@@ -36,7 +36,34 @@ re_edit_message = re.compile(r"\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)"
 re_group_create_message = re.compile(r"\A@\w{5,32} group\((\d+)\)\.create(?:\n|\Z)")
 re_group_edit_name_message = re.compile(r"\A@\w{5,32} group\((\w{32}), (\d+)\)\.name(?:\n|\Z)")
 link_sub = re.compile(r"<a href=\"(.+?)\">(.+?)(\n*?)</a>")
-add_group_pattern = re.compile(r"\A/start@\w{5,32} addgroup-(\d+)-([a-z\d]{32})\Z")
+add_group_pattern = re.compile(r"\A/start@\w{5,32} group-(\d+)-([a-z\d]{32})\Z")
+
+
+def telegram_log(action: str, text: str):
+    text = text.replace("\n", "\\n")
+    thread_id = getattr(request.query, "message", request.query).message_thread_id
+    if request.entity:
+        logging.info(
+            f"[{str(request.entity_type).capitalize()}:{request.entity.request_id}]"
+            + f"[{request.entity.request_chat_id:<10}"
+            + (f":{thread_id}" if thread_id else "")
+            + f"]"
+            + (
+                f"[{request.entity.user.user_status}]"
+                if request.is_user
+                else
+                f"[{request.entity.group.member_status}]"
+            )
+            + f"[{action:^7}] {text}"
+        )
+    else:
+        logging.info(
+            f"[Not Login {str(request.entity_type).capitalize()}]"
+            + f"[{request.chat_id:<10}"
+            + (f":{thread_id}" if thread_id else "")
+            + f"]"
+            + f"[{action:^7}] {text}"
+        )
 
 
 def add_status_effect(text: str, statuses: str) -> str:

@@ -140,7 +140,7 @@ class DataBase:
         self.sqlite_cursor = self.sqlite_connection.cursor()
         if func:
             self.sqlite_connection.create_function(*func)
-        logging.debug(
+        logging.info(
             "    " + " ".join([line.strip() for line in query.split("\n")]).strip()
         )
 
@@ -450,20 +450,6 @@ class Settings:
 
 
 @dataclass
-class TelegramSettings:
-    user_id: int
-    group_id: str
-    lang: str = "ru"
-    sub_urls: bool = True
-    city: str = "Москва"
-    timezone: int = 3
-    direction: str = "DESC"
-    notifications: bool = False
-    notifications_time: str = "08:00"
-    theme: int = 0
-
-
-@dataclass
 class Event:
     user_id: int
     group_id: str
@@ -563,32 +549,11 @@ class Group:
     name: str
     owner_id: int
     max_event_id: int
+    entry_date: str = None
+    member_status: int = None
     token: str = None
     token_create_time: str = None
     icon: bytes = None
-
-    @classmethod
-    def get_from_group_id(cls, group_id: str) -> "Group":
-        try:
-            group = db.execute(
-                """
-SELECT group_id,
-       name,
-       token,
-       token_create_time,
-       owner_id,
-       max_event_id
-  FROM groups
- WHERE group_id = :group_id;
-""",
-                params={"group_id": group_id},
-            )[0]
-        except Error as e:
-            raise ApiError(e)
-        except IndexError:
-            raise GroupNotFound
-
-        return Group(*group)
 
 
 @dataclass
@@ -612,8 +577,6 @@ class User:
         token_create_time: str = None,
         reg_date: str = None,
         icon: bytes = None,
-        group_id: str = None,
-        member_status: int = None,
     ):
         self.user_id = user_id
         self.user_status = user_status
@@ -625,16 +588,9 @@ class User:
         self.token_create_time = token_create_time
         self.reg_date = reg_date
         self.icon = icon
-        self.group_id = group_id
-        self.member_status = member_status
-
-        if group_id:
-            group = Group.get_from_group_id(group_id)
-        else:
-            group = None
 
     @classmethod
-    def get_from_token(cls, token: str, group_id: str = None) -> "User":
+    def get_from_token(cls, token: str) -> "User":
         # TODO защита от перебора брутфорса и количества попыток
         # TODO хеширование пароля
         try:
@@ -648,57 +604,11 @@ SELECT user_id,
        email,
        max_event_id,
        token_create_time,
-       reg_date,
-       :group_id,
-       (
-           SELECT member_status
-             FROM members
-            WHERE group_id = :group_id
-       )
+       reg_date
   FROM users
  WHERE token = :token;
 """,
-                params={
-                    "token": token,
-                    "group_id": group_id,
-                },
-            )[0]
-        except Error as e:
-            raise ApiError(e)
-        except IndexError:
-            raise UserNotFound
-
-        return User(*user, group_id=group_id)
-
-    @classmethod
-    def get_from_user_id(cls, user_id: int, group_id: str = None) -> "User":
-        # TODO защита от перебора брутфорса и количества попыток
-        # TODO хеширование пароля
-        try:
-            user = db.execute(
-                """
-SELECT user_id,
-       user_status,
-       username,
-       token,
-       password,
-       email,
-       max_event_id,
-       token_create_time,
-       reg_date,
-       :group_id,
-       (
-           SELECT member_status
-             FROM members
-            WHERE group_id = :group_id
-       )
-  FROM users
- WHERE user_id = :user_id;
-""",
-                params={
-                    "user_id": user_id,
-                    "group_id": group_id,
-                },
+                params={"token": token},
             )[0]
         except Error as e:
             raise ApiError(e)
@@ -708,7 +618,7 @@ SELECT user_id,
         return User(*user)
 
     @classmethod
-    def get_from_password(cls, username: str, password: str, group_id: str = None) -> "User":
+    def get_from_user_id(cls, user_id: int) -> "User":
         # TODO защита от перебора брутфорса и количества попыток
         # TODO хеширование пароля
         try:
@@ -722,13 +632,35 @@ SELECT user_id,
        email,
        max_event_id,
        token_create_time,
-       reg_date,
-       :group_id,
-       (
-           SELECT member_status
-             FROM members
-            WHERE group_id = :group_id
-       )
+       reg_date
+  FROM users
+ WHERE user_id = :user_id;
+""",
+                params={"user_id": user_id},
+            )[0]
+        except Error as e:
+            raise ApiError(e)
+        except IndexError:
+            raise UserNotFound
+
+        return User(*user)
+
+    @classmethod
+    def get_from_password(cls, username: str, password: str) -> "User":
+        # TODO защита от перебора брутфорса и количества попыток
+        # TODO хеширование пароля
+        try:
+            user = db.execute(
+                """
+SELECT user_id,
+       user_status,
+       username,
+       token,
+       password,
+       email,
+       max_event_id,
+       token_create_time,
+       reg_date
   FROM users
  WHERE username = :username
        AND password = :password;
@@ -736,7 +668,6 @@ SELECT user_id,
                 params={
                     "username": username,
                     "password": hash_password(password),
-                    "group_id": group_id,
                 },
             )[0]
         except Error as e:
@@ -750,8 +681,18 @@ SELECT user_id,
 class Account:
     def __init__(self, user_id: int, group_id: str = None):
         self.user_id, self.group_id = user_id, group_id
-        self.user = User.get_from_user_id(user_id, group_id)
-        self.limit = Limit(self.user.user_status, user_id, group_id)
+        self.limit = Limit(self.user.user_status, user_id, self.group.group_id if group_id else None)
+
+    @cached_property
+    def user(self) -> User:
+        return User.get_from_user_id(self.user_id)
+
+    @cached_property
+    def group(self) -> Group | None:
+        if self.group_id:
+            return self.get_group(self.group_id)
+        else:
+            return None
 
     @property
     def is_admin(self) -> bool:
@@ -1276,22 +1217,22 @@ SELECT 1
     def is_moderator(self, group_id: str = None, user_id: int = None) -> bool:
         user_id = user_id or self.user_id
 
-        if group_id is not None:
+        if group_id is not None and group_id != self.group_id:
             return self.get_group_member(user_id, group_id).member_status >= 1
 
-        if self.group_id and self.user.member_status:
-            return self.user.member_status >= 1
+        if self.group_id and self.group.member_status:
+            return self.group.member_status >= 1
 
         return False
 
     def is_owner(self, group_id: str = None, user_id: int = None) -> bool:
         user_id = user_id or self.user_id
 
-        if group_id is not None:
+        if (group_id is not None) and group_id != self.group_id:
             return self.get_group_member(user_id, group_id).member_status >= 2
 
-        if self.group_id and self.user.member_status:
-            return self.user.member_status >= 2
+        if self.group_id and self.group.member_status:
+            return self.group.member_status >= 2
 
         return False
 
@@ -1344,13 +1285,33 @@ SELECT group_id,
 """,
                 params=(*group_ids,),
             )
+            members = db.execute(
+                f"""
+SELECT entry_date,
+       member_status
+  FROM members
+ WHERE group_id IN ({','.join('?' for _ in group_ids)})
+       AND user_id = :user_id;
+""",
+                params=(
+                    *group_ids,
+                    self.user_id,
+                ),
+            )
         except Error as e:
             raise ApiError(e)
 
-        if not groups:
+        if not groups or not len(groups) == len(members):
             raise GroupNotFound
 
-        return [Group(*group) for group in groups]
+        if not members:
+            raise NotGroupMember
+
+        lst = []
+        for (*group, token, token_create_time), member in zip(groups, members):
+            lst.append(Group(*group, *member, token, token_create_time))
+
+        return lst
 
     def get_my_groups(self, page: int = 1) -> list[Group]:
         page -= 1

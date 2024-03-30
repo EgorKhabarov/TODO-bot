@@ -11,7 +11,7 @@ from tgbot.lang import get_translate
 from tgbot.types import TelegramAccount
 from tgbot.handlers import not_login_handler
 from tgbot.request import request, EntityType
-from tgbot.utils import rate_limit, add_group_pattern, set_bot_commands
+from tgbot.utils import rate_limit, add_group_pattern, set_bot_commands, telegram_log
 from tgbot.message_generator import CallBackAnswer, TextMessage
 from todoapi.types import db
 from todoapi.utils import is_admin_id
@@ -77,32 +77,17 @@ def process_account(func):
                     member=message.chat.type != "private",
                 )
                 try:
-                    if request.is_member:
-                        try:
-                            request.entity = TelegramAccount(x.from_user.id, chat_id)
-                        except (UserNotFound, GroupNotFound, NotGroupMember, ApiTelegramException) as e:
-                            print(e)
-                    else:
+                    if request.is_user:
                         request.entity = TelegramAccount(chat_id)
-                except (UserNotFound, GroupNotFound):
-                    try:
-                        set_bot_commands(True)
-                    except ApiTelegramException:
-                        pass
-
-                    if isinstance(x, Message) and message.text.startswith(("/login", "/signup")):
-                        if request.is_user:
-                            return not_login_handler(x)
-                        else:
-                            bot.reply_to(message, get_translate("errors.forbidden_to_log_account_in_group"))
-                    elif isinstance(x, Message) and add_group_pattern.match(message.text):
-                        if request.is_member:
-                            not_login_handler(message)
-                        else:
-                            bot.reply_to(message, get_translate("errors.error"))
                     else:
-                        bot.reply_to(message, get_translate("errors.no_account"))
+                        request.entity = TelegramAccount(x.from_user.id, chat_id)
+                except (UserNotFound, GroupNotFound):
+                    if isinstance(x, Message):
+                        telegram_log("send", message.text)
+                    else:
+                        telegram_log("press", x.data)
 
+                    not_login_handler(x)
                 else:
                     if request.entity.user.user_status == -1 and not is_admin_id(chat_id):
                         return

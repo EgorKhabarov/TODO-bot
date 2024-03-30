@@ -18,7 +18,7 @@ from tgbot.bot import bot, bot_log_info
 from tgbot.buttons_utils import delmarkup
 from tgbot.bot_actions import delete_message_action
 from tgbot.utils import poke_link, re_edit_message, html_to_markdown, re_group_create_message, \
-    re_group_edit_name_message
+    re_group_edit_name_message, telegram_log
 from tgbot.handlers import command_handler, callback_handler, reply_handler, cache_add_event_date
 from tgbot.bot_messages import (
     search_message,
@@ -39,21 +39,8 @@ logging.info(bot_log_info())
 command_regex.set_username(bot.user.username)
 
 
-def telegram_log(action: str, text: str):
-    text = text.replace("\n", "\\n")
-    thread_id = getattr(request.query, "message", request.query).message_thread_id
-    logging.info(
-        f"[{str(request.entity_type).capitalize()}:{request.entity.request_id}]"
-        + f"[{request.entity.request_chat_id:<10}"
-        + (f":{thread_id}" if thread_id else "")
-        + f"]"
-        + (f"[{request.entity.user.user_status}]" if request.is_user else "")
-        + f"[{action:^7}] {text}"
-    )
-
-
 @bot.message_handler(content_types=["migrate_to_chat_id"], chat_types=["group"])
-@process_account
+@process_account  # TODO сделать чтобы не слал никаких сообщений
 def migrate_chat(message: Message):
     """Миграция chat.id группы в супергруппу"""
     logging.info(

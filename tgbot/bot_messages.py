@@ -1313,8 +1313,9 @@ name: `<code>{html.escape(group.name)}</code>`
 {f'chat_id: `<code>{group.chat_id}</code>`' if group.chat_id else ''}
 """.strip()
 
-    startgroup_data = f"addgroup-{group.owner_id}-{group.group_id}"
+    startgroup_data = f"group-{group.owner_id}-{group.group_id}"
     startgroup_url = f"https://t.me/{bot.user.username}?startgroup={startgroup_data}"
+    print(startgroup_url)
 
     markup = generate_buttons(
         [

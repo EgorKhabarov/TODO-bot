@@ -1,4 +1,3 @@
-import html
 import re
 import logging
 import traceback
@@ -77,13 +76,23 @@ from telegram_utils.command_parser import parse_command, get_command_arguments
 from todoapi.utils import is_admin_id, is_valid_year, re_email, re_username
 
 
-def not_login_handler(message: Message) -> None:
+def not_login_handler(x: CallbackQuery | Message) -> None:
     """
     /login <username> <password>
     /signup <email> <username> <password>
     """
+    try:
+        set_bot_commands(True)
+    except ApiTelegramException:
+        pass
+
+    message = x if isinstance(x, Message) else x.message
 
     if message.text.startswith("/login"):
+        if request.is_member:
+            text = get_translate("errors.forbidden_to_log_account_in_group")
+            return TextMessage(text).reply(message)
+
         arguments = get_command_arguments(
             message.text,
             {"username": "str", "password": "str"},
@@ -91,24 +100,28 @@ def not_login_handler(message: Message) -> None:
         username, password = arguments["username"], arguments["password"]
 
         if not (username and password):
-            bot.reply_to(message, get_translate("errors.no_account"))
+            TextMessage(get_translate("errors.no_account")).reply(message)
         elif not re_username.match(username):
-            bot.reply_to(message, "Wrong username")
+            TextMessage("Wrong username").reply(message)
         else:
             try:
                 account = get_account_from_password(username, password)
                 set_user_telegram_chat_id(account, message.chat.id)
             except (ApiError, UserNotFound) as e:
                 print(type(e), e)
-                bot.reply_to(message, get_translate("errors.failure"))
+                TextMessage(get_translate("errors.failure")).reply(message)
             else:
-                bot.send_message(message.chat.id, get_translate("errors.success"))
+                TextMessage(get_translate("errors.success")).send(message.chat.id)
                 bot.delete_message(message.chat.id, message.message_id)
                 request.entity = get_telegram_account_from_password(username, password)
                 start_message().send(message.chat.id)
                 set_bot_commands()
 
     elif message.text.startswith("/signup"):
+        if request.is_member:
+            text = get_translate("errors.forbidden_to_log_account_in_group")
+            return TextMessage(text).reply(message)
+
         arguments = get_command_arguments(
             message.text,
             {"email": "str", "username": "str", "password": "str"},
@@ -116,51 +129,60 @@ def not_login_handler(message: Message) -> None:
         email, username, password = arguments["email"], arguments["username"], arguments["password"]
 
         if not (email and username and password):
-            bot.reply_to(message, get_translate("errors.no_account"))
+            TextMessage(get_translate("errors.no_account")).reply(message)
         elif not re_email.match(email):
-            bot.reply_to(message, "Wrong email")
+            TextMessage("Wrong email").reply(message)
         elif not re_username.match(username):
-            bot.reply_to(message, "Wrong username")
+            TextMessage("Wrong username").reply(message)
         else:
             try:
                 create_user(email, username, password)
             except ApiError as e:
                 print(e)
-                bot.reply_to(message, get_translate("errors.failure"))
+                TextMessage(get_translate("errors.failure")).reply(message)
             else:
                 try:
                     account = get_account_from_password(username, password)
                     set_user_telegram_chat_id(account, message.chat.id)
                 except ApiError as e:
                     print(e)
-                    bot.reply_to(message, get_translate("errors.failure"))
+                    TextMessage(get_translate("errors.failure")).reply(message)
                 else:
-                    bot.send_message(message.chat.id, get_translate("errors.success"))
+                    TextMessage(get_translate("errors.success")).send(message.chat.id)
                     bot.delete_message(message.chat.id, message.message_id)
                     request.entity = get_telegram_account_from_password(username, password)
                     start_message().send(message.chat.id)
                     set_bot_commands()
 
     elif match := add_group_pattern.match(message.text):
+        if request.is_user:
+            TextMessage(get_translate("errors.error")).reply(message)
+            return
+
         owner_id, group_id = match.group(1), match.group(2)
         try:
-            account = TelegramAccount(message.from_user.id)
+            account = TelegramAccount(x.from_user.id)
         except UserNotFound:
-            return bot.reply_to(message, get_translate("errors.failure"))
+            return TextMessage(get_translate("errors.failure")).reply(message)
 
         if account.user_id != int(owner_id):
-            return bot.reply_to(message, get_translate("errors.failure"))
+            return TextMessage(get_translate("errors.failure")).reply(message)
 
         try:
             account.set_group_telegram_chat_id(group_id, message.chat.id)
         except (NotEnoughPermissions, NotGroupMember):
-            return bot.reply_to(message, get_translate("errors.failure"))
+            return TextMessage(get_translate("errors.failure")).reply(message)
 
-        bot.reply_to(message, get_translate("errors.success"))
+        TextMessage(get_translate("errors.success")).reply(message)
         request.entity = account
         start_message().send(message.chat.id)
         set_bot_commands()
 
+    else:
+        if request.is_user:
+            TextMessage(get_translate("errors.no_account")).reply(message)
+        else:
+            TextMessage(get_translate("errors.forbidden_to_log_group")).reply(message)
 
 
 def command_handler(message: Message) -> None:
@@ -184,6 +206,11 @@ def command_handler(message: Message) -> None:
         monthly_calendar_message(None, "dl", "mnm").send(chat_id)
 
     elif command_text == "start":
+        if add_group_pattern.match(message.text):
+            if request.is_member:
+                TextMessage(get_translate("errors.already_connected_group")).reply(message)
+                return
+
         set_bot_commands()
         start_message().send(chat_id)
 
@@ -348,10 +375,10 @@ def command_handler(message: Message) -> None:
     elif command_text == "logout":
         if request.is_user:
             set_user_telegram_chat_id(request.entity, None)
-            bot.reply_to(message, get_translate("errors.success", request.entity.settings.lang))
+            TextMessage(get_translate("errors.success", request.entity.settings.lang)).reply(message)
 
     elif command_text in ("login", "signup"):
-        bot.reply_to(message, get_translate("errors.failure"))
+        TextMessage(get_translate("errors.failure")).reply(message)
 
 
 def callback_handler(call: CallbackQuery):
@@ -1266,7 +1293,7 @@ def reply_handler(message: Message, reply_to_message: Message) -> None:
         try:
             request.entity.set_telegram_user_settings(city=html_to_markdown(message.html_text)[:50])
         except ValueError:
-            bot.reply_to(message, get_translate("errors.error"))
+            TextMessage(get_translate("errors.error")).reply(message)
         else:
             try:
                 settings_message().edit(request.chat_id, reply_to_message.message_id)
@@ -1318,9 +1345,9 @@ def reply_handler(message: Message, reply_to_message: Message) -> None:
         try:
             request.entity.edit_group_name(name, group_id)
         except NotEnoughPermissions:
-            bot.reply_to(message, get_translate("errors.limit_exceeded"))
+            TextMessage(get_translate("errors.limit_exceeded")).reply(message)
         except (GroupNotFound, NotGroupMember):
-            bot.reply_to(message, get_translate("errors.error"))
+            TextMessage(get_translate("errors.error")).reply(message)
         else:
             group_message(group_id, message_id=reply_to_message.message_id).edit(reply_to_message.chat.id, reply_to_message.message_id)
             bot.delete_message(message.chat.id, message.message_id)
