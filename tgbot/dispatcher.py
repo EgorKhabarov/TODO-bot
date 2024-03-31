@@ -82,6 +82,7 @@ def process_account(func):
                     else:
                         request.entity = TelegramAccount(x.from_user.id, chat_id)
                 except (UserNotFound, GroupNotFound):
+                    request.entity = None
                     if isinstance(x, Message):
                         telegram_log("send", message.text)
                     else:

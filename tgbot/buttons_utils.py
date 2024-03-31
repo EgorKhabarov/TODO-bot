@@ -3,7 +3,6 @@ from calendar import monthcalendar
 # noinspection PyPackageRequirements
 from telebot.types import InlineKeyboardMarkup
 
-from tgbot.queries import queries
 from tgbot.request import request
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.time_utils import new_time_calendar, year_info, now_time, get_week_number

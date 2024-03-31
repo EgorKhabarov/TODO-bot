@@ -575,8 +575,10 @@ def callback_handler(call: CallbackQuery):
             CallBackAnswer("ok").answer(call_id, True)
 
     elif call_prefix == "mngrs":  # groups message
-        mode = args_func({"mode": ("str", "al")})["mode"]
-        groups_message(mode, message_id=message_id).edit(chat_id, message_id)
+        arguments = args_func({"mode": ("str", "al"), "page": ("int", 1)})
+        mode, page = arguments["mode"], arguments["page"]
+        groups_message(mode, page).edit(chat_id, message_id)
+        cache_create_group("")
 
     elif call_prefix == "mngr":  # group message
         group_id = args_func({"group_id": "str"})["group_id"]
@@ -1274,7 +1276,7 @@ def callback_handler(call: CallbackQuery):
             set_bot_commands(True)
             TextMessage(get_translate("errors.success")).edit(chat_id, message_id)
 
-    elif call_prefix == "lm":
+    elif call_prefix == "lm":  # limits message
         date = args_func({"date": "date"})["date"]
         if not date:
             generated = monthly_calendar_message(
@@ -1282,6 +1284,53 @@ def callback_handler(call: CallbackQuery):
             )
             return generated.edit(chat_id, message_id)
         limits_message(date).edit(chat_id, message_id, disable_web_page_preview=False)
+
+    elif call_prefix == "grcr":
+        cache_create_group("")
+        if request.entity.limit.is_exceeded_for_groups(create=True):
+            return CallBackAnswer(get_translate("errors.limit_exceeded")).answer(call_id)
+
+        cache_create_group(str(message_id))
+        text = """
+👥 Группы 👥
+
+Отправьте имя группы
+"""
+        markup = generate_buttons(
+            [
+                [{get_theme_emoji("back"): "mngrs"}]
+            ]
+        )
+        TextMessage(text, markup).edit(chat_id, message_id)
+        CallBackAnswer(get_translate("text.send_group_name")).answer(call_id)
+
+    elif call_prefix == "grd":  # group delete
+        group_id = args_func({"group_id": "str"})["group_id"]
+        try:
+            request.entity.delete_group(group_id)
+        except (NotGroupMember, NotEnoughPermissions):
+            CallBackAnswer(get_translate("errors.error")).answer(call_id, show_alert=True)
+        else:
+            groups_message().edit(chat_id, message_id)
+
+    elif call_prefix == "grlv":  # group leave
+        group_id = args_func({"group_id": "str"})["group_id"]
+        try:
+            request.entity.remove_group_member(request.entity.user_id, group_id)
+        except NotGroupMember:
+            return CallBackAnswer(get_translate("errors.error")).answer(call_id)
+
+        groups_message().edit(chat_id, message_id)
+
+    elif call_prefix == "grrgr":  # group remove from telegram group
+        group_id = args_func({"group_id": "str"})["group_id"]
+        try:
+            request.entity.set_group_telegram_chat_id(group_id)
+        except (NotGroupMember, NotEnoughPermissions):
+            CallBackAnswer(get_translate("errors.error")).answer(call_id, show_alert=True)
+        else:
+            group_message(group_id, message_id=message_id).edit(chat_id, message_id)
+
 
 
 def reply_handler(message: Message, reply_to_message: Message) -> None:
@@ -1325,32 +1374,6 @@ def reply_handler(message: Message, reply_to_message: Message) -> None:
                 return
             else:
                 delete_message_action(message)
-
-    elif reply_to_message.text.startswith("➕👥"):
-        name = html_to_markdown(message.html_text)[:32]
-        try:
-            request.entity.create_group(name)
-        except LimitExceeded:
-            generated = TextMessage(get_translate("errors.limit_exceeded"))
-        else:
-            groups_message(message_id=reply_to_message.message_id).edit(reply_to_message.chat.id, reply_to_message.message_id)
-            delete_message_action(message)
-            return
-
-        generated.send(request.entity.request_chat_id)
-
-    elif reply_to_message.text.startswith("✏️👥"):
-        name = html_to_markdown(message.html_text)[:32]
-        group_id = reply_to_message.text.split("`", 2)[1]
-        try:
-            request.entity.edit_group_name(name, group_id)
-        except NotEnoughPermissions:
-            TextMessage(get_translate("errors.limit_exceeded")).reply(message)
-        except (GroupNotFound, NotGroupMember):
-            TextMessage(get_translate("errors.error")).reply(message)
-        else:
-            group_message(group_id, message_id=reply_to_message.message_id).edit(reply_to_message.chat.id, reply_to_message.message_id)
-            bot.delete_message(message.chat.id, message.message_id)
 
 
 def cache_add_event_date(state: str = None) -> str | bool:
@@ -1403,10 +1426,10 @@ def cache_create_group(state: str = None) -> str | bool:
         return data
 
     if data:
-        msg_date, message_id = data.split(",")
+        message_id = int(data)
         del Cache(table)[request.entity.request_chat_id]
         try:
-            daily_message(msg_date).edit(request.entity.request_chat_id, message_id)
+            groups_message().edit(request.entity.request_chat_id, message_id)
         except ApiTelegramException:
             pass
 

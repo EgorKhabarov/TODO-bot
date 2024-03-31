@@ -14,7 +14,6 @@ from telebot import formatting
 from telebot.types import InlineKeyboardButton, Message
 
 from tgbot.bot import bot
-from tgbot.queries import queries
 from tgbot.request import request
 from tgbot.limits import get_limit_link
 from tgbot.bot_actions import delete_message_action
@@ -51,6 +50,7 @@ def menu_message() -> TextMessage:
         translate_Settings,
         translate_wastebasket,
         translate_admin,
+        translate_group,
     ) = get_translate("messages.menu")
 
     text = translate_menu
@@ -62,7 +62,9 @@ def menu_message() -> TextMessage:
         [
             {f"👤 {translate_account}": "mna"},
             {f"👥 {translate_groups}": "mngrs"},
-        ] if request.is_user else [],
+        ]
+        if request.is_user
+        else [],
         [
             {f"📆 {translate_seven_days}": "pw"},
             {f"🔔 {translate_notifications}": "mnn"},
@@ -74,6 +76,10 @@ def menu_message() -> TextMessage:
             else {},
         ],
         [{f"😎 {translate_admin}": "mnad"}] if is_secure_chat(request.query) else [],
+        [
+            {f"👥 {translate_group}": f"mngr self"}
+            if request.is_member else {}
+        ],
     ]
     return TextMessage(text, generate_buttons(markup))
 
@@ -250,7 +256,42 @@ AND removal_time IS NULL
     daylist = [
         x[0]
         for x in db.execute(
-            queries["select recurring_events"],
+            f"""
+-- Если находит, то добавлять кнопку повторяющихся событий
+SELECT DISTINCT date
+  FROM events
+ WHERE user_id IS :user_id
+       AND group_id IS :group_id
+       AND removal_time IS NULL
+       AND date != :date
+       AND (
+    ( -- Каждый год
+        (
+            status LIKE '%🎉%'
+            OR status LIKE '%🎊%'
+            OR status LIKE '%📆%'
+        )
+        AND date LIKE :y_date
+    )
+    OR
+    ( -- Каждый месяц
+        status LIKE '%📅%'
+        AND date LIKE :m_date
+    )
+    OR
+    ( -- Каждую неделю
+        status LIKE '%🗞%'
+        AND
+        strftime('%w', {sqlite_format_date('date')}) =
+        CAST(strftime('%w', {sqlite_format_date(':date')}) as TEXT)
+    )
+    OR
+    ( -- Каждый день
+        status LIKE '%📬%'
+    )
+)
+LIMIT 1;
+""",
             params={
                 **params,
                 "y_date": f"{date:%d.%m}.____",
@@ -898,7 +939,15 @@ AND removal_time IS NOT NULL
         "group_id": request.entity.group_id,
     }
     # Удаляем события старше 30 дней
-    db.execute(queries["delete events_older_30_days"], commit=True)
+    db.execute(
+        """
+-- Удаляем события старше 30 дней
+DELETE FROM events
+      WHERE removal_time IS NOT NULL AND 
+            (julianday('now') - julianday(removal_time) > 30);
+""",
+        commit=True,
+    )
 
     clean_bin_translate = get_translate("text.clean_bin")
     basket_translate = get_translate("messages.basket")
@@ -1301,7 +1350,10 @@ theme:         {'dark' if account.settings.theme else 'white'}</code></pre>
 
 def group_message(group_id: str, message_id: int = None) -> TextMessage | None:
     try:
-        group = request.entity.get_group(group_id)
+        if request.is_member:
+            group = request.entity.group
+        else:
+            group = request.entity.get_group(group_id)
     except GroupNotFound:
         return None
 
@@ -1313,60 +1365,69 @@ name: `<code>{html.escape(group.name)}</code>`
 {f'chat_id: `<code>{group.chat_id}</code>`' if group.chat_id else ''}
 """.strip()
 
-    startgroup_data = f"group-{group.owner_id}-{group.group_id}"
-    startgroup_url = f"https://t.me/{bot.user.username}?startgroup={startgroup_data}"
-    print(startgroup_url)
+    if request.is_user:
+        startgroup_data = f"group-{group.owner_id}-{group.group_id}"
+        startgroup_url = f"https://t.me/{bot.user.username}?startgroup={startgroup_data}"
 
-    markup = generate_buttons(
-        [
+        # TODO перевод
+        markup = generate_buttons(
             [
-                {
-                    "Изменить название группы": {
-                        "switch_inline_query_current_chat": (
-                            f"group({group.group_id}, {message_id}).name\n"
-                            f"{html.unescape(group.name)}"
-                        )
+                [
+                    {"Выйти из группы": f"grlv {group.group_id}"}
+                ] if not group.member_status == 2 else [],
+                [
+                    {
+                        "Изменить название группы": {
+                            "switch_inline_query_current_chat": (
+                                f"group({group.group_id}, {message_id}).name\n"
+                                f"{html.unescape(group.name)}"
+                            )
+                        }
                     }
-                }
-                if message_id
-                else {"Изменить название группы": "None"},
-            ],
-            [
-                {"Удалить группу": "None"},
-                {"Удалить бота из группы": "None"}
-                if group.chat_id
-                else
-                {get_translate("text.add_bot_to_group"): {"url": startgroup_url}}
-            ],
-            [{get_theme_emoji("back"): "mngrs"}],
-        ]
-    )
+                    if message_id
+                    else {"Изменить название группы": "None"},
+                ]
+                if group.member_status > 0
+                else [],
+                [
+                    {"Удалить группу": f"grd {group.group_id}"},
+                    {"Удалить бота из группы": f"grrgr {group.group_id}"}
+                    if group.chat_id
+                    else
+                    {get_translate("text.add_bot_to_group"): {"url": startgroup_url}}
+                ]
+                if group.member_status > 0
+                else [],
+                [{get_theme_emoji("back"): "mngrs"}],
+            ]
+        )
+    else:
+        text += f"\nowner_id: `<code>{group.owner_id}</code>`"
+        markup = generate_buttons([[{get_theme_emoji("back"): "mnm"}]])
+
     return TextMessage(text, markup)
 
 
-def groups_message(mode: Literal["al", "md", "ad"] = "al", page: int = 1, message_id: int = None) -> TextMessage:
+def groups_message(mode: Literal["al", "md", "ad"] = "al", page: int = 1) -> TextMessage:
     match mode:
         case "al":
-            groups = request.entity.get_my_groups()
+            raw_groups = request.entity.get_my_groups()
         case "md":
-            groups = request.entity.get_groups_where_i_moderator()
+            raw_groups = request.entity.get_groups_where_i_moderator()
         case "ad":
-            groups = request.entity.get_groups_where_i_admin()
+            raw_groups = request.entity.get_groups_where_i_admin()
         case _:
             raise ValueError
 
-    create_button = {
-        "👥 Создать группу": {
-            "switch_inline_query_current_chat": (
-                f"group({message_id}).create\n"
-            ),
-        }
-    }
+    groups_chunk = list(chunks(raw_groups, 6))
+    groups = groups_chunk[page - 1] if len(groups_chunk) > 0 else []
+    prev_pages = len(groups_chunk[:page - 1])
+    after_pages = len(groups_chunk[page:])
 
     if groups:
         string_groups = "\n\n".join(
             f"""
-{n + 1}) name: `<code>{html.escape(group.name)}</code>`
+{n + (6 * page - 6) + 1}) name: `<code>{html.escape(group.name)}</code>`
      id: `<code>{group.group_id}</code>`
      {f'chat_id: `<code>{group.chat_id}</code>`' if group.chat_id else ''}
 """.strip()
@@ -1377,26 +1438,32 @@ def groups_message(mode: Literal["al", "md", "ad"] = "al", page: int = 1, messag
         text = f"""
 👥 Группы 👥
 
-У вас групп: {len(groups)}/{user_group_limits}
+У вас групп: {len(raw_groups)}/{user_group_limits}
 
 {string_groups}
 """
         markup = [
-            *[
-                [{f"{group.name}": f"mngr {group.group_id}"} for group in group_chunk]
-                for group_chunk in chunks(groups, 2)
-            ],
             [
                 {("🔸" if mode == "al" else "") + "All": "mngrs al"},
                 {("🔸" if mode == "md" else "") + "Moderator": "mngrs md"},
                 {("🔸" if mode == "ad" else "") + "Admin": "mngrs ad"},
             ],
-            [{get_theme_emoji("back"): "mnm"}, create_button],
+            *[
+                [{f"{group.name}": f"mngr {group.group_id}"}] for group in groups
+            ],
+            [
+                {get_theme_emoji("back"): "mnm"},
+                *([
+                    {"<": f"mngrs {mode} {page - 1}"} if prev_pages else {" ": "None"},
+                    {">": f"mngrs {mode} {page + 1}"} if after_pages else {" ": "None"},
+                ] if len(groups_chunk) != 1 else []),
+                {"👥 Создать группу": "grcr"},
+            ],
         ]
     else:
         text = "👥 Группы 👥\n\nУ вас групп: 0"
         markup = [
-            [create_button],
+            [{"👥 Создать группу": "grcr"}],
             [{get_theme_emoji("back"): "mnm"}],
         ]
     return TextMessage(text, generate_buttons(markup))

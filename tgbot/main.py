@@ -19,7 +19,7 @@ from tgbot.buttons_utils import delmarkup
 from tgbot.bot_actions import delete_message_action
 from tgbot.utils import poke_link, re_edit_message, html_to_markdown, re_group_create_message, \
     re_group_edit_name_message, telegram_log
-from tgbot.handlers import command_handler, callback_handler, reply_handler, cache_add_event_date
+from tgbot.handlers import command_handler, callback_handler, reply_handler, cache_add_event_date, cache_create_group
 from tgbot.bot_messages import (
     search_message,
     send_notifications_messages,
@@ -114,33 +114,6 @@ def processing_edit_message(message: Message):
         delete_message_action(message)
 
 
-@bot.message_handler(func=lambda m: (re_group_create_message.search(m.text)))
-@process_account
-def processing_group_create_message(message: Message):
-    """
-    Ловит сообщения для добавления группы
-    """
-    telegram_log("send", "group create")
-    match = re_group_create_message.match(message.text)
-    message_id = match.group(1)
-    name = html_to_markdown(message.html_text).split("\n", maxsplit=1)[-1].strip("\n").replace("\n", " ")[:32]
-
-    try:
-        request.entity.create_group(name)
-    except LimitExceeded:
-        try:
-            TextMessage(get_translate("errors.limit_exceeded")).send(request.entity.request_chat_id)
-        except ApiTelegramException:
-            pass
-    else:
-        try:
-            groups_message(message_id=message_id).edit(message.chat.id, message_id)
-            delete_message_action(message)
-        except ApiTelegramException as e:
-            if "Description: Bad Request: message is not modified" in str(e):
-                delete_message_action(message)
-
-
 @bot.message_handler(func=lambda m: (re_group_edit_name_message.search(m.text)))
 @process_account
 def processing_group_edit_name_message(message: Message):
@@ -184,6 +157,33 @@ def processing_reply_to_message(message: Message):
     message_start = message.reply_to_message.text.split("\n", 1)[0]
     telegram_log("send", f"reply {message_start}")
     reply_handler(message, message.reply_to_message)
+
+
+@bot.message_handler(func=lambda m: Cache("add_group")[m.chat.id])
+@process_account
+def processing_group_create_message(message: Message):
+    """
+    Ловит сообщения для добавления группы
+    """
+    telegram_log("send", "group create")
+
+    message_id = cache_create_group()
+    name = html_to_markdown(message.html_text)[:32]
+
+    try:
+        request.entity.create_group(name)
+    except LimitExceeded:
+        try:
+            TextMessage(get_translate("errors.limit_exceeded")).send(request.entity.request_chat_id)
+        except ApiTelegramException:
+            pass
+    else:
+        try:
+            groups_message().edit(message.chat.id, message_id)
+            delete_message_action(message)
+        except ApiTelegramException as e:
+            if "Description: Bad Request: message is not modified" in str(e):
+                delete_message_action(message)
 
 
 @bot.message_handler(func=lambda m: Cache("add_event")[m.chat.id])

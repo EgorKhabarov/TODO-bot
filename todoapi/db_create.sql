@@ -103,9 +103,8 @@ CREATE TABLE IF NOT EXISTS media (
     ),
     UNIQUE (user_id, event_id),
     UNIQUE (group_id, event_id),
-    FOREIGN KEY (user_id, group_id, event_id) REFERENCES events(user_id, group_id, event_id),
-    FOREIGN KEY (user_id) REFERENCES users(user_id),
-    FOREIGN KEY (group_id) REFERENCES groups(group_id)
+    FOREIGN KEY (user_id, event_id) REFERENCES events(user_id, event_id),
+    FOREIGN KEY (group_id, event_id) REFERENCES events(group_id, event_id)
 );
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -123,11 +122,11 @@ CREATE TABLE IF NOT EXISTS errors (
 CREATE TRIGGER IF NOT EXISTS trigger_delete_user
 AFTER DELETE ON users FOR EACH ROW
 BEGIN
-    DELETE FROM events WHERE user_id = OLD.user_id;
+    DELETE FROM events         WHERE user_id = OLD.user_id;
     DELETE FROM users_settings WHERE user_id = OLD.user_id;
-    DELETE FROM tg_settings WHERE user_id = OLD.user_id;
-    DELETE FROM groups WHERE owner_id = OLD.user_id;
-    DELETE FROM members WHERE user_id = OLD.user_id;
+    DELETE FROM tg_settings    WHERE user_id = OLD.user_id;
+    DELETE FROM groups         WHERE owner_id = OLD.user_id;
+    DELETE FROM members        WHERE user_id = OLD.user_id;
 END;
 
 -- Триггер обновления времени последнего изменения токена
@@ -161,8 +160,7 @@ END;
 CREATE TRIGGER IF NOT EXISTS trigger_delete_event_media
 AFTER DELETE ON events FOR EACH ROW
 BEGIN
-    DELETE FROM media
-          WHERE event_id = OLD.event_id;
+    DELETE FROM media WHERE event_id = OLD.event_id;
 END;
 
 
@@ -178,12 +176,9 @@ END;
 CREATE TRIGGER IF NOT EXISTS trigger_delete_group
 AFTER DELETE ON groups FOR EACH ROW
 BEGIN
-    DELETE FROM members
-          WHERE group_id = OLD.group_id;
-    DELETE FROM events
-          WHERE group_id = OLD.group_id;
-    DELETE FROM tg_settings
-          WHERE group_id = OLD.group_id;
+    DELETE FROM members     WHERE group_id IS OLD.group_id;
+    DELETE FROM events      WHERE group_id IS OLD.group_id;
+    DELETE FROM tg_settings WHERE group_id IS OLD.group_id;
 END;
 
 -- При добавлении пользователя добавлять запись в настройки.

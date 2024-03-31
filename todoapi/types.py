@@ -140,7 +140,7 @@ class DataBase:
         self.sqlite_cursor = self.sqlite_connection.cursor()
         if func:
             self.sqlite_connection.create_function(*func)
-        logging.info(
+        logging.debug(
             "    " + " ".join([line.strip() for line in query.split("\n")]).strip()
         )
 
@@ -980,7 +980,7 @@ UPDATE events
         except Error as e:
             raise ApiError(e)
 
-    def delete_event(self, event_id: int, in_bin=True) -> None:
+    def delete_event(self, event_id: int, in_bin=False) -> None:
         if not self.check_event_exists(event_id, in_bin=in_bin):
             raise EventNotFound
 
@@ -1546,10 +1546,10 @@ UPDATE members
         if group_id is None:
             raise Forbidden
 
-        if not self.is_moderator(group_id):
+        if user_id != self.user_id and not self.is_moderator(group_id):
             raise NotEnoughPermissions
 
-        if not self.check_member_exists(user_id):
+        if not self.check_member_exists(user_id, group_id):
             raise NotGroupMember
 
         try:
@@ -1560,7 +1560,7 @@ DELETE FROM members
             AND user_id = :user_id;
 """,
                 params={
-                    "group_id": self.group_id,
+                    "group_id": group_id,
                     "user_id": user_id,
                 },
                 commit=True,
@@ -1583,7 +1583,7 @@ DELETE FROM members
 DELETE FROM groups
       WHERE group_id = :group_id;
 """,
-                params={"group_id": self.group_id},
+                params={"group_id": group_id},
                 commit=True,
             )
         except Error as e:
