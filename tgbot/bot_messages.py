@@ -18,7 +18,7 @@ from tgbot.request import request
 from tgbot.limits import get_limit_link
 from tgbot.bot_actions import delete_message_action
 from tgbot.lang import get_translate, get_theme_emoji
-from tgbot.time_utils import now_time, parse_utc_datetime
+from tgbot.time_utils import parse_utc_datetime
 from tgbot.message_generator import TextMessage, EventMessage, EventsMessage, event_formats
 from tgbot.buttons_utils import delmarkup, create_monthly_calendar_keyboard, encode_id, edit_button_data
 from tgbot.types import TelegramAccount
@@ -129,7 +129,7 @@ def settings_message() -> TextMessage:
         bool(settings.sub_urls),
         html.escape(settings.city),
         str_utz,
-        f"{now_time():%Y.%m.%d  <u>%H:%M</u>}",
+        f"{request.entity.now_time():%Y.%m.%d  <u>%H:%M</u>}",
         {"DESC": "⬇️", "ASC": "⬆️"}[settings.direction],
         ("🔕", "🔔", "📆")[settings.notifications],
         f"{n_hours:0>2}:{n_minutes:0>2}" if settings.notifications else "",
@@ -695,7 +695,8 @@ def edit_events_date_message(
     id_list: list[int], date: datetime | None = None
 ) -> EventsMessage:
     if date is None:
-        date = now_time()
+        date = request.entity.now_time()
+
     WHERE = """
 user_id IS :user_id
 AND group_id IS :group_id
@@ -986,7 +987,7 @@ def notification_message(
     from_command: bool = False,
 ) -> EventsMessage | None:
     if n_date is None:
-        n_date = now_time()
+        n_date = request.entity.now_time()
 
     dates = [n_date + timedelta(days=days) for days in (0, 1, 2, 3, 7)]
     weekdays = ["0" if (w := date.weekday()) == 6 else f"{w + 1}" for date in dates[:2]]
@@ -1158,7 +1159,7 @@ def monthly_calendar_message(
 
 def limits_message(date: datetime | str | None = None) -> TextMessage:
     if date is None or date == "now":
-        date = now_time()
+        date = request.entity.now_time()
 
     if not is_valid_year(date.year):
         return TextMessage(get_translate("errors.error"))

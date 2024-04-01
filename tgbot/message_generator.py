@@ -10,7 +10,7 @@ from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.buttons_utils import encode_id
-from tgbot.time_utils import now_time_strftime, DayInfo
+from tgbot.time_utils import DayInfo
 from tgbot.utils import add_status_effect, days_before_event
 from todoapi.exceptions import EventNotFound
 from todoapi.types import db, Event
@@ -238,7 +238,8 @@ class EventsMessage(TextMessage):
             markup = InlineKeyboardMarkup()
         super().__init__("", deepcopy(markup))
         if date == "now":
-            date = now_time_strftime()
+            date = f"{request.entity.now_time():%d.%m.%Y}"
+
         self.event_list = event_list
         self._date = date
         self.page = page
@@ -275,8 +276,8 @@ SELECT user_id,
        recent_changes_time,
        removal_time
   FROM events
- WHERE event_id IN ({data[0]}) AND 
-       ({WHERE}) 
+ WHERE event_id IN ({data[0]})
+       AND ({WHERE}) 
  ORDER BY {column} {direction};
 """,
                     params=params,
@@ -345,9 +346,10 @@ SELECT user_id,
        recent_changes_time,
        removal_time
   FROM events
- WHERE (user_id IS :user_id AND group_id IS :group_id)
-       AND event_id IN ({', '.join(f"{event_id}" for event_id in id_list)}) AND
-       ({WHERE}) 
+ WHERE user_id IS :user_id
+       AND group_id IS :group_id
+       AND event_id IN ({', '.join(f"{event_id}" for event_id in id_list)})
+       AND ({WHERE}) 
  ORDER BY {sqlite_format_date('date')} {request.entity.settings.direction};
 """,
                     params=params,

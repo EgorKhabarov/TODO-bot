@@ -27,7 +27,7 @@ from config import ts
 from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.lang import get_translate
-from tgbot.time_utils import DayInfo, convert_date_format, now_time
+from tgbot.time_utils import DayInfo, convert_date_format
 from todoapi.types import db
 from todoapi.utils import is_admin_id
 
@@ -543,7 +543,7 @@ def days_before_event(event_date: str, event_status: str) -> tuple[int, str, str
     :return: ('разница в днях', 'дата ближайшего повторения', 'текстовое представление разницы')
     """
     _date = convert_date_format(event_date)
-    now_t = now_time()
+    now_t = request.entity.now_time()
     dates = []
 
     # Каждый день

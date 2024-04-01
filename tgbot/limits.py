@@ -8,7 +8,6 @@ from PIL import Image, ImageFont
 
 from tgbot.request import request
 from tgbot.lang import get_translate
-from tgbot.time_utils import now_time
 from todoapi.types import event_limits
 from config import LIMIT_IMAGE_GENERATOR_URL
 
@@ -30,7 +29,7 @@ colors = {
 
 def get_limit_link(date: str = "now") -> str:
     if not date or date == "now":
-        date = f"{now_time():%d.%m.%Y}"
+        date = f"{request.entity.now_time():%d.%m.%Y}"
 
     limits = zip(
         request.entity.limit.get_event_limits(date),

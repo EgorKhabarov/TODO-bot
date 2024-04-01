@@ -5,7 +5,7 @@ from telebot.types import InlineKeyboardMarkup
 
 from tgbot.request import request
 from tgbot.lang import get_translate, get_theme_emoji
-from tgbot.time_utils import new_time_calendar, year_info, now_time, get_week_number
+from tgbot.time_utils import new_time_calendar, year_info, get_week_number
 from todoapi.types import db
 from todoapi.utils import is_valid_year, chunks, sqlite_format_date
 from telegram_utils.buttons_generator import generate_buttons
@@ -126,7 +126,7 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
     first_line = [{title: f"cy ({command},{back},{YY},{arguments})"}]
 
     buttons_lines = []
-    today = now_time().day
+    today = request.entity.now_time().day
     for weekcalendar in row_calendar:
         weekbuttons = []
         for wd, day in enumerate(weekcalendar):
@@ -259,7 +259,7 @@ SELECT date
         )
     ]
 
-    now_month = now_time().month
+    now_month = request.entity.now_time().month
 
     month_buttons = []
     for row in get_translate("arrays.months_list"):
@@ -317,7 +317,7 @@ def create_twenty_year_calendar_keyboard(
 
     decade -= decade % 2  # if decade % 2: decade -= 1
 
-    now_year = now_time().year
+    now_year = request.entity.now_time().year
     year = int(f"{millennium}{decade}0")
     years = chunks([(n, y) for n, y in enumerate(range(year, year + 20))], 4)
 

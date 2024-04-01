@@ -3,7 +3,7 @@ import html
 import json
 import logging
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import StringIO, BytesIO
 from dataclasses import dataclass
 from sqlite3 import Error, connect
@@ -31,7 +31,6 @@ from todoapi.exceptions import (
 )
 from config import DATABASE_PATH, VEDIS_PATH
 from todoapi.utils import re_date, is_valid_year, sql_date_pattern, re_username, re_email, hash_password
-
 
 event_limits = {
     -1: {
@@ -106,13 +105,17 @@ class DataBase:
     @contextmanager
     def connection(self):
         # self.sqlite_connection = connect(config.DATABASE_PATH)
+        # logging.debug("connection.start()")
         yield
+        # logging.debug("connection.close()")
         # self.sqlite_connection.close()
 
     @contextmanager
     def cursor(self):
         # self.sqlite_cursor = self.sqlite_connection.cursor()
+        # logging.debug("cursor.start()")
         yield
+        # logging.debug("cursor.close()")
         # self.sqlite_cursor.close()
 
     def execute(
@@ -140,7 +143,7 @@ class DataBase:
         self.sqlite_cursor = self.sqlite_connection.cursor()
         if func:
             self.sqlite_connection.create_function(*func)
-        logging.debug(
+        logging.info(
             "    " + " ".join([line.strip() for line in query.split("\n")]).strip()
         )
 
@@ -467,6 +470,10 @@ class Event:
         return bool(self.removal_time)
 
     @property
+    def datetime(self) -> datetime:
+        return datetime.strptime(self.date, "%d.%m.%Y")
+
+    @property
     def media_list(self) -> list["Media"]:
         try:
             media_list = db.execute(
@@ -508,6 +515,50 @@ SELECT media_id,
             return -1 if _days < 0 else _days
         else:
             return 30
+
+    def days_before_event(self, timezone: int = 0) -> int:
+        _date = self.datetime
+        now_t = datetime.utcnow() + timedelta(hours=timezone)
+        dates = []
+
+        def prepare_date(date: str) -> tuple[int, datetime]:
+            y = datetime.strptime(date, "%d.%m.%Y")
+            return (y - now_t).days, y
+
+        # Каждый день
+        if "📬" in self.status:
+            return prepare_date(f"{now_t:%d.%m.%Y}")[0]
+
+        # Каждую неделю
+        if "🗞" in self.status:
+            now_wd, event_wd = now_t.weekday(), _date.weekday()
+            next_date = now_t + timedelta(days=(event_wd - now_wd + 7) % 7)
+            dates.append(next_date)
+
+        # Каждый месяц
+        elif "📅" in self.status:
+            day_diff, dttm = prepare_date(f"{_date:%d}.{now_t:%m.%Y}")
+            month, year = dttm.month, dttm.year
+            if day_diff >= 0:
+                dates.append(dttm)
+            else:
+                if month < 12:
+                    dates.append(dttm.replace(month=month + 1))
+                else:
+                    dates.append(dttm.replace(year=year + 1, month=1))
+
+        # Каждый год
+        elif {*self.status.split(",")}.intersection({"📆", "🎉", "🎊"}):
+            dttm = prepare_date(f"{_date:%d.%m}.{now_t:%Y}")[1]
+            if dttm.date() < now_t.date():
+                dates.append(dttm.replace(year=now_t.year + 1))
+            else:
+                dates.append(dttm.replace(year=now_t.year))
+
+        else:
+            return prepare_date(self.date)[0]
+
+        return prepare_date(f"{min(dates):%d.%m.%Y}")[0]
 
     def to_json(self) -> str:
         # TODO обновить
@@ -682,6 +733,7 @@ class Account:
     def __init__(self, user_id: int, group_id: str = None):
         self.user_id, self.group_id = user_id, group_id
         self.limit = Limit(self.user.user_status, user_id, self.group.group_id if group_id else None)
+        self.settings = self.get_settings()
 
     @cached_property
     def user(self) -> User:
@@ -706,6 +758,12 @@ class Account:
     def safe_user_id(self):
         """None if self.group_id else self.user_id"""
         return None if self.group_id else self.user_id
+
+    def now_time(self) -> datetime:
+        """
+        Возвращает datetime.utcnow() с учётом часового пояса пользователя
+        """
+        return datetime.utcnow() + timedelta(hours=self.settings.timezone)
 
     def check_event_exists(self, event_id: int, in_bin: bool = False) -> bool:
         try:
@@ -843,13 +901,28 @@ SELECT *
  WHERE user_id IS ?
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in event_ids)})
-       AND (removal_time IS NOT NULL) = ?;
+       AND (removal_time IS NOT NULL) = ?
+ORDER BY DAYS_BEFORE_EVENT(date, status),
+         status LIKE '%📬%',
+         status LIKE '%🗞%',
+         status LIKE '%📅%',
+         status LIKE '%📆%',
+         status LIKE '%🎉%',
+         status LIKE '%🎊%'
+         ASC;
 """,
                 params=(
                     self.safe_user_id,
                     self.group_id,
                     *event_ids,
                     in_bin,
+                ),
+                func=(
+                    "DAYS_BEFORE_EVENT",
+                    2,
+                    lambda date, status: Event(
+                        0, "", 0, date, "", status, "", "", ""
+                    ).days_before_event(self.settings.timezone)
                 ),
             )
         except Error as e:
@@ -1617,8 +1690,7 @@ UPDATE groups
         except Error as e:
             raise ApiError(e)
 
-    @cached_property
-    def settings(self):
+    def get_settings(self):
         return self.get_user_settings()
 
     def get_user_settings(self) -> Settings:

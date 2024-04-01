@@ -17,7 +17,7 @@ from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.message_generator import TextMessage, CallBackAnswer
-from tgbot.time_utils import now_time_strftime, now_time, new_time_calendar
+from tgbot.time_utils import new_time_calendar
 from tgbot.bot_actions import delete_message_action
 from tgbot.buttons_utils import (
     create_monthly_calendar_keyboard,
@@ -224,7 +224,7 @@ def command_handler(message: Message) -> None:
         settings_message().send(chat_id)
 
     elif command_text == "today":
-        daily_message(now_time()).send(chat_id)
+        daily_message(request.entity.now_time()).send(chat_id)
 
     elif command_text == "version":
         TextMessage(f"Version {__version__}").send(chat_id)
@@ -267,7 +267,7 @@ def command_handler(message: Message) -> None:
                 bot.send_document(
                     chat_id,
                     file,
-                    caption=now_time_strftime(),
+                    caption=f"{request.entity.now_time():%d.%m.%Y}",
                 )
         except ApiTelegramException:
             # TODO перевод
@@ -318,7 +318,7 @@ def command_handler(message: Message) -> None:
             return TextMessage(get_translate("errors.export_format")).reply(message)
 
         response, file = request.entity.export_data(
-            f"events_{now_time():%Y-%m-%d_%H-%M-%S}.{file_format}",
+            f"events_{request.entity.now_time():%Y-%m-%d_%H-%M-%S}.{file_format}",
             f"{file_format}",
         )
 
@@ -1063,7 +1063,7 @@ def callback_handler(call: CallbackQuery):
                 TextMessage(markup=markup).edit(chat_id, message_id, only_markup=True)
             except ApiTelegramException:
                 # Если нажата кнопка ⟳, но сообщение не изменено
-                now_date = now_time()
+                now_date = request.entity.now_time()
 
                 if command is not None and back is not None:
                     call.data = f"{command}{f' {arguments}' if arguments else ''} {now_date:%d.%m.%Y}"
@@ -1078,7 +1078,7 @@ def callback_handler(call: CallbackQuery):
         command, back, year, arguments = literal_eval(call_data)
 
         if year == "now":
-            year = now_time().year
+            year = request.entity.now_time().year
 
         if is_valid_year(year):
             markup = create_yearly_calendar_keyboard(year, command, back, arguments)
@@ -1099,7 +1099,7 @@ def callback_handler(call: CallbackQuery):
         command, back, decade, arguments = literal_eval(call_data)
 
         if decade == "now":
-            decade = int(str(now_time().year)[:3])
+            decade = int(str(request.entity.now_time().year)[:3])
         else:
             decade = int(decade)
 
@@ -1111,7 +1111,7 @@ def callback_handler(call: CallbackQuery):
                 TextMessage(markup=markup).edit(chat_id, message_id, only_markup=True)
             except ApiTelegramException:
                 # Сообщение не изменено
-                year = now_time().year
+                year = request.entity.now_time().year
                 markup = create_yearly_calendar_keyboard(year, command, back, arguments)
                 TextMessage(markup=markup).edit(chat_id, message_id, only_markup=True)
         else:

@@ -5,26 +5,18 @@ from tgbot.request import request
 from tgbot.lang import get_translate
 
 
-def now_time() -> datetime:
-    """
-    Возвращает datetime.utcnow() с учётом часового пояса пользователя
-    """
-    entity = request.entity
-    return datetime.utcnow() + timedelta(hours=entity.settings.timezone if entity else 0)
-
-
 def now_time_strftime() -> str:
     """
     Возвращает форматированную ("%d.%m.%Y") функцию now_time()
     """
-    return now_time().strftime("%d.%m.%Y")
+    return request.entity.now_time().strftime("%d.%m.%Y")
 
 
 def new_time_calendar() -> tuple[int, int]:
     """
     Возвращает [год, месяц]
     """
-    date = now_time()
+    date = request.entity.now_time()
     return date.year, date.month
 
 
@@ -40,8 +32,7 @@ def convert_date_format(date: str) -> datetime:
         # Если дата 29 февраля и год невисокосный, то возвращать 1 апреля.
         if (
             f"{e}" == "day is out of range for month"
-            and month == 2
-            and day == 29
+            and (month, day) == (2, 29)
             and not isleap(year)
         ):
             return datetime(year, 3, 1)
@@ -92,7 +83,7 @@ class DayInfo:
             ago,
             Fday,
         ) = get_translate("arrays.relative_date_list")
-        x = now_time()
+        x = request.entity.now_time()
         x = datetime(x.year, x.month, x.day)
         y = convert_date_format(date)
 

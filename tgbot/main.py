@@ -1,8 +1,11 @@
 import atexit
 from time import sleep
 from threading import Thread
+from datetime import datetime
 
 import requests
+
+# noinspection PyPackageRequirements
 from telebot.apihelper import ApiTelegramException
 
 # noinspection PyPackageRequirements
@@ -13,12 +16,10 @@ from tgbot.dispatcher import process_account
 from tgbot.message_generator import TextMessage
 from tgbot.request import request
 from tgbot.lang import get_translate
-from tgbot.time_utils import now_time
 from tgbot.bot import bot, bot_log_info
 from tgbot.buttons_utils import delmarkup
 from tgbot.bot_actions import delete_message_action
-from tgbot.utils import poke_link, re_edit_message, html_to_markdown, re_group_create_message, \
-    re_group_edit_name_message, telegram_log
+from tgbot.utils import poke_link, re_edit_message, html_to_markdown, re_group_edit_name_message, telegram_log
 from tgbot.handlers import command_handler, callback_handler, reply_handler, cache_add_event_date, cache_create_group
 from tgbot.bot_messages import (
     search_message,
@@ -222,7 +223,7 @@ def add_event_handler(message: Message):
 def schedule_loop():
     # ждём чтобы цикл уведомлений начинался
     def process():
-        while_time = now_time()
+        while_time = datetime.utcnow()
         weekday = while_time.weekday()
         hour = while_time.hour
         minute = while_time.minute
@@ -241,7 +242,7 @@ def schedule_loop():
             Thread(target=clear_logs, daemon=True).start()
 
     process()
-    sleep(60 - now_time().second)
+    sleep(60 - datetime.utcnow().second)
     while True:
         process()
         sleep(60)

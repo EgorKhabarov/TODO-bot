@@ -206,8 +206,7 @@ class TelegramAccount(Account):
     def is_admin(self) -> bool:
         return self.user.user_status >= 2 or self.request_chat_id in ADMIN_IDS
 
-    @cached_property
-    def settings(self) -> TelegramSettings:
+    def get_settings(self) -> TelegramSettings:
         return self.get_telegram_user_settings()
 
     def get_telegram_user_settings(self) -> TelegramSettings:

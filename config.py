@@ -54,5 +54,5 @@ COMMANDS = (
 # Специальный прозрачный символ для заполнения пустого места в кнопках
 ts = chr(10240)  # transparent symbol
 
-__version__ = "14.03.2024"
+__version__ = "02.04.2024"
 __autor__ = "EgorKhabarov"
