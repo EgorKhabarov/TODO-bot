@@ -221,16 +221,16 @@ def daily_message(
         date = datetime.strptime(date, "%d.%m.%Y")
 
     WHERE = """
-user_id IS :user_id
-AND group_id IS :group_id
-AND date = :date
+user_id IS ?
+AND group_id IS ?
+AND date = ?
 AND removal_time IS NULL
 """
-    params = {
-        "user_id": request.entity.safe_user_id,
-        "group_id": request.entity.group_id,
-        "date": f"{date:%d.%m.%Y}",
-    }
+    params = (
+        request.entity.safe_user_id,
+        request.entity.group_id,
+        f"{date:%d.%m.%Y}",
+    )
 
     y = date - timedelta(days=1)
     t = date + timedelta(days=1)
@@ -311,7 +311,9 @@ SELECT DISTINCT date
 LIMIT 1;
 """,
             params={
-                **params,
+                "user_id": request.entity.safe_user_id,
+                "group_id": request.entity.group_id,
+                "date": f"{date:%d.%m.%Y}",
                 "y_date": f"{date:%d.%m}.____",
                 "m_date": f"{date:%d}.__.____",
             },
@@ -394,14 +396,14 @@ def events_message(
     """
     generated = EventsMessage()
     WHERE = f"""
-user_id IS :user_id
-AND group_id IS :group_id
+user_id IS ?
+AND group_id IS ?
 AND removal_time IS {'NOT' if is_in_wastebasket else ''} NULL
 """
-    params = {
-        "user_id": request.entity.safe_user_id,
-        "group_id": request.entity.group_id,
-    }
+    params = (
+        request.entity.safe_user_id,
+        request.entity.group_id,
+    )
     generated.get_page_events(WHERE, params, id_list)
     date = generated.event_list[0].date if generated.event_list else ""
     string_id = encode_id(id_list)
@@ -575,8 +577,8 @@ def recurring_events_message(
     :param page: Номер страницы
     """
     WHERE = f"""
-user_id IS :user_id
-AND group_id IS :group_id
+user_id IS ?
+AND group_id IS ?
 AND removal_time IS NULL
 AND 
 (
@@ -607,10 +609,10 @@ AND
     )
 )
 """
-    params = {
-        "user_id": request.entity.safe_user_id,
-        "group_id": request.entity.group_id,
-    }
+    params = (
+        request.entity.safe_user_id,
+        request.entity.group_id,
+    )
 
     backopenmarkup = generate_buttons(
         [[{get_theme_emoji("back"): f"pd {date}"}, {"↖️": "None"}]]
@@ -718,13 +720,13 @@ def edit_events_date_message(
         date = request.entity.now_time()
 
     WHERE = """
-user_id IS :user_id
-AND group_id IS :group_id
+user_id IS ?
+AND group_id IS ?
 """
-    params = {
-        "user_id": request.entity.safe_user_id,
-        "group_id": request.entity.group_id,
-    }
+    params = (
+        request.entity.safe_user_id,
+        request.entity.group_id,
+    )
     generated = EventsMessage()
     generated.get_page_events(WHERE, params, id_list)
     generated.format(
@@ -774,14 +776,14 @@ def before_events_delete_message(id_list: list[int]) -> EventsMessage:
     удаления в корзину (для премиум) и изменения даты.
     """
     WHERE = """
-user_id IS :user_id
-AND group_id IS :group_id
+user_id IS ?
+AND group_id IS ?
 AND removal_time IS NULL
 """
-    params = {
-        "user_id": request.entity.safe_user_id,
-        "group_id": request.entity.group_id,
-    }
+    params = (
+        request.entity.safe_user_id,
+        request.entity.group_id,
+    )
     generated = EventsMessage()
     generated.get_page_events(WHERE, params, id_list)
 
@@ -885,8 +887,8 @@ def week_event_list_message(
     """
     tz = f"'{request.entity.settings.timezone:+} hours'"
     WHERE = f"""
-user_id IS :user_id
-AND group_id IS :group_id
+user_id IS ?
+AND group_id IS ?
 AND removal_time IS NULL
 AND (
     (
@@ -917,10 +919,10 @@ AND (
     OR status LIKE '%📬%' -- Каждый день
 )
     """
-    params = {
-        "user_id": request.entity.safe_user_id,
-        "group_id": request.entity.group_id,
-    }
+    params = (
+        request.entity.safe_user_id,
+        request.entity.group_id,
+    )
 
     markup = generate_buttons(
         [[{get_theme_emoji("back"): "mnm"}, {"🔄": "mnw"}, {"↖️": "None"}]]
@@ -946,14 +948,14 @@ def trash_can_message(id_list: list[int] = (), page: int | str = 0) -> EventsMes
     :param page: Номер страницы
     """
     WHERE = """
-user_id IS :user_id
-AND group_id IS :group_id
+user_id IS ?
+AND group_id IS ?
 AND removal_time IS NOT NULL
 """
-    params = {
-        "user_id": request.entity.safe_user_id,
-        "group_id": request.entity.group_id,
-    }
+    params = (
+        request.entity.safe_user_id,
+        request.entity.group_id,
+    )
     # Удаляем события старше 30 дней
     db.execute(
         """
@@ -1007,8 +1009,8 @@ def notification_message(
     dates = [n_date + timedelta(days=days) for days in (0, 1, 2, 3, 7)]
     weekdays = ["0" if (w := date.weekday()) == 6 else f"{w + 1}" for date in dates[:2]]
     WHERE = f"""
-user_id IS :user_id
-AND group_id IS :group_id
+user_id IS ?
+AND group_id IS ?
 AND removal_time IS NULL
 AND status NOT LIKE '%🔕%'
 AND (
@@ -1047,10 +1049,10 @@ AND (
     )
 )
     """
-    params = {
-        "user_id": request.entity.safe_user_id,
-        "group_id": request.entity.group_id,
-    }
+    params = (
+        request.entity.safe_user_id,
+        request.entity.group_id,
+    )
 
     markup = generate_buttons(
         [

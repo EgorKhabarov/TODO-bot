@@ -5,39 +5,12 @@ from tgbot.request import request
 from tgbot.lang import get_translate
 
 
-def now_time_strftime() -> str:
-    """
-    Возвращает форматированную ("%d.%m.%Y") функцию now_time()
-    """
-    return request.entity.now_time().strftime("%d.%m.%Y")
-
-
 def new_time_calendar() -> tuple[int, int]:
     """
     Возвращает [год, месяц]
     """
     date = request.entity.now_time()
     return date.year, date.month
-
-
-def convert_date_format(date: str) -> datetime:
-    """
-    Принимает дату в формате dd.mm.yyyy
-    Возвращает datetime(year=yyyy, month=mm, day=dd)
-    """
-    day, month, year = [int(x) for x in date.split(".")]
-    try:
-        return datetime(year, month, day)
-    except ValueError as e:
-        # Если дата 29 февраля и год невисокосный, то возвращать 1 апреля.
-        if (
-            f"{e}" == "day is out of range for month"
-            and (month, day) == (2, 29)
-            and not isleap(year)
-        ):
-            return datetime(year, 3, 1)
-        else:
-            raise e
 
 
 def year_info(year: int) -> str:
@@ -63,64 +36,55 @@ def get_week_number(YY, MM, DD) -> int:
     return datetime(YY, MM, DD).isocalendar()[1]
 
 
-class DayInfo:
+def relatively_string_date(day_diff: int) -> tuple[str, str, str]:
     """
-    Информация о дне
-    self.date            "переданная дата"
-    self.str_date        "число название месяца"
-    self.week_date       "день недели"
-    self.relatively_date "через x дней" или "x дней назад"
+    str_date, rel_date, week_date = relatively_string_date(Event(...).days_before_event(timezone))
+    # ('4 Апреля', 'Сегодня', 'Четверг')
     """
+    (
+        today,
+        tomorrow,
+        day_after_tomorrow,
+        yesterday,
+        day_before_yesterday,
+        after,
+        ago,
+        Fday,
+    ) = get_translate("arrays.relative_date_list")
+    week_days = get_translate("arrays.week_days_list_full")
+    month_list = get_translate("arrays.months_name2")
 
-    def __init__(self, date: str):
-        (
-            today,
-            tomorrow,
-            day_after_tomorrow,
-            yesterday,
-            day_before_yesterday,
-            after,
-            ago,
-            Fday,
-        ) = get_translate("arrays.relative_date_list")
-        x = request.entity.now_time()
-        x = datetime(x.year, x.month, x.day)
-        y = convert_date_format(date)
+    match day_diff:
+        case 0:
+            rel_date = f"{today}"
+        case 1:
+            rel_date = f"{tomorrow}"
+        case 2:
+            rel_date = f"{day_after_tomorrow}"
+        case -1:
+            rel_date = f"{yesterday}"
+        case -2:
+            rel_date = f"{day_before_yesterday}"
+        case n if n > 2:
+            rel_date = f"{after} {n} {Fday(n)}"
+        case _ as n:
+            rel_date = f"{-n} {Fday(n)} {ago}"
 
-        self.datetime = y
-        self.day_diff = (y - x).days
-        match self.day_diff:
-            case 0:
-                self.relatively_date = f"{today}"
-            case 1:
-                self.relatively_date = f"{tomorrow}"
-            case 2:
-                self.relatively_date = f"{day_after_tomorrow}"
-            case -1:
-                self.relatively_date = f"{yesterday}"
-            case -2:
-                self.relatively_date = f"{day_before_yesterday}"
-            case n if n > 2:
-                self.relatively_date = f"{after} {n} {Fday(n)}"
-            case _ as n:
-                self.relatively_date = f"{-n} {Fday(n)} {ago}"
-
-        week_days = get_translate("arrays.week_days_list_full")
-        month_list = get_translate("arrays.months_name2")
-
-        self.date = date
-        self.str_date = f"{y.day} {month_list[y.month - 1]}"
-        self.week_date = week_days[y.weekday()]
+    date = request.entity.now_time() + timedelta(days=day_diff)
+    str_date = f"{date.day} {month_list[date.month - 1]}"
+    week_date = week_days[date.weekday()]
+    return str_date, rel_date, week_date
 
 
 def parse_utc_datetime(time: str | None, relatively_date: bool = False) -> str:
     if time is None:
         return "NEVER"
 
+    n_time = request.entity.now_time()
     time = datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
     time += timedelta(hours=request.entity.settings.timezone)
     rel_date = (
-        " ({})".format(DayInfo(f"{time:%d.%m.%Y}").relatively_date)
+        " ({})".format(relatively_string_date((time - n_time).days)[1])
         if relatively_date
         else ""
     )

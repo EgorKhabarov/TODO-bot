@@ -27,7 +27,7 @@ from config import ts
 from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.lang import get_translate
-from tgbot.time_utils import DayInfo, convert_date_format
+from tgbot.time_utils import relatively_string_date
 from todoapi.types import db
 from todoapi.utils import is_admin_id
 
@@ -406,11 +406,13 @@ def fetch_forecast(city: str) -> str:
         city_time = hour["dt_txt"].replace("-", ".")[:-3]
         date = ".".join(city_time.split()[0].split(".")[::-1])
         if date not in result:
-            day = DayInfo(date)
-            result += (
-                f"\n\n<b>{date}</b> <u><i>{day.str_date}  "
-                f"{day.week_date}</i></u> ({day.relatively_date})"
+            dt_date = datetime.strptime(date, "%d.%m.%Y")
+            n_date = request.entity.now_time()
+            n_time = datetime(n_time.year, n_time.month, n_time.day)
+            str_date, rel_date, week_date = relatively_string_date(
+                (dt_date - n_date).days
             )
+            result += f"\n\n<b>{dt_date}</b> <u><i>{str_date}  {week_date}</i></u> ({rel_date})"
         # TODO перевод м/c
         result += (
             f"\n{city_time.split()[-1]} {weather_icon}<b>{temp:{ts}>2.0f}°C "
@@ -536,54 +538,6 @@ def highlight_text_difference(_old_text, _new_text):
 
     result_text = "".join(result_parts)
     return result_text
-
-
-def days_before_event(event_date: str, event_status: str) -> tuple[int, str, str]:
-    """
-    В сообщении уведомления показывает через сколько будет повторяющееся событие.
-    :return: ('разница в днях', 'дата ближайшего повторения', 'текстовое представление разницы')
-    """
-    _date = convert_date_format(event_date)
-    now_t = request.entity.now_time()
-    dates = []
-
-    # Каждый день
-    if "📬" in event_status:
-        day = DayInfo(f"{now_t:%d.%m.%Y}")
-        return day.day_diff, day.date, day.relatively_date
-
-    # Каждую неделю
-    if "🗞" in event_status:
-        now_wd, event_wd = now_t.weekday(), _date.weekday()
-        next_date = now_t + timedelta(days=(event_wd - now_wd + 7) % 7)
-        dates.append(next_date)
-
-    # Каждый месяц
-    elif "📅" in event_status:
-        day = DayInfo(f"{_date:%d}.{now_t:%m.%Y}")
-        month, year = day.datetime.month, day.datetime.year
-        if day.day_diff >= 0:
-            dates.append(day.datetime)
-        else:
-            if month < 12:
-                dates.append(day.datetime.replace(month=month + 1))
-            else:
-                dates.append(day.datetime.replace(year=year + 1, month=1))
-
-    # Каждый год
-    elif {*event_status.split(",")}.intersection({"📆", "🎉", "🎊"}):
-        day = DayInfo(f"{_date:%d.%m}.{now_t:%Y}")
-        if day.datetime.date() < now_t.date():
-            dates.append(day.datetime.replace(year=now_t.year + 1))
-        else:
-            dates.append(day.datetime.replace(year=now_t.year))
-
-    else:
-        day = DayInfo(event_date)
-        return day.day_diff, day.date, day.relatively_date
-
-    day = DayInfo(f"{min(dates):%d.%m.%Y}")
-    return day.day_diff, day.date, day.relatively_date
 
 
 def html_to_markdown(html_text: str) -> str:

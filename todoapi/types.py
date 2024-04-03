@@ -543,26 +543,27 @@ SELECT media_id,
 
     def days_before_event(self, timezone: int = 0) -> int:
         _date = self.datetime
-        now_t = datetime.utcnow() + timedelta(hours=timezone)
+        n_time = datetime.utcnow() + timedelta(hours=timezone)
+        n_time = datetime(n_time.year, n_time.month, n_time.day)
         dates = []
 
         def prepare_date(date: str) -> tuple[int, datetime]:
             y = datetime.strptime(date, "%d.%m.%Y")
-            return (y - now_t).days, y
+            return (y - n_time).days, y
 
         # Каждый день
         if "📬" in self.status:
-            return prepare_date(f"{now_t:%d.%m.%Y}")[0]
+            return prepare_date(f"{n_time:%d.%m.%Y}")[0]
 
         # Каждую неделю
         if "🗞" in self.status:
-            now_wd, event_wd = now_t.weekday(), _date.weekday()
-            next_date = now_t + timedelta(days=(event_wd - now_wd + 7) % 7)
+            now_wd, event_wd = n_time.weekday(), _date.weekday()
+            next_date = n_time + timedelta(days=(event_wd - now_wd + 7) % 7)
             dates.append(next_date)
 
         # Каждый месяц
         elif "📅" in self.status:
-            day_diff, dttm = prepare_date(f"{_date:%d}.{now_t:%m.%Y}")
+            day_diff, dttm = prepare_date(f"{_date:%d}.{n_time:%m.%Y}")
             month, year = dttm.month, dttm.year
             if day_diff >= 0:
                 dates.append(dttm)
@@ -574,11 +575,11 @@ SELECT media_id,
 
         # Каждый год
         elif {*self.status.split(",")}.intersection({"📆", "🎉", "🎊"}):
-            dttm = prepare_date(f"{_date:%d.%m}.{now_t:%Y}")[1]
-            if dttm.date() < now_t.date():
-                dates.append(dttm.replace(year=now_t.year + 1))
+            dttm = prepare_date(f"{_date:%d.%m}.{n_time:%Y}")[1]
+            if dttm.date() < n_time.date():
+                dates.append(dttm.replace(year=n_time.year + 1))
             else:
-                dates.append(dttm.replace(year=now_t.year))
+                dates.append(dttm.replace(year=n_time.year))
 
         else:
             return prepare_date(self.date)[0]

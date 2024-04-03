@@ -2,6 +2,7 @@ import logging
 from copy import deepcopy
 from sqlite3 import Error
 from typing import Literal
+from datetime import datetime
 
 # noinspection PyPackageRequirements
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
@@ -10,8 +11,8 @@ from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.buttons_utils import encode_id
-from tgbot.time_utils import DayInfo
-from tgbot.utils import add_status_effect, days_before_event
+from tgbot.time_utils import relatively_string_date
+from tgbot.utils import add_status_effect
 from todoapi.exceptions import EventNotFound
 from todoapi.types import db, Event
 from todoapi.utils import sqlite_format_date
@@ -187,32 +188,30 @@ class EventMessage(TextMessage):
         event_date_representation: str = "",
         markup: InlineKeyboardMarkup = None,
     ):
-        day = DayInfo(self.event.date)
+        days_before_event = self.event.days_before_event(request.entity.settings.timezone)
+        str_date, rel_date, week_date = relatively_string_date(days_before_event)
+
+        days_before = ""
+        markdown_text = ""
+        if "{markdown_text}" in event_date_representation:
+            markdown_text = add_status_effect(self.event.text, self.event.status)
+
+        days_before_delete = ""
+        if self.event.removal_time is not None:
+            days_before_delete = get_translate("func.deldate")(
+                self.event.days_before_delete
+            )
+
         event_date_representation = event_date_representation.format(
-            date=day.date,
-            strdate=day.str_date,
-            weekday=day.week_date,
-            reldate=day.relatively_date,
+            date=self.event.date,
+            strdate=str_date,
+            weekday=week_date,
+            reldate=rel_date,
             event_id=f"{self.event.event_id}",
             status=self.event.status,
-            markdown_text=add_status_effect(self.event.text, self.event.status)
-            if "{markdown_text" in event_date_representation
-            else "",
-            days_before=f"<b>({dbd})</b>"
-            if (
-                (
-                    dbd := (
-                        days_before_event(self.event.date, self.event.status)[-1]
-                        if "{days_before" in event_date_representation
-                        else ""
-                    )
-                )
-                != day.relatively_date
-            )
-            else "",
-            days_before_delete=""
-            if self.event.removal_time is None
-            else get_translate("func.deldate")(self.event.days_before_delete),
+            markdown_text=markdown_text,
+            days_before=days_before,
+            days_before_delete=days_before_delete,
             text=self.event.text,
         )
         self.text = f"<b>{title}</b>\n{event_date_representation}".strip()
@@ -322,7 +321,7 @@ SELECT user_id,
                     )
         return self
 
-    def get_page_events(self, WHERE: str, params: dict | tuple, id_list: list[int]):
+    def get_page_events(self, WHERE: str, params: tuple, id_list: list[int]):
         """
         Возвращает события входящие в values с условием WHERE
         """
@@ -343,9 +342,9 @@ SELECT user_id,
        recent_changes_time,
        removal_time
   FROM events
- WHERE user_id IS :user_id
-       AND group_id IS :group_id
-       AND event_id IN ({', '.join(f"{event_id}" for event_id in id_list)})
+ WHERE user_id IS ?
+       AND group_id IS ?
+       AND event_id IN ({','.join('?' for _ in id_list)})
        AND ({WHERE}) 
  ORDER BY DAYS_BEFORE_EVENT(date, status) {direction},
           status LIKE '%📬%',
@@ -355,11 +354,18 @@ SELECT user_id,
           status LIKE '%🎉%',
           status LIKE '%🎊%';
 """,
-                    params=params,
+                    params=(
+                        request.entity.safe_user_id,
+                        request.entity.group_id,
+                        *id_list,
+                        *params,
+                    ),
                     func=(
                         "DAYS_BEFORE_EVENT",
                         2,
-                        lambda date, status: days_before_event(date, status)[0],
+                        lambda date, status: Event(
+                            0, "", 0, date, "", status, "", "", ""
+                        ).days_before_event(request.entity.settings.timezone),
                     ),
                 )
             ]
@@ -415,15 +421,19 @@ SELECT user_id,
         :param if_empty: Если результат запроса пустой
         :return:         message.text
         """
-
-        day = DayInfo(self._date)
+        dt_date = datetime.strptime(self._date, "%d.%m.%Y")
+        n_time = request.entity.now_time()
+        n_time = datetime(n_time.year, n_time.month, n_time.day)
+        str_date, rel_date, week_date = relatively_string_date(
+            (dt_date - n_time).days
+        )
 
         format_string = (
             title.format(
-                date=day.date,
-                strdate=day.str_date,
-                weekday=day.week_date,
-                reldate=day.relatively_date,
+                date=self._date,
+                strdate=str_date,
+                weekday=week_date,
+                reldate=rel_date,
             )
             + "\n"
         )
@@ -439,34 +449,40 @@ SELECT user_id,
             format_string += if_empty
         else:
             for num, event in enumerate(self.event_list):
-                day = DayInfo(event.date)
+                str_date, rel_date, week_date = relatively_string_date(
+                    (event.datetime - n_time).days
+                )
+
+                days_before = ""
+                if "{days_before}" in args:
+                    dbe = relatively_string_date(
+                        event.days_before_event(request.entity.settings.timezone)
+                    )[1]
+                    if dbe != rel_date:
+                        days_before = f"<b>({dbe})</b>"
+
+                markdown_text = ""
+                if "{markdown_text}" in args:
+                    markdown_text = add_status_effect(event.text, event.status)
+
+                days_before_delete = ""
+                if event.removal_time is not None:
+                    days_before_delete = get_translate("func.deldate")(
+                        event.days_before_delete
+                    )
+
                 format_string += (
                     args.format(
-                        date=day.date,
-                        strdate=day.str_date,
-                        weekday=day.week_date,
-                        reldate=day.relatively_date,
+                        date=event.date,
+                        strdate=str_date,
+                        weekday=week_date,
+                        reldate=rel_date,
                         numd=f"{num + 1}",
                         event_id=f"{event.event_id}",
                         status=event.status,
-                        markdown_text=add_status_effect(event.text, event.status)
-                        if "{markdown_text" in args
-                        else "",
-                        days_before=f"<b>({dbd})</b>"
-                        if (
-                            (
-                                dbd := (
-                                    days_before_event(event.date, event.status)[-1]
-                                    if "{days_before" in args
-                                    else ""
-                                )
-                            )
-                            != day.relatively_date
-                        )
-                        else "",
-                        days_before_delete=""
-                        if event.removal_time is None
-                        else get_translate("func.deldate")(event.days_before_delete),
+                        markdown_text=markdown_text,
+                        days_before=days_before,
+                        days_before_delete=days_before_delete,
                         **kwargs,
                         text=event.text,
                     )
