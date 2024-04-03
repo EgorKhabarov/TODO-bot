@@ -67,7 +67,7 @@ from tgbot.utils import (
     extract_search_query, add_group_pattern, set_bot_commands
 )
 from todoapi.exceptions import ApiError, UserNotFound, EventNotFound, LimitExceeded, TextIsTooBig, WrongDate, \
-    StatusConflict, StatusLengthExceeded, StatusRepeats, NotEnoughPermissions, NotGroupMember, GroupNotFound
+    StatusConflict, StatusLengthExceeded, StatusRepeats, NotEnoughPermissions, NotGroupMember
 from todoapi.types import db, create_user, get_account_from_password, Cache
 from todoapi.log_cleaner import clear_logs
 from telegram_utils.argument_parser import get_arguments, getargs
@@ -682,13 +682,13 @@ def callback_handler(call: CallbackQuery):
         except EventNotFound:
             return daily_message(date).edit(chat_id, message_id)
 
-        if status == "⬜️" == event.status:
+        if status == "⬜" == event.status:
             return event_status_message(event).edit(chat_id, message_id)
 
-        if event.status == "⬜️":
+        if event.status == "⬜":
             res_status = status
-        elif status == "⬜️":
-            res_status = "⬜️"
+        elif status == "⬜":
+            res_status = "⬜"
         else:
             res_status = f"{event.status},{status}"
 
@@ -703,7 +703,7 @@ def callback_handler(call: CallbackQuery):
         except ApiError:
             text = get_translate("errors.error")
         else:
-            if status == "⬜️":
+            if status == "⬜":
                 generated = event_message(event_id, False, message_id)
             else:
                 event.status = res_status
@@ -722,7 +722,7 @@ def callback_handler(call: CallbackQuery):
         except EventNotFound:
             return daily_message(date).edit(chat_id, message_id)
 
-        if status == "⬜️" or event.status == "⬜️":
+        if status == "⬜" or event.status == "⬜":
             return
 
         statuses = event.status.split(",")
@@ -733,7 +733,7 @@ def callback_handler(call: CallbackQuery):
         res_status = ",".join(statuses)
 
         if not res_status:
-            res_status = "⬜️"
+            res_status = "⬜"
 
         request.entity.edit_event_status(event_id, res_status)
         event.status = res_status
@@ -1118,7 +1118,7 @@ def callback_handler(call: CallbackQuery):
             CallBackAnswer(get_translate("errors.invalid_date")).answer(call_id)
 
     elif call_prefix == "us":  # update search
-        query = extract_search_query(message.text)
+        query = html_to_markdown(extract_search_query(message.text))
         try:
             search_message(query).edit(chat_id, message_id)
         except ApiTelegramException:

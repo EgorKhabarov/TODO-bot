@@ -101,7 +101,6 @@ class TelegramUser(User):
     @classmethod
     def get_from_user_id(cls, user_id: int) -> "TelegramUser":
         # TODO защита от перебора брутфорса и количества попыток
-        # TODO хеширование пароля
         try:
             user = db.execute(
                 """
@@ -126,7 +125,6 @@ SELECT user_id,
     @classmethod
     def get_from_chat_id(cls, chat_id: int) -> "TelegramUser":
         # TODO защита от перебора брутфорса и количества попыток
-        # TODO хеширование пароля
         try:
             user = db.execute(
                 """
@@ -151,7 +149,6 @@ SELECT user_id,
     @classmethod
     def get_from_password(cls, username: str, password: str) -> "TelegramUser":
         # TODO защита от перебора брутфорса и количества попыток
-        # TODO хеширование пароля
         try:
             user = db.execute(
                 """

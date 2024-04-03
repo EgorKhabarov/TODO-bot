@@ -143,8 +143,8 @@ class DataBase:
         self.sqlite_cursor = self.sqlite_connection.cursor()
         if func:
             self.sqlite_connection.create_function(*func)
-        logging.info(
-            "    " + " ".join([line.strip() for line in query.split("\n")]).strip()
+        logging.debug(
+            "SQLite3.EXECUTE" + " ".join([line.strip() for line in query.split("\n")]).strip()
         )
 
         if script:
@@ -643,7 +643,6 @@ class User:
     @classmethod
     def get_from_token(cls, token: str) -> "User":
         # TODO защита от перебора брутфорса и количества попыток
-        # TODO хеширование пароля
         try:
             user = db.execute(
                 """
@@ -671,7 +670,6 @@ SELECT user_id,
     @classmethod
     def get_from_user_id(cls, user_id: int) -> "User":
         # TODO защита от перебора брутфорса и количества попыток
-        # TODO хеширование пароля
         try:
             user = db.execute(
                 """
@@ -699,7 +697,6 @@ SELECT user_id,
     @classmethod
     def get_from_password(cls, username: str, password: str) -> "User":
         # TODO защита от перебора брутфорса и количества попыток
-        # TODO хеширование пароля
         try:
             user = db.execute(
                 """
@@ -902,14 +899,13 @@ SELECT *
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in event_ids)})
        AND (removal_time IS NOT NULL) = ?
-ORDER BY DAYS_BEFORE_EVENT(date, status),
-         status LIKE '%📬%',
-         status LIKE '%🗞%',
-         status LIKE '%📅%',
-         status LIKE '%📆%',
-         status LIKE '%🎉%',
-         status LIKE '%🎊%'
-         ASC;
+ ORDER BY DAYS_BEFORE_EVENT(date, status) {self.settings.direction},
+          status LIKE '%📬%',
+          status LIKE '%🗞%',
+          status LIKE '%📅%',
+          status LIKE '%📆%',
+          status LIKE '%🎉%',
+          status LIKE '%🎊%';
 """,
                 params=(
                     self.safe_user_id,
@@ -997,7 +993,7 @@ UPDATE events
         except Error as e:
             raise ApiError(e)
 
-    def edit_event_status(self, event_id: int, status: str = "⬜️") -> None:
+    def edit_event_status(self, event_id: int, status: str = "⬜") -> None:
         if not self.check_event_exists(event_id):
             raise EventNotFound
 

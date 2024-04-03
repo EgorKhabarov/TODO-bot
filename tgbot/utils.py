@@ -622,10 +622,9 @@ def sqlite_format_date2(_date: str) -> str:
     return "-".join(_date.split(".")[::-1])
 
 
-def extract_search_query(message_text: str, html_escape=True) -> str:
+def extract_search_query(message_text: str) -> str:
     first_line = message_text.split("\n", maxsplit=1)[0]
-    query = first_line.split(maxsplit=2)[-1][:-1]
-    return html.escape(query) if html_escape else query
+    return html.escape(first_line.split(maxsplit=2)[-1][:-1])
 
 
 def set_bot_commands(not_login: bool = False):

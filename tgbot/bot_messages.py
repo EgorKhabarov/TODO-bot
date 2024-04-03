@@ -94,9 +94,8 @@ def settings_message() -> TextMessage:
     not_direction_smile = {"DESC": "⬆️", "ASC": "⬇️"}[settings.direction]
     not_direction_sql = {"DESC": "ASC", "ASC": "DESC"}[settings.direction]
     not_notifications_ = (("🔕", 1), ("🔔", 2), ("📆", 0))[settings.notifications]
-    # not_notifications_ = ("🔕", 0) if settings.notifications else ("🔔", 1)
     n_hours, n_minutes = [int(i) for i in settings.notifications_time.split(":")]
-    not_theme = ("⬜️", 0, "⬛️") if settings.theme else ("⬛️", 1, "⬜️")
+    not_theme = ("⬜", 0, "⬛️") if settings.theme else ("⬛️", 1, "⬜")
 
     utz = settings.timezone
     str_utz = (
@@ -238,9 +237,7 @@ AND removal_time IS NULL
     if id_list:
         generated.get_page_events(WHERE, params, id_list)
     else:
-        generated.get_pages_data(
-            WHERE, params, lambda np, ids: f"pd {date:%d.%m.%Y} {np} {ids}"
-        )
+        generated.get_pages_data(WHERE, params, f"pd {date:%d.%m.%Y}")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.markup, 0, 1, f"se _ {string_id} pd {date:%d.%m.%Y}")
@@ -600,7 +597,7 @@ AND
     if id_list:
         generated.get_page_events(WHERE, params, id_list)
     else:
-        generated.get_pages_data(WHERE, params, lambda np, ids: f"pr {date} {np} {ids}")
+        generated.get_pages_data(WHERE, params, f"pr {date}")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.markup, 0, 1, f"se o {string_id} pr {date}")
@@ -641,7 +638,7 @@ def event_status_message(event: Event, path: str = "0") -> EventMessage:
                     }
                     for n, i in enumerate(sl)
                 ]
-                if event.status != "⬜️"
+                if event.status != "⬜"
                 else [],
                 [{get_theme_emoji("back"): f"em {event.event_id}"}],
             ]
@@ -797,7 +794,7 @@ def search_message(
     :param page: Номер страницы
     TODO шаблоны для поиска
     """
-    query = query.replace("\n", " ").replace("--", "").strip()
+    query = query.replace("\n", " ").strip()
     translate_search = get_translate("messages.search")
 
     if query.isspace():
@@ -820,32 +817,41 @@ def search_message(
     generated = EventsMessage(markup=markup, page=page)
 
     splitquery = " OR ".join(
-        f"date LIKE '%{x}%' OR text LIKE '%{x}%' OR "
-        f"status LIKE '%{x}%' OR event_id LIKE '%{x}%'"
-        for x in query.replace("\n", " ").strip().split()
+        """
+date LIKE '%' || ? || '%'
+OR text LIKE '%' || ? || '%'
+OR status LIKE '%' || ? || '%'
+OR event_id LIKE '%' || ? || '%'
+"""
+        for _ in query.split()
     )
     WHERE = f"""
-user_id IS :user_id
-AND group_id IS :group_id
+user_id IS ?
+AND group_id IS ?
 AND removal_time IS NULL
 AND ({splitquery})
 """
-    params = {
-        "user_id": request.entity.safe_user_id,
-        "group_id": request.entity.group_id,
-    }
+    params = (
+        request.entity.safe_user_id,
+        request.entity.group_id,
+        *[
+            y
+            for x in query.split()
+            for y in (x, x, x, x)
+        ],
+    )
 
     if id_list:
         generated.get_page_events(WHERE, params, id_list)
     else:
-        generated.get_pages_data(WHERE, params, lambda np, ids: f"ps {np} {ids}")
+        generated.get_pages_data(WHERE, params, "ps")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.markup, 0, 2, f"se os {string_id} us")
     edit_button_data(generated.markup, 0, 3, f"ses s {string_id} us")
     generated.format(
         title=f"🔍 {translate_search} <u>{html.escape(query)}</u>:",
-        args=event_formats["dt"],
+        args=event_formats["r"],
         if_empty=get_translate("errors.nothing_found"),
     )
     return generated
@@ -904,17 +910,7 @@ AND (
     if id_list:
         generated.get_page_events(WHERE, params, id_list)
     else:
-        generated.get_pages_data(
-            WHERE=WHERE,
-            params=params,
-            callback_data=lambda np, ids: f"pw {np} {ids}",
-            column=(
-                "DAYS_BEFORE_EVENT(date, status), "
-                "status LIKE '%📬%', status LIKE '%🗞%',status LIKE '%📅%', "
-                "status LIKE '%📆%', status LIKE '%🎉%', status LIKE '%🎊%'"
-            ),
-            direction="ASC",
-        )
+        generated.get_pages_data(WHERE, params, "pw")
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.markup, 0, 2, f"se o {string_id} mnw")
     generated.format(
@@ -966,7 +962,7 @@ DELETE FROM events
     if id_list:
         generated.get_page_events(WHERE, params, id_list)
     else:
-        generated.get_pages_data(WHERE, params, lambda np, ids: f"pb {np} {ids}")
+        generated.get_pages_data(WHERE, params, "pb")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.markup, 0, 0, f"se b {string_id} mnb")
@@ -1051,17 +1047,7 @@ AND (
     if id_list:
         generated.get_page_events(WHERE, params, id_list)
     else:
-        generated.get_pages_data(
-            WHERE=WHERE,
-            params=params,
-            callback_data=lambda np, ids: f"pn {n_date:%d.%m.%Y} {np} {ids}",
-            column=(
-                "DAYS_BEFORE_EVENT(date, status), "
-                "status LIKE '%📬%', status LIKE '%🗞%', status LIKE '%📅%',"
-                "status LIKE '%📆%', status LIKE '%🎉%', status LIKE '%🎊%'"
-            ),
-            direction="ASC",
-        )
+        generated.get_pages_data(WHERE, params, f"pn {n_date:%d.%m.%Y}")
         string_id = encode_id([event.event_id for event in generated.event_list])
         edit_button_data(
             generated.markup, 0, -1, f"se o {string_id} mnn {n_date:%d.%m.%Y}"

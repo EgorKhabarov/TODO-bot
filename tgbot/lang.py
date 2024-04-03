@@ -384,7 +384,7 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 <b>{} {}</b> <i>(🔕 по умолчанию)</i>
 
 [<u>Тема</u>]***
-<b>{}</b> <i>(⬜️ по умолчанию)</i>
+<b>{}</b> <i>(⬜ по умолчанию)</i>
 
 *(<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 >www.youtube.com</a> <i>вместо полной ссылки</i>)
@@ -411,7 +411,7 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 <b>{} {}</b> <i>(🔕 by default)</i>
 
 [<u>Theme</u>]***
-<b>{}</b> <i>(⬜️ by default)</i>
+<b>{}</b> <i>(⬜ by default)</i>
 
 *(<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 >www.youtube.com</a> <i>instead of full link</i>)
@@ -503,14 +503,14 @@ Select a topic button to read more.
                 "ru": """
 <u><b>События</b></u>
 
-Событие - это текстовая заметка на определенную дату. Каждое событие помечается уникальным номером (id) и может иметь свой статус. По умолчанию статус устанавливается как "⬜️". Статус можно изменить с помощью кнопки "🏷" в сообщении на день.
+Событие - это текстовая заметка на определенную дату. Каждое событие помечается уникальным номером (id) и может иметь свой статус. По умолчанию статус устанавливается как "⬜". Статус можно изменить с помощью кнопки "🏷" в сообщении на день.
 
 В сообщении на день есть кнопки для изменения или удаления событий. Если событий в сообщении несколько, то такие кнопки предлагают выбрать конкретное. <b>Если событие одно, то кнопки сразу выбирают его.</b>
 """,
                 "en": """
 <u><b>Events</b></u>
 
-An event is a textual note for a specific date. Each event is marked with a unique identifier (id) and can have its own status. By default, the status is set to "⬜️". The status can be changed using the "🏷" button in the message for a day.
+An event is a textual note for a specific date. Each event is marked with a unique identifier (id) and can have its own status. By default, the status is set to "⬜". The status can be changed using the "🏷" button in the message for a day.
 
 The message for the day has buttons for changing or deleting events. If there are several events in the message, then such buttons offer to select a specific one. <b>If there is only one event, then the buttons select it immediately.</b>
 """,
@@ -657,8 +657,8 @@ Here are the meanings of the symbol notations:
 Сообщение отображает события на один день.
 
 Перед самим текстом события размещается строка с информацией о событии.
-Например: <pre>1.3.⬜️</pre>
-Тут 1 это порядковый номер события в сообщении, 3 это id события, а ⬜️ это статусы, перечисленные через запятую.
+Например: <pre>1.3.⬜</pre>
+Тут 1 это порядковый номер события в сообщении, 3 это id события, а ⬜ это статусы, перечисленные через запятую.
 
 Если событий на эту дату становится больше 10, то остальные события размещаются на других страницах. Максимум 10 событий на одну страницу. Кнопки переключения страниц появляются под кнопками управления и пронумерованы номерами страниц.
 
@@ -683,8 +683,8 @@ Here are the meanings of the symbol notations:
 The message displays events for a single day.
 
 The line with information about the event is situated one line higher than the text of the event.
-For example: <pre>1.3.⬜️</pre>
-Here 1 is the index number of the events in the message, 3 is the event id, and ⬜️ are the statuses separated by commas.
+For example: <pre>1.3.⬜</pre>
+Here 1 is the index number of the events in the message, 3 is the event id, and ⬜ are the statuses separated by commas.
 
 If the number of events for this date exceeds 10, the remaining events are placed on other pages. There cannot be more than 10 events on one page. Page navigation buttons are displayed below the control buttons and are numbered accordingly.
 
@@ -1139,7 +1139,7 @@ Visibility <b>{}</b>m""",
             "1": {
                 "ru": (
                     (
-                        "⬜️ Без статуса",
+                        "⬜ Без статуса",
                         "✅ Сделано",
                     ),
                     (
@@ -1157,7 +1157,7 @@ Visibility <b>{}</b>m""",
                 ),
                 "en": (
                     (
-                        "⬜️ No Status",
+                        "⬜ No Status",
                         "✅ Done",
                     ),
                     (

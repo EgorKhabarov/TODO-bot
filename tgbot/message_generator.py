@@ -1,7 +1,7 @@
 import logging
 from copy import deepcopy
 from sqlite3 import Error
-from typing import Literal, Callable
+from typing import Literal
 
 # noinspection PyPackageRequirements
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
@@ -91,11 +91,7 @@ SELECT event_id,
 
 
 class TextMessage:
-    def __init__(
-        self,
-        text: str | None = None,
-        markup: InlineKeyboardMarkup | None = None,
-    ):
+    def __init__(self, text: str | None = None, markup: InlineKeyboardMarkup | None = None):
         self.text = text
         self.markup = markup
 
@@ -245,20 +241,11 @@ class EventsMessage(TextMessage):
         self.page = page
         self.page_signature_needed = True if page else False
 
-    def get_pages_data(
-        self,
-        WHERE: str,
-        params: dict,
-        callback_data: Callable[[int, str], str],
-        column: str = sqlite_format_date("date"),
-        direction: Literal["ASC", "DESC"] | None = None,
-    ):
+    def get_pages_data(self, WHERE: str, params: dict | tuple, callback_data: str):
         """
         Получить список кортежей строк id по страницам
         """
-        if not direction:
-            direction = request.entity.settings.direction
-
+        direction = request.entity.settings.direction
         data = pagination(WHERE, params, direction)
 
         if data:
@@ -278,20 +265,26 @@ SELECT user_id,
   FROM events
  WHERE event_id IN ({data[0]})
        AND ({WHERE}) 
- ORDER BY {column} {direction};
+ ORDER BY DAYS_BEFORE_EVENT(date, status) {direction},
+          status LIKE '%📬%',
+          status LIKE '%🗞%',
+          status LIKE '%📅%',
+          status LIKE '%📆%',
+          status LIKE '%🎉%',
+          status LIKE '%🎊%';
 """,
                     params=params,
                     func=(
                         "DAYS_BEFORE_EVENT",
                         2,
-                        lambda date, status: days_before_event(date, status)[0],
-                    )
-                    if "DAYS_BEFORE_EVENT" in column
-                    else None,
+                        lambda date, status: Event(
+                            0, "", 0, date, "", status, "", "", ""
+                        ).days_before_event(request.entity.settings.timezone)
+                    ),
                 )
             ]
 
-            if request.entity.settings.direction == "ASC":
+            if direction == "ASC":
                 first_message = first_message[::-1]
             self.event_list = first_message
 
@@ -318,7 +311,7 @@ SELECT user_id,
                         *[
                             InlineKeyboardButton(
                                 f"{numpage}",
-                                callback_data=callback_data(numpage, event_ids),
+                                callback_data=f"{callback_data.strip()} {numpage} {event_ids}"
                             )
                             if event_ids
                             else InlineKeyboardButton(" ", callback_data="None")
@@ -327,10 +320,12 @@ SELECT user_id,
                     )
         return self
 
-    def get_page_events(self, WHERE: str, params: dict, id_list: list[int]):
+    def get_page_events(self, WHERE: str, params: dict | tuple, id_list: list[int]):
         """
         Возвращает события входящие в values с условием WHERE
         """
+        direction = request.entity.settings.direction
+
         try:
             res = [
                 Event(*event)
@@ -350,9 +345,20 @@ SELECT user_id,
        AND group_id IS :group_id
        AND event_id IN ({', '.join(f"{event_id}" for event_id in id_list)})
        AND ({WHERE}) 
- ORDER BY {sqlite_format_date('date')} {request.entity.settings.direction};
+ ORDER BY DAYS_BEFORE_EVENT(date, status) {direction},
+          status LIKE '%📬%',
+          status LIKE '%🗞%',
+          status LIKE '%📅%',
+          status LIKE '%📆%',
+          status LIKE '%🎉%',
+          status LIKE '%🎊%';
 """,
                     params=params,
+                    func=(
+                        "DAYS_BEFORE_EVENT",
+                        2,
+                        lambda date, status: days_before_event(date, status)[0],
+                    ),
                 )
             ]
         except Error as e:
@@ -361,19 +367,12 @@ SELECT user_id,
             )
             self.event_list = []
         else:
-            if request.entity.settings.direction == "ASC":
+            if direction == "ASC":
                 res = res[::-1]
             self.event_list = res
         return self
 
-    def format(
-        self,
-        title: str,
-        args: str = event_formats["dl"],
-        ending: str = "",
-        if_empty: str = "🕸🕷  🕸",
-        **kwargs,
-    ):
+    def format(self, title: str, args: str = event_formats["dl"], ending: str = "", if_empty: str = "🕸🕷  🕸", **kwargs):
         """
         Заполнение сообщения по шаблону
 
@@ -391,7 +390,7 @@ SELECT user_id,
 
         {event_id} - Event_id                                                                   ["1"]
 
-        {status}   - Status                                                                     ["⬜️"]
+        {status}   - Status                                                                     ["⬜"]
 
         {markdown_text} - оборачивает текст в нужный тег по статусу                             ["<b>"]
 
@@ -473,7 +472,5 @@ class CallBackAnswer:
     def __init__(self, text: str):
         self.text = text
 
-    def answer(
-        self, call_id: int, show_alert: bool | None = None, url: str | None = None
-    ):
+    def answer(self, call_id: int, show_alert: bool | None = None, url: str | None = None):
         bot.answer_callback_query(call_id, self.text, show_alert, url)
