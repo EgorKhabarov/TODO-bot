@@ -20,6 +20,7 @@ class Request:
     """
     Класс контекстных переменных
     """
+
     _entity = ContextVar("entity", default=None)
     _entity_type = ContextVar("entity_type", default=None)
     _chat_id = ContextVar("chat_id", default=None)

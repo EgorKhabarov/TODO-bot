@@ -91,7 +91,9 @@ SELECT event_id,
 
 
 class TextMessage:
-    def __init__(self, text: str | None = None, markup: InlineKeyboardMarkup | None = None):
+    def __init__(
+        self, text: str | None = None, markup: InlineKeyboardMarkup | None = None
+    ):
         self.text = text
         self.markup = markup
 
@@ -279,7 +281,7 @@ SELECT user_id,
                         2,
                         lambda date, status: Event(
                             0, "", 0, date, "", status, "", "", ""
-                        ).days_before_event(request.entity.settings.timezone)
+                        ).days_before_event(request.entity.settings.timezone),
                     ),
                 )
             ]
@@ -311,7 +313,7 @@ SELECT user_id,
                         *[
                             InlineKeyboardButton(
                                 f"{numpage}",
-                                callback_data=f"{callback_data.strip()} {numpage} {event_ids}"
+                                callback_data=f"{callback_data.strip()} {numpage} {event_ids}",
                             )
                             if event_ids
                             else InlineKeyboardButton(" ", callback_data="None")
@@ -372,7 +374,14 @@ SELECT user_id,
             self.event_list = res
         return self
 
-    def format(self, title: str, args: str = event_formats["dl"], ending: str = "", if_empty: str = "🕸🕷  🕸", **kwargs):
+    def format(
+        self,
+        title: str,
+        args: str = event_formats["dl"],
+        ending: str = "",
+        if_empty: str = "🕸🕷  🕸",
+        **kwargs,
+    ):
         """
         Заполнение сообщения по шаблону
 
@@ -472,5 +481,7 @@ class CallBackAnswer:
     def __init__(self, text: str):
         self.text = text
 
-    def answer(self, call_id: int, show_alert: bool | None = None, url: str | None = None):
+    def answer(
+        self, call_id: int, show_alert: bool | None = None, url: str | None = None
+    ):
         bot.answer_callback_query(call_id, self.text, show_alert, url)

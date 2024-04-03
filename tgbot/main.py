@@ -19,14 +19,33 @@ from tgbot.lang import get_translate
 from tgbot.bot import bot, bot_log_info
 from tgbot.buttons_utils import delmarkup
 from tgbot.bot_actions import delete_message_action
-from tgbot.utils import poke_link, re_edit_message, html_to_markdown, re_group_edit_name_message, telegram_log
-from tgbot.handlers import command_handler, callback_handler, reply_handler, cache_add_event_date, cache_create_group
+from tgbot.utils import (
+    poke_link,
+    re_edit_message,
+    html_to_markdown,
+    re_group_edit_name_message,
+    telegram_log,
+)
+from tgbot.handlers import (
+    command_handler,
+    callback_handler,
+    reply_handler,
+    cache_add_event_date,
+    cache_create_group,
+)
 from tgbot.bot_messages import (
     search_message,
     send_notifications_messages,
-    confirm_changes_message, groups_message, group_message,
+    confirm_changes_message,
+    groups_message,
+    group_message,
 )
-from todoapi.exceptions import LimitExceeded, NotEnoughPermissions, GroupNotFound, NotGroupMember
+from todoapi.exceptions import (
+    LimitExceeded,
+    NotEnoughPermissions,
+    GroupNotFound,
+    NotGroupMember,
+)
 from todoapi.types import db, Cache
 from todoapi.logger import logging
 from todoapi.log_cleaner import clear_logs
@@ -125,7 +144,12 @@ def processing_group_edit_name_message(message: Message):
     match = re_group_edit_name_message.match(message.text)
     group_id = match.group(1)
     message_id = match.group(2)
-    name = html_to_markdown(message.html_text).split("\n", maxsplit=1)[-1].strip("\n").replace("\n", " ")[:32]
+    name = (
+        html_to_markdown(message.html_text)
+        .split("\n", maxsplit=1)[-1]
+        .strip("\n")
+        .replace("\n", " ")[:32]
+    )
 
     try:
         request.entity.edit_group_name(name, group_id)
@@ -135,7 +159,9 @@ def processing_group_edit_name_message(message: Message):
         bot.reply_to(message, get_translate("errors.error"))
     else:
         try:
-            group_message(group_id, message_id=message_id).edit(message.chat.id, message_id)
+            group_message(group_id, message_id=message_id).edit(
+                message.chat.id, message_id
+            )
             delete_message_action(message)
         except ApiTelegramException as e:
             if "Description: Bad Request: message is not modified" in str(e):
@@ -175,7 +201,9 @@ def processing_group_create_message(message: Message):
         request.entity.create_group(name)
     except LimitExceeded:
         try:
-            TextMessage(get_translate("errors.limit_exceeded")).send(request.entity.request_chat_id)
+            TextMessage(get_translate("errors.limit_exceeded")).send(
+                request.entity.request_chat_id
+            )
         except ApiTelegramException:
             pass
     else:

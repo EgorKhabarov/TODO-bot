@@ -27,10 +27,19 @@ from todoapi.exceptions import (
     NotEnoughPermissions,
     UserNotFound,
     GroupNotFound,
-    NotGroupMember, Forbidden, MediaNotFound,
+    NotGroupMember,
+    Forbidden,
+    MediaNotFound,
 )
 from config import DATABASE_PATH, VEDIS_PATH
-from todoapi.utils import re_date, is_valid_year, sql_date_pattern, re_username, re_email, hash_password
+from todoapi.utils import (
+    re_date,
+    is_valid_year,
+    sql_date_pattern,
+    re_username,
+    re_email,
+    hash_password,
+)
 
 event_limits = {
     -1: {
@@ -144,7 +153,8 @@ class DataBase:
         if func:
             self.sqlite_connection.create_function(*func)
         logging.debug(
-            "SQLite3.EXECUTE" + " ".join([line.strip() for line in query.split("\n")]).strip()
+            "SQLite3.EXECUTE"
+            + " ".join([line.strip() for line in query.split("\n")]).strip()
         )
 
         if script:
@@ -262,24 +272,32 @@ SELECT (
         except Error as e:
             raise ApiError(e)
 
-    def is_exceeded_for_events(self, date: str | datetime = None, event_count: int = 0, symbol_count: int = 0) -> bool:
+    def is_exceeded_for_events(
+        self, date: str | datetime = None, event_count: int = 0, symbol_count: int = 0
+    ) -> bool:
         inf = float("inf")  # Бесконечность
         actual_limits = self.get_event_limits(date)
 
-        limits_event_count = zip(actual_limits[::2], tuple(self.user_max_limits.values())[::2])
-        limits_symbol_count = zip(actual_limits[1::2], tuple(self.user_max_limits.values())[1::2])
-
-        return (
-            any(
-                actual_limit + event_count >= (max_limit or inf)
-                for actual_limit, max_limit in limits_event_count
-            ) or any(
-                actual_limit + symbol_count >= (max_limit or inf)
-                for actual_limit, max_limit in limits_symbol_count
-            )
+        limits_event_count = zip(
+            actual_limits[::2],
+            tuple(self.user_max_limits.values())[::2],
+        )
+        limits_symbol_count = zip(
+            actual_limits[1::2],
+            tuple(self.user_max_limits.values())[1::2],
         )
 
-    def is_exceeded_for_groups(self, create: bool = False, participate: bool = False) -> bool:
+        return any(
+            actual_limit + event_count >= (max_limit or inf)
+            for actual_limit, max_limit in limits_event_count
+        ) or any(
+            actual_limit + symbol_count >= (max_limit or inf)
+            for actual_limit, max_limit in limits_symbol_count
+        )
+
+    def is_exceeded_for_groups(
+        self, create: bool = False, participate: bool = False
+    ) -> bool:
         if not create and not participate:
             raise ApiError
 
@@ -306,15 +324,22 @@ SELECT (
         except (Error, IndexError):
             raise ApiError
 
-        return groups_participate + participate > max_groups_participate or groups_creator + create > max_groups_creator
+        return (
+            groups_participate + participate > max_groups_participate
+            or groups_creator + create > max_groups_creator
+        )
 
-    def now_limit_percent(self, date: str | datetime = None) -> list[int, int, int, int, int, int, int, int]:
+    def now_limit_percent(
+        self, date: str | datetime = None
+    ) -> list[int, int, int, int, int, int, int, int]:
         actual_limits = self.get_event_limits(date)
 
         # noinspection PyTypeChecker
         return [
             int((actual_limit / max_limit) * 100)
-            for actual_limit, max_limit in zip(actual_limits, tuple(self.user_max_limits.values()))
+            for actual_limit, max_limit in zip(
+                actual_limits, tuple(self.user_max_limits.values())
+            )
         ]
 
 
@@ -729,7 +754,9 @@ SELECT user_id,
 class Account:
     def __init__(self, user_id: int, group_id: str = None):
         self.user_id, self.group_id = user_id, group_id
-        self.limit = Limit(self.user.user_status, user_id, self.group.group_id if group_id else None)
+        self.limit = Limit(
+            self.user.user_status, user_id, self.group.group_id if group_id else None
+        )
         self.settings = self.get_settings()
 
     @cached_property
@@ -918,7 +945,7 @@ SELECT *
                     2,
                     lambda date, status: Event(
                         0, "", 0, date, "", status, "", "", ""
-                    ).days_before_event(self.settings.timezone)
+                    ).days_before_event(self.settings.timezone),
                 ),
             )
         except Error as e:
@@ -1140,11 +1167,15 @@ DELETE FROM events
         except Error as e:
             raise ApiError(e)
 
-    def export_data(self, filename: str, file_format: str = "csv") -> StringIO | BytesIO:
+    def export_data(
+        self, filename: str, file_format: str = "csv"
+    ) -> StringIO | BytesIO:
         if file_format not in ("csv", "xml", "json", "jsonl"):
             raise ValueError("Format Is Not Valid")
 
-        return ExportData(filename, self.safe_user_id, self.group_id).export(file_format)
+        return ExportData(filename, self.safe_user_id, self.group_id).export(
+            file_format
+        )
 
     def check_media_exists(self, event_id: int, media_id: str) -> bool:
         try:
@@ -1169,7 +1200,9 @@ SELECT 1
         except Error as e:
             raise ApiError(e)
 
-    def add_event_media(self, event_id: int, filename: str, media_type: str, media: bytes):
+    def add_event_media(
+        self, event_id: int, filename: str, media_type: str, media: bytes
+    ):
         if not media:
             raise ValueError
 
@@ -1531,7 +1564,9 @@ UPDATE groups
         group_id = group_id or self.group_id
         return self.get_group_members([user_id], group_id)[0]
 
-    def get_group_members(self, user_ids: list[int], group_id: str = None) -> list[Member]:
+    def get_group_members(
+        self, user_ids: list[int], group_id: str = None
+    ) -> list[Member]:
         group_id = group_id or self.group_id
 
         if group_id is None:
@@ -1579,7 +1614,9 @@ VALUES (:group_id, :user_id);
         except Error as e:
             raise ApiError(e)
 
-    def edit_group_member_status(self, status: int, user_id: int, group_id: str = None) -> None:
+    def edit_group_member_status(
+        self, status: int, user_id: int, group_id: str = None
+    ) -> None:
         group_id = group_id or self.group_id
 
         if group_id is None:
@@ -1958,6 +1995,7 @@ VALUES (
     except Error as e:
         raise ApiError(e)
 
+
 def get_account_from_token(token: str, group_id: str = None) -> Account:
     try:
         user_id = db.execute(
@@ -1978,7 +2016,10 @@ SELECT user_id
 
     return Account(user_id, group_id)
 
-def get_account_from_password(username: str, password: str, group_id: str = None) -> Account:
+
+def get_account_from_password(
+    username: str, password: str, group_id: str = None
+) -> Account:
     try:
         user_id = db.execute(
             """
@@ -1998,6 +2039,7 @@ SELECT user_id
         raise UserNotFound
 
     return Account(user_id, group_id)
+
 
 def get_account_from_id(user_id: int, group_id: str = None) -> Account:
     return Account(user_id, group_id)

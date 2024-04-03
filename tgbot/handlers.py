@@ -55,19 +55,37 @@ from tgbot.bot_messages import (
     edit_events_date_message,
     select_one_message,
     select_events_message,
-    event_show_mode_message, group_message,
+    event_show_mode_message,
+    group_message,
 )
-from tgbot.types import TelegramAccount, set_user_telegram_chat_id, get_telegram_account_from_password
+from tgbot.types import (
+    TelegramAccount,
+    set_user_telegram_chat_id,
+    get_telegram_account_from_password,
+)
 from tgbot.utils import (
     fetch_weather,
     fetch_forecast,
     write_table_to_str,
     is_secure_chat,
     html_to_markdown,
-    extract_search_query, add_group_pattern, set_bot_commands
+    extract_search_query,
+    add_group_pattern,
+    set_bot_commands,
 )
-from todoapi.exceptions import ApiError, UserNotFound, EventNotFound, LimitExceeded, TextIsTooBig, WrongDate, \
-    StatusConflict, StatusLengthExceeded, StatusRepeats, NotEnoughPermissions, NotGroupMember
+from todoapi.exceptions import (
+    ApiError,
+    UserNotFound,
+    EventNotFound,
+    LimitExceeded,
+    TextIsTooBig,
+    WrongDate,
+    StatusConflict,
+    StatusLengthExceeded,
+    StatusRepeats,
+    NotEnoughPermissions,
+    NotGroupMember,
+)
 from todoapi.types import db, create_user, get_account_from_password, Cache
 from todoapi.log_cleaner import clear_logs
 from telegram_utils.argument_parser import get_arguments, getargs
@@ -126,7 +144,11 @@ def not_login_handler(x: CallbackQuery | Message) -> None:
             message.text,
             {"email": "str", "username": "str", "password": "str"},
         )
-        email, username, password = arguments["email"], arguments["username"], arguments["password"]
+        email, username, password = (
+            arguments["email"],
+            arguments["username"],
+            arguments["password"],
+        )
 
         if not (email and username and password):
             TextMessage(get_translate("errors.no_account")).reply(message)
@@ -150,7 +172,9 @@ def not_login_handler(x: CallbackQuery | Message) -> None:
                 else:
                     TextMessage(get_translate("errors.success")).send(message.chat.id)
                     bot.delete_message(message.chat.id, message.message_id)
-                    request.entity = get_telegram_account_from_password(username, password)
+                    request.entity = get_telegram_account_from_password(
+                        username, password
+                    )
                     start_message().send(message.chat.id)
                     set_bot_commands()
 
@@ -208,7 +232,9 @@ def command_handler(message: Message) -> None:
     elif command_text == "start":
         if add_group_pattern.match(message.text):
             if request.is_member:
-                TextMessage(get_translate("errors.already_connected_group")).reply(message)
+                TextMessage(get_translate("errors.already_connected_group")).reply(
+                    message
+                )
                 return
 
         set_bot_commands()
@@ -375,7 +401,9 @@ def command_handler(message: Message) -> None:
     elif command_text == "logout":
         if request.is_user:
             set_user_telegram_chat_id(request.entity, None)
-            TextMessage(get_translate("errors.success", request.entity.settings.lang)).reply(message)
+            TextMessage(
+                get_translate("errors.success", request.entity.settings.lang)
+            ).reply(message)
 
     elif command_text in ("login", "signup"):
         TextMessage(get_translate("errors.failure")).reply(message)
@@ -604,7 +632,9 @@ def callback_handler(call: CallbackQuery):
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
 
-    elif call_prefix == "mnb" and ((request.is_user and request.entity.is_premium) or (request.is_member and ...)):  # bin
+    elif call_prefix == "mnb" and (
+        (request.is_user and request.entity.is_premium) or request.is_member
+    ):  # bin
         try:
             trash_can_message().edit(chat_id, message_id)
         except ApiTelegramException:
@@ -647,7 +677,9 @@ def callback_handler(call: CallbackQuery):
         date = args_func({"date": "str"})["date"]
 
         # Проверяем будет ли превышен лимит для пользователя, если добавить 1 событие с 1 символом
-        if request.entity.limit.is_exceeded_for_events(date=date, event_count=1, symbol_count=1):
+        if request.entity.limit.is_exceeded_for_events(
+            date=date, event_count=1, symbol_count=1
+        ):
             text = get_translate("errors.exceeded_limit")
             CallBackAnswer(text).answer(call_id, True)
             return
@@ -1288,7 +1320,9 @@ def callback_handler(call: CallbackQuery):
     elif call_prefix == "grcr":
         cache_create_group("")
         if request.entity.limit.is_exceeded_for_groups(create=True):
-            return CallBackAnswer(get_translate("errors.limit_exceeded")).answer(call_id)
+            return CallBackAnswer(get_translate("errors.limit_exceeded")).answer(
+                call_id
+            )
 
         cache_create_group(str(message_id))
         text = """
@@ -1296,11 +1330,7 @@ def callback_handler(call: CallbackQuery):
 
 Отправьте имя группы
 """
-        markup = generate_buttons(
-            [
-                [{get_theme_emoji("back"): "mngrs"}]
-            ]
-        )
+        markup = generate_buttons([[{get_theme_emoji("back"): "mngrs"}]])
         TextMessage(text, markup).edit(chat_id, message_id)
         CallBackAnswer(get_translate("text.send_group_name")).answer(call_id)
 
@@ -1309,7 +1339,9 @@ def callback_handler(call: CallbackQuery):
         try:
             request.entity.delete_group(group_id)
         except (NotGroupMember, NotEnoughPermissions):
-            CallBackAnswer(get_translate("errors.error")).answer(call_id, show_alert=True)
+            CallBackAnswer(get_translate("errors.error")).answer(
+                call_id, show_alert=True
+            )
         else:
             groups_message().edit(chat_id, message_id)
 
@@ -1327,10 +1359,11 @@ def callback_handler(call: CallbackQuery):
         try:
             request.entity.set_group_telegram_chat_id(group_id)
         except (NotGroupMember, NotEnoughPermissions):
-            CallBackAnswer(get_translate("errors.error")).answer(call_id, show_alert=True)
+            CallBackAnswer(get_translate("errors.error")).answer(
+                call_id, show_alert=True
+            )
         else:
             group_message(group_id, message_id=message_id).edit(chat_id, message_id)
-
 
 
 def reply_handler(message: Message, reply_to_message: Message) -> None:
@@ -1340,7 +1373,9 @@ def reply_handler(message: Message, reply_to_message: Message) -> None:
 
     if reply_to_message.text.startswith("⚙️"):
         try:
-            request.entity.set_telegram_user_settings(city=html_to_markdown(message.html_text)[:50])
+            request.entity.set_telegram_user_settings(
+                city=html_to_markdown(message.html_text)[:50]
+            )
         except ValueError:
             TextMessage(get_translate("errors.error")).reply(message)
         else:

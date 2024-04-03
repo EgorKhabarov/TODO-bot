@@ -19,10 +19,26 @@ from tgbot.limits import get_limit_link
 from tgbot.bot_actions import delete_message_action
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.time_utils import parse_utc_datetime
-from tgbot.message_generator import TextMessage, EventMessage, EventsMessage, event_formats
-from tgbot.buttons_utils import delmarkup, create_monthly_calendar_keyboard, encode_id, edit_button_data
+from tgbot.message_generator import (
+    TextMessage,
+    EventMessage,
+    EventsMessage,
+    event_formats,
+)
+from tgbot.buttons_utils import (
+    delmarkup,
+    create_monthly_calendar_keyboard,
+    encode_id,
+    edit_button_data,
+)
 from tgbot.types import TelegramAccount
-from tgbot.utils import sqlite_format_date2, is_secure_chat, html_to_markdown, re_edit_message, highlight_text_difference
+from tgbot.utils import (
+    sqlite_format_date2,
+    is_secure_chat,
+    html_to_markdown,
+    re_edit_message,
+    highlight_text_difference,
+)
 from todoapi.types import db, string_status, Event, group_limits
 from todoapi.utils import sqlite_format_date, is_valid_year, is_admin_id, chunks
 from todoapi.exceptions import EventNotFound, GroupNotFound, UserNotFound
@@ -72,14 +88,11 @@ def menu_message() -> TextMessage:
         [
             {f"⚙️ {translate_Settings}": "mns"},
             {f"🗑 {translate_wastebasket}": "mnb"}
-            if (request.is_user and request.entity.is_premium) or (request.is_member and ...)
+            if (request.is_user and request.entity.is_premium) or request.is_member
             else {},
         ],
         [{f"😎 {translate_admin}": "mnad"}] if is_secure_chat(request.query) else [],
-        [
-            {f"👥 {translate_group}": f"mngr self"}
-            if request.is_member else {}
-        ],
+        [{f"👥 {translate_group}": "mngr self"} if request.is_member else {}],
     ]
     return TextMessage(text, generate_buttons(markup))
 
@@ -103,11 +116,19 @@ def settings_message() -> TextMessage:
     )
 
     time_zone_dict = {}
-    time_zone_dict.__setitem__(*("-3", f"ste timezone {utz - 3}") if utz > -10 else ("    ", "None"))
-    time_zone_dict.__setitem__(*("-1", f"ste timezone {utz - 1}") if utz > -12 else ("   ", "None"))
+    time_zone_dict.__setitem__(
+        *("-3", f"ste timezone {utz - 3}") if utz > -10 else ("    ", "None")
+    )
+    time_zone_dict.__setitem__(
+        *("-1", f"ste timezone {utz - 1}") if utz > -12 else ("   ", "None")
+    )
     time_zone_dict[str_utz] = "ste timezone 3"
-    time_zone_dict.__setitem__(*("+1", f"ste timezone {utz + 1}") if utz < 12 else ("   ", "None"))
-    time_zone_dict.__setitem__(*("+3", f"ste timezone {utz + 3}") if utz < 10 else ("    ", "None"))
+    time_zone_dict.__setitem__(
+        *("+1", f"ste timezone {utz + 1}") if utz < 12 else ("   ", "None")
+    )
+    time_zone_dict.__setitem__(
+        *("+3", f"ste timezone {utz + 3}") if utz < 10 else ("    ", "None")
+    )
 
     notifications_time = {}
     if settings.notifications != 0:
@@ -485,7 +506,9 @@ def confirm_changes_message(message: Message) -> None | int:
 
     # Вычисляем сколько символов добавил пользователь. Если символов стало меньше, то 0.
     added_length = 0 if tag_len_less else new_event_len - len_old_event
-    tag_limit_exceeded = request.entity.limit.is_exceeded_for_events(date=event.date, symbol_count=added_length)
+    tag_limit_exceeded = request.entity.limit.is_exceeded_for_events(
+        date=event.date, symbol_count=added_length
+    )
 
     if tag_len_max or tag_limit_exceeded:
         if tag_len_max:
@@ -834,11 +857,7 @@ AND ({splitquery})
     params = (
         request.entity.safe_user_id,
         request.entity.group_id,
-        *[
-            y
-            for x in query.split()
-            for y in (x, x, x, x)
-        ],
+        *[y for x in query.split() for y in (x, x, x, x)],
     )
 
     if id_list:
@@ -926,7 +945,7 @@ def trash_can_message(id_list: list[int] = (), page: int | str = 0) -> EventsMes
     :param id_list: Список из event_id
     :param page: Номер страницы
     """
-    WHERE = f"""
+    WHERE = """
 user_id IS :user_id
 AND group_id IS :group_id
 AND removal_time IS NOT NULL
@@ -1104,7 +1123,9 @@ SELECT GROUP_CONCAT(
         )[0]
         chat_id_list = zip(
             [int(x) for x in chat_ids.split(",")] if chat_ids else (),
-            [int(x) for x in notification_types.split(",")] if notification_types else (),
+            [int(x) for x in notification_types.split(",")]
+            if notification_types
+            else (),
         )  # [('id1,id2,id3',)] -> [id1, id2, id3]
 
     for chat_id, n_type in chat_id_list:
@@ -1129,7 +1150,9 @@ SELECT GROUP_CONCAT(
             except ApiTelegramException:
                 status = "Error"
 
-            logging.info(f"notifications -> {request.entity.request_chat_id} -> {status}")
+            logging.info(
+                f"notifications -> {request.entity.request_chat_id} -> {status}"
+            )
 
 
 def monthly_calendar_message(
@@ -1152,7 +1175,7 @@ def limits_message(date: datetime | str | None = None) -> TextMessage:
 
     return TextMessage(
         get_limit_link(f"{date:%d.%m.%Y}"),
-        generate_buttons([[{get_theme_emoji("back"): "lm"}]])
+        generate_buttons([[{get_theme_emoji("back"): "lm"}]]),
     )
 
 
@@ -1354,14 +1377,16 @@ name: `<code>{html.escape(group.name)}</code>`
 
     if request.is_user:
         startgroup_data = f"group-{group.owner_id}-{group.group_id}"
-        startgroup_url = f"https://t.me/{bot.user.username}?startgroup={startgroup_data}"
+        startgroup_url = "https://t.me/{}?startgroup={}".format(
+            bot.user.username, startgroup_data
+        )
 
         # TODO перевод
         markup = generate_buttons(
             [
-                [
-                    {"Выйти из группы": f"grlv {group.group_id}"}
-                ] if not group.member_status == 2 else [],
+                [{"Выйти из группы": f"grlv {group.group_id}"}]
+                if not group.member_status == 2
+                else [],
                 [
                     {
                         "Изменить название группы": {
@@ -1380,8 +1405,9 @@ name: `<code>{html.escape(group.name)}</code>`
                     {"Удалить группу": f"grd {group.group_id}"},
                     {"Удалить бота из группы": f"grrgr {group.group_id}"}
                     if group.chat_id
-                    else
-                    {get_translate("text.add_bot_to_group"): {"url": startgroup_url}}
+                    else {
+                        get_translate("text.add_bot_to_group"): {"url": startgroup_url}
+                    },
                 ]
                 if group.member_status > 0
                 else [],
@@ -1395,7 +1421,9 @@ name: `<code>{html.escape(group.name)}</code>`
     return TextMessage(text, markup)
 
 
-def groups_message(mode: Literal["al", "md", "ad"] = "al", page: int = 1) -> TextMessage:
+def groups_message(
+    mode: Literal["al", "md", "ad"] = "al", page: int = 1
+) -> TextMessage:
     match mode:
         case "al":
             raw_groups = request.entity.get_my_groups()
@@ -1408,7 +1436,7 @@ def groups_message(mode: Literal["al", "md", "ad"] = "al", page: int = 1) -> Tex
 
     groups_chunk = list(chunks(raw_groups, 6))
     groups = groups_chunk[page - 1] if len(groups_chunk) > 0 else []
-    prev_pages = len(groups_chunk[:page - 1])
+    prev_pages = len(groups_chunk[: page - 1])
     after_pages = len(groups_chunk[page:])
 
     if groups:
@@ -1421,7 +1449,9 @@ def groups_message(mode: Literal["al", "md", "ad"] = "al", page: int = 1) -> Tex
             for n, group in enumerate(groups)
         )
         # TODO перевод
-        user_group_limits = group_limits[request.entity.user.user_status]["max_groups_participate" if mode == "al" else "max_groups_creator"]
+        user_group_limits = group_limits[request.entity.user.user_status][
+            "max_groups_participate" if mode == "al" else "max_groups_creator"
+        ]
         text = f"""
 👥 Группы 👥
 
@@ -1435,15 +1465,21 @@ def groups_message(mode: Literal["al", "md", "ad"] = "al", page: int = 1) -> Tex
                 {("🔸" if mode == "md" else "") + "Moderator": "mngrs md"},
                 {("🔸" if mode == "ad" else "") + "Admin": "mngrs ad"},
             ],
-            *[
-                [{f"{group.name}": f"mngr {group.group_id}"}] for group in groups
-            ],
+            *[[{f"{group.name}": f"mngr {group.group_id}"}] for group in groups],
             [
                 {get_theme_emoji("back"): "mnm"},
-                *([
-                    {"<": f"mngrs {mode} {page - 1}"} if prev_pages else {" ": "None"},
-                    {">": f"mngrs {mode} {page + 1}"} if after_pages else {" ": "None"},
-                ] if len(groups_chunk) != 1 else []),
+                *(
+                    [
+                        {"<": f"mngrs {mode} {page - 1}"}
+                        if prev_pages
+                        else {" ": "None"},
+                        {">": f"mngrs {mode} {page + 1}"}
+                        if after_pages
+                        else {" ": "None"},
+                    ]
+                    if len(groups_chunk) != 1
+                    else []
+                ),
                 {"👥 Создать группу": "grcr"},
             ],
         ]

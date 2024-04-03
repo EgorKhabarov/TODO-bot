@@ -27,13 +27,14 @@ colors = {
     "1": "#202020",
 }
 
+
 def get_limit_link(date: str = "now") -> str:
     if not date or date == "now":
         date = f"{request.entity.now_time():%d.%m.%Y}"
 
     limits = zip(
         request.entity.limit.get_event_limits(date),
-        tuple(event_limits[request.entity.user.user_status].values())
+        tuple(event_limits[request.entity.user.user_status].values()),
     )
     params = {
         # "date": date,
@@ -56,8 +57,13 @@ def get_limit_link(date: str = "now") -> str:
             tuple(event_limits[request.entity.user.user_status].values()),
         ):
             percent = int((x / y) * 100)
-            lst.append(f"<b>{text}</b>\n<u>{x}/{y}</u> [{f*(percent//10)}{b*(10-(percent//10))}] ({percent}%)")
+            lst.append(
+                f"<b>{text}</b>\n<u>{x}/{y}</u> "
+                f"[{f*(percent//10)}{b*(10-(percent//10))}] "
+                f"({percent}%)"
+            )
         return f"{date}\n\n" + "\n\n".join(lst)
+
 
 def _semicircle(title: str, x: int, y: int, theme: str):
     text = f"{x}/{y}"
@@ -80,10 +86,10 @@ def _semicircle(title: str, x: int, y: int, theme: str):
     draw = Draw(image)
 
     # Название дуги
-    text_width, text_height = [
-        wh // 2 for wh in draw.textbbox((0, 0), text=title, font=font)[2:]
-    ]
-    draw.text((145 - text_width, 15 - text_height), title, fill=invert_background_color, font=font)
+    text_width, text_height = [wh // 2 for wh in draw.textbbox((0, 0), title, font)[2:]]
+    draw.text(
+        (145 - text_width, 15 - text_height), title, invert_background_color, font
+    )
 
     # Рисуем дугу
     draw.pieslice(((45, 42), (245, 242)), 180, 360, fill=bg_color)  # "#778795"
@@ -95,19 +101,23 @@ def _semicircle(title: str, x: int, y: int, theme: str):
     )  # "#303b44"
     draw.pieslice(((95, 50 + 42), (195, 192)), 180, 360, fill=background_color)
 
-    text_width, text_height = [
-        wh // 2 for wh in draw.textbbox((0, 0), text=text, font=font)[2:]
-    ]
-    draw.text((145 - text_width, 172 - text_height), text, fill=invert_background_color, font=font)
+    text_width, text_height = [wh // 2 for wh in draw.textbbox((0, 0), text, font)[2:]]
+    draw.text(
+        (145 - text_width, 172 - text_height), text, invert_background_color, font
+    )
 
     text_width, text_height = [
-        wh // 2 for wh in draw.textbbox((0, 0), text=percent_str, font=font)[2:]
+        wh // 2 for wh in draw.textbbox((0, 0), percent_str, font)[2:]
     ]
     draw.text(
-        (145 - text_width, 119 - text_height), percent_str, fill=invert_background_color, font=font
+        (145 - text_width, 119 - text_height),
+        percent_str,
+        invert_background_color,
+        font,
     )
 
     return image
+
 
 def create_image_from_link(lang: str, lst: list[list[int]], theme: str) -> Image:
     background_color = colors[theme]
@@ -115,7 +125,16 @@ def create_image_from_link(lang: str, lst: list[list[int]], theme: str) -> Image
     for t, (x, y), xy in zip(
         get_translate("arrays.account", lang),
         lst,
-        ((100, 140), (390, 140), (100, 345), (390, 345), (100, 562), (390, 562), (100, 766), (390, 766))
+        (
+            (100, 140),
+            (390, 140),
+            (100, 345),
+            (390, 345),
+            (100, 562),
+            (390, 562),
+            (100, 766),
+            (390, 766),
+        ),
     ):
         image.paste(_semicircle(t, x, y, theme), xy)
 

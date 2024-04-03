@@ -2,20 +2,17 @@ from functools import wraps
 
 # noinspection PyPackageRequirements
 from telebot.types import Message, CallbackQuery
-# noinspection PyPackageRequirements
-from telebot.apihelper import ApiTelegramException
 
-from tgbot.bot import bot
 from cachetools import LRUCache
 from tgbot.lang import get_translate
 from tgbot.types import TelegramAccount
 from tgbot.handlers import not_login_handler
 from tgbot.request import request, EntityType
-from tgbot.utils import rate_limit, add_group_pattern, set_bot_commands, telegram_log
+from tgbot.utils import rate_limit, telegram_log
 from tgbot.message_generator import CallBackAnswer, TextMessage
 from todoapi.types import db
 from todoapi.utils import is_admin_id
-from todoapi.exceptions import UserNotFound, GroupNotFound, NotGroupMember
+from todoapi.exceptions import UserNotFound, GroupNotFound
 from telegram_utils.command_parser import command_regex
 
 
@@ -90,7 +87,9 @@ def process_account(func):
 
                     not_login_handler(x)
                 else:
-                    if request.entity.user.user_status == -1 and not is_admin_id(chat_id):
+                    if request.entity.user.user_status == -1 and not is_admin_id(
+                        chat_id
+                    ):
                         return
 
                     return func(x)

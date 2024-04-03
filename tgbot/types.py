@@ -5,7 +5,13 @@ from typing import Literal
 from config import ADMIN_IDS
 from tgbot.bot import bot
 from todoapi.types import User, db, Group, Settings, Account
-from todoapi.exceptions import ApiError, UserNotFound, GroupNotFound, NotEnoughPermissions, Forbidden
+from todoapi.exceptions import (
+    ApiError,
+    UserNotFound,
+    GroupNotFound,
+    NotEnoughPermissions,
+    Forbidden,
+)
 from todoapi.utils import hash_password
 
 
@@ -24,7 +30,9 @@ class TelegramGroup(Group):
         entry_date: str = None,
         member_status: int = None,
     ):
-        super().__init__(group_id, name, owner_id, max_event_id, entry_date, member_status)
+        super().__init__(
+            group_id, name, owner_id, max_event_id, entry_date, member_status
+        )
         self.chat_id = chat_id
 
     @classmethod
@@ -46,7 +54,6 @@ SELECT group_id,
             raise ApiError(e)
         except IndexError:
             raise GroupNotFound
-
 
         member_status = ("member", "administrator", "creator").index(
             bot.get_chat_member(group[1], user_chat_id).status
@@ -178,7 +185,9 @@ SELECT user_id,
 class TelegramAccount(Account):
     def __init__(self, chat_id: int, group_chat_id: int = None):
         self.chat_id, self.group_chat_id = chat_id, group_chat_id
-        super().__init__(self.user.user_id, self.group.group_id if group_chat_id else None)
+        super().__init__(
+            self.user.user_id, self.group.group_id if group_chat_id else None
+        )
 
     @cached_property
     def user(self) -> TelegramUser:
@@ -345,7 +354,9 @@ UPDATE tg_settings
         except Error as e:
             raise ApiError(e)
 
-    def set_group_telegram_chat_id(self, group_id: str = None, chat_id: int = None) -> None:
+    def set_group_telegram_chat_id(
+        self, group_id: str = None, chat_id: int = None
+    ) -> None:
         group_id = group_id or self.group_id
 
         if group_id is None:
@@ -528,7 +539,9 @@ LIMIT :limit OFFSET :offset;
         return [TelegramGroup(*group) for group in groups]
 
 
-def get_telegram_account_from_password(username: str, password: str, group_chat_id: str = None) -> TelegramAccount:
+def get_telegram_account_from_password(
+    username: str, password: str, group_chat_id: str = None
+) -> TelegramAccount:
     try:
         chat_id = db.execute(
             """
@@ -550,7 +563,9 @@ SELECT chat_id
     return TelegramAccount(chat_id, group_chat_id)
 
 
-def set_user_telegram_chat_id(account: Account | TelegramAccount, chat_id: int = None) -> None:
+def set_user_telegram_chat_id(
+    account: Account | TelegramAccount, chat_id: int = None
+) -> None:
     try:
         db.execute(
             """

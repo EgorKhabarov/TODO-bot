@@ -1558,7 +1558,9 @@ def get_translate(target: str, lang_iso: str | None = None) -> str | Any:
     for key in target.split("."):
         result = result[key]
 
-    lang_iso: str = lang_iso or (request.entity.settings.lang if request.entity else "en")
+    lang_iso: str = lang_iso or (
+        request.entity.settings.lang if request.entity else "en"
+    )
 
     try:
         return result[lang_iso]

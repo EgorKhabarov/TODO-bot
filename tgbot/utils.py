@@ -33,8 +33,9 @@ from todoapi.utils import is_admin_id
 
 
 re_edit_message = re.compile(r"\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)")
-re_group_create_message = re.compile(r"\A@\w{5,32} group\((\d+)\)\.create(?:\n|\Z)")
-re_group_edit_name_message = re.compile(r"\A@\w{5,32} group\((\w{32}), (\d+)\)\.name(?:\n|\Z)")
+re_group_edit_name_message = re.compile(
+    r"\A@\w{5,32} group\((\w{32}), (\d+)\)\.name(?:\n|\Z)"
+)
 link_sub = re.compile(r"<a href=\"(.+?)\">(.+?)(\n*?)</a>")
 add_group_pattern = re.compile(r"\A/start@\w{5,32} group-(\d+)-([a-z\d]{32})\Z")
 
@@ -47,22 +48,21 @@ def telegram_log(action: str, text: str):
             f"[{str(request.entity_type).capitalize()}:{request.entity.request_id}]"
             + f"[{request.entity.request_chat_id:<10}"
             + (f":{thread_id}" if thread_id else "")
-            + f"]"
+            + "]"
             + (
                 f"[{request.entity.user.user_status}]"
                 if request.is_user
-                else
-                f"[{request.entity.group.member_status}]"
+                else f"[{request.entity.group.member_status}]"
             )
-            + f"[{action:^7}] {text}"
+            + f".{action} {text}"
         )
     else:
         logging.info(
             f"[Not Login {str(request.entity_type).capitalize()}]"
             + f"[{request.chat_id:<10}"
             + (f":{thread_id}" if thread_id else "")
-            + f"]"
-            + f"[{action:^7}] {text}"
+            + "]"
+            + f".{action} {text}"
         )
 
 
@@ -183,10 +183,11 @@ def add_status_effect(text: str, statuses: str) -> str:
     text = html.escape(text)
 
     # Сокращаем несколько подряд переносов строки
-    text = re.sub(r"\n(\n*)\n", f"\n\n", text)
+    text = re.sub(r"\n(\n*)\n", "\n\n", text)
 
     if ("🔗" in statuses and "⛓" not in statuses) or (
-        request.entity.settings.sub_urls and ("💻" not in statuses and "⛓" not in statuses)
+        request.entity.settings.sub_urls
+        and ("💻" not in statuses and "⛓" not in statuses)
     ):
         text = sub_urls(text)
 
@@ -633,7 +634,7 @@ def set_bot_commands(not_login: bool = False):
     """
 
     if not_login:
-        target = f"buttons.commands.not_login"
+        target = "buttons.commands.not_login"
     else:
         status = request.entity.user.user_status
         if request.is_user and request.entity.is_admin and status != -1:
