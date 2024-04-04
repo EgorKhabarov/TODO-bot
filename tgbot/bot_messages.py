@@ -34,13 +34,12 @@ from tgbot.buttons_utils import (
 from tgbot.types import TelegramAccount
 from tgbot.utils import (
     sqlite_format_date2,
-    is_secure_chat,
     html_to_markdown,
     re_edit_message,
     highlight_text_difference,
 )
-from todoapi.types import db, string_status, Event, group_limits
-from todoapi.utils import sqlite_format_date, is_valid_year, is_admin_id, chunks
+from todoapi.types import db, Event, group_limits
+from todoapi.utils import sqlite_format_date, is_valid_year, chunks
 from todoapi.exceptions import EventNotFound, GroupNotFound, UserNotFound
 from telegram_utils.buttons_generator import generate_buttons
 
@@ -91,7 +90,6 @@ def menu_message() -> TextMessage:
             if (request.is_user and request.entity.is_premium) or request.is_member
             else {},
         ],
-        [{f"😎 {translate_admin}": "mnad"}] if is_secure_chat(request.query) else [],
         [{f"👥 {translate_group}": "mngr self"} if request.is_member else {}],
     ]
     return TextMessage(text, generate_buttons(markup))
@@ -160,7 +158,7 @@ def settings_message() -> TextMessage:
             [
                 {f"🗣 {settings.lang}": f"ste lang {not_lang}"},
                 {f"🔗 {bool(settings.sub_urls)}": f"ste sub_urls {not_sub_urls}"},
-                {f"{not_direction_smile}": f"ste direction {not_direction_sql}"},
+                {not_direction_smile: f"ste direction {not_direction_sql}"},
                 {
                     f"{not_notifications_[0]}": f"ste notifications {not_notifications_[1]}"
                 },
@@ -645,9 +643,9 @@ def event_status_message(event: Event, path: str = "0") -> EventMessage:
                 *[
                     [
                         {
-                            f"{title}".ljust(60, "⠀"): (
-                                f"esp {page} {event.date} {event.event_id}"
-                            )
+                            title.ljust(
+                                60, "⠀"
+                            ): f"esp {page} {event.date} {event.event_id}"
                         }
                         for (title, page) in row
                     ]
@@ -655,7 +653,7 @@ def event_status_message(event: Event, path: str = "0") -> EventMessage:
                 ],
                 [
                     {
-                        f"{i}"
+                        i
                         if i
                         else " " * n: f"esr {i} {event.date} {event.event_id}"
                         if i
@@ -675,7 +673,7 @@ def event_status_message(event: Event, path: str = "0") -> EventMessage:
                 *[
                     [
                         {
-                            f"{row}".ljust(60, "⠀"): (
+                            row.ljust(60, "⠀"): (
                                 f"esa "
                                 f"{row.split(maxsplit=1)[0]} "
                                 f"{event.date} "
@@ -692,7 +690,7 @@ def event_status_message(event: Event, path: str = "0") -> EventMessage:
 
     generated = EventMessage(event.event_id)
     generated.format(
-        f"{get_translate('select.status_to_event')}", event_formats["dt"], markup
+        get_translate("select.status_to_event"), event_formats["dt"], markup
     )
     return generated
 
@@ -1086,7 +1084,6 @@ AND (
 
 
 def send_notifications_messages() -> None:
-    # TODO для групп
     n_date = datetime.utcnow()
     with db.connection(), db.cursor():
         chat_ids, notification_types = db.execute(
@@ -1181,185 +1178,6 @@ def limits_message(date: datetime | str | None = None) -> TextMessage:
     )
 
 
-def admin_message(page: int = 1) -> TextMessage:
-    if not request.entity.is_admin:
-        text = "you are not admin\n"
-        markup = generate_buttons([[{get_theme_emoji("back"): "mnm"}]])
-    else:
-        # TODO перевод
-        text = f"""
-😎 Админская 😎
-
-Страница: {page}
-
-<i>i - user id
-s - user status
-  a - admin
-  b - ban
-  n - normal
-  p - premium
-c - events count
-m - max events count</i>
-
-↖️ <i>reply</i> <u>int</u> <u>str</u>: ("user_id"? | "page")
-"""
-        users = db.execute(
-            """
-SELECT user_id,
-       chat_id,
-       user_status,
-       username,
-       max_event_id - 1 as max_event_id,
-       (
-          SELECT COUNT(event_id)
-            FROM events
-           WHERE users.user_id = events.user_id
-       ) as event_count,
-       reg_date
-  FROM users
- WHERE chat_id
- LIMIT 11
-OFFSET :page;
-""",
-            params={"page": 0 if page < 2 else page * 10 - 10},
-        )
-        tg_numbers_emoji = "️⃣"
-        template = "{} {} {} {}"
-        markup = generate_buttons(
-            [
-                *[
-                    [{user: f"mnau {chat_id}"}]
-                    for user, chat_id in (
-                        (
-                            template.format(
-                                user_id,
-                                chat_id,
-                                (
-                                    string_status[2]
-                                    if is_admin_id(chat_id)
-                                    else string_status[user_status]
-                                )[0],
-                                event_count,
-                                max_event_id,
-                            ),
-                            chat_id,
-                        )
-                        for (
-                            user_id,
-                            chat_id,
-                            user_status,
-                            username,
-                            max_event_id,
-                            event_count,
-                            reg_date,
-                        ) in users[:10]
-                    )
-                ],
-                [
-                    {
-                        tg_numbers_emoji.join(c for c in f"{page - 1}")
-                        + tg_numbers_emoji: f"mnad {page - 1}"
-                    }
-                    if page > 1
-                    else {" ": "None"},
-                    {get_theme_emoji("back"): "mnm"},
-                    {
-                        tg_numbers_emoji.join(c for c in f"{page + 1}")
-                        + tg_numbers_emoji: f"mnad {page + 1}"
-                    }
-                    if len(users) == 11
-                    else {" ": "None"},
-                ],
-            ]
-        )
-
-    return TextMessage(text, markup)
-
-
-def user_message(chat_id: int) -> TextMessage | None:
-    """
-    lang
-    sub_urls
-    city
-    timezone
-    direction
-    user_status
-    notifications
-    notifications_time
-    user_max_event_id
-    theme
-    """
-
-    if not request.entity.is_admin:
-        return None
-
-    # TODO ???
-    if not chat_id:
-        text = f"""👤 User 👤
-chat_id: {chat_id}
-
-Error: "User Not Exist"
-"""
-        markup = generate_buttons([[{get_theme_emoji("back"): "mnad"}]])
-        return TextMessage(text, markup)
-
-    account = TelegramAccount(chat_id)
-    (events_count, recent_changes_time) = db.execute(
-        """
-SELECT COUNT(event_id) as events_count,
-       MAX(
-           MAX(recent_changes_time),
-           MAX(adding_time)
-       ) as recent_changes_time
-  FROM events
- WHERE user_id = :user_id;
-""",
-        params={"user_id": account.user_id},
-    )[0]
-    user_status = string_status[2 if account.is_admin else account.user.user_status]
-
-    text = f"""👤 User 👤
-user_id: {account.user_id}
-chat_id: <a href='tg://user?id={account.chat_id}'>{account.chat_id}</a>
-
-<pre><code class='language-user info'>username:      {account.user.username}
-events count:  {events_count}
-max event_id:  {account.user.max_event_id - 1}
-last changes:  {parse_utc_datetime(recent_changes_time)}
-status:        {user_status}
-reg_date:      {parse_utc_datetime(account.user.reg_date, relatively_date=True)}
-icon:          {bool(account.user.icon)}
-</code></pre><pre><code class='language-settings'>lang:          {account.settings.lang}
-sub_urls:      {bool(account.settings.sub_urls)}
-city:          {html.escape(account.settings.city)}
-timezone:      {account.settings.timezone}
-direction:     {'⬇️' if account.settings.direction == 'DESC' else '⬆️'}
-notifications: {'🔔' if account.settings.notifications else '🔕'}
-n_time:        {account.settings.notifications_time}
-theme:         {'dark' if account.settings.theme else 'white'}</code></pre>
-"""
-
-    markup = generate_buttons(
-        [
-            # [
-            #     {"🗑": f"mnau {account.chat_id} del"},
-            #     {
-            #         f"{'🔔' if not account.settings.notifications else '🔕'}": (
-            #             f"mnau {account.chat_id} edit settings.notifications {int(not account.settings.notifications)}"
-            #         )
-            #     },
-            # ],
-            # [
-            #     {"ban": f"mnau {account.chat_id} edit settings.status -1"},
-            #     {"normal": f"mnau {account.chat_id} edit settings.status 0"},
-            #     {"premium": f"mnau {account.chat_id} edit settings.status 1"},
-            # ],
-            [{get_theme_emoji("back"): "mnad"}, {"🔄": f"mnau {account.chat_id}"}],
-        ]
-    )
-    return TextMessage(text, markup)
-
-
 def group_message(group_id: str, message_id: int = None) -> TextMessage | None:
     try:
         if request.is_member:
@@ -1369,13 +1187,9 @@ def group_message(group_id: str, message_id: int = None) -> TextMessage | None:
     except GroupNotFound:
         return None
 
-    text = f"""
-👥 Group 👥
-
-id: `<code>{group.group_id}</code>`
-name: `<code>{html.escape(group.name)}</code>`
-{f'chat_id: `<code>{group.chat_id}</code>`' if group.chat_id else ''}
-""".strip()
+    group_template = get_translate("messages.group")
+    chat_id = f"chat_id: `<code>{group.chat_id}</code>`" if group.chat_id else ""
+    text = group_template.format(group.group_id, html.escape(group.name)) + chat_id
 
     if request.is_user:
         startgroup_data = f"group-{group.owner_id}-{group.group_id}"
@@ -1383,15 +1197,18 @@ name: `<code>{html.escape(group.name)}</code>`
             bot.user.username, startgroup_data
         )
 
-        # TODO перевод
+        leave_group = get_translate("text.leave_group")
+        change_group_name = get_translate("text.change_group_name")
+        delete_group = get_translate("text.delete_group")
+        remove_bot_from_group = get_translate("text.remove_bot_from_group")
         markup = generate_buttons(
             [
-                [{"Выйти из группы": f"grlv {group.group_id}"}]
+                [{leave_group: f"grlv {group.group_id}"}]
                 if not group.member_status == 2
                 else [],
                 [
                     {
-                        "Изменить название группы": {
+                        change_group_name: {
                             "switch_inline_query_current_chat": (
                                 f"group({group.group_id}, {message_id}).name\n"
                                 f"{html.unescape(group.name)}"
@@ -1399,13 +1216,13 @@ name: `<code>{html.escape(group.name)}</code>`
                         }
                     }
                     if message_id
-                    else {"Изменить название группы": "None"},
+                    else {change_group_name: "None"},
                 ]
                 if group.member_status > 0
                 else [],
                 [
-                    {"Удалить группу": f"grd {group.group_id}"},
-                    {"Удалить бота из группы": f"grrgr {group.group_id}"}
+                    {delete_group: f"grd {group.group_id}"},
+                    {remove_bot_from_group: f"grrgr {group.group_id}"}
                     if group.chat_id
                     else {
                         get_translate("text.add_bot_to_group"): {"url": startgroup_url}
@@ -1440,6 +1257,8 @@ def groups_message(
     groups = groups_chunk[page - 1] if len(groups_chunk) > 0 else []
     prev_pages = len(groups_chunk[: page - 1])
     after_pages = len(groups_chunk[page:])
+    create_group = get_translate("text.create_group")
+    groups_message_template = get_translate("message.groups")
 
     if groups:
         string_groups = "\n\n".join(
@@ -1450,17 +1269,12 @@ def groups_message(
 """.strip()
             for n, group in enumerate(groups)
         )
-        # TODO перевод
         user_group_limits = group_limits[request.entity.user.user_status][
             "max_groups_participate" if mode == "al" else "max_groups_creator"
         ]
-        text = f"""
-👥 Группы 👥
-
-У вас групп: {len(raw_groups)}/{user_group_limits}
-
-{string_groups}
-"""
+        text = groups_message_template.format(
+            f"{len(raw_groups)}/{user_group_limits}", string_groups
+        )
         markup = [
             [
                 {("🔸" if mode == "al" else "") + "All": "mngrs al"},
@@ -1482,40 +1296,37 @@ def groups_message(
                     if len(groups_chunk) != 1
                     else []
                 ),
-                {"👥 Создать группу": "grcr"},
+                {f"👥 {create_group}": "grcr"},
             ],
         ]
     else:
-        text = "👥 Группы 👥\n\nУ вас групп: 0"
+        text = groups_message_template.format(0, "")
         markup = [
-            [{"👥 Создать группу": "grcr"}],
+            [{f"👥 {create_group}": "grcr"}],
             [{get_theme_emoji("back"): "mnm"}],
         ]
     return TextMessage(text, generate_buttons(markup))
 
 
 def account_message() -> TextMessage:
-    markup = [
-        [{f"{get_translate('text.edit_username')}👤": "None"}],
-        [{f"{get_translate('text.edit_password')}🤫🔑": "None"}],
-        [
-            {get_theme_emoji("back"): "mnm"},
-            {"📊": "lm"},
-            {f"{get_translate('text.logout')}🚪👈": "logout"},
-        ],
-    ]
-    # TODO перевод
-    return TextMessage(
-        f"""
-👤 Аккаунт 👤
-
-<pre><code class='language-yaml'>id:       {request.entity.user_id}
-chat_id:  {request.entity.request_chat_id}
-username: {request.entity.user.username}
-reg_date: {request.entity.user.reg_date}</code></pre>
-""",
-        generate_buttons(markup),
+    text = get_translate("message.account").format(
+        request.entity.user_id,
+        request.entity.request_chat_id,
+        request.entity.user.username,
+        request.entity.user.reg_date,
     )
+    markup = generate_buttons(
+        [
+            [{f"{get_translate('text.edit_username')}👤": "None"}],
+            [{f"{get_translate('text.edit_password')}🤫🔑": "None"}],
+            [
+                {get_theme_emoji("back"): "mnm"},
+                {"📊": "lm"},
+                {f"{get_translate('text.logout')}🚪👈": "logout"},
+            ],
+        ]
+    )
+    return TextMessage(text, markup)
 
 
 def select_one_message(
@@ -1573,10 +1384,7 @@ def select_one_message(
 
 
 def select_events_message(
-    id_list: list[int],
-    back_data: str,
-    in_bin: bool = False,
-    is_in_search: bool = False,
+    id_list: list[int], back_data: str, in_bin: bool = False, is_in_search: bool = False
 ) -> TextMessage | None:
     # Если событий нет
     if len(id_list) == 0:

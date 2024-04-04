@@ -500,7 +500,7 @@ def encode_id(ids: tuple[int] | list[int]) -> str:
     for n, i in enumerate(ids):
         abbreviated_int = int_str_exel(i)
         if n == 0:
-            data = f"{abbreviated_int}"
+            data = abbreviated_int
         else:
             diff = i - ids[n - 1]
             if diff == 1:

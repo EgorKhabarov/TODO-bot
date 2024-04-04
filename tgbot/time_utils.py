@@ -56,15 +56,15 @@ def relatively_string_date(day_diff: int) -> tuple[str, str, str]:
 
     match day_diff:
         case 0:
-            rel_date = f"{today}"
+            rel_date = today
         case 1:
-            rel_date = f"{tomorrow}"
+            rel_date = tomorrow
         case 2:
-            rel_date = f"{day_after_tomorrow}"
+            rel_date = day_after_tomorrow
         case -1:
-            rel_date = f"{yesterday}"
+            rel_date = yesterday
         case -2:
-            rel_date = f"{day_before_yesterday}"
+            rel_date = day_before_yesterday
         case n if n > 2:
             rel_date = f"{after} {n} {Fday(n)}"
         case _ as n:

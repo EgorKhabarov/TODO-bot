@@ -226,14 +226,11 @@ Call up new messages using bot commands.</b>
 /settings - Настройки
 /search {...} - Поиск
 /id - Получить свой Telegram id
-
 /commands - Этот список
 """,
                 """
-/version - Версия бота
-/sqlite - Бекап базы данных
-/SQL {...} - Выполнить sql запрос к базе данных
 /clear_logs - Очистить логи
+/version - Версия бота
 """,
             ),
             "en": (
@@ -251,14 +248,11 @@ Call up new messages using bot commands.</b>
 /settings - Settings
 /search {...} - Search
 /id - Get your Telegram id
-
 /commands - This list
 """,
                 """
-/version - Bot version
-/sqlite - Database backup
-/SQL {...} - Execute an sql query to the database
 /clear_logs - Clear logs
+/version - Bot version
 """,
             ),
         },
@@ -325,6 +319,30 @@ Call up new messages using bot commands.</b>
         "logout": {
             "ru": "Выйти",
             "en": "Logout",
+        },
+        "leave_group": {
+            "ru": "Выйти из группы",
+            "en": "Leave the group",
+        },
+        "change_group_name": {
+            "ru": "Изменить название группы",
+            "en": "Change group name",
+        },
+        "delete_group": {
+            "ru": "Удалить группу",
+            "en": "Delete group",
+        },
+        "remove_bot_from_group": {
+            "ru": "Удалить бота из группы",
+            "en": "Remove a bot from a group",
+        },
+        "create_group": {
+            "ru": "Создать группу",
+            "en": "Create group",
+        },
+        "meters_per_second": {
+            "ru": "м/с",
+            "en": "m/s",
         },
     },
     "messages": {
@@ -417,6 +435,54 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 >www.youtube.com</a> <i>instead of full link</i>)
 **<i>Reply to this message with a city name</i>
 ***<i>Changes dark emojis to light ones</i>""",
+        },
+        "group": {
+            "ru": """
+👥 Группа 👥
+
+id: `<code>{}</code>`
+name: `<code>{}</code>`
+""",
+            "en": """
+👥 Group 👥
+
+id: `<code>{}</code>`
+name: `<code>{}</code>`
+""",
+        },
+        "groups": {
+            "ru": """
+👥 Группы 👥
+
+У вас групп: {}
+
+{}
+""",
+            "en": """
+👥 Groups 👥
+
+You have groups: {}
+
+{}
+""",
+        },
+        "account": {
+            "ru": """
+👤 Аккаунт 👤
+
+<pre><code class='language-yaml'>id:       {}
+chat_id:  {}
+username: {}
+reg_date: {}</code></pre>
+""",
+            "en": """
+👤 Account 👤
+
+<pre><code class='language-yaml'>id:       {}
+chat_id:  {}
+username: {}
+reg_date: {}</code></pre>
+""",
         },
         "help": {
             "title": {
@@ -1380,6 +1446,10 @@ Visibility <b>{}</b>m""",
         "failure": {
             "ru": "Неудача",
             "en": "Failure",
+        },
+        "not_enough_permissions": {
+            "ru": "Недостаточно полномочий",
+            "en": "Not enough permissions",
         },
         "forbidden_to_log_account_in_group": {
             "ru": "В группе нельзя войти в аккаунт",

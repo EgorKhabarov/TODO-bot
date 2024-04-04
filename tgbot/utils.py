@@ -407,16 +407,17 @@ def fetch_forecast(city: str) -> str:
         date = ".".join(city_time.split()[0].split(".")[::-1])
         if date not in result:
             dt_date = datetime.strptime(date, "%d.%m.%Y")
-            n_date = request.entity.now_time()
+            n_time = request.entity.now_time()
             n_time = datetime(n_time.year, n_time.month, n_time.day)
             str_date, rel_date, week_date = relatively_string_date(
-                (dt_date - n_date).days
+                (dt_date - n_time).days
             )
-            result += f"\n\n<b>{dt_date}</b> <u><i>{str_date}  {week_date}</i></u> ({rel_date})"
-        # TODO перевод м/c
+            result += f"\n\n<b>{dt_date:%d.%m.%Y}</b> <u><i>{str_date}  {week_date}</i></u> ({rel_date})"
+
+        mps = get_translate("text.meters_per_second")
         result += (
             f"\n{city_time.split()[-1]} {weather_icon}<b>{temp:{ts}>2.0f}°C "
-            f"💨{wind_speed:.0f}м/с {wind_deg_icon}</b> "
+            f"💨{wind_speed:.0f}{mps} {wind_deg_icon}</b> "
             f"<u>{weather_description}</u>."
         )
     return result

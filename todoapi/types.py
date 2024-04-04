@@ -202,7 +202,6 @@ class Limit:
     def get_event_limits(self, date: str | datetime = None) -> list[tuple[int]]:
         date = date if date else datetime.now().strftime("%d.%m.%Y")
 
-        # TODO Убрать из выборки события в корзине
         try:
             return db.execute(
                 """
@@ -587,32 +586,34 @@ SELECT media_id,
         return prepare_date(f"{min(dates):%d.%m.%Y}")[0]
 
     def to_json(self) -> str:
-        # TODO обновить
         return json.dumps(
             {
                 "user_id": self.user_id,
+                "group_id": self.group_id,
                 "event_id": self.event_id,
                 "date": self.date,
                 "text": self.text,
                 "status": self.status,
-                "removal_time": self.removal_time,
                 "adding_time": self.adding_time,
                 "recent_changes_time": self.recent_changes_time,
+                "removal_time": self.removal_time,
+                "history": json.loads(self.history),
             },
             ensure_ascii=False,
         )
 
     def to_dict(self) -> dict:
-        # TODO обновить
         return {
             "user_id": self.user_id,
+            "group_id": self.group_id,
             "event_id": self.event_id,
             "date": self.date,
             "text": self.text,
             "status": self.status,
-            "removal_time": self.removal_time,
             "adding_time": self.adding_time,
             "recent_changes_time": self.recent_changes_time,
+            "removal_time": self.removal_time,
+            "history": json.loads(self.history),
         }
 
     @staticmethod

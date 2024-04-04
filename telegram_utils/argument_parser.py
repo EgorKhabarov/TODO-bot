@@ -57,7 +57,7 @@ def get_arguments(
     >>> get_arguments("arg1", arguments_3)
     {'arg1': 'arg1', 'arg2': 1}
     >>> get_arguments("arg1 arg2", arguments_3)
-    {'arg1': 'arg1', 'arg2': None}
+    {'arg1': 'arg1', 'arg2': 1}
 
     >>> arguments_4 = {"arg1": "float"}
     >>> get_arguments("123", arguments_4)
@@ -125,7 +125,7 @@ def __process_value(
                 try:
                     return float(value)
                 except ValueError:
-                    return None
+                    return default
         case "date":
             try:
                 return datetime.strptime(value, "%d.%m.%Y")
@@ -139,7 +139,7 @@ def __process_value(
 
 
 def getargs(
-    __func: Callable, text: str
+    text: str,
 ) -> Callable[
     [dict[str, _data_types | tuple[_data_types, Any]]], dict[str, _return_types]
 ]:

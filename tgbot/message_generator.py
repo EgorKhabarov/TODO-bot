@@ -188,7 +188,9 @@ class EventMessage(TextMessage):
         event_date_representation: str = "",
         markup: InlineKeyboardMarkup = None,
     ):
-        days_before_event = self.event.days_before_event(request.entity.settings.timezone)
+        days_before_event = self.event.days_before_event(
+            request.entity.settings.timezone
+        )
         str_date, rel_date, week_date = relatively_string_date(days_before_event)
 
         days_before = ""
@@ -424,9 +426,7 @@ SELECT user_id,
         dt_date = datetime.strptime(self._date, "%d.%m.%Y")
         n_time = request.entity.now_time()
         n_time = datetime(n_time.year, n_time.month, n_time.day)
-        str_date, rel_date, week_date = relatively_string_date(
-            (dt_date - n_time).days
-        )
+        str_date, rel_date, week_date = relatively_string_date((dt_date - n_time).days)
 
         format_string = (
             title.format(
