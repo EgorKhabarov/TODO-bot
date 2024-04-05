@@ -52,3 +52,11 @@ class StatusLengthExceeded(Exception):
 
 class StatusRepeats(Exception):
     pass
+
+
+class NotUniqueEmail(Exception):
+    pass
+
+
+class NotUniqueUsername(Exception):
+    pass

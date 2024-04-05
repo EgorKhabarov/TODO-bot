@@ -30,6 +30,8 @@ from todoapi.exceptions import (
     NotGroupMember,
     Forbidden,
     MediaNotFound,
+    NotUniqueEmail,
+    NotUniqueUsername,
 )
 from config import DATABASE_PATH, VEDIS_PATH
 from todoapi.utils import (
@@ -352,8 +354,8 @@ SELECT event_id,
        status,
        text
   FROM events
- WHERE user_id = :user_id
-       AND group_id = :group_id
+ WHERE user_id IS :user_id
+       AND group_id IS :group_id
        AND removal_time IS NULL;
 """
         self.params = {
@@ -487,7 +489,7 @@ class Event:
     adding_time: str
     recent_changes_time: str
     removal_time: str
-    history: str = None
+    _history: str = None
 
     @property
     def is_delete(self) -> bool:
@@ -496,6 +498,10 @@ class Event:
     @property
     def datetime(self) -> datetime:
         return datetime.strptime(self.date, "%d.%m.%Y")
+
+    @property
+    def history(self) -> list[dict]:
+        return json.loads(self._history)
 
     @property
     def media_list(self) -> list["Media"]:
@@ -597,7 +603,7 @@ SELECT media_id,
                 "adding_time": self.adding_time,
                 "recent_changes_time": self.recent_changes_time,
                 "removal_time": self.removal_time,
-                "history": json.loads(self.history),
+                "history": self.history,
             },
             ensure_ascii=False,
         )
@@ -1973,6 +1979,34 @@ DELETE FROM users
 def create_user(email: str, username: str, password: str) -> None:
     if not re_email.match(email) or not re_username.match(username) or not password:
         raise ApiError
+
+    try:
+        count_email, count_username = db.execute(
+            """
+SELECT (
+    SELECT COUNT(email)
+      FROM users
+     WHERE email = :email
+),
+(
+    SELECT COUNT(username)
+      FROM users
+     WHERE username = :username
+);
+""",
+            params={
+                "email": email,
+                "username": username,
+            },
+        )[0]
+    except Error as e:
+        raise ApiError(e)
+
+    if count_email != 0:
+        raise NotUniqueEmail
+
+    if count_username != 0:
+        raise NotUniqueUsername
 
     try:
         db.execute(

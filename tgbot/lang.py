@@ -1447,6 +1447,14 @@ Visibility <b>{}</b>m""",
             "ru": "Неудача",
             "en": "Failure",
         },
+        "not_unique_email": {
+            "ru": "Не уникальный адрес электронной почты",
+            "en": "Not unique email",
+        },
+        "not_unique_username": {
+            "ru": "Не уникальное имя пользователя",
+            "en": "Not unique username",
+        },
         "not_enough_permissions": {
             "ru": "Недостаточно полномочий",
             "en": "Not enough permissions",

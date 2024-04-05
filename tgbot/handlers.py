@@ -79,6 +79,8 @@ from todoapi.exceptions import (
     StatusRepeats,
     NotEnoughPermissions,
     NotGroupMember,
+    NotUniqueEmail,
+    NotUniqueUsername,
 )
 from todoapi.log_cleaner import clear_logs
 from todoapi.types import create_user, get_account_from_password, Cache
@@ -134,15 +136,9 @@ def not_login_handler(x: CallbackQuery | Message) -> None:
             text = get_translate("errors.forbidden_to_log_account_in_group")
             return TextMessage(text).reply(message)
 
-        arguments = get_command_arguments(
-            message.text,
-            {"email": "str", "username": "str", "password": "str"},
-        )
-        email, username, password = (
-            arguments["email"],
-            arguments["username"],
-            arguments["password"],
-        )
+        email, username, password = get_command_arguments(
+            message.text, {"email": "str", "username": "str", "password": "str"}
+        ).values()
 
         if not (email and username and password):
             TextMessage(get_translate("errors.no_account")).reply(message)
@@ -153,6 +149,10 @@ def not_login_handler(x: CallbackQuery | Message) -> None:
         else:
             try:
                 create_user(email, username, password)
+            except NotUniqueEmail:
+                TextMessage(get_translate("errors.not_unique_email")).reply(message)
+            except NotUniqueUsername:
+                TextMessage(get_translate("errors.not_unique_username")).reply(message)
             except ApiError as e:
                 print(e)
                 TextMessage(get_translate("errors.failure")).reply(message)
@@ -585,7 +585,7 @@ def callback_handler(call: CallbackQuery):
 
         daily_message(date).edit(chat_id, message_id)
 
-    elif call_prefix == ("eab", "esh"):  # event about, event show
+    elif call_prefix in ("eab", "esh"):  # event about, event show
         event_id, date = args_func({"event_id": "int", "date": "date"}).values()
         if call_prefix == "eab":
             generated = about_event_message(event_id)

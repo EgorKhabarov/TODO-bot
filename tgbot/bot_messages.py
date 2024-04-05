@@ -1258,7 +1258,7 @@ def groups_message(
     prev_pages = len(groups_chunk[: page - 1])
     after_pages = len(groups_chunk[page:])
     create_group = get_translate("text.create_group")
-    groups_message_template = get_translate("message.groups")
+    groups_message_template = get_translate("messages.groups")
 
     if groups:
         string_groups = "\n\n".join(
@@ -1309,11 +1309,11 @@ def groups_message(
 
 
 def account_message() -> TextMessage:
-    text = get_translate("message.account").format(
+    text = get_translate("messages.account").format(
         request.entity.user_id,
         request.entity.request_chat_id,
         request.entity.user.username,
-        request.entity.user.reg_date,
+        parse_utc_datetime(request.entity.user.reg_date),
     )
     markup = generate_buttons(
         [
