@@ -1317,7 +1317,9 @@ def account_message() -> TextMessage:
     )
     markup = generate_buttons(
         [
-            [{f"{get_translate('text.get_premium')}🤩": "get_premium"}],
+            [{f"{get_translate('text.get_premium')}🤩": "get_premium"}]
+            if request.entity.user.user_status == 0
+            else [],
             [{f"{get_translate('text.edit_username')}👤": "None"}],
             [{f"{get_translate('text.edit_password')}🤫🔑": "None"}],
             [

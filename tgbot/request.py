@@ -16,6 +16,15 @@ class EntityType:
         return "user" if self.user else "member"
 
 
+@dataclass
+class QueryType:
+    message: bool = False
+    callback: bool = False
+
+    def __repr__(self):
+        return "message" if self.message else "callback"
+
+
 class Request:
     """
     Класс контекстных переменных
@@ -25,6 +34,7 @@ class Request:
     _entity_type = ContextVar("entity_type", default=None)
     _chat_id = ContextVar("chat_id", default=None)
     _query = ContextVar("query", default=None)
+    _query_type = ContextVar("query_type", default=None)
 
     @property
     def entity(self) -> TelegramAccount:
@@ -59,12 +69,28 @@ class Request:
         self._query.set(query)  # type: ignore
 
     @property
-    def is_user(self):
+    def query_type(self) -> QueryType:
+        return self._query_type.get()  # type: ignore
+
+    @query_type.setter
+    def query_type(self, query_type: QueryType) -> None:
+        self._query_type.set(query_type)  # type: ignore
+
+    @property
+    def is_user(self) -> bool:
         return self.entity_type.user
 
     @property
-    def is_member(self):
+    def is_member(self) -> bool:
         return self.entity_type.member
+
+    @property
+    def is_message(self) -> bool:
+        return self.query_type.message
+
+    @property
+    def is_callback(self) -> bool:
+        return self.query_type.callback
 
 
 request = Request()

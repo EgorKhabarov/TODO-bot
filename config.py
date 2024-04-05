@@ -29,24 +29,22 @@ headers = {
     "(KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36 Edg/113.0.1774.42"
 }
 COMMANDS = (
-    "calendar",
     "start",
-    "version",
+    "menu",
+    "calendar",
+    "today",
+    "weather",
     "forecast",
     "week_event_list",
-    "weather",
-    "search",
     "dice",
+    "export",
     "help",
     "settings",
-    "today",
-    "sqlite",
-    "SQL",
-    "export",
-    "id",
     "commands",
-    "menu",
+    "search",
+    "id",
     "clear_logs",
+    "version",
     "login",
     "signup",
     "logout",
@@ -54,5 +52,5 @@ COMMANDS = (
 # Специальный прозрачный символ для заполнения пустого места в кнопках
 ts = chr(10240)  # transparent symbol
 
-__version__ = "04.04.2024"
+__version__ = "06.04.2024"
 __autor__ = "EgorKhabarov"
