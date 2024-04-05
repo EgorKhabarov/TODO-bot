@@ -83,7 +83,7 @@ from todoapi.exceptions import (
     NotUniqueUsername,
 )
 from todoapi.log_cleaner import clear_logs
-from todoapi.types import create_user, get_account_from_password, Cache
+from todoapi.types import create_user, get_account_from_password, Cache, set_user_status
 from telegram_utils.argument_parser import getargs
 from telegram_utils.buttons_generator import generate_buttons
 from telegram_utils.command_parser import parse_command, get_command_arguments
@@ -331,6 +331,7 @@ def command_handler(message: Message) -> None:
         if request.is_user:
             set_user_telegram_chat_id(request.entity, None)
             TextMessage(get_translate("errors.success")).reply(message)
+            set_bot_commands()
 
     elif command_text in ("login", "signup"):
         TextMessage(get_translate("errors.failure")).reply(message)
@@ -1098,6 +1099,13 @@ def callback_handler(call: CallbackQuery):
             )
         else:
             group_message(group_id, message_id=message_id).edit(chat_id, message_id)
+
+    elif call_prefix == "get_premium":
+        # Заглушка на получение доступа к корзине и повышенным лимитам
+        # TODO реализовать нормальное получение
+        if request.is_user:
+            set_user_status(request.entity.user_id, 1)
+            CallBackAnswer("ok").answer(call_id, True)
 
 
 def reply_handler(message: Message, reply_to_message: Message) -> None:

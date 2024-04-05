@@ -2081,5 +2081,27 @@ def get_account_from_id(user_id: int, group_id: str = None) -> Account:
     return Account(user_id, group_id)
 
 
+def set_user_status(user_id: int, status: int) -> None:
+    """
+    Ставит статус для пользователя с user_id.
+    НЕ проводит никаких проверок
+    """
+    try:
+        db.execute(
+            """
+UPDATE users
+   SET user_status = :status
+ WHERE user_id = :user_id;
+""",
+            params={
+                "status": status,
+                "user_id": user_id,
+            },
+            commit=True,
+        )
+    except Error as e:
+        raise ApiError(e)
+
+
 db = DataBase()
 vedisdb = Vedis(VEDIS_PATH)
