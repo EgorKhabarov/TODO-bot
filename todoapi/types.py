@@ -1872,7 +1872,24 @@ UPDATE users_settings
             raise Forbidden
 
         if not re_username.match(username):
-            raise ApiError
+            raise ValueError
+
+        try:
+            count_username = db.execute(
+                """
+SELECT COUNT(username)
+  FROM users
+ WHERE username = :username;
+""",
+                params={
+                    "username": username,
+                },
+            )[0][0]
+        except Error as e:
+            raise ApiError(e)
+
+        if count_username != 0:
+            raise NotUniqueUsername
 
         try:
             db.execute(
@@ -1885,19 +1902,20 @@ UPDATE users
                     "username": username,
                     "user_id": self.user_id,
                 },
+                commit=True,
             )
         except Error as e:
             raise ApiError(e)
 
-    def edit_user_password(self, password: str) -> None:
+    def edit_user_password(self, old_password: str, new_password: str) -> None:
         if self.group_id:
             raise Forbidden
 
-        if not password:
+        if (not new_password) or (not old_password):
             raise ValueError
 
-        if hash_password(password) != self.user.password:
-            raise ApiError
+        if hash_password(old_password) != self.user.password:
+            raise NotEnoughPermissions
 
         try:
             db.execute(
@@ -1907,9 +1925,10 @@ UPDATE users
  WHERE user_id = :user_id;
 """,
                 params={
-                    "password": hash_password(password),
+                    "password": hash_password(new_password),
                     "user_id": self.user_id,
                 },
+                commit=True,
             )
         except Error as e:
             raise ApiError(e)
@@ -1932,6 +1951,7 @@ UPDATE users
                     "icon": icon,
                     "user_id": self.user_id,
                 },
+                commit=True,
             )
         except Error as e:
             raise ApiError(e)
@@ -1953,6 +1973,7 @@ UPDATE users
                     "token": token,
                     "user_id": self.user_id,
                 },
+                commit=True,
             )
         except Error as e:
             raise ApiError(e)

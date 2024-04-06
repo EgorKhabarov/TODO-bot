@@ -15,7 +15,7 @@ import config
 from tgbot.dispatcher import process_account
 from tgbot.message_generator import TextMessage
 from tgbot.request import request
-from tgbot.lang import get_translate
+from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.bot import bot, bot_log_info
 from tgbot.buttons_utils import delmarkup
 from tgbot.bot_actions import delete_message_action
@@ -25,6 +25,8 @@ from tgbot.utils import (
     html_to_markdown,
     re_group_edit_name_message,
     telegram_log,
+    re_user_edit_name_message,
+    re_user_edit_password_message,
 )
 from tgbot.handlers import (
     command_handler,
@@ -39,23 +41,25 @@ from tgbot.bot_messages import (
     confirm_changes_message,
     groups_message,
     group_message,
+    account_message,
 )
 from todoapi.exceptions import (
     LimitExceeded,
     NotEnoughPermissions,
     GroupNotFound,
     NotGroupMember,
+    NotUniqueUsername,
 )
 from todoapi.types import db, Cache
 from todoapi.logger import logging
 from todoapi.log_cleaner import clear_logs
 from todoapi.db_creator import create_tables
 from telegram_utils.command_parser import command_regex
+from telegram_utils.buttons_generator import generate_buttons
 
 
 create_tables()
 logging.info(bot_log_info())
-# bot.set_my_commands(get_translate("buttons.commands.0.user", "ru"), BotCommandScopeDefault())
 command_regex.set_username(bot.user.username)
 
 
@@ -125,7 +129,7 @@ def processing_search_message(message: Message):
 
 @bot.message_handler(func=lambda m: re_edit_message.search(m.text))
 @process_account
-def processing_edit_message(message: Message):
+def processing_edit_event_text_message(message: Message):
     """
     Ловит сообщения для изменения событий
     """
@@ -134,25 +138,21 @@ def processing_edit_message(message: Message):
         delete_message_action(message)
 
 
-@bot.message_handler(func=lambda m: (re_group_edit_name_message.search(m.text)))
+@bot.message_handler(
+    func=lambda m: re_group_edit_name_message.search(m.text), chat_types=["private"]
+)
 @process_account
 def processing_group_edit_name_message(message: Message):
     """
     Ловит сообщения для изменения имени группы
     """
     telegram_log("send", "group edit name")
-    match = re_group_edit_name_message.match(message.text)
-    group_id = match.group(1)
-    message_id = match.group(2)
-    name = (
-        html_to_markdown(message.html_text)
-        .split("\n", maxsplit=1)[-1]
-        .strip("\n")
-        .replace("\n", " ")[:32]
-    )
+    match = re_group_edit_name_message.findall(message.html_text)[0]
+    group_id, message_id, name = match
+    name = name or "GroupName"
 
     try:
-        request.entity.edit_group_name(name, group_id)
+        request.entity.edit_group_name(html_to_markdown(name), group_id)
     except NotEnoughPermissions:
         bot.reply_to(message, get_translate("errors.limit_exceeded"))
     except (GroupNotFound, NotGroupMember):
@@ -169,6 +169,58 @@ def processing_group_edit_name_message(message: Message):
 
 
 @bot.message_handler(
+    func=lambda m: re_user_edit_name_message.search(m.text), chat_types=["private"]
+)
+@process_account
+def processing_user_edit_username_message(message: Message):
+    telegram_log("send", "user edit name")
+    message_id, name = re_user_edit_name_message.findall(message.html_text)[0]
+
+    try:
+        request.entity.edit_user_username(html_to_markdown(name))
+        request.entity.user.username = html_to_markdown(name)
+    except ValueError:
+        # TODO перевод
+        TextMessage("Неподходящее имя пользователя").reply(message)
+    except NotUniqueUsername:
+        # TODO перевод
+        TextMessage("Это имя пользователя занято").reply(message)
+    else:
+        delete_message_action(message)
+        try:
+            account_message(message_id).edit(message.chat.id, message_id)
+        except ApiTelegramException:
+            pass
+
+
+@bot.message_handler(
+    func=lambda m: re_user_edit_password_message.search(m.text), chat_types=["private"]
+)
+@process_account
+def processing_user_edit_password_message(message: Message):
+    telegram_log("send", "user edit password")
+    old_password, new_password = re_user_edit_password_message.findall(
+        message.html_text
+    )[0]
+
+    try:
+        request.entity.edit_user_password(
+            html_to_markdown(old_password), html_to_markdown(new_password)
+        )
+    except ValueError:
+        # TODO перевод
+        TextMessage("Пароль слишком лёгкий").reply(message)
+    except NotEnoughPermissions:
+        # TODO перевод
+        TextMessage("Неверный пароль").reply(message)
+    else:
+        text = get_translate("errors.success")
+        markup = generate_buttons([[{get_theme_emoji("del"): "md"}]])
+        TextMessage(text, markup).send(message.chat.id)
+        delete_message_action(message)
+
+
+@bot.message_handler(
     func=lambda m: (
         m.reply_to_message
         and m.reply_to_message.text
@@ -176,7 +228,7 @@ def processing_group_edit_name_message(message: Message):
     )
 )
 @process_account
-def processing_reply_to_message(message: Message):
+def processing_reply_message(message: Message):
     """
     Ловит сообщения ответ на сообщение бота с настройками
     Изменение города пользователя

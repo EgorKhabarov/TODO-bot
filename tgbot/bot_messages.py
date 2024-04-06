@@ -491,7 +491,8 @@ def confirm_changes_message(message: Message) -> None | int:
 
     if len(message.text.split("\n")) == 1:
         try:
-            before_event_delete_message(event_id).send(request.chat_id)
+            before_event_delete_message(event_id).edit(request.chat_id, message_id)
+            delete_message_action(message)
             return 1
         except ApiTelegramException:
             pass
@@ -1308,7 +1309,7 @@ def groups_message(
     return TextMessage(text, generate_buttons(markup))
 
 
-def account_message() -> TextMessage:
+def account_message(message_id: int) -> TextMessage:
     text = get_translate("messages.account").format(
         request.entity.user_id,
         request.entity.request_chat_id,
@@ -1320,8 +1321,25 @@ def account_message() -> TextMessage:
             [{f"{get_translate('text.get_premium')}🤩": "get_premium"}]
             if request.entity.user.user_status == 0
             else [],
-            [{f"{get_translate('text.edit_username')}👤": "None"}],
-            [{f"{get_translate('text.edit_password')}🤫🔑": "None"}],
+            [
+                {
+                    f"{get_translate('text.edit_username')}👤": {
+                        "switch_inline_query_current_chat": (
+                            f"user({message_id}).name\n"
+                            f"{html.unescape(request.entity.user.username)}"
+                        )
+                    }
+                }
+            ],
+            [
+                {
+                    f"{get_translate('text.edit_password')}🤫🔑": {
+                        "switch_inline_query_current_chat": (
+                            "user().password\nold password: \nnew password: "
+                        )
+                    }
+                }
+            ],
             [
                 {get_theme_emoji("back"): "mnm"},
                 {"📊": "lm"},

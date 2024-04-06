@@ -3,11 +3,9 @@ import html
 import difflib
 import logging
 from time import time
-from io import StringIO
 from functools import wraps
 from urllib.parse import urlparse
 from typing import Literal, Callable
-from textwrap import wrap as textwrap
 from datetime import timedelta, datetime, timezone
 
 import requests
@@ -28,13 +26,18 @@ from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.time_utils import relatively_string_date
-from todoapi.types import db
 from todoapi.utils import is_admin_id
 
 
 re_edit_message = re.compile(r"\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)")
 re_group_edit_name_message = re.compile(
-    r"\A@\w{5,32} group\((\w{32}), (\d+)\)\.name(?:\n|\Z)"
+    r"(?s)\A@\w{5,32} group\((\w{32}), (\d+)\)\.name(?:\n|\Z)(.*)"
+)
+re_user_edit_name_message = re.compile(
+    r"(?s)\A@\w{5,32} user\((\d+)\)\.name(?:\n|\Z)(.*)"
+)
+re_user_edit_password_message = re.compile(
+    r"\A@\w{5,32} user\(\)\.password\nold password: ?(.*)\nnew password: ?(.*)\Z"
 )
 link_sub = re.compile(r"<a href=\"(.+?)\">(.+?)(\n*?)</a>")
 add_group_pattern = re.compile(r"\A/start@\w{5,32} group-(\d+)-([a-z\d]{32})\Z")
@@ -442,88 +445,6 @@ def poke_link() -> None:
         logging.error(f"poke_link {e}")
     except ConnectionError:
         logging.error("poke_link 404")
-
-
-def write_table_to_str(
-    file: StringIO,
-    table: list[tuple[str, ...], ...] = None,
-    query: str = None,
-    commit: bool = False,
-    align: tuple[Literal["<", ">", "^"]] = "<",
-) -> None:
-    """
-    Наполнит файл file строковым представлением таблицы результата SQL(query)
-    """
-    if not table:
-        table = [
-            [str(column) for column in row]
-            for row in db.execute(query, commit=commit, column_names=True)
-        ]
-
-    # Обрезаем длинные строки до 126 символов (уменьшается размер файла)
-    table = [
-        [
-            "\n".join(
-                " \\\n".join(
-                    textwrap(
-                        line, width=126, replace_whitespace=False, drop_whitespace=True
-                    )
-                    or " "
-                )
-                for line in column.splitlines()
-            )
-            for column in row
-        ]
-        for row in table
-    ]
-
-    # Матрица максимальных длин и высот каждого столбца и строки
-    w = [
-        [max(len(line) for line in str(column or " ").splitlines()) for column in row]
-        for row in table
-    ]
-
-    # Вычисляем максимальную ширину и высоту каждого столбца и строки
-    widths = [max(column) for column in zip(*w)]
-
-    sep = "+" + "".join(("-" * (i + 2)) + "+" for i in widths)  # Разделитель строк
-    template = "|" + "".join(f" {{:{align}{_}}} |" for _ in widths)
-
-    for n, row in enumerate(table):
-        file.write(sep + "\n")
-
-        # Индексы столбцов в которых несколько строк
-        indices = [
-            i for i, column in enumerate(row) if len(str(column).splitlines()) > 1
-        ]
-
-        if indices:
-            # Получаем первую текстовую строку строки таблицы
-            first_line = row[:]
-            for x in indices:
-                first_line[x] = row[x].splitlines()[0]
-            file.write(template.format(*first_line) + "\n")
-
-            # Количество строк в каждом столбце
-            indents = [len(str(column).splitlines()) for column in row]
-
-            max_lines = max(indents)
-            for ml in range(1, max_lines):  # проходим по максимум новых строчек
-                new_line = ["" for _ in indents]
-                for i in indices:  # получаем индексы многострочных ячеек
-                    try:
-                        new_line[i] = str(row[i]).splitlines()[ml]
-                    except IndexError:
-                        pass
-                file.write(
-                    template.format(*new_line) + ("\n" if ml < max_lines - 1 else "")
-                )
-
-        else:
-            file.write(template.format(*row))
-        file.write("\n")
-    file.write(sep)
-    file.seek(0)
 
 
 def highlight_text_difference(_old_text, _new_text):

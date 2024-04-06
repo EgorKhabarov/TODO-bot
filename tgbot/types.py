@@ -93,6 +93,7 @@ class TelegramUser(User):
         chat_id: int,
         user_status: int,
         username: str,
+        password: str,
         max_event_id: int = None,
         reg_date: str = None,
     ):
@@ -101,6 +102,7 @@ class TelegramUser(User):
             user_id,
             user_status,
             username,
+            password=password,
             max_event_id=max_event_id,
             reg_date=reg_date,
         )
@@ -115,6 +117,7 @@ SELECT user_id,
        chat_id,
        user_status,
        username,
+       password,
        max_event_id,
        reg_date
   FROM users
@@ -139,6 +142,7 @@ SELECT user_id,
        chat_id,
        user_status,
        username,
+       password,
        max_event_id,
        reg_date
   FROM users
@@ -163,6 +167,7 @@ SELECT user_id,
        chat_id,
        user_status,
        username,
+       password,
        max_event_id,
        reg_date
   FROM users

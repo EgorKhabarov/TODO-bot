@@ -321,6 +321,22 @@ def command_handler(message: Message) -> None:
 
         TextMessage(text).reply(message)
 
+    elif command_text == "clear_logs":
+        if not is_secure_chat(message):
+            return
+
+        try:
+            clear_logs()
+        except BaseException as e:
+            text = (
+                f"<b>{e.__class__.__name__}:</b> <i>{e}</i>\n"
+                f"<pre>{traceback.format_exc()}</pre>"
+            )
+        else:
+            text = "Ok"
+
+        TextMessage(text).reply(message)
+
     elif command_text == "commands":
         text, admin_commands = get_translate("text.command_list")
         if is_secure_chat(message):
@@ -331,7 +347,7 @@ def command_handler(message: Message) -> None:
         if request.is_user:
             set_user_telegram_chat_id(request.entity, None)
             TextMessage(get_translate("errors.success")).reply(message)
-            set_bot_commands()
+            set_bot_commands(True)
 
     elif command_text in ("login", "signup"):
         TextMessage(get_translate("errors.failure")).reply(message)
@@ -374,7 +390,7 @@ def callback_handler(call: CallbackQuery):
         group_message(group_id, message_id).edit(chat_id, message_id)
 
     elif call_prefix == "mna":  # account message
-        account_message().edit(chat_id, message_id)
+        account_message(message_id).edit(chat_id, message_id)
 
     elif call_prefix == "mnc":  # calendar
         date = literal_eval(call_data)[0]
@@ -1106,6 +1122,7 @@ def callback_handler(call: CallbackQuery):
         if request.is_user:
             set_user_status(request.entity.user_id, 1)
             CallBackAnswer("ok").answer(call_id, True)
+            account_message(message_id).edit(chat_id, message_id)
 
 
 def reply_handler(message: Message, reply_to_message: Message) -> None:
