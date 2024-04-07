@@ -167,7 +167,7 @@ class DataBase:
         if commit:
             self.sqlite_connection.commit()
         result = self.sqlite_cursor.fetchall()
-        if column_names:
+        if column_names and self.sqlite_cursor.description:
             description = [column[0] for column in self.sqlite_cursor.description]
             result = [description] + result
         # self.sqlite_cursor.close()
@@ -619,7 +619,7 @@ SELECT media_id,
             "adding_time": self.adding_time,
             "recent_changes_time": self.recent_changes_time,
             "removal_time": self.removal_time,
-            "history": json.loads(self.history),
+            "history": self.history,
         }
 
     @staticmethod

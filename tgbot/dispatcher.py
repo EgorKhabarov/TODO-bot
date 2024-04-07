@@ -5,6 +5,9 @@ from functools import wraps
 # noinspection PyPackageRequirements
 from telebot.types import Message, CallbackQuery
 
+# noinspection PyPackageRequirements
+from telebot.apihelper import ApiTelegramException
+
 from cachetools import LRUCache
 from tgbot.lang import get_translate
 from tgbot.types import TelegramAccount
@@ -100,7 +103,7 @@ def process_account(func):
                             return
 
                         return func(x)
-                except ApiError:
+                except (ApiError, ApiTelegramException):
                     logging.error(traceback.format_exc())
                     text = get_translate("errors.error")
 

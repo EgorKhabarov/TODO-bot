@@ -633,7 +633,7 @@ def callback_handler(call: CallbackQuery):
             text = get_translate("errors.no_events_to_interact")
             CallBackAnswer(text).answer(call_id, True)
 
-    elif call_prefix == ("esbd", "essd"):
+    elif call_prefix in ("esbd", "essd"):
         # events before delete, events select new date
         id_list = args_func({"id_list": "str"})["id_list"]
         if call_prefix == "esbd":
@@ -1122,6 +1122,7 @@ def callback_handler(call: CallbackQuery):
         if request.is_user:
             set_user_status(request.entity.user_id, 1)
             CallBackAnswer("ok").answer(call_id, True)
+            request.entity.user.user_status = 1
             account_message(message_id).edit(chat_id, message_id)
 
 

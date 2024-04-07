@@ -733,9 +733,8 @@ AND group_id IS ?
         args=event_formats["r"],
         if_empty=get_translate("errors.message_empty"),
     )
-    string_ids = encode_id(id_list)
     generated.markup = create_monthly_calendar_keyboard(
-        (date.year, date.month), "esds", "esm", f"{string_ids}"
+        (date.year, date.month), "esds", "esm", encode_id(id_list)
     )
     return generated
 

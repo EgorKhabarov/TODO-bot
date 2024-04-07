@@ -8,6 +8,7 @@ WEATHER_API_KEY: ""  # https://home.openweathermap.org/api_keys
 BOT_NOTIFICATIONS: True  # Are notifications enabled at the bot level
 POKE_SERVER_URL: False  # Should server poke the link SERVER_URL
 SERVER_URL: ""
+LIMIT_IMAGE_GENERATOR_URL: ""
 
 TELEGRAM_WEBHOOK: False  # Is webhook enabled?
 TELEGRAM_WEBHOOK_URL: ""  # Full webhook url
