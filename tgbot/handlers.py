@@ -12,46 +12,46 @@ from telebot.types import Message, CallbackQuery, InputFile
 from config import __version__
 from tgbot.bot import bot
 from tgbot.request import request
-from tgbot.lang import get_translate, get_theme_emoji
-from tgbot.message_generator import TextMessage, CallBackAnswer
 from tgbot.time_utils import new_time_calendar
 from tgbot.bot_actions import delete_message_action
+from tgbot.lang import get_translate, get_theme_emoji
+from tgbot.message_generator import TextMessage, CallBackAnswer
 from tgbot.buttons_utils import (
-    create_monthly_calendar_keyboard,
     delmarkup,
-    create_yearly_calendar_keyboard,
-    create_twenty_year_calendar_keyboard,
-    decode_id,
-    edit_button_data,
     encode_id,
+    decode_id,
+    create_yearly_calendar_keyboard,
+    edit_button_data,
+    create_monthly_calendar_keyboard,
+    create_twenty_year_calendar_keyboard,
 )
 from tgbot.bot_messages import (
     menu_message,
-    search_message,
-    week_event_list_message,
-    trash_can_message,
-    daily_message,
-    notification_message,
-    recurring_events_message,
-    settings_message,
-    start_message,
     help_message,
-    monthly_calendar_message,
+    start_message,
+    event_message,
+    group_message,
+    daily_message,
+    search_message,
     limits_message,
     groups_message,
+    events_message,
     account_message,
-    event_message,
+    settings_message,
+    trash_can_message,
+    select_one_message,
+    about_event_message,
     event_status_message,
+    notification_message,
+    select_events_message,
+    edit_event_date_message,
+    event_show_mode_message,
+    week_event_list_message,
+    recurring_events_message,
+    monthly_calendar_message,
+    edit_events_date_message,
     before_event_delete_message,
     before_events_delete_message,
-    about_event_message,
-    events_message,
-    edit_event_date_message,
-    edit_events_date_message,
-    select_one_message,
-    select_events_message,
-    event_show_mode_message,
-    group_message,
 )
 from tgbot.types import (
     TelegramAccount,
@@ -63,24 +63,26 @@ from tgbot.utils import (
     fetch_forecast,
     is_secure_chat,
     html_to_markdown,
-    extract_search_query,
-    add_group_pattern,
     set_bot_commands,
+    add_group_pattern,
+    extract_search_query,
+    re_user_login_message,
+    re_user_signup_message,
 )
 from todoapi.exceptions import (
     ApiError,
+    WrongDate,
+    TextIsTooBig,
     UserNotFound,
+    StatusRepeats,
     EventNotFound,
     LimitExceeded,
-    TextIsTooBig,
-    WrongDate,
     StatusConflict,
-    StatusLengthExceeded,
-    StatusRepeats,
-    NotEnoughPermissions,
     NotGroupMember,
     NotUniqueEmail,
     NotUniqueUsername,
+    StatusLengthExceeded,
+    NotEnoughPermissions,
 )
 from todoapi.log_cleaner import clear_logs
 from todoapi.types import create_user, get_account_from_password, Cache, set_user_status
@@ -101,29 +103,34 @@ def not_login_handler(x: CallbackQuery | Message) -> None:
         pass
 
     message = x if isinstance(x, Message) else x.message
-
-    if message.text.startswith("/login"):
-        if request.is_member:
-            text = get_translate("errors.forbidden_to_log_account_in_group")
-            return TextMessage(text).reply(message)
-
-        arguments = get_command_arguments(
-            message.text,
-            {"username": "str", "password": "str"},
+    parsed_command = parse_command(message.text, {"arg": "long str"})
+    command_text = parsed_command["command"]
+    button_login = {
+        "switch_inline_query_current_chat": "user.login\nusername: \npassword: "
+    }
+    button_signup = {
+        "switch_inline_query_current_chat": (
+            "user.signup\nemail: \nusername: \npassword: "
         )
-        username, password = arguments["username"], arguments["password"]
+    }
+    markup = generate_buttons(
+        [[{"/login": button_login}], [{"/signup": button_signup}]]
+    )
 
+    def login(username: str, password: str) -> None:
         if not (username and password):
-            TextMessage(get_translate("errors.no_account")).reply(message)
+            TextMessage(get_translate("errors.no_account"), markup).reply(message)
         elif not re_username.match(username):
             TextMessage("Wrong username").reply(message)
         else:
             try:
-                account = get_account_from_password(username, password)
-                set_user_telegram_chat_id(account, message.chat.id)
-            except (ApiError, UserNotFound) as e:
-                print(type(e), e)
-                TextMessage(get_translate("errors.failure")).reply(message)
+                set_user_telegram_chat_id(
+                    get_account_from_password(username, password), message.chat.id
+                )
+            except UserNotFound:
+                TextMessage("Аккаунт не найден").reply(message)
+            except ApiError:
+                TextMessage(get_translate("errors.error")).reply(message)
             else:
                 TextMessage(get_translate("errors.success")).send(message.chat.id)
                 bot.delete_message(message.chat.id, message.message_id)
@@ -131,17 +138,9 @@ def not_login_handler(x: CallbackQuery | Message) -> None:
                 start_message().send(message.chat.id)
                 set_bot_commands()
 
-    elif message.text.startswith("/signup"):
-        if request.is_member:
-            text = get_translate("errors.forbidden_to_log_account_in_group")
-            return TextMessage(text).reply(message)
-
-        email, username, password = get_command_arguments(
-            message.text, {"email": "str", "username": "str", "password": "str"}
-        ).values()
-
+    def signup(email: str, username: str, password: str) -> None:
         if not (email and username and password):
-            TextMessage(get_translate("errors.no_account")).reply(message)
+            TextMessage(get_translate("errors.no_account"), markup).reply(message)
         elif not re_email.match(email):
             TextMessage("Wrong email").reply(message)
         elif not re_username.match(username):
@@ -172,6 +171,39 @@ def not_login_handler(x: CallbackQuery | Message) -> None:
                     start_message().send(message.chat.id)
                     set_bot_commands()
 
+    if command_text == "start":
+        m = markup if request.is_user else None
+        TextMessage(get_translate("messages.start"), m).send(message.chat.id)
+
+    elif command_text == "login":
+        if request.is_member:
+            text = get_translate("errors.forbidden_to_log_account_in_group")
+            return TextMessage(text).reply(message)
+
+        login(
+            *get_command_arguments(
+                message.text,
+                {"username": "str", "password": "str"},
+            ).values()
+        )
+
+    elif command_text == "signup":
+        if request.is_member:
+            text = get_translate("errors.forbidden_to_log_account_in_group")
+            return TextMessage(text).reply(message)
+
+        signup(
+            *get_command_arguments(
+                message.text, {"email": "str", "username": "str", "password": "str"}
+            ).values()
+        )
+
+    elif match := re_user_login_message.findall(message.text):
+        login(*match[0])
+
+    elif match := re_user_signup_message.findall(message.text):
+        signup(*match[0])
+
     elif match := add_group_pattern.match(message.text):
         if request.is_user:
             TextMessage(get_translate("errors.error")).reply(message)
@@ -179,26 +211,25 @@ def not_login_handler(x: CallbackQuery | Message) -> None:
 
         owner_id, group_id = match.group(1), match.group(2)
         try:
-            account = TelegramAccount(x.from_user.id)
+            request.entity = TelegramAccount(x.from_user.id)
         except UserNotFound:
             return TextMessage(get_translate("errors.failure")).reply(message)
 
-        if account.user_id != int(owner_id):
+        if request.entity.user_id != int(owner_id):
             return TextMessage(get_translate("errors.failure")).reply(message)
 
         try:
-            account.set_group_telegram_chat_id(group_id, message.chat.id)
+            request.entity.set_group_telegram_chat_id(group_id, message.chat.id)
         except (NotEnoughPermissions, NotGroupMember):
             return TextMessage(get_translate("errors.failure")).reply(message)
 
         TextMessage(get_translate("errors.success")).reply(message)
-        request.entity = account
         start_message().send(message.chat.id)
         set_bot_commands()
 
     else:
         if request.is_user:
-            TextMessage(get_translate("errors.no_account")).reply(message)
+            TextMessage(get_translate("errors.no_account"), markup).reply(message)
         else:
             TextMessage(get_translate("errors.forbidden_to_log_group")).reply(message)
 
@@ -1071,9 +1102,8 @@ def callback_handler(call: CallbackQuery):
     elif call_prefix == "grcr":  # group create
         cache_create_group("")
         if request.entity.limit.is_exceeded_for_groups(create=True):
-            return CallBackAnswer(get_translate("errors.limit_exceeded")).answer(
-                call_id
-            )
+            text = get_translate("errors.limit_exceeded")
+            return CallBackAnswer(text).answer(call_id)
 
         cache_create_group(str(message_id))
         text = """

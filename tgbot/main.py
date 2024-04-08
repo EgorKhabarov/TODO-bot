@@ -12,46 +12,47 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import CallbackQuery, Message
 
 import config
-from tgbot.dispatcher import process_account
-from tgbot.message_generator import TextMessage
 from tgbot.request import request
-from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.bot import bot, bot_log_info
 from tgbot.buttons_utils import delmarkup
+from tgbot.dispatcher import process_account
+from tgbot.message_generator import TextMessage
 from tgbot.bot_actions import delete_message_action
+from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.utils import (
     poke_link,
+    telegram_log,
     re_edit_message,
     html_to_markdown,
-    re_group_edit_name_message,
-    telegram_log,
+    re_inline_message,
     re_user_edit_name_message,
+    re_group_edit_name_message,
     re_user_edit_password_message,
 )
 from tgbot.handlers import (
+    reply_handler,
     command_handler,
     callback_handler,
-    reply_handler,
-    cache_add_event_date,
     cache_create_group,
+    cache_add_event_date,
 )
 from tgbot.bot_messages import (
-    search_message,
-    send_notifications_messages,
-    confirm_changes_message,
-    groups_message,
     group_message,
+    search_message,
+    groups_message,
     account_message,
+    confirm_changes_message,
+    send_notifications_messages,
 )
 from todoapi.exceptions import (
     LimitExceeded,
-    NotEnoughPermissions,
     GroupNotFound,
     NotGroupMember,
     NotUniqueUsername,
+    NotEnoughPermissions,
 )
-from todoapi.types import db, Cache
 from todoapi.logger import logging
+from todoapi.types import db, Cache
 from todoapi.log_cleaner import clear_logs
 from todoapi.db_creator import create_tables
 from telegram_utils.command_parser import command_regex
@@ -64,12 +65,10 @@ command_regex.set_username(bot.user.username)
 
 
 @bot.message_handler(content_types=["migrate_to_chat_id"], chat_types=["group"])
-@process_account  # TODO сделать чтобы не слал никаких сообщений
 def migrate_chat(message: Message):
     """Миграция chat.id группы в супергруппу"""
     logging.info(
-        f"[{message.chat.id:<10}][{request.entity.user.user_status}] "
-        f"migrate_to_chat_id {message.migrate_to_chat_id}"
+        f"[{message.chat.id:<10}] migrate_to_chat_id {message.migrate_to_chat_id}"
     )
     params = {
         "from_chat_id": message.chat.id,
@@ -127,97 +126,78 @@ def processing_search_message(message: Message):
     generated.send(request.chat_id)
 
 
-@bot.message_handler(func=lambda m: re_edit_message.search(m.text))
+@bot.message_handler(func=lambda m: re_inline_message.match(m.text))
 @process_account
-def processing_edit_event_text_message(message: Message):
-    """
-    Ловит сообщения для изменения событий
-    """
-    telegram_log("send", "edit event text")
-    if confirm_changes_message(message) is None:
-        delete_message_action(message)
+def inline_message_handler(message: Message):
+    message_text = message.text
+    is_private = message.chat.type == "private"
 
-
-@bot.message_handler(
-    func=lambda m: re_group_edit_name_message.search(m.text), chat_types=["private"]
-)
-@process_account
-def processing_group_edit_name_message(message: Message):
-    """
-    Ловит сообщения для изменения имени группы
-    """
-    telegram_log("send", "group edit name")
-    match = re_group_edit_name_message.findall(message.html_text)[0]
-    group_id, message_id, name = match
-    name = name or "GroupName"
-
-    try:
-        request.entity.edit_group_name(html_to_markdown(name), group_id)
-    except NotEnoughPermissions:
-        bot.reply_to(message, get_translate("errors.limit_exceeded"))
-    except (GroupNotFound, NotGroupMember):
-        bot.reply_to(message, get_translate("errors.error"))
-    else:
-        try:
-            group_message(group_id, message_id=message_id).edit(
-                message.chat.id, message_id
-            )
+    if re_edit_message.findall(message_text):
+        telegram_log("send", "edit event text")
+        if confirm_changes_message(message) is None:
             delete_message_action(message)
-        except ApiTelegramException as e:
-            if "Description: Bad Request: message is not modified" in str(e):
-                delete_message_action(message)
 
+    if not is_private:
+        return None
 
-@bot.message_handler(
-    func=lambda m: re_user_edit_name_message.search(m.text), chat_types=["private"]
-)
-@process_account
-def processing_user_edit_username_message(message: Message):
-    telegram_log("send", "user edit name")
-    message_id, name = re_user_edit_name_message.findall(message.html_text)[0]
+    elif match := re_user_edit_name_message.findall(message.html_text):
+        telegram_log("send", "user edit name")
+        message_id, name = match[0]
 
-    try:
-        request.entity.edit_user_username(html_to_markdown(name))
-        request.entity.user.username = html_to_markdown(name)
-    except ValueError:
-        # TODO перевод
-        TextMessage("Неподходящее имя пользователя").reply(message)
-    except NotUniqueUsername:
-        # TODO перевод
-        TextMessage("Это имя пользователя занято").reply(message)
-    else:
-        delete_message_action(message)
         try:
-            account_message(message_id).edit(message.chat.id, message_id)
-        except ApiTelegramException:
-            pass
+            request.entity.edit_user_username(html_to_markdown(name))
+            request.entity.user.username = html_to_markdown(name)
+        except ValueError:
+            # TODO перевод
+            TextMessage("Неподходящее имя пользователя").reply(message)
+        except NotUniqueUsername:
+            # TODO перевод
+            TextMessage("Это имя пользователя занято").reply(message)
+        else:
+            delete_message_action(message)
+            try:
+                account_message(message_id).edit(message.chat.id, message_id)
+            except ApiTelegramException:
+                pass
 
+    elif match := re_user_edit_password_message.findall(message.html_text):
+        telegram_log("send", "user edit password")
+        old_password, new_password = map(html_to_markdown, match[0])
 
-@bot.message_handler(
-    func=lambda m: re_user_edit_password_message.search(m.text), chat_types=["private"]
-)
-@process_account
-def processing_user_edit_password_message(message: Message):
-    telegram_log("send", "user edit password")
-    old_password, new_password = re_user_edit_password_message.findall(
-        message.html_text
-    )[0]
+        try:
+            request.entity.edit_user_password(old_password, new_password)
+        except ValueError:
+            # TODO перевод
+            TextMessage("Пароль слишком лёгкий").reply(message)
+        except NotEnoughPermissions:
+            # TODO перевод
+            TextMessage("Неверный пароль").reply(message)
+        else:
+            text = get_translate("errors.success")
+            markup = generate_buttons([[{get_theme_emoji("del"): "md"}]])
+            TextMessage(text, markup).send(message.chat.id)
+            delete_message_action(message)
 
-    try:
-        request.entity.edit_user_password(
-            html_to_markdown(old_password), html_to_markdown(new_password)
-        )
-    except ValueError:
-        # TODO перевод
-        TextMessage("Пароль слишком лёгкий").reply(message)
-    except NotEnoughPermissions:
-        # TODO перевод
-        TextMessage("Неверный пароль").reply(message)
-    else:
-        text = get_translate("errors.success")
-        markup = generate_buttons([[{get_theme_emoji("del"): "md"}]])
-        TextMessage(text, markup).send(message.chat.id)
-        delete_message_action(message)
+    elif match := re_group_edit_name_message.findall(message.html_text):
+        telegram_log("send", "group edit name")
+        group_id, message_id, name = match[0]
+        name = name or "GroupName"
+
+        try:
+            request.entity.edit_group_name(html_to_markdown(name), group_id)
+        except NotEnoughPermissions:
+            bot.reply_to(message, get_translate("errors.limit_exceeded"))
+        except (GroupNotFound, NotGroupMember):
+            bot.reply_to(message, get_translate("errors.error"))
+        else:
+            try:
+                group_message(group_id, message_id=message_id).edit(
+                    message.chat.id, message_id
+                )
+                delete_message_action(message)
+            except ApiTelegramException as e:
+                if "Description: Bad Request: message is not modified" in str(e):
+                    delete_message_action(message)
 
 
 @bot.message_handler(
@@ -248,19 +228,18 @@ def processing_group_create_message(message: Message):
 
     message_id = cache_create_group()
     name = html_to_markdown(message.html_text)[:32]
+    chat_id = request.entity.request_chat_id
 
     try:
         request.entity.create_group(name)
     except LimitExceeded:
         try:
-            TextMessage(get_translate("errors.limit_exceeded")).send(
-                request.entity.request_chat_id
-            )
+            TextMessage(get_translate("errors.limit_exceeded")).send(chat_id)
         except ApiTelegramException:
             pass
     else:
         try:
-            groups_message().edit(message.chat.id, message_id)
+            groups_message().edit(chat_id, message_id)
             delete_message_action(message)
         except ApiTelegramException as e:
             if "Description: Bad Request: message is not modified" in str(e):

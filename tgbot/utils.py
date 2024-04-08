@@ -29,6 +29,7 @@ from tgbot.time_utils import relatively_string_date
 from todoapi.utils import is_admin_id
 
 
+re_inline_message = re.compile(rf"\A@{re.escape(bot.user.username)} ")
 re_edit_message = re.compile(r"\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)")
 re_group_edit_name_message = re.compile(
     r"(?s)\A@\w{5,32} group\((\w{32}), (\d+)\)\.name(?:\n|\Z)(.*)"
@@ -38,6 +39,12 @@ re_user_edit_name_message = re.compile(
 )
 re_user_edit_password_message = re.compile(
     r"\A@\w{5,32} user\(\)\.password\nold password: ?(.*)\nnew password: ?(.*)\Z"
+)
+re_user_login_message = re.compile(
+    r"\A@\w{5,32} user\.login\nusername: ?(.*)\npassword: ?(.*)\Z"
+)
+re_user_signup_message = re.compile(
+    r"\A@\w{5,32} user\.signup\nemail: ?(.*)\nusername: ?(.*)\npassword: ?(.*)\Z"
 )
 link_sub = re.compile(r"<a href=\"(.+?)\">(.+?)(\n*?)</a>")
 add_group_pattern = re.compile(r"\A/start@\w{5,32} group-(\d+)-([a-z\d]{32})\Z")
@@ -490,8 +497,18 @@ def html_to_markdown(html_text: str) -> str:
         else:
             return f"{url}{m.group(3)}"
 
-    html_text = html.unescape(link_sub.sub(replace_url, html_text))
-    return html_text
+    while "<blockquote>" in html_text or "</blockquote>" in html_text:
+        s, e = html_text.index("<blockquote>"), html_text.index("</blockquote>")
+        ls, le = len("<blockquote>"), len("</blockquote>")
+        html_text = "".join(
+            [
+                html_text[:s],
+                "\n> " + html_text[s + ls : e].replace("\n", "\n> ") + "\n",
+                html_text[e + le :],
+            ]
+        )
+
+    return html.unescape(link_sub.sub(replace_url, html_text))
 
 
 def sqlite_format_date2(_date: str) -> str:

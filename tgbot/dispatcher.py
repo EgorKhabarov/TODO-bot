@@ -91,7 +91,7 @@ def process_account(func):
                         request.entity = None
 
                         if request.is_message:
-                            telegram_log("send", message.text)
+                            telegram_log("send", message.text[:40])
                         else:
                             telegram_log("press", x.data)
 

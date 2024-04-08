@@ -183,18 +183,11 @@ def help_message(path: str = "page 1") -> TextMessage:
 
     if path.startswith("page"):
         text, keyboard = translate
-        for row in keyboard:
-            button = row[0]
-            key = list(button)[0]
-            if button[key] != "mnm":
-                button[key] = "mnh " + button[key]
         # Изменяем последнюю кнопку
         last_button: dict = keyboard[-1][-1]
         k, v = last_button.popitem()
         new_k = (
-            k
-            if not k.startswith("🔙")
-            else get_theme_emoji("back") + k.removeprefix("🔙")
+            get_theme_emoji("back") + k.removeprefix("🔙") if k.startswith("🔙") else k
         )
         last_button[new_k] = v
         markup = generate_buttons(keyboard)

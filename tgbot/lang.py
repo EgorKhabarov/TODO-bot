@@ -503,10 +503,10 @@ reg_date: {}</code></pre>
                     [
                         [{k.ljust(60, ts): v}]
                         for k, v in {
-                            "📄 События": "Events",
-                            "📄 Статусы": "Statuses",
-                            "📄 Лимиты": "Limits",
-                            "📂 Виды сообщений": "page 2",
+                            "📄 События": "mnh Events",
+                            "📄 Статусы": "mnh Statuses",
+                            "📄 Лимиты": "mnh Limits",
+                            "📂 Виды сообщений": "mnh page 2",
                             "🔙": "mnm",
                         }.items()
                     ],
@@ -520,10 +520,10 @@ Buttons with text are marked with a smiley 📄. The button folder is marked wit
                     [
                         [{k.ljust(60, ts): v}]
                         for k, v in {
-                            "📄 Events": "Events",
-                            "📄 Statuses": "Statuses",
-                            "📄 Limits": "Limits",
-                            "📂 Types of messages": "page 2",
+                            "📄 Events": "mnh Events",
+                            "📄 Statuses": "mnh Statuses",
+                            "📄 Limits": "mnh Limits",
+                            "📂 Types of messages": "mnh page 2",
                             "🔙": "mnm",
                         }.items()
                     ],
@@ -538,14 +538,14 @@ Buttons with text are marked with a smiley 📄. The button folder is marked wit
                     [
                         [{k.ljust(60, ts): v}]
                         for k, v in {
-                            "📄 Календарь": "Calendar",
-                            "📄 1 день": "1_day",
-                            "📄 7 дней": "7_days",
-                            "📄 Настройки": "Settings",
-                            "📄 Корзина": "Basket",
-                            "📄 Поиск": "Search",
-                            "📄 Уведомления": "Notifications",
-                            "🔙": "page 1",
+                            "📄 Календарь": "mnh Calendar",
+                            "📄 1 день": "mnh 1_day",
+                            "📄 7 дней": "mnh 7_days",
+                            "📄 Настройки": "mnh Settings",
+                            "📄 Корзина": "mnh Basket",
+                            "📄 Поиск": "mnh Search",
+                            "📄 Уведомления": "mnh Notifications",
+                            "🔙": "mnh page 1",
                         }.items()
                     ],
                 ],
@@ -557,14 +557,14 @@ Select a topic button to read more.
                     [
                         [{k.ljust(60, ts): v}]
                         for k, v in {
-                            "📄 Calendar": "Calendar",
-                            "📄 1 day": "1_day",
-                            "📄 7 days": "7_days",
-                            "📄 Settings": "Settings",
-                            "📄 Basket": "Basket",
-                            "📄 Search": "Search",
-                            "📄 Notifications": "Notifications",
-                            "🔙": "page 1",
+                            "📄 Calendar": "mnh Calendar",
+                            "📄 1 day": "mnh 1_day",
+                            "📄 7 days": "mnh 7_days",
+                            "📄 Settings": "mnh Settings",
+                            "📄 Basket": "mnh Basket",
+                            "📄 Search": "mnh Search",
+                            "📄 Notifications": "mnh Notifications",
+                            "🔙": "mnh page 1",
                         }.items()
                     ],
                 ],
@@ -946,10 +946,12 @@ Visibility <b>{}</b>m""",
         "commands": {
             "not_login": {
                 "ru": [
+                    BotCommand("start", "Старт"),
                     BotCommand("login", "<username> <password>"),
                     BotCommand("signup", "<email> <username> <password>"),
                 ],
                 "en": [
+                    BotCommand("start", "Start"),
                     BotCommand("login", "<username> <password>"),
                     BotCommand("signup", "<email> <username> <password>"),
                 ],
