@@ -169,6 +169,16 @@ class TextMessage:
         )
 
 
+class CallBackAnswer:
+    def __init__(self, text: str):
+        self.text = text
+
+    def answer(
+        self, call_id: int, show_alert: bool | None = None, url: str | None = None
+    ):
+        bot.answer_callback_query(call_id, self.text, show_alert, url)
+
+
 class EventMessage(TextMessage):
     """
     Класс для взаимодействия с одним событием
@@ -491,13 +501,3 @@ SELECT user_id,
 
         self.text = (format_string + ending).strip()
         return self
-
-
-class CallBackAnswer:
-    def __init__(self, text: str):
-        self.text = text
-
-    def answer(
-        self, call_id: int, show_alert: bool | None = None, url: str | None = None
-    ):
-        bot.answer_callback_query(call_id, self.text, show_alert, url)

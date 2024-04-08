@@ -49,8 +49,9 @@ COMMANDS = (
     "signup",
     "logout",
 )
-# Специальный прозрачный символ для заполнения пустого места в кнопках
-ts = chr(10240)  # transparent symbol
 
-__version__ = "08.04.2024"
+ts = chr(10240)  # transparent symbol
+"""Специальный прозрачный символ для заполнения пустого места в кнопках"""
+
+__version__ = "09.04.2024"
 __autor__ = "EgorKhabarov"

@@ -21,7 +21,6 @@ from telebot.types import Message, CallbackQuery, BotCommandScopeChat
 from telebot.apihelper import ApiTelegramException
 
 import config
-from config import ts
 from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.lang import get_translate
@@ -101,7 +100,7 @@ def add_status_effect(text: str, statuses: str) -> str:
         Проверяет строку на комментарий для списков ("🗒") и сортированный список ("🧮").
         Комментарий не будет работать если в статусе стоит язык, в котором это часть синтаксиса.
         """
-        return line == ts or (
+        return line == config.ts or (
             line.startswith("— ")
             or (line.startswith("-- ") and not check_comment_in_status("--"))
             or (line.startswith("## ") and not check_comment_in_status("##"))
@@ -426,7 +425,7 @@ def fetch_forecast(city: str) -> str:
 
         mps = get_translate("text.meters_per_second")
         result += (
-            f"\n{city_time.split()[-1]} {weather_icon}<b>{temp:{ts}>2.0f}°C "
+            f"\n{city_time.split()[-1]} {weather_icon}<b>{temp:{config.ts}>2.0f}°C "
             f"💨{wind_speed:.0f}{mps} {wind_deg_icon}</b> "
             f"<u>{weather_description}</u>."
         )

@@ -821,6 +821,17 @@ SELECT 1
             raise ApiError(e)
 
     def create_event(self, date: str, text: str, status: str = "⬜") -> int:
+        """
+
+        :param date:
+        :param text:
+        :param status:
+        :return: event_id
+        :raise TextIsTooBig: if len(text) >= 3800
+        :raise WrongDate:
+        :raise LimitExceeded:
+        :raise ApiError: sqlite3.Error
+        """
         text_len = len(text)
 
         if text_len >= 3800:

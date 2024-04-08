@@ -3,7 +3,7 @@ from typing import Any, Literal
 # noinspection PyPackageRequirements
 from telebot.types import BotCommand
 
-from config import ts
+import config
 from tgbot.request import request
 
 
@@ -501,7 +501,7 @@ reg_date: {}</code></pre>
 Кнопки с текстом помечаются эмодзи 📄. Папка для кнопок помечается 📁. Вернуться назад из папки можно нажав  🔙.
 """,
                     [
-                        [{k.ljust(60, ts): v}]
+                        [{k.ljust(60, config.ts): v}]
                         for k, v in {
                             "📄 События": "mnh Events",
                             "📄 Статусы": "mnh Statuses",
@@ -518,7 +518,7 @@ Below you can select the topic button to read more.
 Buttons with text are marked with a smiley 📄. The button folder is marked with 📁. You can go back from a folder by pressing 🔙.
 """,
                     [
-                        [{k.ljust(60, ts): v}]
+                        [{k.ljust(60, config.ts): v}]
                         for k, v in {
                             "📄 Events": "mnh Events",
                             "📄 Statuses": "mnh Statuses",
@@ -536,7 +536,7 @@ Buttons with text are marked with a smiley 📄. The button folder is marked wit
 Выберите кнопку с темой, чтобы прочитать подробнее.
 """,
                     [
-                        [{k.ljust(60, ts): v}]
+                        [{k.ljust(60, config.ts): v}]
                         for k, v in {
                             "📄 Календарь": "mnh Calendar",
                             "📄 1 день": "mnh 1_day",
@@ -555,7 +555,7 @@ The bot has different types of messages, each of which has its own characteristi
 Select a topic button to read more.
 """,
                     [
-                        [{k.ljust(60, ts): v}]
+                        [{k.ljust(60, config.ts): v}]
                         for k, v in {
                             "📄 Calendar": "mnh Calendar",
                             "📄 1 day": "mnh 1_day",
