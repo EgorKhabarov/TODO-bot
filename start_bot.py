@@ -1,9 +1,12 @@
 # TODO Убрать если https://github.com/eternnoir/pyTelegramBotAPI/pull/2083 будет добавлен
 from unittest import mock
-from telegram_utils.patch import PathedMessage
+from telegram_utils.patch import PathedMessage, PathedTextQuote
 
 
-with mock.patch("telebot.types.Message", PathedMessage):
+with (
+    mock.patch("telebot.types.Message", PathedMessage),
+    mock.patch("telebot.types.TextQuote", PathedTextQuote),
+):
     from threading import Thread
 
     import config

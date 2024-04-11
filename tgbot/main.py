@@ -45,6 +45,8 @@ from tgbot.bot_messages import (
     send_notifications_messages,
 )
 from todoapi.exceptions import (
+    WrongDate,
+    TextIsTooBig,
     LimitExceeded,
     GroupNotFound,
     NotGroupMember,
@@ -205,6 +207,7 @@ def inline_message_handler(message: Message):
         m.reply_to_message
         and m.reply_to_message.text
         and m.reply_to_message.from_user.id == bot.user.id
+        and not m.quote
     )
 )
 @process_account
@@ -252,7 +255,12 @@ def add_event_handler(message: Message):
     """
     Ловит сообщение если пользователь хочет добавить событие
     """
-    markdown_text = html_to_markdown(message.html_text)
+    html_text = message.html_text
+
+    if message.quote:
+        html_text = f"<blockquote>{message.quote.html_text}</blockquote>\n{html_text}"
+
+    markdown_text = html_to_markdown(html_text).strip()
     telegram_log("send", "add event")
     new_event_date = cache_add_event_date().split(",")[0]
 
@@ -270,11 +278,13 @@ def add_event_handler(message: Message):
         return
 
     # Пытаемся создать событие
-    if request.entity.create_event(new_event_date, markdown_text):
-        delete_message_action(message)
-    else:
+    try:
+        request.entity.create_event(new_event_date, markdown_text)
+    except (TextIsTooBig, WrongDate, LimitExceeded):
         error_translate = get_translate("errors.error")
         bot.reply_to(message, error_translate, reply_markup=delmarkup())
+    else:
+        delete_message_action(message)
 
     cache_add_event_date("")
 

@@ -79,6 +79,7 @@ def add_status_effect(text: str, statuses: str) -> str:
     """
     Добавляем эффекты к событию по статусу
     """
+    statuses_list: list[str] = statuses.split(",")
 
     def check_comment_in_status(comment_string: Literal["##", "//", "--"]) -> bool:
         """
@@ -189,23 +190,21 @@ def add_status_effect(text: str, statuses: str) -> str:
     def format_blockquote(_text: str) -> str:
         return f"<blockquote>{_text}</blockquote>"
 
-    text = html.escape(text)
+    escape_text = html.escape(text)
 
     # Сокращаем несколько подряд переносов строки
-    text = re.sub(r"\n(\n*)\n", "\n\n", text)
+    shortcut_text = re.sub(r"\n(\n*)\n", "\n\n", escape_text)
 
     if ("🔗" in statuses and "⛓" not in statuses) or (
         request.entity.settings.sub_urls
         and ("💻" not in statuses and "⛓" not in statuses)
     ):
-        text = sub_urls(text)
-
-    statuses_list: list[str] = statuses.split(",")
+        shortcut_text = sub_urls(shortcut_text)
 
     if "🗒" in statuses_list:
-        text = format_list(text)
+        shortcut_text = format_list(shortcut_text)
     elif "🧮" in statuses_list:
-        text = format_order_list(text)
+        shortcut_text = format_order_list(shortcut_text)
 
     if "💻" in statuses:
         status = [
@@ -213,14 +212,18 @@ def add_status_effect(text: str, statuses: str) -> str:
             for status in statuses_list
             if status.startswith("💻")
         ][-1]
-        text = format_code_lang(text, status) if status else format_code(text)
+        shortcut_text = (
+            format_code_lang(shortcut_text, status)
+            if status
+            else format_code(shortcut_text)
+        )
     elif "🪞" in statuses_list:
-        text = format_spoiler(text)
+        shortcut_text = format_spoiler(shortcut_text)
 
     if "💬" in statuses:
-        text = format_blockquote(text)
+        shortcut_text = format_blockquote(shortcut_text)
 
-    return text
+    return shortcut_text
 
 
 def rate_limit(

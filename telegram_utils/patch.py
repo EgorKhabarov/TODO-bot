@@ -1,9 +1,9 @@
 import html
 
 # noinspection PyPackageRequirements
-from telebot.types import Message
+from telebot.types import Message, TextQuote
 
-# from todoapi.utils import html_to_markdown
+from tgbot.utils import html_to_markdown
 
 
 class PathedMessage(Message):
@@ -21,10 +21,23 @@ class PathedMessage(Message):
             else html.escape(raw_html_caption, False)
         )
 
-    # @property
-    # def markdown_text(self):
-    #     return html_to_markdown(self.html_text)
+    @property
+    def markdown_text(self):
+        return html_to_markdown(self.html_text)
 
-    # @property
-    # def markdown_caption(self):
-    #     return html_to_markdown(self.html_caption)
+    @property
+    def markdown_caption(self):
+        return html_to_markdown(self.html_caption)
+
+class PathedTextQuote(TextQuote):
+    @property
+    def html_text(self):
+        return (
+            Message._Message__html_text(self, self.text, self.entities)  # noqa
+            if self.entities
+            else html.escape(self.text, False)
+        )
+
+    @property
+    def markdown_text(self):
+        return html_to_markdown(self.html_text)

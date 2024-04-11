@@ -470,19 +470,20 @@ def confirm_changes_message(message: Message) -> None | int:
 
     Возвращает 1 если есть ошибка.
     """
-    markdown_text = html_to_markdown(message.html_text)
-    event_id, message_id = map(int, re_edit_message.findall(markdown_text)[0])
+    event_id, message_id, html_text = re_edit_message.findall(message.html_text)[0]
+    event_id, message_id = int(event_id), int(message_id)
     generated = EventMessage(event_id)
     event = generated.event
 
     if not event:
         return 1  # Этого события нет
 
-    text = markdown_text.split("\n", maxsplit=1)[-1].strip("\n")
-    # Убираем @bot_username из начала текста remove_html_escaping
-    edit_text = markdown_text.split(maxsplit=1)[-1]
+    if message.quote:
+        html_text = f"<blockquote>{message.quote.html_text}</blockquote>\n{html_text}"
 
-    if len(message.text.split("\n")) == 1:
+    markdown_text = html_to_markdown(html_text).strip()
+
+    if not markdown_text:
         try:
             before_event_delete_message(event_id).edit(request.chat_id, message_id)
             delete_message_action(message)
@@ -493,19 +494,19 @@ def confirm_changes_message(message: Message) -> None | int:
         return 1
 
     # Уменьшится ли длинна события
-    new_event_len = len(text)
-    len_old_event = len(event.text)
-    tag_len_max = new_event_len > 3800
-    tag_len_less = len_old_event > new_event_len
+    new_event_len, len_old_event = len(markdown_text), len(event.text)
+    tag_max_len_exceeded = new_event_len > 3800
 
     # Вычисляем сколько символов добавил пользователь. Если символов стало меньше, то 0.
+    tag_len_less = len_old_event > new_event_len
     added_length = 0 if tag_len_less else new_event_len - len_old_event
+
     tag_limit_exceeded = request.entity.limit.is_exceeded_for_events(
         date=event.date, symbol_count=added_length
     )
 
-    if tag_len_max or tag_limit_exceeded:
-        if tag_len_max:
+    if tag_max_len_exceeded or tag_limit_exceeded:
+        if tag_max_len_exceeded:
             translate = get_translate("errors.message_is_too_long")
         else:
             translate = get_translate("errors.exceeded_limit")
@@ -514,8 +515,11 @@ def confirm_changes_message(message: Message) -> None | int:
             [
                 [
                     {
-                        f"{event_id} {text[:20]}".ljust(60, "⠀"): {
-                            "switch_inline_query_current_chat": edit_text
+                        f"{event_id} {markdown_text[:20]}".ljust(60, "⠀"): {
+                            "switch_inline_query_current_chat": (
+                                f"event({event_id}, {message_id}).text\n"
+                                f"{markdown_text}"
+                            )
                         }
                     },
                     {get_theme_emoji("del"): "md"},
@@ -524,9 +528,8 @@ def confirm_changes_message(message: Message) -> None | int:
         )
         return TextMessage(translate, markup).reply(message)
 
-    text_diff = highlight_text_difference(html.escape(event.text), html.escape(text))
+    text_diff = highlight_text_difference(html.escape(event.text), html.escape(markdown_text))
     # Находим пересечения выделений изменений и html экранирования
-    # Костыль для исправления старого экранирования
     # На случай если в базе данных окажется html экранированный текст
     text_diff = re.sub(
         r"&(<(/?)u>)(lt|gt|quot|#39);",
@@ -542,7 +545,14 @@ def confirm_changes_message(message: Message) -> None | int:
         [
             [
                 {get_theme_emoji("back"): f"em {event.event_id}"},
-                {"📝": {"switch_inline_query_current_chat": edit_text}},
+                {
+                    "📝": {
+                        "switch_inline_query_current_chat": (
+                            f"event({event_id}, {message_id}).text\n"
+                            f"{markdown_text}"
+                        )
+                    }
+                },
                 {"💾": f"eet {event.event_id} {event.date}"},
             ]
         ]
