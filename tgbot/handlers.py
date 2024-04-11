@@ -32,6 +32,7 @@ from tgbot.bot_messages import (
     event_message,
     group_message,
     daily_message,
+    event_history,
     search_message,
     limits_message,
     groups_message,
@@ -466,6 +467,7 @@ def callback_handler(call: CallbackQuery):
         try:
             daily_message(date).edit(chat_id, message_id)
         except ApiTelegramException:
+            logging.error(traceback.format_exc())
             CallBackAnswer("ok").answer(call_id, True)
 
     elif call_prefix == "em":  # event message
@@ -537,6 +539,7 @@ def callback_handler(call: CallbackQuery):
         except StatusRepeats:
             text = get_translate("errors.status_already_posted")
         except ApiError:
+            logging.error(traceback.format_exc())
             text = get_translate("errors.error")
         else:
             if status == "⬜":
@@ -633,12 +636,14 @@ def callback_handler(call: CallbackQuery):
 
         daily_message(date).edit(chat_id, message_id)
 
-    elif call_prefix in ("eab", "esh"):  # event about, event show
-        event_id, date = args_func({"event_id": "int", "date": "date"}).values()
+    elif call_prefix in ("eab", "esh", "eh"):  # event about, event show, event history
+        event_id, date, page = args_func({"event_id": "int", "date": "date", "page": ("int", 1)}).values()
         if call_prefix == "eab":
             generated = about_event_message(event_id)
-        else:
+        elif call_prefix == "esh":
             generated = event_show_mode_message(event_id)
+        else:
+            generated = event_history(event_id, date, page)
         if generated is None:
             generated = daily_message(date)
         generated.edit(chat_id, message_id)
@@ -817,13 +822,12 @@ def callback_handler(call: CallbackQuery):
 
     elif call_prefix == "ps":  # page search
         page, id_list = args_func({"page": ("str", 0), "id_list": ("str", "")}).values()
-        query = extract_search_query(message.text)
         markup = message.reply_markup if page else None
         if markup:
             edit_button_data(markup, 0, 2, f"se os {id_list} us")
             edit_button_data(markup, 0, 3, f"ses s {id_list} us")
         try:
-            search_message(query, decode_id(id_list), page).edit(
+            search_message(extract_search_query(message.html_text), decode_id(id_list), page).edit(
                 chat_id, message_id, markup=markup
             )
         except ApiTelegramException:
@@ -936,7 +940,7 @@ def callback_handler(call: CallbackQuery):
             CallBackAnswer(get_translate("errors.invalid_date")).answer(call_id)
 
     elif call_prefix == "us":  # update search
-        query = html_to_markdown(extract_search_query(message.text))
+        query = html_to_markdown(extract_search_query(message.html_text))
         try:
             search_message(query).edit(chat_id, message_id)
         except ApiTelegramException:

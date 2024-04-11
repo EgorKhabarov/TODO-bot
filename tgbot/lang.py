@@ -284,6 +284,10 @@ Call up new messages using bot commands.</b>
             "ru": "Информация о событии",
             "en": "Information about event",
         },
+        "event_history": {
+            "ru": "История события",
+            "en": "Event history",
+        },
         "clean_bin": {
             "ru": "Очистить корзину",
             "en": "Clear basket",

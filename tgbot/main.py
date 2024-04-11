@@ -131,10 +131,9 @@ def processing_search_message(message: Message):
 @bot.message_handler(func=lambda m: re_inline_message.match(m.text))
 @process_account
 def inline_message_handler(message: Message):
-    message_text = message.text
     is_private = message.chat.type == "private"
 
-    if re_edit_message.findall(message_text):
+    if re_edit_message.findall(message.text):
         telegram_log("send", "edit event text")
         if confirm_changes_message(message) is None:
             delete_message_action(message)
@@ -258,9 +257,12 @@ def add_event_handler(message: Message):
     html_text = message.html_text
 
     if message.quote:
-        html_text = f"<blockquote>{message.quote.html_text}</blockquote>\n{html_text}"
+        html_text = f"""
+<blockquote>{message.quote.html_text}</blockquote>
+{html_text}
+"""
 
-    markdown_text = html_to_markdown(html_text).strip()
+    markdown_text = html_to_markdown(html_text.strip())
     telegram_log("send", "add event")
     new_event_date = cache_add_event_date().split(",")[0]
 

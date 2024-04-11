@@ -347,14 +347,18 @@ def event_message(
                 {"🗑": f"ebd {event_id} {event.date}"},
             ],
             [
-                {"📜": f"esh {event_id} {event.date}"},
-                # {f"🖼 {add_media}": "None"},
-                {" ": "None"},
+                {"📋": f"esh {event_id} {event.date}"},
+                {"*️⃣": "None"},
                 {"📅": f"esdt {event_id} {event.date}"},
             ],
             [
-                {get_theme_emoji("back"): f"dl {event.date}"},
                 {"ℹ️": f"eab {event_id} {event.date}"},
+                {"🗄": f"eh {event_id} {event.date}"},
+                {f"🖼": "None"},
+            ],
+            [
+                {get_theme_emoji("back"): f"dl {event.date}"},
+                {"❓": "None"},
                 {"🔄": f"em {event_id}"},
             ],
         ]
@@ -460,6 +464,45 @@ def event_show_mode_message(event_id: int) -> EventMessage | None:
         "",
         event_formats["s"],
         generate_buttons([[{get_theme_emoji("back"): f"em {event_id}"}]]),
+    )
+    return generated
+
+
+def event_history(event_id: int, date: datetime, page: int = 1) -> EventMessage | None:
+    generated = EventMessage(event_id)
+    event = generated.event
+    if not event:
+        return None
+
+    text = "\n\n".join(
+        f"""
+[<u>{time}] <b>{action}</b></u>
+{formatting.hpre(str(old_val)[:50].strip(), language='language-old')}
+{formatting.hpre(str(new_val)[:50].strip(), language='language-new')}
+""".strip()
+        for action, (old_val, new_val), time in event.history[::-1][(page-1)*4:(page-1)*4+4]
+    )
+    event.text = text.strip()
+    markup = generate_buttons(
+        [
+            [
+                {"<": f"eh {event_id} {date:%d.%m.%Y} {page - 1}"}
+                if page > 1 and event.history[::-1][:(page-1)*4]
+                else {" ": "None"},
+                {">": f"eh {event_id} {date:%d.%m.%Y} {page + 1}"}
+                if event.history[::-1][(page-1)*4+4:]
+                else {" ": "None"},
+            ],
+            [
+                {get_theme_emoji("back"): f"em {event_id}"},
+                {"🔄": f"eh {event_id} {date:%d.%m.%Y}"},
+            ],
+        ]
+    )
+    generated.format(
+        f"{get_translate('text.event_history')}:",
+        event_formats["a"],
+        markup,
     )
     return generated
 

@@ -149,18 +149,59 @@ END;
 
 -- Триггер обновления времени последнего изменения события
 CREATE TRIGGER IF NOT EXISTS trigger_recent_changes_time_event
-AFTER UPDATE OF date, text, status ON events FOR EACH ROW
+AFTER UPDATE OF date, text, status, removal_time ON events FOR EACH ROW
 BEGIN
     UPDATE events
-       SET recent_changes_time = DATETIME()
-     WHERE event_id = NEW.event_id;
+       SET recent_changes_time = DATETIME(),
+           history = CASE
+               WHEN OLD.date != NEW.date
+               THEN JSON_INSERT(history, '$[#]', JSON_ARRAY('date', JSON_ARRAY(OLD.date, NEW.date), DATETIME()))
+
+               WHEN OLD.text != NEW.text
+               THEN JSON_INSERT(history, '$[#]', JSON_ARRAY('text', JSON_ARRAY(OLD.text, NEW.text), DATETIME()))
+
+               WHEN OLD.status != NEW.status
+               THEN JSON_INSERT(history, '$[#]', JSON_ARRAY('status', JSON_ARRAY(OLD.status, NEW.status), DATETIME()))
+
+               WHEN OLD.removal_time IS NOT NEW.removal_time AND NEW.removal_time IS NOT NULL
+               THEN JSON_INSERT(history, '$[#]', JSON_ARRAY('delete', JSON_ARRAY(OLD.removal_time, NEW.removal_time), DATETIME()))
+
+               WHEN OLD.removal_time IS NOT NEW.removal_time AND NEW.removal_time IS NULL
+               THEN JSON_INSERT(history, '$[#]', JSON_ARRAY('recover', JSON_ARRAY(OLD.removal_time, NEW.removal_time), DATETIME()))
+
+               ELSE history
+           END
+     WHERE event_id = NEW.event_id
+           AND user_id IS OLD.user_id
+           AND group_id IS OLD.group_id;
+
+    UPDATE events
+       SET history = JSON_ARRAY(
+               JSON_EXTRACT(history, '$[#-10]'),
+               JSON_EXTRACT(history, '$[#-9]'),
+               JSON_EXTRACT(history, '$[#-8]'),
+               JSON_EXTRACT(history, '$[#-7]'),
+               JSON_EXTRACT(history, '$[#-6]'),
+               JSON_EXTRACT(history, '$[#-5]'),
+               JSON_EXTRACT(history, '$[#-4]'),
+               JSON_EXTRACT(history, '$[#-3]'),
+               JSON_EXTRACT(history, '$[#-2]'),
+               JSON_EXTRACT(history, '$[#-1]')
+           )
+     WHERE event_id = NEW.event_id
+           AND user_id IS OLD.user_id
+           AND group_id IS OLD.group_id
+           AND JSON_ARRAY_LENGTH(history) > 10;
 END;
 
 -- При удалении события, удаляем медиа принадлежащие этому событию.
 CREATE TRIGGER IF NOT EXISTS trigger_delete_event_media
 AFTER DELETE ON events FOR EACH ROW
 BEGIN
-    DELETE FROM media WHERE event_id = OLD.event_id;
+    DELETE FROM media
+          WHERE event_id = OLD.event_id
+                AND user_id IS OLD.user_id
+                AND group_id IS OLD.group_id;
 END;
 
 
@@ -195,7 +236,7 @@ BEFORE UPDATE OF chat_id ON users FOR EACH ROW
 WHEN OLD.chat_id IS NULL
 BEGIN
     INSERT OR IGNORE INTO tg_settings (user_id)
-         VALUES (NEW.user_id);
+                               VALUES (NEW.user_id);
 END;
 
 -- При добавлении chat_id в groups то добавляет удаляет запись в tg_settings
@@ -204,7 +245,7 @@ AFTER UPDATE OF chat_id ON groups FOR EACH ROW
 WHEN OLD.chat_id IS NULL
 BEGIN
     INSERT OR IGNORE INTO tg_settings (group_id)
-         VALUES (NEW.group_id);
+                               VALUES (NEW.group_id);
 END;
 
 -- индекс
