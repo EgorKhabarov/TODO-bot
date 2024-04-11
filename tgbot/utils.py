@@ -29,7 +29,7 @@ from todoapi.utils import is_admin_id
 
 
 re_inline_message = re.compile(rf"\A@{re.escape(bot.user.username)} ")
-re_edit_message = re.compile(r"\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)")
+re_edit_message = re.compile(r"(?s)\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)(.*)")
 re_group_edit_name_message = re.compile(
     r"(?s)\A@\w{5,32} group\((\w{32}), (\d+)\)\.name(?:\n|\Z)(.*)"
 )
