@@ -29,6 +29,7 @@ class PathedMessage(Message):
     def markdown_caption(self):
         return html_to_markdown(self.html_caption)
 
+
 class PathedTextQuote(TextQuote):
     @property
     def html_text(self):

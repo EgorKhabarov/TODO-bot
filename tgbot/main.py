@@ -149,11 +149,9 @@ def inline_message_handler(message: Message):
             request.entity.edit_user_username(html_to_markdown(name))
             request.entity.user.username = html_to_markdown(name)
         except ValueError:
-            # TODO перевод
-            TextMessage("Неподходящее имя пользователя").reply(message)
+            TextMessage(get_translate("errors.wrong_username")).reply(message)
         except NotUniqueUsername:
-            # TODO перевод
-            TextMessage("Это имя пользователя занято").reply(message)
+            TextMessage(get_translate("errors.username_is_taken")).reply(message)
         else:
             delete_message_action(message)
             try:
@@ -168,11 +166,9 @@ def inline_message_handler(message: Message):
         try:
             request.entity.edit_user_password(old_password, new_password)
         except ValueError:
-            # TODO перевод
-            TextMessage("Пароль слишком лёгкий").reply(message)
+            TextMessage(get_translate("errors.password_too_easy")).reply(message)
         except NotEnoughPermissions:
-            # TODO перевод
-            TextMessage("Неверный пароль").reply(message)
+            TextMessage(get_translate("errors.incorrect_password")).reply(message)
         else:
             text = get_translate("errors.success")
             markup = generate_buttons([[{get_theme_emoji("del"): "md"}]])

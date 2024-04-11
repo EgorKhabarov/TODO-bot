@@ -1,4 +1,5 @@
 # TODO Убрать если https://github.com/eternnoir/pyTelegramBotAPI/pull/2083 будет добавлен
+# TODO Убрать если https://github.com/eternnoir/pyTelegramBotAPI/pull/2222 будет добавлен
 from unittest import mock
 from telegram_utils.patch import PathedMessage, PathedTextQuote
 

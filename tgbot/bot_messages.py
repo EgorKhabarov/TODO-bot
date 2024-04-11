@@ -354,11 +354,11 @@ def event_message(
             [
                 {"ℹ️": f"eab {event_id} {event.date}"},
                 {"🗄": f"eh {event_id} {event.date}"},
-                {f"🖼": "None"},
+                {"🖼": "None"},
             ],
             [
                 {get_theme_emoji("back"): f"dl {event.date}"},
-                {"❓": "None"},
+                {" ": "None"},
                 {"🔄": f"em {event_id}"},
             ],
         ]
@@ -440,14 +440,17 @@ def about_event_message(event_id: int) -> EventMessage | None:
     if not event:
         return None
 
+    title, text_length, time_added, time_last_changes = get_translate(
+        "text.event_about_info"
+    )
     text = f"""
-{len(event.text)} - длинна текста
-{parse_utc_datetime(event.adding_time)} - время добавления
-{parse_utc_datetime(event.recent_changes_time)} - время последних изменений
+{len(event.text)} - {text_length}
+{parse_utc_datetime(event.adding_time)} - {time_added}
+{parse_utc_datetime(event.recent_changes_time)} - {time_last_changes}
 """
     event.text = formatting.hpre(text.strip(), language="language-event-metadata")
     generated.format(
-        f"{get_translate('text.event_about_info')}:",
+        f"{title}:",
         event_formats["a"],
         generate_buttons([[{get_theme_emoji("back"): f"em {event_id}"}]]),
     )
@@ -480,17 +483,19 @@ def event_history(event_id: int, date: datetime, page: int = 1) -> EventMessage 
 {formatting.hpre(str(old_val)[:50].strip(), language='language-old')}
 {formatting.hpre(str(new_val)[:50].strip(), language='language-new')}
 """.strip()
-        for action, (old_val, new_val), time in event.history[::-1][(page-1)*4:(page-1)*4+4]
+        for action, (old_val, new_val), time in event.history[::-1][
+            (page - 1) * 4 : (page - 1) * 4 + 4
+        ]
     )
     event.text = text.strip()
     markup = generate_buttons(
         [
             [
                 {"<": f"eh {event_id} {date:%d.%m.%Y} {page - 1}"}
-                if page > 1 and event.history[::-1][:(page-1)*4]
+                if page > 1 and event.history[::-1][: (page - 1) * 4]
                 else {" ": "None"},
                 {">": f"eh {event_id} {date:%d.%m.%Y} {page + 1}"}
-                if event.history[::-1][(page-1)*4+4:]
+                if event.history[::-1][(page - 1) * 4 + 4 :]
                 else {" ": "None"},
             ],
             [
@@ -571,7 +576,9 @@ def confirm_changes_message(message: Message) -> None | int:
         )
         return TextMessage(translate, markup).reply(message)
 
-    text_diff = highlight_text_difference(html.escape(event.text), html.escape(markdown_text))
+    text_diff = highlight_text_difference(
+        html.escape(event.text), html.escape(markdown_text)
+    )
     # Находим пересечения выделений изменений и html экранирования
     # На случай если в базе данных окажется html экранированный текст
     text_diff = re.sub(
@@ -591,8 +598,7 @@ def confirm_changes_message(message: Message) -> None | int:
                 {
                     "📝": {
                         "switch_inline_query_current_chat": (
-                            f"event({event_id}, {message_id}).text\n"
-                            f"{markdown_text}"
+                            f"event({event_id}, {message_id}).text\n{markdown_text}"
                         )
                     }
                 },

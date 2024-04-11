@@ -281,8 +281,18 @@ Call up new messages using bot commands.</b>
             "en": "Changes saved",
         },
         "event_about_info": {
-            "ru": "Информация о событии",
-            "en": "Information about event",
+            "ru": (
+                "Информация о событии",
+                "длинна текста",
+                "время добавления",
+                "время последних изменений",
+            ),
+            "en": (
+                "Information about event",
+                "text length",
+                "time added",
+                "time of last changes",
+            ),
         },
         "event_history": {
             "ru": "История события",
@@ -580,6 +590,17 @@ Select a topic button to read more.
 Событие - это текстовая заметка на определенную дату. Каждое событие помечается уникальным номером (id) и может иметь свой статус. По умолчанию статус устанавливается как "⬜". Статус можно изменить с помощью кнопки "🏷" в сообщении на день.
 
 В сообщении на день есть кнопки для изменения или удаления событий. Если событий в сообщении несколько, то такие кнопки предлагают выбрать конкретное. <b>Если событие одно, то кнопки сразу выбирают его.</b>
+
+Вот обозначения кнопок в сообщении для одного события:
+📝 - Редактировать текст
+🏷 - Изменить теги
+🗑 - Удалить
+📋 - Просмотр в аккуратном виде
+*️⃣ - 
+📅 - Изменить дату
+ℹ️ - Просмотр информации
+🗄 - Просмотр истории изменений
+🖼 - 
 """,
                 "en": """
 <u><b>Events</b></u>
@@ -587,6 +608,17 @@ Select a topic button to read more.
 An event is a textual note for a specific date. Each event is marked with a unique identifier (id) and can have its own status. By default, the status is set to "⬜". The status can be changed using the "🏷" button in the message for a day.
 
 The message for the day has buttons for changing or deleting events. If there are several events in the message, then such buttons offer to select a specific one. <b>If there is only one event, then the buttons select it immediately.</b>
+
+Here are the button labels in the message for one event:
+📝 - Edit text
+🏷 - Change tags
+🗑 - Delete
+📋 - View neatly
+*️⃣ -
+📅 - Change date
+ℹ️ - View information
+🗄 - View change history
+🖼 - 
 """,
             },
             "Statuses": {
@@ -1463,13 +1495,45 @@ Visibility <b>{}</b>m""",
             "ru": "Неудача",
             "en": "Failure",
         },
-        "not_unique_email": {
-            "ru": "Не уникальный адрес электронной почты",
-            "en": "Not unique email",
+        "email_is_taken": {
+            "ru": "Этот адрес электронной почты уже занят",
+            "en": "This email is already taken",
         },
-        "not_unique_username": {
-            "ru": "Не уникальное имя пользователя",
-            "en": "Not unique username",
+        "wrong_username": {
+            "ru": """
+Неверное имя пользователя
+Длина от 4 до 31 символов.
+Только латинские буквы, цифры и подчёркивания.
+Не начинать с цифры.
+Не использовать подряд два подчёркивания.
+""",
+            "en": """
+Wrong username
+Length from 4 to 31 characters.
+Use only Latin letters, numbers, and underscores.
+Cannot start with a number.
+Cannot have two underscores in a row.
+""",
+        },
+        "wrong_email": {
+            "ru": "Неправильный адрес электронной почты",
+            "en": "Wrong email",
+        },
+        "incorrect_password": {
+            "ru": "Неверный пароль",
+            "en": "Incorrect password",
+        },
+        "password_too_easy": {
+            "ru": "Пароль слишком лёгкий",
+            "en": "The password is too easy",
+        },
+        "username_is_taken": {
+            "ru": "Это имя пользователя занято",
+            "en": "This username is taken",
+        },
+        "account_not_found": {
+            "ru": "Аккаунт не найден",
+            "en": "Account not found",
         },
         "not_enough_permissions": {
             "ru": "Недостаточно полномочий",

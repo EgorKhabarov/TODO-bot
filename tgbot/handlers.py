@@ -122,14 +122,14 @@ def not_login_handler(x: CallbackQuery | Message) -> None:
         if not (username and password):
             TextMessage(get_translate("errors.no_account"), markup).reply(message)
         elif not re_username.match(username):
-            TextMessage("Wrong username").reply(message)
+            TextMessage(get_translate("errors.wrong_username")).reply(message)
         else:
             try:
                 set_user_telegram_chat_id(
                     get_account_from_password(username, password), message.chat.id
                 )
             except UserNotFound:
-                TextMessage("Аккаунт не найден").reply(message)
+                TextMessage(get_translate("errors.account_not_found")).reply(message)
             except ApiError:
                 TextMessage(get_translate("errors.error")).reply(message)
             else:
@@ -143,16 +143,16 @@ def not_login_handler(x: CallbackQuery | Message) -> None:
         if not (email and username and password):
             TextMessage(get_translate("errors.no_account"), markup).reply(message)
         elif not re_email.match(email):
-            TextMessage("Wrong email").reply(message)
+            TextMessage(get_translate("errors.wrong_email")).reply(message)
         elif not re_username.match(username):
-            TextMessage("Wrong username").reply(message)
+            TextMessage(get_translate("errors.wrong_username")).reply(message)
         else:
             try:
                 create_user(email, username, password)
             except NotUniqueEmail:
-                TextMessage(get_translate("errors.not_unique_email")).reply(message)
+                TextMessage(get_translate("errors.email_is_taken")).reply(message)
             except NotUniqueUsername:
-                TextMessage(get_translate("errors.not_unique_username")).reply(message)
+                TextMessage(get_translate("errors.username_is_taken")).reply(message)
             except ApiError as e:
                 print(e)
                 TextMessage(get_translate("errors.failure")).reply(message)
@@ -637,7 +637,9 @@ def callback_handler(call: CallbackQuery):
         daily_message(date).edit(chat_id, message_id)
 
     elif call_prefix in ("eab", "esh", "eh"):  # event about, event show, event history
-        event_id, date, page = args_func({"event_id": "int", "date": "date", "page": ("int", 1)}).values()
+        event_id, date, page = args_func(
+            {"event_id": "int", "date": "date", "page": ("int", 1)}
+        ).values()
         if call_prefix == "eab":
             generated = about_event_message(event_id)
         elif call_prefix == "esh":
@@ -827,9 +829,9 @@ def callback_handler(call: CallbackQuery):
             edit_button_data(markup, 0, 2, f"se os {id_list} us")
             edit_button_data(markup, 0, 3, f"ses s {id_list} us")
         try:
-            search_message(extract_search_query(message.html_text), decode_id(id_list), page).edit(
-                chat_id, message_id, markup=markup
-            )
+            search_message(
+                extract_search_query(message.html_text), decode_id(id_list), page
+            ).edit(chat_id, message_id, markup=markup)
         except ApiTelegramException:
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
