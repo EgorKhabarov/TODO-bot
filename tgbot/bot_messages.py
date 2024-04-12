@@ -479,7 +479,7 @@ def event_history(event_id: int, date: datetime, page: int = 1) -> EventMessage 
 
     text = "\n\n".join(
         f"""
-[<u>{time}] <b>{action}</b></u>
+[<u>{parse_utc_datetime(time)}] <b>{action}</b></u>
 {formatting.hpre(str(old_val)[:50].strip(), language='language-old')}
 {formatting.hpre(str(new_val)[:50].strip(), language='language-new')}
 """.strip()

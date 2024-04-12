@@ -245,19 +245,22 @@ def command_handler(message: Message) -> None:
     parsed_command = parse_command(message_text, {"arg": "long str"})
     command_text = parsed_command["command"]
 
-    if command_text == "menu":
-        menu_message().send(chat_id)
-
-    elif command_text == "calendar":
-        monthly_calendar_message(None, "dl", "mnm").send(chat_id)
-
-    elif command_text == "start":
+    if command_text == "start":
         if add_group_pattern.match(message.text) and request.is_member:
             TextMessage(get_translate("errors.already_connected_group")).reply(message)
             return
 
         set_bot_commands()
         start_message().send(chat_id)
+
+    elif command_text == "menu":
+        menu_message().send(chat_id)
+
+    elif command_text == "calendar":
+        monthly_calendar_message(None, "dl", "mnm").send(chat_id)
+
+    elif command_text == "today":
+        daily_message(request.entity.now_time()).send(chat_id)
 
     elif command_text == "week_event_list":
         week_event_list_message().send(chat_id)
@@ -267,9 +270,6 @@ def command_handler(message: Message) -> None:
 
     elif command_text == "settings":
         settings_message().send(chat_id)
-
-    elif command_text == "today":
-        daily_message(request.entity.now_time()).send(chat_id)
 
     elif command_text == "version":
         TextMessage(f"Version {__version__}").send(chat_id)
@@ -594,11 +594,6 @@ def callback_handler(call: CallbackQuery):
             return
         CallBackAnswer(text).answer(call_id, True)
 
-    elif call_prefix == "esdt":  # event select new date
-        event_id, date = args_func({"event_id": "int", "date": "date"}).values()
-        generated = edit_event_date_message(event_id, date) or daily_message(date)
-        generated.edit(chat_id, message_id)
-
     elif call_prefix == "eds":  # event new date set
         event_id, date = args_func({"event_id": "int", "date": "date"}).values()
         try:
@@ -610,11 +605,6 @@ def callback_handler(call: CallbackQuery):
         else:
             CallBackAnswer(get_translate("text.changes_saved")).answer(call_id)
             event_message(event_id, False, message_id).edit(chat_id, message_id)
-
-    elif call_prefix == "ebd":  # event before delete
-        event_id, date = args_func({"event_id": "int", "date": "date"}).values()
-        generated = before_event_delete_message(event_id) or daily_message(date)
-        generated.edit(chat_id, message_id)
 
     elif call_prefix == "ed":  # event delete
         event_id, date = args_func({"event_id": "int", "date": "date"}).values()
@@ -636,16 +626,29 @@ def callback_handler(call: CallbackQuery):
 
         daily_message(date).edit(chat_id, message_id)
 
-    elif call_prefix in ("eab", "esh", "eh"):  # event about, event show, event history
+    elif call_prefix in ("esdt", "ebd", "eab", "esh", "eh"):
+        """
+event select new date
+event before delete
+event about
+event show
+event history
+        """
         event_id, date, page = args_func(
             {"event_id": "int", "date": "date", "page": ("int", 1)}
         ).values()
-        if call_prefix == "eab":
+
+        if call_prefix == "esdt":
+            generated = edit_event_date_message(event_id, date)
+        elif call_prefix == "ebd":
+            generated = before_event_delete_message(event_id)
+        elif call_prefix == "eab":
             generated = about_event_message(event_id)
         elif call_prefix == "esh":
             generated = event_show_mode_message(event_id)
         else:
             generated = event_history(event_id, date, page)
+
         if generated is None:
             generated = daily_message(date)
         generated.edit(chat_id, message_id)

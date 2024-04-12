@@ -10,13 +10,13 @@ from telebot.apihelper import ApiTelegramException
 
 from cachetools import LRUCache
 from tgbot.lang import get_translate
+from tgbot.utils import telegram_log
 from tgbot.types import TelegramAccount
 from tgbot.handlers import not_login_handler
-from tgbot.utils import rate_limit, telegram_log
 from tgbot.request import request, EntityType, QueryType
 from tgbot.message_generator import CallBackAnswer, TextMessage
 from todoapi.types import db
-from todoapi.utils import is_admin_id
+from todoapi.utils import is_admin_id, rate_limit
 from todoapi.exceptions import UserNotFound, GroupNotFound, ApiError
 from telegram_utils.command_parser import command_regex
 

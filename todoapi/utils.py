@@ -1,5 +1,11 @@
 import re
+from time import time
 from hashlib import sha256
+from functools import wraps
+from typing import Callable
+
+from cachetools import LRUCache
+from cachetools.keys import hashkey
 
 import config
 
@@ -59,3 +65,32 @@ def chunks(lst, n):
 
 def hash_password(password: str):
     return sha256(password.encode("utf-8")).hexdigest()
+
+
+def rate_limit(
+    storage: LRUCache,
+    max_calls: int,
+    seconds: int,
+    key_func: Callable = hashkey,
+    else_func: Callable = lambda args, kwargs, key, sec: (key, sec),
+):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            key = key_func(*args, **kwargs)
+            contains = key in storage
+            t = time()
+
+            if contains:
+                storage[key] = [call for call in storage[key] if t - call < seconds]
+
+                if len(storage[key]) >= max_calls:
+                    sec = seconds - int(t - storage[key][0])
+                    return else_func(args, kwargs, key=key, sec=sec)
+
+            storage.setdefault(key, []).append(t)
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator

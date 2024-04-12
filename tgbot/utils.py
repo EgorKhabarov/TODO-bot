@@ -2,14 +2,11 @@ import re
 import html
 import difflib
 import logging
-from time import time
-from functools import wraps
 from urllib.parse import urlparse
-from typing import Literal, Callable
+from typing import Literal
 from datetime import timedelta, datetime, timezone
 
 import requests
-from cachetools.keys import hashkey
 from requests import ConnectionError
 from cachetools import TTLCache, LRUCache, cached
 from requests.exceptions import MissingSchema
@@ -25,8 +22,7 @@ from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.time_utils import relatively_string_date
-from todoapi.utils import is_admin_id
-
+from todoapi.utils import is_admin_id, rate_limit
 
 re_inline_message = re.compile(rf"\A@{re.escape(bot.user.username)} ")
 re_edit_message = re.compile(
@@ -226,35 +222,6 @@ def add_status_effect(text: str, statuses: str) -> str:
         shortcut_text = format_blockquote(shortcut_text)
 
     return shortcut_text
-
-
-def rate_limit(
-    storage: LRUCache,
-    max_calls: int,
-    seconds: int,
-    key_func: Callable = hashkey,
-    else_func: Callable = lambda args, kwargs, key, sec: (key, sec),
-):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            key = key_func(*args, **kwargs)
-            contains = key in storage
-            t = time()
-
-            if contains:
-                storage[key] = [call for call in storage[key] if t - call < seconds]
-
-                if len(storage[key]) >= max_calls:
-                    sec = seconds - int(t - storage[key][0])
-                    return else_func(args, kwargs, key=key, sec=sec)
-
-            storage.setdefault(key, []).append(t)
-            return func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
 
 
 def _get_cache_city_key(city):
