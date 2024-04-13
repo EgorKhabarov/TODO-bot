@@ -628,11 +628,11 @@ def callback_handler(call: CallbackQuery):
 
     elif call_prefix in ("esdt", "ebd", "eab", "esh", "eh"):
         """
-event select new date
-event before delete
-event about
-event show
-event history
+        event select new date
+        event before delete
+        event about
+        event show
+        event history
         """
         event_id, date, page = args_func(
             {"event_id": "int", "date": "date", "page": ("int", 1)}

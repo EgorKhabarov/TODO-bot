@@ -758,6 +758,9 @@ SELECT user_id,
 
         return User(*user)
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}({', '.join(f'{k}={v!r}' for k, v in self.__dict__.items())})"
+
 
 class Account:
     def __init__(self, user_id: int, group_id: str = None):
@@ -766,6 +769,13 @@ class Account:
             self.user.user_status, user_id, self.group.group_id if group_id else None
         )
         self.settings = self.get_settings()
+
+    def __str__(self):
+        d = {
+            x: y.__dict__ if hasattr(y, "__dict__") else y
+            for x, y in self.__dict__.items()
+        }
+        return str(d)
 
     @cached_property
     def user(self) -> User:

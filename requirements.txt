@@ -8,3 +8,4 @@ Flask~=3.0.2
 cachetools~=5.3.3
 PyYAML~=6.0.1
 oauthlib~=3.2.2
+ipython~=8.13.2
