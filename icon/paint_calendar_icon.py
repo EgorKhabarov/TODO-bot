@@ -1,7 +1,7 @@
 from PIL import Image, ImageDraw, ImageFont
 
 ICON_SIZE: int = 778
-ICON_NAME: str = "icon"
+ICON_NAME: str = "calendar_icon"
 FONT_PATH = "../fonts/roboto-black.ttf"
 # http://allfont.net/cache/fonts/roboto-black_9d5456046bfe9a00b0b9325cda8c55f3.ttf
 ICON_VERSION: str = ""
@@ -14,8 +14,6 @@ def image_generator(icon_size: int, font_path: str, icon_version: str = None) ->
     color_gray = (61, 61, 63)
     color_white = (255, 255, 255)
     color_red = (252, 31, 38)
-    # color_lgreen = (107, 198, 77)
-    # color_green = (82, 165, 53)
 
     # Основная серая обводка календаря
     draw.rounded_rectangle(
