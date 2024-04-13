@@ -172,7 +172,30 @@ def not_login_handler(x: CallbackQuery | Message) -> None:
                     start_message().send(message.chat.id)
                     set_bot_commands()
 
-    if command_text == "start":
+    if match := add_group_pattern.match(message.text):
+        if request.is_user:
+            TextMessage(get_translate("errors.error")).reply(message)
+            return
+
+        owner_id, group_id = match.group(1), match.group(2)
+        try:
+            request.entity = TelegramAccount(x.from_user.id)
+        except UserNotFound:
+            return TextMessage(get_translate("errors.failure")).reply(message)
+
+        if request.entity.user_id != int(owner_id):
+            return TextMessage(get_translate("errors.failure")).reply(message)
+
+        try:
+            request.entity.set_group_telegram_chat_id(group_id, message.chat.id)
+        except (NotEnoughPermissions, NotGroupMember):
+            return TextMessage(get_translate("errors.failure")).reply(message)
+
+        TextMessage(get_translate("errors.success")).reply(message)
+        start_message().send(message.chat.id)
+        set_bot_commands()
+
+    elif command_text == "start":
         m = markup if request.is_user else None
         TextMessage(get_translate("messages.start"), m).send(message.chat.id)
 
@@ -204,29 +227,6 @@ def not_login_handler(x: CallbackQuery | Message) -> None:
 
     elif match := re_user_signup_message.findall(message.text):
         signup(*match[0])
-
-    elif match := add_group_pattern.match(message.text):
-        if request.is_user:
-            TextMessage(get_translate("errors.error")).reply(message)
-            return
-
-        owner_id, group_id = match.group(1), match.group(2)
-        try:
-            request.entity = TelegramAccount(x.from_user.id)
-        except UserNotFound:
-            return TextMessage(get_translate("errors.failure")).reply(message)
-
-        if request.entity.user_id != int(owner_id):
-            return TextMessage(get_translate("errors.failure")).reply(message)
-
-        try:
-            request.entity.set_group_telegram_chat_id(group_id, message.chat.id)
-        except (NotEnoughPermissions, NotGroupMember):
-            return TextMessage(get_translate("errors.failure")).reply(message)
-
-        TextMessage(get_translate("errors.success")).reply(message)
-        start_message().send(message.chat.id)
-        set_bot_commands()
 
     else:
         if request.is_user:
