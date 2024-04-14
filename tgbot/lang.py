@@ -500,7 +500,7 @@ name: `<code>{}</code>`
 {page}) Название: `<code>{name}</code>`
      id: `<code>{group_id}</code>`
      Статус: `<code>{status}</code>`
-     В группе с: `<code>{entry_date}</code>` ({rel_entry_date})
+     Вступил: `<code>{entry_date}</code>` ({rel_entry_date})
      chat_id: `<code>{chat_id}</code>`
 """,
             ),

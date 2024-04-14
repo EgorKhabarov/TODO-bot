@@ -348,13 +348,13 @@ def event_message(
             ],
             [
                 {"📋": f"esh {event_id} {event.date}"},
-                {"*️⃣": "None"},
+                {" ": "None"},  # {"*️⃣": "None"},
                 {"📅": f"esdt {event_id} {event.date}"},
             ],
             [
                 {"ℹ️": f"eab {event_id} {event.date}"},
                 {"🗄": f"eh {event_id} {event.date}"},
-                {"🖼": "None"},
+                {" ": "None"},  # {"🖼": "None"},
             ],
             [
                 {get_theme_emoji("back"): f"dl {event.date}"},
@@ -913,7 +913,7 @@ OR event_id LIKE '%' || ? || '%'
 user_id IS ?
 AND group_id IS ?
 AND removal_time IS NULL
-AND ({splitquery})
+AND ({splitquery.strip()})
 """
     params = (
         request.entity.safe_user_id,

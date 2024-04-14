@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     email             TEXT UNIQUE NOT NULL,
     user_status       INT  DEFAULT (0),
     max_event_id      INT  DEFAULT (1),
-    icon              BLOB DEFAULT NULL,
+    icon              TEXT DEFAULT NULL,
     reg_date          TEXT NOT NULL DEFAULT (DATETIME()),
     token_create_time TEXT NOT NULL DEFAULT (DATETIME()),
     chat_id           INT  UNIQUE DEFAULT NULL
@@ -18,9 +18,9 @@ CREATE TABLE IF NOT EXISTS groups (
     name              TEXT NOT NULL,  -- Название группы
     token             TEXT UNIQUE NOT NULL,
     token_create_time TEXT NOT NULL DEFAULT (DATETIME()),
-    owner_id          INT  NOT NULL,  -- владелец группы
+    owner_id          INT  NOT NULL,  -- Владелец группы
     max_event_id      INT  DEFAULT (1),
-    icon              BLOB DEFAULT NULL,
+    icon              TEXT DEFAULT NULL,
     chat_id           INT  UNIQUE DEFAULT NULL,
     FOREIGN KEY (owner_id) REFERENCES users(user_id)
 );
@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS media (
     group_id        TEXT,
     filename        TEXT NOT NULL,
     media_type      TEXT NOT NULL,
-    media           BLOB NOT NULL,
+    media           TEXT NOT NULL,
     url             TEXT DEFAULT '',
     url_create_time TEXT DEFAULT '',
     CHECK (
