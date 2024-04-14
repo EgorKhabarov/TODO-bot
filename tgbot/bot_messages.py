@@ -477,17 +477,23 @@ def event_history(event_id: int, date: datetime, page: int = 1) -> EventMessage 
     if not event:
         return None
 
-    text = "\n\n".join(
-        f"""
+    if event.history:
+        event.text = (
+            "\n"
+            + "\n\n".join(
+                f"""
 [<u>{parse_utc_datetime(time)}] <b>{action}</b></u>
 {formatting.hpre(str(old_val)[:50].strip(), language='language-old')}
 {formatting.hpre(str(new_val)[:50].strip(), language='language-new')}
 """.strip()
-        for action, (old_val, new_val), time in event.history[::-1][
-            (page - 1) * 4 : (page - 1) * 4 + 4
-        ]
-    )
-    event.text = text.strip()
+                for action, (old_val, new_val), time in event.history[::-1][
+                    (page - 1) * 4 : (page - 1) * 4 + 4
+                ]
+            ).strip()
+        )
+    else:
+        event.text = get_translate("text.no_event_history")
+
     markup = generate_buttons(
         [
             [
@@ -497,7 +503,9 @@ def event_history(event_id: int, date: datetime, page: int = 1) -> EventMessage 
                 {">": f"eh {event_id} {date:%d.%m.%Y} {page + 1}"}
                 if event.history[::-1][(page - 1) * 4 + 4 :]
                 else {" ": "None"},
-            ],
+            ]
+            if event.history
+            else [],
             [
                 {get_theme_emoji("back"): f"em {event_id}"},
                 {"🔄": f"eh {event_id} {date:%d.%m.%Y}"},
@@ -527,6 +535,7 @@ def confirm_changes_message(message: Message) -> None | int:
         return 1  # Этого события нет
 
     if message.quote:
+        # noinspection PyUnresolvedReferences TODO
         html_text = f"<blockquote>{message.quote.html_text}</blockquote>\n{html_text}"
 
     markdown_text = html_to_markdown(html_text).strip()
@@ -1230,7 +1239,9 @@ def limits_message(date: datetime | str | None = None) -> TextMessage:
     )
 
 
-def group_message(group_id: str, message_id: int = None) -> TextMessage | None:
+def group_message(
+    group_id: str, message_id: int = None, mode: str = "al"
+) -> TextMessage | None:
     try:
         if request.is_member:
             group = request.entity.group
@@ -1255,7 +1266,7 @@ def group_message(group_id: str, message_id: int = None) -> TextMessage | None:
         remove_bot_from_group = get_translate("text.remove_bot_from_group")
         markup = generate_buttons(
             [
-                [{leave_group: f"grlv {group.group_id}"}]
+                [{leave_group: f"grlv {group.group_id} {mode}"}]
                 if not group.member_status == 2
                 else [],
                 [
@@ -1273,8 +1284,8 @@ def group_message(group_id: str, message_id: int = None) -> TextMessage | None:
                 if group.member_status > 0
                 else [],
                 [
-                    {delete_group: f"grd {group.group_id}"},
-                    {remove_bot_from_group: f"grrgr {group.group_id}"}
+                    {delete_group: f"grd {group.group_id} {mode}"},
+                    {remove_bot_from_group: f"grrgr {group.group_id} {mode}"}
                     if group.chat_id
                     else {
                         get_translate("text.add_bot_to_group"): {"url": startgroup_url}
@@ -1282,7 +1293,7 @@ def group_message(group_id: str, message_id: int = None) -> TextMessage | None:
                 ]
                 if group.member_status > 0
                 else [],
-                [{get_theme_emoji("back"): "mngrs"}],
+                [{get_theme_emoji("back"): f"mngrs {mode}"}],
             ]
         )
     else:
@@ -1293,11 +1304,13 @@ def group_message(group_id: str, message_id: int = None) -> TextMessage | None:
 
 
 def groups_message(
-    mode: Literal["al", "md", "ad"] = "al", page: int = 1
+    mode: Literal["al", "me", "md", "ad"] = "al", page: int = 1
 ) -> TextMessage:
     match mode:
         case "al":
             raw_groups = request.entity.get_my_groups()
+        case "me":
+            raw_groups = request.entity.get_groups_where_i_member()
         case "md":
             raw_groups = request.entity.get_groups_where_i_moderator()
         case "ad":
@@ -1307,18 +1320,26 @@ def groups_message(
 
     groups_chunk = list(chunks(raw_groups, 6))
     groups = groups_chunk[page - 1] if len(groups_chunk) > 0 else []
-    prev_pages = len(groups_chunk[: page - 1])
-    after_pages = len(groups_chunk[page:])
-    create_group = get_translate("text.create_group")
-    groups_message_template = get_translate("messages.groups")
+    prev_pages, after_pages = len(groups_chunk[: page - 1]), len(groups_chunk[page:])
+    create_group, groups_message_template, group_template = get_translate(
+        "messages.groups"
+    )
 
-    if groups:
+    if groups or mode:
         string_groups = "\n\n".join(
-            f"""
-{n + (6 * page - 6) + 1}) name: `<code>{html.escape(group.name)}</code>`
-     id: `<code>{group.group_id}</code>`
-     {f'chat_id: `<code>{group.chat_id}</code>`' if group.chat_id else ''}
-""".strip()
+            group_template.format(
+                page=n + (6 * page - 6) + 1,
+                name=html.escape(group.name),
+                group_id=group.group_id,
+                status=get_translate(f"text.status.{group.member_status}").capitalize(),
+                **dict(
+                    zip(
+                        ("entry_date", "rel_entry_date"),
+                        parse_utc_datetime(group.entry_date, True),
+                    )
+                ),
+                chat_id=group.chat_id if group.chat_id else "-",
+            ).strip()
             for n, group in enumerate(groups)
         )
         user_group_limits = group_limits[request.entity.user.user_status][
@@ -1330,10 +1351,11 @@ def groups_message(
         markup = [
             [
                 {("🔸" if mode == "al" else "") + "All": "mngrs al"},
+                {("🔸" if mode == "me" else "") + "Member": "mngrs me"},
                 {("🔸" if mode == "md" else "") + "Moderator": "mngrs md"},
                 {("🔸" if mode == "ad" else "") + "Admin": "mngrs ad"},
             ],
-            *[[{f"{group.name}": f"mngr {group.group_id}"}] for group in groups],
+            *[[{f"{group.name}": f"mngr {group.group_id} {mode}"}] for group in groups],
             [
                 {get_theme_emoji("back"): "mnm"},
                 *(
@@ -1345,7 +1367,7 @@ def groups_message(
                         if after_pages
                         else {" ": "None"},
                     ]
-                    if len(groups_chunk) != 1
+                    if len(groups_chunk) != 1 and groups
                     else []
                 ),
                 {f"👥 {create_group}": "grcr"},
@@ -1353,10 +1375,7 @@ def groups_message(
         ]
     else:
         text = groups_message_template.format(0, "")
-        markup = [
-            [{f"👥 {create_group}": "grcr"}],
-            [{get_theme_emoji("back"): "mnm"}],
-        ]
+        markup = [[{get_theme_emoji("back"): "mnm"}, {f"👥 {create_group}": "grcr"}]]
     return TextMessage(text, generate_buttons(markup))
 
 

@@ -86,11 +86,20 @@ from todoapi.exceptions import (
     NotEnoughPermissions,
 )
 from todoapi.log_cleaner import clear_logs
-from todoapi.types import create_user, get_account_from_password, Cache, set_user_status
+from todoapi.utils import is_valid_year, re_email, re_username
+from todoapi.types import (
+    VedisCache,
+    create_user,
+    set_user_status,
+    get_account_from_password,
+)
 from telegram_utils.argument_parser import getargs
 from telegram_utils.buttons_generator import generate_buttons
 from telegram_utils.command_parser import parse_command, get_command_arguments
-from todoapi.utils import is_valid_year, re_email, re_username
+
+
+add_event_cache = VedisCache("add_event")
+add_group_cache = VedisCache("add_group")
 
 
 def not_login_handler(x: CallbackQuery | Message) -> None:
@@ -414,12 +423,15 @@ def callback_handler(call: CallbackQuery):
 
     elif call_prefix == "mngrs":  # groups message
         mode, page = args_func({"mode": ("str", "al"), "page": ("int", 1)}).values()
-        groups_message(mode, page).edit(chat_id, message_id)
+        try:
+            groups_message(mode, page).edit(chat_id, message_id)
+        except ApiTelegramException:
+            pass
         cache_create_group("")
 
     elif call_prefix == "mngr":  # group message
-        group_id = args_func({"group_id": "str"})["group_id"]
-        group_message(group_id, message_id).edit(chat_id, message_id)
+        group_id, mode = args_func({"group_id": "str", "mode": ("str", "al")}).values()
+        group_message(group_id, message_id, mode).edit(chat_id, message_id)
 
     elif call_prefix == "mna":  # account message
         account_message(message_id).edit(chat_id, message_id)
@@ -1125,35 +1137,34 @@ def callback_handler(call: CallbackQuery):
         CallBackAnswer(get_translate("text.send_group_name")).answer(call_id)
 
     elif call_prefix == "grd":  # group delete
-        group_id = args_func({"group_id": "str"})["group_id"]
+        group_id, mode = args_func({"group_id": "str", "mode": ("str", "al")}).values()
+
         try:
             request.entity.delete_group(group_id)
         except (NotGroupMember, NotEnoughPermissions):
-            CallBackAnswer(get_translate("errors.error")).answer(
-                call_id, show_alert=True
-            )
+            CallBackAnswer(get_translate("errors.error")).answer(call_id, True)
         else:
-            groups_message().edit(chat_id, message_id)
+            groups_message(mode).edit(chat_id, message_id)
 
     elif call_prefix == "grlv":  # group leave
-        group_id = args_func({"group_id": "str"})["group_id"]
+        group_id, mode = args_func({"group_id": "str", "mode": ("str", "al")}).values()
+
         try:
             request.entity.remove_group_member(request.entity.user_id, group_id)
         except NotGroupMember:
-            return CallBackAnswer(get_translate("errors.error")).answer(call_id)
-
-        groups_message().edit(chat_id, message_id)
+            CallBackAnswer(get_translate("errors.error")).answer(call_id, True)
+        else:
+            groups_message(mode).edit(chat_id, message_id)
 
     elif call_prefix == "grrgr":  # group remove from telegram group
-        group_id = args_func({"group_id": "str"})["group_id"]
+        group_id, mode = args_func({"group_id": "str", "mode": ("str", "al")}).values()
+
         try:
             request.entity.set_group_telegram_chat_id(group_id)
         except (NotGroupMember, NotEnoughPermissions):
-            CallBackAnswer(get_translate("errors.error")).answer(
-                call_id, show_alert=True
-            )
+            CallBackAnswer(get_translate("errors.error")).answer(call_id, True)
         else:
-            group_message(group_id, message_id=message_id).edit(chat_id, message_id)
+            group_message(group_id, message_id, mode).edit(chat_id, message_id)
 
     elif call_prefix == "get_premium":
         # Заглушка на получение доступа к корзине и повышенным лимитам
@@ -1195,20 +1206,19 @@ def cache_add_event_date(state: str = None) -> str | bool:
     if state is None - получить
     if state == "" - очистить
     """
-    table = "add_event"
 
     if state:
-        Cache(table)[request.entity.request_chat_id] = state
+        add_event_cache[request.entity.request_chat_id] = state
         return True
 
-    data = Cache(table)[request.entity.request_chat_id]
+    data = add_event_cache[request.entity.request_chat_id]
 
     if state is None:
         return data
 
     if data:
         msg_date, message_id = data.split(",")
-        del Cache(table)[request.entity.request_chat_id]
+        del add_event_cache[request.entity.request_chat_id]
         try:
             daily_message(msg_date).edit(request.entity.request_chat_id, message_id)
         except ApiTelegramException:
@@ -1224,20 +1234,19 @@ def cache_create_group(state: str = None) -> str | bool:
     if state is None - получить
     if state == "" - очистить
     """
-    table = "add_group"
 
     if state:
-        Cache(table)[request.entity.request_chat_id] = state
+        add_group_cache[request.entity.request_chat_id] = state
         return True
 
-    data = Cache(table)[request.entity.request_chat_id]
+    data = add_group_cache[request.entity.request_chat_id]
 
     if state is None:
         return data
 
     if data:
         message_id = int(data)
-        del Cache(table)[request.entity.request_chat_id]
+        del add_group_cache[request.entity.request_chat_id]
         try:
             groups_message().edit(request.entity.request_chat_id, message_id)
         except ApiTelegramException:

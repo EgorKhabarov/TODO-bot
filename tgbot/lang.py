@@ -350,10 +350,6 @@ Call up new messages using bot commands.</b>
             "ru": "Удалить бота из группы",
             "en": "Remove a bot from a group",
         },
-        "create_group": {
-            "ru": "Создать группу",
-            "en": "Create group",
-        },
         "meters_per_second": {
             "ru": "м/с",
             "en": "m/s",
@@ -361,6 +357,28 @@ Call up new messages using bot commands.</b>
         "get_premium": {
             "ru": "Получить Premium",
             "en": "Get Premium",
+        },
+        "no_event_history": {
+            "ru": "Вы не изменяли эту заметку",
+            "en": "You didn't change this note",
+        },
+        "status": {
+            "-1": {
+                "ru": "бан",
+                "en": "ban",
+            },
+            "0": {
+                "ru": "обычный",
+                "en": "normal",
+            },
+            "1": {
+                "ru": "премиум",
+                "en": "premium",
+            },
+            "2": {
+                "ru": "админ",
+                "en": "admin",
+            },
         },
     },
     "messages": {
@@ -469,20 +487,40 @@ name: `<code>{}</code>`
 """,
         },
         "groups": {
-            "ru": """
+            "ru": (
+                "Создать группу",
+                """
 👥 Группы 👥
 
 У вас групп: {}
 
 {}
 """,
-            "en": """
+                """
+{page}) Название: `<code>{name}</code>`
+     id: `<code>{group_id}</code>`
+     Статус: `<code>{status}</code>`
+     В группе с: `<code>{entry_date}</code>` ({rel_entry_date})
+     chat_id: `<code>{chat_id}</code>`
+""",
+            ),
+            "en": (
+                "Create group",
+                """
 👥 Groups 👥
 
 You have groups: {}
 
 {}
 """,
+                """
+{page}) name: `<code>{name}</code>`
+     id: `<code>{group_id}</code>`
+     status: `<code>{status}</code>`
+     entry_date: `<code>{entry_date}</code>` ({rel_entry_date})
+     chat_id: `<code>{chat_id}</code>`
+""",
+            ),
         },
         "account": {
             "ru": """

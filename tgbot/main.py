@@ -31,6 +31,8 @@ from tgbot.utils import (
 )
 from tgbot.handlers import (
     reply_handler,
+    add_event_cache,
+    add_group_cache,
     command_handler,
     callback_handler,
     cache_create_group,
@@ -44,6 +46,10 @@ from tgbot.bot_messages import (
     confirm_changes_message,
     send_notifications_messages,
 )
+from todoapi.types import db
+from todoapi.logger import logging
+from todoapi.log_cleaner import clear_logs
+from todoapi.db_creator import create_tables
 from todoapi.exceptions import (
     WrongDate,
     TextIsTooBig,
@@ -53,10 +59,6 @@ from todoapi.exceptions import (
     NotUniqueUsername,
     NotEnoughPermissions,
 )
-from todoapi.logger import logging
-from todoapi.types import db, Cache
-from todoapi.log_cleaner import clear_logs
-from todoapi.db_creator import create_tables
 from telegram_utils.command_parser import command_regex
 from telegram_utils.buttons_generator import generate_buttons
 
@@ -216,7 +218,7 @@ def processing_reply_message(message: Message):
     reply_handler(message, message.reply_to_message)
 
 
-@bot.message_handler(func=lambda m: Cache("add_group")[m.chat.id])
+@bot.message_handler(func=lambda m: add_group_cache[m.chat.id])
 @process_account
 def processing_group_create_message(message: Message):
     """
@@ -244,7 +246,7 @@ def processing_group_create_message(message: Message):
                 delete_message_action(message)
 
 
-@bot.message_handler(func=lambda m: Cache("add_event")[m.chat.id])
+@bot.message_handler(func=lambda m: add_event_cache[m.chat.id])
 @process_account
 def add_event_handler(message: Message):
     """
@@ -253,10 +255,8 @@ def add_event_handler(message: Message):
     html_text = message.html_text
 
     if message.quote:
-        html_text = f"""
-<blockquote>{message.quote.html_text}</blockquote>
-{html_text}
-"""
+        # noinspection PyUnresolvedReferences TODO
+        html_text = f"<blockquote>{message.quote.html_text}</blockquote>\n{html_text}"
 
     markdown_text = html_to_markdown(html_text.strip())
     telegram_log("send", "add event")

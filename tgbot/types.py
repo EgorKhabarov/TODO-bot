@@ -450,17 +450,46 @@ SELECT entry_date,
         try:
             groups = db.execute(
                 """
-SELECT group_id,
-       chat_id,
-       name,
-       owner_id,
-       max_event_id
+SELECT groups.group_id,
+       groups.chat_id,
+       groups.name,
+       groups.owner_id,
+       groups.max_event_id,
+       members.entry_date,
+       members.member_status
   FROM groups
- WHERE group_id IN (
-           SELECT group_id
-             FROM members
-            WHERE user_id = :user_id
-       )
+  JOIN members ON groups.group_id = members.group_id
+ WHERE members.user_id = :user_id
+ORDER BY name ASC
+LIMIT :limit OFFSET :offset;
+""",
+                params={
+                    "user_id": self.user_id,
+                    "limit": 12,
+                    "offset": 12 * page,
+                },
+            )
+        except Error as e:
+            raise ApiError(e)
+
+        return [TelegramGroup(*group) for group in groups]
+
+    def get_groups_where_i_member(self, page: int = 1) -> list[TelegramGroup]:
+        page -= 1
+        try:
+            groups = db.execute(
+                """
+SELECT groups.group_id,
+       groups.chat_id,
+       groups.name,
+       groups.owner_id,
+       groups.max_event_id,
+       members.entry_date,
+       members.member_status
+  FROM groups
+  JOIN members ON groups.group_id = members.group_id
+ WHERE members.user_id = :user_id
+       AND members.member_status < 1
 ORDER BY name ASC
 LIMIT :limit OFFSET :offset;
 """,
@@ -483,18 +512,17 @@ LIMIT :limit OFFSET :offset;
         try:
             groups = db.execute(
                 """
-SELECT group_id,
-       chat_id,
-       name,
-       owner_id,
-       max_event_id
+SELECT groups.group_id,
+       groups.chat_id,
+       groups.name,
+       groups.owner_id,
+       groups.max_event_id,
+       members.entry_date,
+       members.member_status
   FROM groups
- WHERE group_id IN (
-           SELECT group_id
-             FROM members
-            WHERE user_id = :user_id
-                  AND member_status >= 1
-       )
+  JOIN members ON groups.group_id = members.group_id
+ WHERE members.user_id = :user_id
+       AND members.member_status >= 1
 ORDER BY name ASC
 LIMIT :limit OFFSET :offset;
 """,
@@ -517,18 +545,17 @@ LIMIT :limit OFFSET :offset;
         try:
             groups = db.execute(
                 """
-SELECT group_id,
-       chat_id,
-       name,
-       owner_id,
-       max_event_id
+SELECT groups.group_id,
+       groups.chat_id,
+       groups.name,
+       groups.owner_id,
+       groups.max_event_id,
+       members.entry_date,
+       members.member_status
   FROM groups
- WHERE group_id IN (
-           SELECT group_id
-             FROM members
-            WHERE user_id = :user_id
-                  AND member_status >= 1
-       )
+  JOIN members ON groups.group_id = members.group_id
+ WHERE members.user_id = :user_id
+       AND members.member_status >= 1
 ORDER BY name ASC
 LIMIT :limit OFFSET :offset;
 """,

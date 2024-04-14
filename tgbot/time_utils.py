@@ -76,16 +76,20 @@ def relatively_string_date(day_diff: int) -> tuple[str, str, str]:
     return str_date, rel_date, week_date
 
 
-def parse_utc_datetime(time: str | None, relatively_date: bool = False) -> str:
+def parse_utc_datetime(
+    time: str | None,
+    relatively_date: bool = False,
+) -> str | tuple[str, str]:
     if time is None:
         return "NEVER"
 
-    n_time = request.entity.now_time()
     time = datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
     time += timedelta(hours=request.entity.settings.timezone)
-    rel_date = (
-        " ({})".format(relatively_string_date((time - n_time).days)[1])
-        if relatively_date
-        else ""
-    )
-    return f"{time:%Y.%m.%d %H:%M:%S}" + rel_date
+    if not relatively_date:
+        return f"{time:%Y.%m.%d %H:%M:%S}"
+    else:
+        n_time = request.entity.now_time()
+        rel_date = (
+            relatively_string_date((n_time - time).days)[1] if relatively_date else ""
+        )
+        return f"{time:%Y.%m.%d %H:%M:%S}", rel_date

@@ -3,45 +3,46 @@ import html
 import json
 import logging
 from uuid import uuid4
-from datetime import datetime, timedelta
 from io import StringIO, BytesIO
 from dataclasses import dataclass
 from sqlite3 import Error, connect
 import xml.etree.ElementTree as xml  # noqa
 from functools import cached_property
 from contextlib import contextmanager
+from datetime import datetime, timedelta
 from typing import Callable, Any, Literal
 
-from oauthlib.common import generate_token
 from vedis import Vedis
+from oauthlib.common import generate_token
 
+from config import DATABASE_PATH, VEDIS_PATH
 from todoapi.exceptions import (
     ApiError,
-    EventNotFound,
-    TextIsTooBig,
-    LimitExceeded,
+    Forbidden,
     WrongDate,
-    StatusConflict,
-    StatusLengthExceeded,
-    StatusRepeats,
-    NotEnoughPermissions,
+    TextIsTooBig,
     UserNotFound,
     GroupNotFound,
-    NotGroupMember,
-    Forbidden,
     MediaNotFound,
+    EventNotFound,
+    LimitExceeded,
+    StatusRepeats,
+    StatusConflict,
+    NotGroupMember,
     NotUniqueEmail,
     NotUniqueUsername,
+    NotEnoughPermissions,
+    StatusLengthExceeded,
 )
-from config import DATABASE_PATH, VEDIS_PATH
 from todoapi.utils import (
     re_date,
+    re_email,
+    re_username,
+    hash_password,
     is_valid_year,
     sql_date_pattern,
-    re_username,
-    re_email,
-    hash_password,
 )
+
 
 event_limits = {
     -1: {
@@ -103,7 +104,6 @@ group_limits = {
         "max_groups_creator": 50,
     },
 }
-string_status = {-1: "ban", 0: "normal", 1: "premium", 2: "admin"}
 
 
 class DataBase:
@@ -176,7 +176,7 @@ class DataBase:
         return result
 
 
-class Cache:
+class VedisCache:
     def __init__(self, table: str):
         self.table = table
 
@@ -1475,24 +1475,54 @@ LIMIT :limit OFFSET :offset;
 
         return [Group(*group) for group in groups]
 
+    def get_groups_where_i_member(self, page: int = 1) -> list[Group]:
+        page -= 1
+        try:
+            groups = db.execute(
+                """
+SELECT groups.group_id,
+       groups.name,
+       groups.owner_id,
+       groups.max_event_id,
+       members.entry_date,
+       members.member_status,
+       groups.token,
+       groups.token_create_time
+  FROM groups
+  JOIN members ON groups.group_id = members.group_id
+ WHERE members.user_id = :user_id
+       AND members.member_status < 1
+ORDER BY name ASC
+LIMIT :limit OFFSET :offset;
+""",
+                params={
+                    "user_id": self.user_id,
+                    "limit": 12,
+                    "offset": 12 * page,
+                },
+            )
+        except Error as e:
+            raise ApiError(e)
+
+        return [Group(*group) for group in groups]
+
     def get_groups_where_i_moderator(self, page: int = 1) -> list[Group]:
         page -= 1
         try:
             groups = db.execute(
                 """
-SELECT group_id,
-       name,
-       owner_id,
-       max_event_id,
-       token,
-       token_create_time
+SELECT groups.group_id,
+       groups.name,
+       groups.owner_id,
+       groups.max_event_id,
+       members.entry_date,
+       members.member_status,
+       groups.token,
+       groups.token_create_time
   FROM groups
- WHERE group_id IN (
-           SELECT group_id
-             FROM members
-            WHERE user_id = :user_id
-                  AND member_status >= 1
-       )
+  JOIN members ON groups.group_id = members.group_id
+ WHERE members.user_id = :user_id
+       AND members.member_status >= 1
 ORDER BY name ASC
 LIMIT :limit OFFSET :offset;
 """,
@@ -1512,19 +1542,18 @@ LIMIT :limit OFFSET :offset;
         try:
             groups = db.execute(
                 """
-SELECT group_id,
-       name,
-       owner_id,
-       max_event_id,
-       token,
-       token_create_time
+SELECT groups.group_id,
+       groups.name,
+       groups.owner_id,
+       groups.max_event_id,
+       members.entry_date,
+       members.member_status,
+       groups.token,
+       groups.token_create_time
   FROM groups
- WHERE group_id IN (
-           SELECT group_id
-             FROM members
-            WHERE user_id = :user_id
-                  AND member_status >= 1
-       )
+  JOIN members ON groups.group_id = members.group_id
+ WHERE members.user_id = :user_id
+       AND members.member_status >= 2
 ORDER BY name ASC
 LIMIT :limit OFFSET :offset;
 """,
@@ -2116,10 +2145,6 @@ SELECT user_id
     except IndexError:
         raise UserNotFound
 
-    return Account(user_id, group_id)
-
-
-def get_account_from_id(user_id: int, group_id: str = None) -> Account:
     return Account(user_id, group_id)
 
 
