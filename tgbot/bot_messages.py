@@ -62,7 +62,7 @@ def menu_message() -> TextMessage:
         translate_groups,
         translate_seven_days,
         translate_notifications,
-        translate_Settings,
+        translate_settings,
         translate_wastebasket,
         translate_admin,
         translate_group,
@@ -85,7 +85,7 @@ def menu_message() -> TextMessage:
             {f"🔔 {translate_notifications}": "mnn"},
         ],
         [
-            {f"⚙️ {translate_Settings}": "mns"},
+            {f"⚙️ {translate_settings}": "mns"},
             {f"🗑 {translate_wastebasket}": "mnb"}
             if (request.is_user and request.entity.is_premium) or request.is_member
             else {},
