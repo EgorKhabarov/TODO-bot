@@ -870,7 +870,7 @@ AND removal_time IS NULL
 
 
 def search_message(
-    query: str, id_list: list[int] = (), page: int | str = 0
+    query: str, id_list: list[int] = (), page: int | str = 1
 ) -> EventsMessage:
     """
     :param query: поисковый запрос
@@ -878,6 +878,7 @@ def search_message(
     :param page: Номер страницы
     TODO шаблоны для поиска
     """
+    page -= 1
     query = query.replace("\n", " ").strip()
     translate_search = get_translate("messages.search")
 
@@ -889,14 +890,8 @@ def search_message(
         )
         return generated
 
-    # re_day = re.compile(r"[#\b ]day=(\d{1,2})[\b]?")
-    # re_month = re.compile(r"[#\b ]month=(\d{1,2})[\b]?")
-    # re_year = re.compile(r"[#\b ]year=(\d{4})[\b]?")
-    # re_id = re.compile(r"[#\b ]id=(\d{,6})[\b]?")
-    # re_status = re.compile(r"[#\b ]status=(\S+)[\b]?")
-
     markup = generate_buttons(
-        [[{get_theme_emoji("del"): "md"}, {"🔄": "us"}, {"↖️": "None"}, {"↕️": "None"}]]
+        [[{get_theme_emoji("del"): "md"}, {"↖️": "None"}, {"↕️": "None"}, {"🔄": "us"}]]
     )
     generated = EventsMessage(markup=markup, page=page)
 

@@ -839,7 +839,7 @@ def callback_handler(call: CallbackQuery):
             CallBackAnswer(text).answer(call_id)
 
     elif call_prefix == "ps":  # page search
-        page, id_list = args_func({"page": ("str", 0), "id_list": ("str", "")}).values()
+        page, id_list = args_func({"page": ("str", 1), "id_list": ("str", "")}).values()
         markup = message.reply_markup if page else None
         if markup:
             edit_button_data(markup, 0, 2, f"se os {id_list} us")

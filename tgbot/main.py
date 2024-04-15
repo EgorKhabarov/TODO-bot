@@ -126,8 +126,7 @@ def processing_search_message(message: Message):
     """
     query = html_to_markdown(message.html_text).removeprefix("#")
     telegram_log("search", query)
-    generated = search_message(query)
-    generated.send(request.chat_id)
+    search_message(query).send(request.chat_id)
 
 
 @bot.message_handler(func=lambda m: re_inline_message.match(m.text))
