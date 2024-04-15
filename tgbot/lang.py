@@ -503,6 +503,7 @@ name: `<code>{}</code>`
      Вступил: `<code>{entry_date}</code>` ({rel_entry_date})
      chat_id: `<code>{chat_id}</code>`
 """,
+                ("Все", "Участник", "Модератор", "Администратор"),
             ),
             "en": (
                 "Create group",
@@ -520,6 +521,7 @@ You have groups: {}
      entry_date: `<code>{entry_date}</code>` ({rel_entry_date})
      chat_id: `<code>{chat_id}</code>`
 """,
+                ("All", "Member", "Moderator", "Admin"),
             ),
         },
         "account": {

@@ -1321,9 +1321,10 @@ def groups_message(
     groups_chunk = list(chunks(raw_groups, 6))
     groups = groups_chunk[page - 1] if len(groups_chunk) > 0 else []
     prev_pages, after_pages = len(groups_chunk[: page - 1]), len(groups_chunk[page:])
-    create_group, groups_message_template, group_template = get_translate(
+    create_group, groups_message_template, group_template, buttons = get_translate(
         "messages.groups"
     )
+    btn_all, btn_member, btn_moderator, btn_admin = buttons
 
     if groups or mode:
         string_groups = "\n\n".join(
@@ -1350,10 +1351,10 @@ def groups_message(
         )
         markup = [
             [
-                {("🔸" if mode == "al" else "") + "All": "mngrs al"},
-                {("🔸" if mode == "me" else "") + "Member": "mngrs me"},
-                {("🔸" if mode == "md" else "") + "Moderator": "mngrs md"},
-                {("🔸" if mode == "ad" else "") + "Admin": "mngrs ad"},
+                {("🔸" if mode == "al" else "") + btn_all: "mngrs al"},
+                {("🔸" if mode == "me" else "") + btn_member: "mngrs me"},
+                {("🔸" if mode == "md" else "") + btn_moderator: "mngrs md"},
+                {("🔸" if mode == "ad" else "") + btn_admin: "mngrs ad"},
             ],
             *[[{f"{group.name}": f"mngr {group.group_id} {mode}"}] for group in groups],
             [

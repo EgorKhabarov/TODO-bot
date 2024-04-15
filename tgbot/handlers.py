@@ -7,15 +7,20 @@ from ast import literal_eval
 from telebot.apihelper import ApiTelegramException
 
 # noinspection PyPackageRequirements
-from telebot.types import Message, CallbackQuery, InputFile
+from telebot.types import Message, CallbackQuery
 
-from config import __version__
+import config
 from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.time_utils import new_time_calendar
 from tgbot.bot_actions import delete_message_action
 from tgbot.lang import get_translate, get_theme_emoji
-from tgbot.message_generator import TextMessage, CallBackAnswer
+from tgbot.message_generator import (
+    ChatAction,
+    TextMessage,
+    CallBackAnswer,
+    DocumentMessage,
+)
 from tgbot.buttons_utils import (
     delmarkup,
     encode_id,
@@ -281,7 +286,7 @@ def command_handler(message: Message) -> None:
         settings_message().send(chat_id)
 
     elif command_text == "version":
-        TextMessage(f"Version {__version__}").send(chat_id)
+        TextMessage(f"Version {config.__version__}").send(chat_id)
 
     elif command_text in ("weather", "forecast"):
         # Проверяем есть ли аргументы
@@ -325,13 +330,9 @@ def command_handler(message: Message) -> None:
             f"events_{request.entity.now_time():%Y-%m-%d_%H-%M-%S}.{file_format}",
             file_format,
         )
-        bot.send_chat_action(chat_id, "upload_document")
+        ChatAction("upload_document").send(chat_id)
         try:
-            bot.send_document(
-                chat_id,
-                InputFile(file),
-                message_thread_id=request.query.message_thread_id,
-            )
+            DocumentMessage(file).send(chat_id)
         except ApiTelegramException as e:
             logging.info(f'export ApiTelegramException "{e}"')
             TextMessage(get_translate("errors.file_is_too_big")).send(chat_id)

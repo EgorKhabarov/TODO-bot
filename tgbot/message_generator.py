@@ -1,11 +1,11 @@
 import logging
 from copy import deepcopy
 from sqlite3 import Error
-from typing import Literal
+from typing import Literal, Any
 from datetime import datetime
 
 # noinspection PyPackageRequirements
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, InputFile
 
 from tgbot.bot import bot
 from tgbot.request import request
@@ -177,6 +177,40 @@ class CallBackAnswer:
         self, call_id: int, show_alert: bool | None = None, url: str | None = None
     ):
         bot.answer_callback_query(call_id, self.text, show_alert, url)
+
+
+class ChatAction:
+    def __init__(self, action: str):
+        self.action = action
+
+    def send(self, chat_id: int, **kwargs) -> None:
+        bot.send_chat_action(
+            chat_id=chat_id,
+            action=self.action,
+            message_thread_id=getattr(request.query, "message_thread_id", None),
+            **kwargs,
+        )
+
+
+class DocumentMessage:
+    def __init__(
+        self,
+        document: Any,
+        caption: str = None,
+        markup: InlineKeyboardMarkup | None = None,
+    ):
+        self.document = document
+        self.caption = caption
+        self.markup = markup
+
+    def send(self, chat_id: int, **kwargs):
+        bot.send_document(
+            chat_id=chat_id,
+            document=InputFile(self.document),
+            caption=self.caption,
+            message_thread_id=getattr(request.query, "message_thread_id", None),
+            **kwargs,
+        )
 
 
 class EventMessage(TextMessage):
