@@ -1256,41 +1256,78 @@ def group_message(
         )
 
         leave_group = get_translate("text.leave_group")
-        change_group_name = get_translate("text.change_group_name")
-        delete_group = get_translate("text.delete_group")
-        remove_bot_from_group = get_translate("text.remove_bot_from_group")
-        markup = generate_buttons(
-            [
-                [{leave_group: f"grlv {group.group_id} {mode}"}]
-                if not group.member_status == 2
-                else [],
+        change_group_name = "✏️ " + get_translate("text.change_group_name")
+        delete_group = "🗑👥 " + get_translate("text.delete_group")
+        remove_bot_from_group = "🚪👈 " + get_translate("text.remove_bot_from_group")
+        export_group = "💾 " + get_translate("text.export_group")
+
+        if group.member_status == 2:
+            markup = generate_buttons(
                 [
-                    {
-                        change_group_name: {
-                            "switch_inline_query_current_chat": (
-                                f"group({group.group_id}, {message_id}).name\n"
-                                f"{html.unescape(group.name)}"
-                            )
+                    [
+                        {
+                            change_group_name: {
+                                "switch_inline_query_current_chat": (
+                                    f"group({group.group_id}, {message_id}).name\n"
+                                    f"{html.unescape(group.name)}"
+                                )
+                            }
                         }
-                    }
-                    if message_id
-                    else {change_group_name: "None"},
+                        if message_id
+                        else {change_group_name: "None"},
+                    ],
+                    [
+                        {delete_group: f"grd {group.group_id} {mode}"},
+                        {remove_bot_from_group: f"grrgr {group.group_id} {mode}"}
+                        if group.chat_id
+                        else {
+                            get_translate("text.add_bot_to_group"): {"url": startgroup_url}
+                        },
+                    ],
+                    [
+                        {get_theme_emoji("back"): f"mngrs {mode}"},
+                        {export_group: f"gre {group.group_id} csv"},
+                    ],
                 ]
-                if group.member_status > 0
-                else [],
+            )
+        elif group.member_status == 1:
+            markup = generate_buttons(
                 [
-                    {delete_group: f"grd {group.group_id} {mode}"},
-                    {remove_bot_from_group: f"grrgr {group.group_id} {mode}"}
-                    if group.chat_id
-                    else {
-                        get_translate("text.add_bot_to_group"): {"url": startgroup_url}
-                    },
+                    [
+                        {export_group: f"gre {group.group_id} csv"},
+                        {
+                            change_group_name: {
+                                "switch_inline_query_current_chat": (
+                                    f"group({group.group_id}, {message_id}).name\n"
+                                    f"{html.unescape(group.name)}"
+                                )
+                            }
+                        }
+                        if message_id
+                        else {change_group_name: "None"},
+                    ],
+                    [
+                        {remove_bot_from_group: f"grrgr {group.group_id} {mode}"}
+                        if group.chat_id
+                        else {
+                            get_translate("text.add_bot_to_group"): {"url": startgroup_url}
+                        },
+                    ],
+                    [
+                        {get_theme_emoji("back"): f"mngrs {mode}"},
+                        {leave_group: f"grlv {group.group_id} {mode}"},
+                    ],
                 ]
-                if group.member_status > 0
-                else [],
-                [{get_theme_emoji("back"): f"mngrs {mode}"}],
-            ]
-        )
+            )
+        else:
+            markup = generate_buttons(
+                [
+                    [
+                        {get_theme_emoji("back"): f"mngrs {mode}"},
+                        {leave_group: f"grlv {group.group_id} {mode}"},
+                    ],
+                ]
+            )
     else:
         text += f"\nowner_id: `<code>{group.owner_id}</code>`"
         markup = generate_buttons([[{get_theme_emoji("back"): "mnm"}]])

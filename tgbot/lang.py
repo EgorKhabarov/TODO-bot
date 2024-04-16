@@ -380,6 +380,10 @@ Call up new messages using bot commands.</b>
                 "en": "admin",
             },
         },
+        "export_group": {
+            "ru": "Экспортировать данные группы",
+            "en": "Export group data",
+        },
     },
     "messages": {
         "start": {

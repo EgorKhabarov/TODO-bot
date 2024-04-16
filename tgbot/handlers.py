@@ -93,6 +93,7 @@ from todoapi.exceptions import (
 from todoapi.log_cleaner import clear_logs
 from todoapi.utils import is_valid_year, re_email, re_username
 from todoapi.types import (
+    Account,
     VedisCache,
     create_user,
     set_user_status,
@@ -1136,6 +1137,23 @@ def callback_handler(call: CallbackQuery):
         markup = generate_buttons([[{get_theme_emoji("back"): "mngrs"}]])
         TextMessage(text, markup).edit(chat_id, message_id)
         CallBackAnswer(get_translate("text.send_group_name")).answer(call_id)
+
+    elif call_prefix == "gre":  # group export
+        group_id, file_format = args_func({"group_id": "str", "format": ("str", "csv")}).values()
+
+        if file_format not in ("csv", "xml", "json", "jsonl"):
+            return TextMessage(get_translate("errors.export_format")).reply(message)
+
+        file = Account(request.entity.user_id, group_id).export_data(
+            f"events_{request.entity.now_time():%Y-%m-%d_%H-%M-%S}.{file_format}",
+            file_format,
+        )
+        ChatAction("upload_document").send(chat_id)
+        try:
+            DocumentMessage(file).send(chat_id)
+        except ApiTelegramException:
+            logging.error(traceback.format_exc())
+            TextMessage(get_translate("errors.file_is_too_big")).send(chat_id)
 
     elif call_prefix == "grd":  # group delete
         group_id, mode = args_func({"group_id": "str", "mode": ("str", "al")}).values()
