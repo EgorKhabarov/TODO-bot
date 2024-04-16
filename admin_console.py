@@ -1,9 +1,11 @@
 import os
+import csv
+from datetime import datetime
 from io import StringIO
-from pprint import pprint
-from typing import TypeAlias, Literal
-from textwrap import wrap as textwrap
+from pprint import pprint, pformat
+from typing import TypeAlias, Literal, Any
 
+import unicodedata
 from IPython import embed
 
 from todoapi.types import db, Account  # noqa
@@ -15,12 +17,30 @@ AlignType: TypeAlias = Literal[
 ]
 
 
-def decrease_numbers(numbers, max_width=120, min_value=10):
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i: i + n]
+
+
+def console_width(text: str):
+    # return len(text)
+    """Определяет количество позиций, которое займет строка в консоли."""
+    width = 0
+    for char in text:
+        if unicodedata.east_asian_width(char) in ("W", "F"):
+            width += 2  # Широкие символы
+        else:
+            width += 1  # Узкие символы
+    return width
+
+
+def decrease_numbers(row_lengths: list[int], max_width: int = 120, min_value: int = 10):
     # Рассчитываем среднее значение
-    mean_value = sum(numbers) / len(numbers)
+    mean_value = sum(row_lengths) / len(row_lengths)
     new_numbers = []
 
-    for num in numbers:
+    for num in row_lengths:
         # Определяем насколько это число больше или меньше среднего
         diff_from_mean = num - mean_value
 
@@ -49,129 +69,163 @@ def decrease_numbers(numbers, max_width=120, min_value=10):
     return new_numbers
 
 
-def fill_line(row: zip, widths: list[int], align: tuple[AlignType]) -> str:
+def transform_align(column_count: int, align: tuple[AlignType | str] | AlignType | str = "*"):
+    # Преобразуем align в подходящий вид
+    if isinstance(align, str):
+        align = (align, *(align,) * (column_count - 1))
+    else:
+        align = (*align, *("*",) * (column_count - len(align)))
+
+    return align[:column_count]
+
+
+def line_spliter(
+    text: str,
+    width: int = 126,
+    height: int = 20,
+    console_mode: bool = False,
+    line_break_symbol: str = "↩",
+):
+    if console_mode:
+        sub_lines = []
+        line_arr = []
+        line_length_arr = []
+
+        for char in (text or " "):
+            if char == "\n" or (sum(line_length_arr) >= (width-1)):
+                sub_lines.append("".join(line_arr))
+                line_arr.clear()
+                line_length_arr.clear()
+                # if char == "\n":
+                #     continue
+            line_arr.append(char)
+            line_length_arr.append(console_width(char))
+
+        sub_lines.append("".join(line_arr))
+        split_text = f"{line_break_symbol}\n".join(sub_lines)
+    else:
+        split_text = f"{line_break_symbol}\n".join(chunks(text or " ", width - 2))
+
+    lines = split_text.replace(f"\n{line_break_symbol}\n", "\n\n").splitlines()
+    lines[-1] = lines[-1].removesuffix(line_break_symbol)
+    if len(lines) > height:
+        lines = lines[:height]
+        lines[-1] = lines[-1].removesuffix(line_break_symbol) + chr(8230)  # " …"
+
+    return [line.strip() for line in lines]
+
+
+def fill_line(rows: list[list[str]], widths: list[int], align: tuple[AlignType | str], console_mode: bool) -> str:
     # noinspection PyTypeChecker
     align_left, align_right = map(
         list, zip(*(a * 2 if len(a) == 1 else a for a in align))
     )
-    row = [list(r) for r in row]
+    len_func = console_width if console_mode else len
 
     # Делаем каждый элемент одинаковой ширины по максимальному элементу
-    for n, r in enumerate(zip(*row)):
-        if "^" == align_left[n]:
-            max_len = len(max(r))
-            for column in row:
+    for n, r in enumerate(zip(*rows)):
+        if align_left[n] == "^":
+            max_len = len_func(max(r))
+            for column in rows:
                 column[n] = f"{column[n]:{align_right[n]}{max_len}}"
                 align_right[n] = align_left[n]
 
-    if "*" in align_left:
-        for n, r in enumerate(zip(*row)):
-            if align_left[n] == "*":
-                try:
-                    int("\n".join(r))
-                    align_left[n] = ">"
-                    align_right[n] = ">"
-                except ValueError:
-                    align_left[n] = "<"
-                    align_right[n] = "<"
+        if align_left[n] == "*":
+            try:
+                int("\n".join(r))
+                align_left[n] = ">"
+                align_right[n] = ">"
+            except ValueError:
+                align_left[n] = "<"
+                align_right[n] = "<"
 
-    template = "|" + "".join(f" {{:{a}{w}}} |" for a, w in zip(align_left, widths))
-    line = template.format(*row[0])
+    lines = []
 
-    for r in row[1:]:
-        template = "|" + "".join(f" {{:{a}{w}}} |" for a, w in zip(align_right, widths))
-        line += "\n" + template.format(*r)
+    for rn, row in enumerate(rows):
+        if rn == 0:
+            align = align_left
+        else:
+            align = align_right
 
-    return line
+        def get_width(index: int):
+            return widths[index] - (len_func(row[index]) - len(row[index]))
+
+        template = "|" + "".join(
+            f" {{:{align[n]}{get_width(n)}}} |"
+            for n in range(len(row))
+        )
+        lines.append(template.format(*row))
+
+    return "\n".join(lines)
 
 
 def write_table_to_str(
     file: StringIO,
-    table: list[tuple[str]],
-    align: tuple[AlignType] | AlignType = "*",
+    table: list[tuple[str, ...]],
+    align: tuple[AlignType | str] | AlignType | str = "*",
     name: str = None,
-    name_align: Literal["<", ">", "^"] = None,
+    name_align: Literal["<", ">", "^"] | str = None,
     max_width: int = None,
     max_height: int = None,
+    console_mode: bool = False,
+    line_break_symbol: str = "↩",
 ) -> None:
-    row_len = max(len(row) for row in table)
+    max_height = max_height or 20
+    len_func = console_width if console_mode else len
+    column_count = max(map(len, table))
+    align = transform_align(column_count, align)
+    row_lengths = [
+        max(map(lambda c: len_func(str(c)), column))
+        for column in zip(*table)
+    ]
 
-    # Преобразуем align в подходящий вид
-    if isinstance(align, str):
-        align = (align, *(align,) * (row_len - 1))
-    else:
-        align = (*align, *("*",) * (row_len - len(align)))
-
-    align = align[:row_len]
-
+    # Вычисляем ширину каждой колонки
     if max_width:
-        max_width = max_width - (3 * len(max(table, key=len))) - 1
-        max_widths = decrease_numbers(
-            [len(max((str(c) for c in column), key=len)) for column in zip(*table)],
-            max_width,
-        )
+        sum_column_width = max_width - (3 * column_count) - 1
+        max_widths = decrease_numbers(row_lengths, sum_column_width)
     else:
-        max_widths = None
+        max_widths = row_lengths
 
-    # Обрезаем длинные строки до 126 символов (уменьшается размер файла)
+    # Обрезаем длинные строки
     table = [
         [
-            "\n".join(
-                " \\\n".join(
-                    textwrap(
-                        line,
-                        width=(max_widths[n] if max_widths[n] else 1)
-                        if max_width
-                        else 126,
-                        replace_whitespace=False,
-                        drop_whitespace=True,
-                    )
-                    or " "
-                )
-                for line in str(column).splitlines()
-            )
-            for n, column in enumerate((*row, *("",) * (row_len - len(row))))
+            line_spliter(column, max_widths[n], max_height, console_mode, line_break_symbol)
+            for n, column in enumerate((*map(str, row), *("",) * (column_count - len(row))))
         ]
         for row in table
     ]
 
-    # Матрица максимальных длин и высот каждого столбца и строки
-    w = [
-        [max(len(line) for line in str(column or " ").splitlines()) for column in row]
-        for row in table
-    ]
-
-    # Вычисляем максимальную ширину и высоту каждого столбца и строки
-    widths = [max(column) for column in zip(*w)]
-    sep = (
-        "+" + "".join(("-" * (i + 2)) + "+" for i in widths) + "\n"
-    )  # Разделитель строк
+    # Разделитель строк
+    sep = "+" + "".join(("-" * (i + 2)) + "+" for i in max_widths) + "\n"
 
     if name:
-        name = name.replace("\n", " ")
+        # noinspection PyTypeChecker
+        name_align = transform_align(1, name_align or "^")
         file.write("+" + sep.replace("+", "-")[1:-2] + "+\n")
-        file.write(f"| {name:{name_align or '^'}{len(sep) - len(name)+1}} |\n")
+
+        if not max_width:
+            max_width = sum(row_lengths) + (3 * column_count) + 1
+
+        name = line_spliter(name, max_width - 4, max_height, console_mode, line_break_symbol)
+        file.write(
+            fill_line(
+                [[n] for n in name],
+                [max_width - 4],
+                name_align,
+                console_mode,
+            )
+            + "\n"
+        )
 
     for n, row in enumerate(table):
         file.write(sep)
 
-        def func(lines: list[str]):
-            lines[-1] = lines[-1].removesuffix("\\") + chr(8230)  # " …"
-            return lines
-
-        # Заполняем колонки
-        row = [
-            func(column.splitlines()[: max_height or 20])
-            if column.count("\n") >= (max_height or 20)
-            else column.splitlines()
-            for column in row
-        ]
-        max_row_count = len(max(row, key=len))
-
+        max_row_height = max(map(len, row))
         for column in row:
-            column.extend(("",) * (max_row_count - len(column)))
+            column.extend(("",) * (max_row_height - len(column)))
 
-        file.write(fill_line(zip(*row), widths, align) + "\n")
+        # noinspection PyTypeChecker
+        file.write(fill_line(list(map(list, zip(*row))), max_widths, align, console_mode) + "\n")
 
     file.write(sep.rstrip("\n"))
     file.seek(0)
@@ -182,31 +236,62 @@ def execute(
     params: dict | tuple = (),
     commit: bool = False,
     mode: Literal["table", "raw", "pprint"] = "table",
-    max_width: int = None,
-    max_height: int = None,
+    max_width: int | type(max) | type(max) | None = max,
+    max_height: int | type(max) | type(max) | None = max,
     align: tuple[AlignType] | AlignType = "*",
     name: str = None,
     name_align: Literal["<", ">", "^"] = None,
-):
+    return_data: bool = False,
+    console_mode: bool = True,
+) -> None | str | list[tuple[int | str | bytes | Any, ...], ...]:
     result = db.execute(query, params, commit, column_names=True)
 
     if mode == "table":
-        if max_width is None or max_height is None:
+        if max_width is max or max_height is max:
             _max_width, _max_height = TERMINAL()
-            if max_width is None:
+            if max_width is max:
                 max_width = _max_width
-            else:
+
+            if max_height is max:
                 max_height = _max_height
+
+        if max_width is min:
+            max_width = None
+        if max_height is min:
+            max_height = None
 
         _file = StringIO()
         write_table_to_str(
-            _file, result or [[" "]], align, name, name_align, max_width, max_height
+            _file, result or [["ok"]], align, name, name_align, max_width, max_height, console_mode
         )
+        if return_data:
+            return _file.read()
         [print(line, end="") for line in _file]
+        print()
     elif mode == "raw":
+        if return_data:
+            return result
         print(result)
     else:
+        if return_data:
+            return pformat(result)
         pprint(result)
+
+
+def export(query: str = "SELECT * FROM events;", params: dict | tuple = ()) -> str:
+    path = f"data/exports/{datetime.utcnow():%Y-%m-%d_%H-%M-%S}.csv"
+
+    try:
+        os.mkdir("data/exports")
+    except FileExistsError:
+        pass
+
+    with open(path, "w", newline="", encoding="UTF-8") as file:
+        table = execute(query, params, mode="raw", return_data=True)
+        file_writer = csv.writer(file)
+        file_writer.writerows(table)
+
+    return path
 
 
 def TERMINAL():
@@ -221,15 +306,17 @@ execute(
     params: dict | tuple = (),
     commit: bool = False,
     mode: Literal["table", "raw", "pprint"] = "table",
-    max_width: int = None,
-    max_height: int = None,
+    max_width: int | min | max | None = max,
+    max_height: int | min | max | None = max,
     align: tuple[AlignType] | AlignType = "*",
     name: str = None,
     name_align: Literal["<", ">", "^"] = None,
+    return_data: bool = False,
 )
+def export(query: str = "SELECT * FROM events;", params: dict | tuple = ())
 Account(user_id: int, group_id: str = None)
 TelegramAccount(chat_id: int, group_chat_id: int = None)
 TERMINAL() -> tuple[int, int]
-""".strip()
+"""
 
-embed(header=HELP)
+embed(colors="Linux")

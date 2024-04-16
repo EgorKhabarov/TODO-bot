@@ -371,19 +371,7 @@ SELECT event_id,
         file = StringIO()
         file.name = self.filename
         file_writer = csv.writer(file)
-        [
-            file_writer.writerows(
-                [
-                    [
-                        str(event_id),
-                        event_date,
-                        event_status,
-                        html.unescape(event_text),
-                    ]
-                ]
-            )
-            for event_id, event_date, event_status, event_text in self.table
-        ]
+        file_writer.writerows(self.table)
         file.seek(0)
         return file
 
