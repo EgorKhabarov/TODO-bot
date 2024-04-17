@@ -294,10 +294,6 @@ Call up new messages using bot commands.</b>
                 "time of last changes",
             ),
         },
-        "event_history": {
-            "ru": "История события",
-            "en": "Event history",
-        },
         "clean_bin": {
             "ru": "Очистить корзину",
             "en": "Clear basket",
@@ -358,10 +354,6 @@ Call up new messages using bot commands.</b>
             "ru": "Получить Premium",
             "en": "Get Premium",
         },
-        "no_event_history": {
-            "ru": "Вы не изменяли эту заметку",
-            "en": "You didn't change this note",
-        },
         "status": {
             "-1": {
                 "ru": "бан",
@@ -383,6 +375,30 @@ Call up new messages using bot commands.</b>
         "export_group": {
             "ru": "Экспортировать данные группы",
             "en": "Export group data",
+        },
+        "event_history": {
+            "ru": (
+                "История события",
+                "Вы не изменяли эту заметку",
+                {
+                    "text": "Изменение текста",
+                    "status": "Изменение статуса",
+                    "date": "Изменение даты",
+                    "delete": "Удаление",
+                    "recover": "Восстановление",
+                },
+            ),
+            "en": (
+                "Event history",
+                "You didn't change this note",
+                {
+                    "text": "Change text",
+                    "status": "Status change",
+                    "date": "Date change",
+                    "delete": "Delete",
+                    "recover": "Recovery",
+                },
+            ),
         },
     },
     "messages": {

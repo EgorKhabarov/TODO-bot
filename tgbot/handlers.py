@@ -1139,7 +1139,9 @@ def callback_handler(call: CallbackQuery):
         CallBackAnswer(get_translate("text.send_group_name")).answer(call_id)
 
     elif call_prefix == "gre":  # group export
-        group_id, file_format = args_func({"group_id": "str", "format": ("str", "csv")}).values()
+        group_id, file_format = args_func(
+            {"group_id": "str", "format": ("str", "csv")}
+        ).values()
 
         if file_format not in ("csv", "xml", "json", "jsonl"):
             return TextMessage(get_translate("errors.export_format")).reply(message)

@@ -320,7 +320,7 @@ LIMIT 1;
 
 
 def event_message(
-    event_id: int, in_wastebasket: bool = False, message_id: int | None = None
+    event_id: int, in_wastebasket: bool = False, message_id: int = None
 ) -> EventMessage | None:
     """
     Сообщение для взаимодействия с одним событием
@@ -477,14 +477,26 @@ def event_history(event_id: int, date: datetime, page: int = 1) -> EventMessage 
     if not event:
         return None
 
+    (
+        translate_event_history,
+        translate_no_event_history,
+        history_action_dict,
+    ) = get_translate("text.event_history")
+
     if event.history:
+
+        def text_limiter(text: str, length: int = 50) -> str:
+            if len(text) > length:
+                text = text[:length] + chr(8230)
+            return text
+
         event.text = (
             "\n"
             + "\n\n".join(
                 f"""
-[<u>{parse_utc_datetime(time)}] <b>{action}</b></u>
-{formatting.hpre(str(old_val)[:50].strip(), language='language-old')}
-{formatting.hpre(str(new_val)[:50].strip(), language='language-new')}
+[<u>{parse_utc_datetime(time)}] <b>{history_action_dict.get(action, "?")}</b></u>
+{formatting.hpre(text_limiter(f"{old_val}".strip()), language="language-old")}
+{formatting.hpre(text_limiter(f"{new_val}".strip()), language="language-new")}
 """.strip()
                 for action, (old_val, new_val), time in event.history[::-1][
                     (page - 1) * 4 : (page - 1) * 4 + 4
@@ -492,7 +504,7 @@ def event_history(event_id: int, date: datetime, page: int = 1) -> EventMessage 
             ).strip()
         )
     else:
-        event.text = get_translate("text.no_event_history")
+        event.text = translate_no_event_history
 
     markup = generate_buttons(
         [
@@ -513,7 +525,7 @@ def event_history(event_id: int, date: datetime, page: int = 1) -> EventMessage 
         ]
     )
     generated.format(
-        f"{get_translate('text.event_history')}:",
+        f"{translate_event_history}:",
         event_formats["a"],
         markup,
     )
@@ -1281,7 +1293,9 @@ def group_message(
                         {remove_bot_from_group: f"grrgr {group.group_id} {mode}"}
                         if group.chat_id
                         else {
-                            get_translate("text.add_bot_to_group"): {"url": startgroup_url}
+                            get_translate("text.add_bot_to_group"): {
+                                "url": startgroup_url
+                            }
                         },
                     ],
                     [
@@ -1310,7 +1324,9 @@ def group_message(
                         {remove_bot_from_group: f"grrgr {group.group_id} {mode}"}
                         if group.chat_id
                         else {
-                            get_translate("text.add_bot_to_group"): {"url": startgroup_url}
+                            get_translate("text.add_bot_to_group"): {
+                                "url": startgroup_url
+                            }
                         },
                     ],
                     [
