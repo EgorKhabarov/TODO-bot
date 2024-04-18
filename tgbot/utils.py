@@ -22,7 +22,7 @@ from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.time_utils import relatively_string_date
-from todoapi.utils import is_admin_id, rate_limit
+from todoapi.utils import is_admin_id, rate_limit, sqlite_format_date
 
 re_inline_message = re.compile(rf"\A@{re.escape(bot.user.username)} ")
 re_edit_message = re.compile(
@@ -490,7 +490,8 @@ def sqlite_format_date2(_date: str) -> str:
 def extract_search_query(message_html_text: str) -> str:
     first_line = message_html_text.split("\n", maxsplit=1)[0]
     raw_query = first_line.split(maxsplit=2)[-1][:-1]
-    return html_to_markdown(raw_query.removeprefix("<u>").removesuffix("</u>"))
+    raw_query = html_to_markdown(raw_query.removeprefix("<u>").removesuffix("</u>"))
+    return raw_query.replace("\n", " ").strip()
 
 
 def extract_search_filters(message_html_text: str) -> list[list[str]]:
@@ -502,20 +503,56 @@ def extract_search_filters(message_html_text: str) -> list[list[str]]:
     return [html.unescape(search_filter).split(": ") for search_filter in search_filters]
 
 
+def generate_search_sql_condition(query: str, filters: list[list[str]]):
+    splitquery = " OR ".join(
+        """
+date LIKE '%' || ? || '%'
+OR text LIKE '%' || ? || '%'
+OR status LIKE '%' || ? || '%'
+OR event_id LIKE '%' || ? || '%'
+"""
+        for _ in query.split()
+    )
+    filters_conditions = []
+    filters_params = []
+    for _, f in filters[:6]:
+        if m := re.compile(r"^([<>=])(\d{2}\.\d{2}\.\d{4})$").match(f):
+            condition, date = m.groups()
+            filters_conditions.append(f"{sqlite_format_date('date')} {condition}= ?")
+            filters_params.append(sqlite_format_date2(date))
+    string_sql_filters = f"AND ({' AND '.join(filters_conditions)})" if filters else ""
+
+    WHERE = f"""
+user_id IS ?
+AND group_id IS ?
+AND removal_time IS NULL
+AND ({splitquery.strip()})
+{string_sql_filters}
+"""
+    params = (
+        request.entity.safe_user_id,
+        request.entity.group_id,
+        *[y for x in query.split() for y in (x, x, x, x)],
+        *filters_params,
+    )
+    return WHERE, params
+
 def set_bot_commands(not_login: bool = False):
     """
     Ставит список команд для пользователя chat_id
     """
 
     if not_login:
-        target = "buttons.commands.not_login"
-    else:
+        status = "not_login"
+    elif request.is_user:
         status = request.entity.user.user_status
-        if request.is_user and request.entity.is_admin and status != -1:
+        if request.entity.is_admin and status != -1:
             status = 2
-        target = f"buttons.commands.{status}.{request.entity_type}"
+    else:
+        status = 1
 
+    commands = get_translate(f"buttons.commands.{status}.{request.entity_type}")
     try:
-        bot.set_my_commands(get_translate(target), BotCommandScopeChat(request.chat_id))
+        bot.set_my_commands(commands, BotCommandScopeChat(request.chat_id))
     except ApiTelegramException as e:
         logging.error(f'set_bot_commands ApiTelegramException "{e}"')

@@ -230,7 +230,7 @@ Call up new messages using bot commands.</b>
 """,
                 """
 /clear_logs - Очистить логи
-/version - Версия бота
+/version | /v - Версия бота
 """,
             ),
             "en": (
@@ -1053,16 +1053,26 @@ Visibility <b>{}</b>m""",
     "buttons": {
         "commands": {
             "not_login": {
-                "ru": [
-                    BotCommand("start", "Старт"),
-                    BotCommand("login", "<username> <password>"),
-                    BotCommand("signup", "<email> <username> <password>"),
-                ],
-                "en": [
-                    BotCommand("start", "Start"),
-                    BotCommand("login", "<username> <password>"),
-                    BotCommand("signup", "<email> <username> <password>"),
-                ],
+                "user": {
+                    "ru": [
+                        BotCommand("start", "Старт"),
+                        BotCommand("login", "<username> <password>"),
+                        BotCommand("signup", "<email> <username> <password>"),
+                    ],
+                    "en": [
+                        BotCommand("start", "Start"),
+                        BotCommand("login", "<username> <password>"),
+                        BotCommand("signup", "<email> <username> <password>"),
+                    ],
+                },
+                "member": {
+                    "ru": [
+                        BotCommand("start", "Старт"),
+                    ],
+                    "en": [
+                        BotCommand("start", "Start"),
+                    ],
+                },
             },
             "-1": {
                 "user": {
@@ -1303,8 +1313,8 @@ Visibility <b>{}</b>m""",
                 },
             },
         },
-        "status page": {
-            "0": {
+        "select_status": {
+            "folders": {
                 "ru": (
                     (("🗂 Важность", "1"),),
                     (("🗂 Разное", "2"),),

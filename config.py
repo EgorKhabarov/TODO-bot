@@ -45,6 +45,7 @@ COMMANDS = (
     "id",
     "clear_logs",
     "version",
+    "v",
     "login",
     "signup",
     "logout",
@@ -53,5 +54,5 @@ COMMANDS = (
 ts = chr(10240)  # transparent symbol
 """Специальный прозрачный символ для заполнения пустого места в кнопках"""
 
-__version__ = "18.04.2024"
+__version__ = "19.04.2024"
 __autor__ = "EgorKhabarov"

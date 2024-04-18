@@ -3,6 +3,7 @@ from calendar import monthcalendar
 # noinspection PyPackageRequirements
 from telebot.types import InlineKeyboardMarkup
 
+import config
 from tgbot.request import request
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.time_utils import new_time_calendar, year_info, get_week_number
@@ -420,12 +421,95 @@ SELECT 1
     return markup
 
 
+def create_select_status_keyboard(
+    prefix: str,
+    status_list: list[str],
+    folder_path: str,
+    save: str,
+    back: str,
+    arguments: str = "",
+):
+    """
+
+    :param prefix:
+    :param status_list:
+    :param folder_path:
+    :param save:
+    :param back:
+    :param arguments:
+    :return:
+    """
+    status_list = status_list[-5:]
+
+    def join(lst) -> str:
+        return ",".join(lst)
+
+    string_statuses = join(status_list)
+
+    if folder_path == "folders":
+        buttons_data: tuple[tuple[tuple[str]]] = get_translate("buttons.select_status.folders")
+        markup = generate_buttons(
+            [
+                *[
+                    [
+                        {f"{title:{config.ts}<80}": f"{prefix} {string_statuses} {folder} {arguments}"}
+                        for (title, folder) in row
+                    ]
+                    for row in buttons_data
+                ],
+                [
+                    {
+                        (
+                            rm_status if rm_status else " "
+                        ): (
+                            f"{prefix} {join(filter(lambda x: x != rm_status, status_list)) or '⬜'} folders {arguments}"
+                            if rm_status
+                            else "None"
+                        )
+                    }
+                    for rm_status in status_list + [""] * (5 - len(status_list))
+                ]
+                if status_list != ["⬜"] else ({" ": "None"},)*5,
+                [
+                    {get_theme_emoji("back"): f"{back} {arguments}"},
+                    {"💾": f"{save} {arguments} {string_statuses}"},
+                ],
+            ]
+        )
+    else:
+        buttons_data: tuple[tuple[str]] = get_translate(f"buttons.select_status.{folder_path}")
+        markup = generate_buttons(
+            [
+                *[
+                    [
+                        {
+                            f"{row:{config.ts}<80}": (
+                                (
+                                    f"{prefix} {string_statuses},{row.split(maxsplit=1)[0]} folders {arguments}"
+                                    if "⬜" not in status_list
+                                    else f"{prefix} {row.split(maxsplit=1)[0]} folders {arguments}"
+                                )
+                                if row.split(maxsplit=1)[0] != "⬜"
+                                else f"{prefix} ⬜ folders {arguments}"
+                            )
+                        }
+                        for row in status_column
+                    ]
+                    for status_column in buttons_data
+                ],
+                [{get_theme_emoji("back"): f"{prefix} {string_statuses} folders {arguments}"}],
+            ]
+        )
+
+    return markup
+
+
 def edit_button_attrs(
     markup: InlineKeyboardMarkup, row: int, column: int, old: str, new: str, val: str
 ) -> None:
     button = markup.keyboard[row][column]
-    button.__setattr__(old, None)
-    button.__setattr__(new, val)
+    setattr(button, old, None)
+    setattr(button, new, val)
 
 
 def delmarkup() -> InlineKeyboardMarkup:

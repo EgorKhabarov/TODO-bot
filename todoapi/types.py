@@ -344,10 +344,10 @@ SELECT (
 
 
 class ExportData:
-    def __init__(self, filename: str, user_id: int = None, group_id: str = None):
+    def __init__(self, filename: str, user_id: int = None, group_id: str = None, __sql_where: str = None, __sql_params: tuple = None):
         self.user_id, self.group_id = user_id, group_id
         self.filename = filename
-        self.query = """
+        self.query = f"""
 SELECT event_id,
        date,
        status,
@@ -355,12 +355,13 @@ SELECT event_id,
   FROM events
  WHERE user_id IS :user_id
        AND group_id IS :group_id
-       AND removal_time IS NULL;
+       AND removal_time IS NULL{f" AND ({__sql_where}) LIMIT 400" if __sql_where else ""};
 """
-        self.params = {
-            "user_id": user_id,
-            "group_id": group_id,
-        }
+        self.params = (
+            user_id,
+            group_id,
+            *__sql_params,
+        )
         try:
             self.table = db.execute(self.query, params=self.params, column_names=True)
         except Error as e:
@@ -753,7 +754,9 @@ class Account:
     def __init__(self, user_id: int, group_id: str = None):
         self.user_id, self.group_id = user_id, group_id
         self.limit = Limit(
-            self.user.user_status, user_id, self.group.group_id if group_id else None
+            self.user.user_status if not group_id else 0,
+            user_id,
+            self.group.group_id if group_id else None,
         )
         self.settings = self.get_settings()
 
@@ -1184,12 +1187,12 @@ DELETE FROM events
             raise ApiError(e)
 
     def export_data(
-        self, filename: str, file_format: str = "csv"
+        self, filename: str, file_format: str = "csv", __sql_where: str = None, __sql_params: str = None
     ) -> StringIO | BytesIO:
         if file_format not in ("csv", "xml", "json", "jsonl"):
             raise ValueError("Format Is Not Valid")
 
-        return ExportData(filename, self.safe_user_id, self.group_id).export(
+        return ExportData(filename, self.safe_user_id, self.group_id, __sql_where, __sql_params).export(
             file_format
         )
 

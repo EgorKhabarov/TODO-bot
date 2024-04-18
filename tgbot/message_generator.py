@@ -99,11 +99,17 @@ class TextMessage:
         self.markup = markup
 
     def send(self, chat_id: int, **kwargs) -> Message:
+        message = request.query.message if request.is_callback else request.query
+        message_thread_id = (
+            message.reply_to_message.message_thread_id
+            if message.reply_to_message
+            else message.message_thread_id
+        )
         return bot.send_message(
             chat_id=chat_id,
             text=self.text,
             reply_markup=self.markup,
-            message_thread_id=getattr(request.query, "message_thread_id", None),
+            message_thread_id=message_thread_id,
             **kwargs,
         )
 
@@ -160,11 +166,17 @@ class TextMessage:
             )
 
     def reply(self, message, **kwargs):
+        message = request.query.message if request.is_callback else request.query
+        message_thread_id = (
+            message.reply_to_message.message_thread_id
+            if message.reply_to_message
+            else message.message_thread_id
+        )
         bot.reply_to(
             message=message,
             text=self.text,
             reply_markup=self.markup,
-            message_thread_id=getattr(request.query, "message_thread_id", None),
+            message_thread_id=message_thread_id,
             **kwargs,
         )
 

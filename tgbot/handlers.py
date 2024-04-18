@@ -77,6 +77,7 @@ from tgbot.utils import (
     re_user_login_message,
     re_user_signup_message,
     extract_search_filters,
+    generate_search_sql_condition,
 )
 from todoapi.exceptions import (
     ApiError,
@@ -122,6 +123,10 @@ def not_login_handler(x: CallbackQuery | Message) -> None:
         pass
 
     message = x if isinstance(x, Message) else x.message
+
+    if isinstance(x, CallbackQuery) and x.data == "md":
+        return delete_message_action(message)
+
     parsed_command = parse_command(message.text, {"arg": "long str"})
     command_text = parsed_command["command"]
     button_login = {
@@ -289,7 +294,7 @@ def command_handler(message: Message) -> None:
     elif command_text == "settings":
         settings_message().send(chat_id)
 
-    elif command_text == "version":
+    elif command_text in ("version", "v"):
         TextMessage(f"Version {config.__version__}").send(chat_id)
 
     elif command_text in ("weather", "forecast"):
@@ -520,40 +525,21 @@ def callback_handler(call: CallbackQuery):
         markup = generate_buttons([[{get_theme_emoji("back"): f"dl {date}"}]])
         TextMessage(text, markup).edit(chat_id, message_id)
 
-    elif call_prefix == "esp":  # event status page
-        page, date, event_id = args_func(
-            {"page": "str", "date": "date", "event_id": "int"}
+    elif call_prefix == "es":  # event status page
+        statuses, folder, event_id, date = args_func(
+            {"statuses": "str", "folder": "str", "event_id": "int", "date": "str"}
         ).values()
-        try:
-            event = request.entity.get_event(event_id)
-        except EventNotFound:
-            generated = daily_message(date)
-        else:
-            generated = event_status_message(event, page)
+        event_status_message(statuses, folder, event_id, date).edit(chat_id, message_id)
 
-        generated.edit(chat_id, message_id)
-
-    elif call_prefix == "esa":  # event status add
-        status, date, event_id = args_func(
-            {"status": "str", "date": "date", "event_id": "int"}
+    elif call_prefix == "ess":
+        event_id, date, new_status = args_func(
+            {"event_id": "int", "date": "str", "new_status": "str"}
         ).values()
+
         try:
-            event = request.entity.get_event(event_id)
+            request.entity.edit_event_status(event_id, new_status)
         except EventNotFound:
             return daily_message(date).edit(chat_id, message_id)
-
-        if status == "⬜" == event.status:
-            return event_status_message(event).edit(chat_id, message_id)
-
-        if event.status == "⬜":
-            res_status = status
-        elif status == "⬜":
-            res_status = "⬜"
-        else:
-            res_status = f"{event.status},{status}"
-
-        try:
-            request.entity.edit_event_status(event_id, res_status)
         except StatusConflict:
             text = get_translate("errors.conflict_statuses")
         except StatusLengthExceeded:
@@ -564,40 +550,10 @@ def callback_handler(call: CallbackQuery):
             logging.error(traceback.format_exc())
             text = get_translate("errors.error")
         else:
-            if status == "⬜":
-                generated = event_message(event_id, False, message_id)
-            else:
-                event.status = res_status
-                generated = event_status_message(event)
+            generated = event_message(event_id, False, message_id)
             return generated.edit(chat_id, message_id)
 
         CallBackAnswer(text).answer(call_id, True)
-
-    elif call_prefix == "esr":  # event status remove
-        status, date, event_id = args_func(
-            {"status": "str", "date": "date", "event_id": "int"}
-        ).values()
-        try:
-            event = request.entity.get_event(event_id)
-        except EventNotFound:
-            return daily_message(date).edit(chat_id, message_id)
-
-        if status == "⬜" or event.status == "⬜":
-            return
-
-        statuses = event.status.split(",")
-        try:
-            statuses.remove(status)
-        except ValueError:  # Если попытаться удалить статус который уже не стоит
-            pass
-        res_status = ",".join(statuses)
-
-        if not res_status:
-            res_status = "⬜"
-
-        request.entity.edit_event_status(event_id, res_status)
-        event.status = res_status
-        event_status_message(event).edit(chat_id, message_id)
 
     elif call_prefix == "eet":  # event edit text
         event_id, event_date = args_func({"event_id": "int", "date": "date"}).values()
@@ -774,7 +730,7 @@ def callback_handler(call: CallbackQuery):
                 srch = get_translate("messages.search")
                 if all_string_filters:
                     all_string_filters = f"\n{all_string_filters}"
-                generated.text = f"🔍 {srch} <u>{query}</u>:{all_string_filters}\n\n{generated.text}"
+                generated.text = f"🔍 {srch} <u>{html.escape(query)}</u>:{all_string_filters}\n\n{generated.text}"
             generated.edit(chat_id, message_id)
         else:
             no_events = get_translate("errors.no_events_to_interact")
@@ -798,7 +754,7 @@ def callback_handler(call: CallbackQuery):
                 srch = get_translate("messages.search")
                 if all_string_filters:
                     all_string_filters = f"\n{all_string_filters}"
-                generated.text = f"🔍 {srch} <u>{query}</u>:{all_string_filters}\n\n{generated.text}"
+                generated.text = f"🔍 {srch} <u>{html.escape(query)}</u>:{all_string_filters}\n\n{generated.text}"
             generated.edit(chat_id, message_id)
         else:
             no_events = get_translate("errors.no_events_to_interact")
@@ -995,6 +951,22 @@ def callback_handler(call: CallbackQuery):
     elif call_prefix == "sf":
         if message.text.startswith("🔍⚙️"):
             search_filter_message(message, call_data).edit(chat_id, message_id)
+
+    elif call_prefix == "sfe":
+        if message.text.startswith("🔍"):
+            query = extract_search_query(message.html_text)
+            filters = extract_search_filters(message.html_text)
+            file = request.entity.export_data(
+                f"events_{request.entity.now_time():%Y-%m-%d_%H-%M-%S}.csv",
+                "csv",
+                *generate_search_sql_condition(query, filters),
+            )
+            ChatAction("upload_document").send(chat_id)
+            try:
+                DocumentMessage(file).send(chat_id)
+            except ApiTelegramException as e:
+                logging.info(f'export ApiTelegramException "{e}"')
+                TextMessage(get_translate("errors.file_is_too_big")).send(chat_id)
 
     elif call_prefix == "md":  # message delete
         delete_message_action(message)

@@ -80,9 +80,17 @@ SELECT group_id,
         except IndexError:
             raise GroupNotFound
 
-        member_status = ("member", "administrator", "creator").index(
-            bot.get_chat_member(group_chat_id, user_chat_id).status
-        )
+        telegram_group_member = bot.get_chat_member(group_chat_id, user_chat_id)
+        match telegram_group_member.status:
+            case "member":
+                member_status = 0
+            case "administrator":
+                member_status = 1
+            case "creator":
+                member_status = 2
+            case _:
+                member_status = 0
+
         return TelegramGroup(*group, "", member_status)
 
 
@@ -191,7 +199,8 @@ class TelegramAccount(Account):
     def __init__(self, chat_id: int, group_chat_id: int = None):
         self.chat_id, self.group_chat_id = chat_id, group_chat_id
         super().__init__(
-            self.user.user_id, self.group.group_id if group_chat_id else None
+            self.user.user_id if not group_chat_id else 0,
+            self.group.group_id if group_chat_id else None,
         )
 
     @cached_property

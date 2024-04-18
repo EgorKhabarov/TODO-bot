@@ -97,7 +97,11 @@ def process_account(func):
 
                         not_login_handler(x)
                     else:
-                        if request.entity.user.user_status == -1 and not is_admin_id(
+                        if (
+                            request.entity.user.user_status == -1
+                            if request.is_user
+                            else request.entity.group.member_status == -1
+                        ) and not is_admin_id(
                             chat_id
                         ):
                             return
