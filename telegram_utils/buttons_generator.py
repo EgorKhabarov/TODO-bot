@@ -115,3 +115,9 @@ def generate_buttons(
 
         case _:
             return None
+
+
+def edit_button_data(
+    markup: InlineKeyboardMarkup, row: int, column: int, val: str
+) -> None:
+    markup.keyboard[row][column].callback_data = val

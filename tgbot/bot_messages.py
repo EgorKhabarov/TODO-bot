@@ -972,9 +972,29 @@ AND ({splitquery.strip()})
     generated.format(
         title=f"🔍 {translate_search} <u>{html.escape(query)}</u>:\n{all_string_filters}",
         args=event_formats["r"],
-        if_empty=get_translate("errors.nothing_found"),
+        if_empty=nothing_found,
     )
     return generated
+
+
+def search_filters_message(message: Message, call_data: str = "") -> TextMessage:
+    query = extract_search_query(message.html_text)
+    filters = extract_search_filters(message.html_text)
+    if call_data.startswith("rm "):
+        rmn = int(call_data.removeprefix("rm "))
+        filters = [f for n, f in enumerate(filters) if rmn != n]
+    string_filters = [f"{args[0]}: {html.escape(args[1])}" for args in filters if len(args) == 2]
+    translate_search = get_translate("messages.search")
+    all_string_filters = "\n".join(string_filters)
+
+    if query.isspace():
+        markup = generate_buttons([[{get_theme_emoji("back"): "mnm"}]])
+        generated = EventsMessage(markup=markup)
+        generated.format(
+            title=f"🔍 {translate_search} ...:\n",
+            if_empty=get_translate("errors.request_empty"),
+        )
+        return generated
 
     clue_1 = f"\nНажмите на {get_theme_emoji('add')} чтобы добавить фильтр" if len(filters) < 6 else ""
     clue_2 = "\nНажмите на кнопки ниже чтобы удалить фильтр" if len(filters) > 0 else ""
@@ -1014,6 +1034,7 @@ def search_filter_message(message: Message, call_data: str) -> TextMessage:
         )
         return generated
 
+    # TODO перевод
     lang = {
         "ru": {
             "b": ("До даты", "<"),
@@ -1044,6 +1065,7 @@ def search_filter_message(message: Message, call_data: str) -> TextMessage:
             ]
         elif call_data in ("add d b", "add d d", "add d a"):
             _, _, t = call_data.split()
+            # TODO перевод
             return monthly_calendar_message(
                 None, "sf", "sfs", text, f"add d {t}"
             )
@@ -1066,6 +1088,7 @@ def search_filter_message(message: Message, call_data: str) -> TextMessage:
             [{"📆": "sf add d"}, {"🏷": "None"}],
             [{get_theme_emoji("back"): "sfs"}],
         ]
+    # TODO перевод
     return TextMessage(text, generate_buttons(markup))
 
 
