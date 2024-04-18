@@ -1,5 +1,4 @@
 import csv
-import html
 import json
 import logging
 from uuid import uuid4
@@ -155,7 +154,7 @@ class DataBase:
         if func:
             self.sqlite_connection.create_function(*func)
         logging.debug(
-            "SQLite3.EXECUTE"
+            "SQLite3.EXECUTE: "
             + " ".join([line.strip() for line in query.split("\n")]).strip()
         )
 

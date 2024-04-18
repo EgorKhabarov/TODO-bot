@@ -1,3 +1,4 @@
+import html
 import logging
 import traceback
 from time import sleep
@@ -26,7 +27,6 @@ from tgbot.buttons_utils import (
     encode_id,
     decode_id,
     create_yearly_calendar_keyboard,
-    edit_button_data,
     create_monthly_calendar_keyboard,
     create_twenty_year_calendar_keyboard,
 )
@@ -38,7 +38,6 @@ from tgbot.bot_messages import (
     group_message,
     daily_message,
     event_history,
-    search_message,
     limits_message,
     groups_message,
     events_message,
@@ -50,6 +49,9 @@ from tgbot.bot_messages import (
     event_status_message,
     notification_message,
     select_events_message,
+    search_filter_message,
+    search_filters_message,
+    search_results_message,
     edit_event_date_message,
     event_show_mode_message,
     week_event_list_message,
@@ -74,6 +76,7 @@ from tgbot.utils import (
     extract_search_query,
     re_user_login_message,
     re_user_signup_message,
+    extract_search_filters,
 )
 from todoapi.exceptions import (
     ApiError,
@@ -100,7 +103,7 @@ from todoapi.types import (
     get_account_from_password,
 )
 from telegram_utils.argument_parser import getargs
-from telegram_utils.buttons_generator import generate_buttons
+from telegram_utils.buttons_generator import generate_buttons, edit_button_data
 from telegram_utils.command_parser import parse_command, get_command_arguments
 
 
@@ -309,7 +312,7 @@ def command_handler(message: Message) -> None:
             message.html_text, {"query": ("long str", "")}
         )["query"]
         query = html_to_markdown(raw_query)
-        search_message(query).send(chat_id)
+        search_results_message(query).send(chat_id)
 
     elif command_text == "dice":
         value = bot.send_dice(
@@ -474,6 +477,11 @@ def callback_handler(call: CallbackQuery):
             notification_message(n_date, from_command=True).edit(chat_id, message_id)
         except ApiTelegramException:
             CallBackAnswer("ok").answer(call_id, True)
+
+    elif call_prefix == "mnsr":
+        search_results_message(
+            get_translate("text.search_placeholder"), id_list=[0], is_placeholder=True
+        ).edit(chat_id, message_id)
 
     elif call_prefix == "dl":
         cache_add_event_date("")
@@ -759,9 +767,14 @@ def callback_handler(call: CallbackQuery):
         )
         if generated:
             if "s" in info:
-                query = extract_search_query(message.text)
+                query = extract_search_query(message.html_text)
+                filters = extract_search_filters(message.html_text)
+                string_filters = [f"{args[0]}: {html.escape(' '.join(args[1:]))}" for args in filters if args]
+                all_string_filters = "\n".join(string_filters)
                 srch = get_translate("messages.search")
-                generated.text = f"🔍 {srch} <u>{query}</u>:\n{generated.text}"
+                if all_string_filters:
+                    all_string_filters = f"\n{all_string_filters}"
+                generated.text = f"🔍 {srch} <u>{query}</u>:{all_string_filters}\n\n{generated.text}"
             generated.edit(chat_id, message_id)
         else:
             no_events = get_translate("errors.no_events_to_interact")
@@ -778,9 +791,14 @@ def callback_handler(call: CallbackQuery):
         )
         if generated:
             if "s" in info:
-                query = extract_search_query(message.text)
+                query = extract_search_query(message.html_text)
+                filters = extract_search_filters(message.html_text)
+                string_filters = [f"{args[0]}: {html.escape(' '.join(args[1:]))}" for args in filters if args]
+                all_string_filters = "\n".join(string_filters)
                 srch = get_translate("messages.search")
-                generated.text = f"🔍 {srch} <u>{query}</u>:\n{generated.text}"
+                if all_string_filters:
+                    all_string_filters = f"\n{all_string_filters}"
+                generated.text = f"🔍 {srch} <u>{query}</u>:{all_string_filters}\n\n{generated.text}"
             generated.edit(chat_id, message_id)
         else:
             no_events = get_translate("errors.no_events_to_interact")
@@ -826,7 +844,7 @@ def callback_handler(call: CallbackQuery):
 
     elif call_prefix == "pr":  # page recurring
         date, page, id_list = args_func(
-            {"date": "str", "page": ("str", 0), "id_list": ("str", "")}
+            {"date": "str", "page": ("int", 0), "id_list": ("str", "")}
         ).values()
         markup = message.reply_markup if page else None
         if markup:
@@ -840,21 +858,24 @@ def callback_handler(call: CallbackQuery):
             CallBackAnswer(text).answer(call_id)
 
     elif call_prefix == "ps":  # page search
-        page, id_list = args_func({"page": ("str", 1), "id_list": ("str", "")}).values()
+        page, id_list = args_func({"page": ("int", 1), "id_list": ("str", "")}).values()
         markup = message.reply_markup if page else None
         if markup:
-            edit_button_data(markup, 0, 2, f"se os {id_list} us")
-            edit_button_data(markup, 0, 3, f"ses s {id_list} us")
+            edit_button_data(markup, 0, 1, f"se os {id_list} us")
+            edit_button_data(markup, 0, 2, f"ses s {id_list} us")
         try:
-            search_message(
-                extract_search_query(message.html_text), decode_id(id_list), page
+            search_results_message(
+                extract_search_query(message.html_text),
+                extract_search_filters(message.html_text),
+                decode_id(id_list),
+                page,
             ).edit(chat_id, message_id, markup=markup)
         except ApiTelegramException:
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
 
     elif call_prefix == "pw":  # page week event list
-        page, id_list = args_func({"page": ("str", 0), "id_list": ("str", ())}).values()
+        page, id_list = args_func({"page": ("int", 0), "id_list": ("str", ())}).values()
         markup = message.reply_markup if page else None
         if markup:
             edit_button_data(markup, 0, 2, f"se o {id_list} mnw")
@@ -867,7 +888,7 @@ def callback_handler(call: CallbackQuery):
             CallBackAnswer(text).answer(call_id)
 
     elif call_prefix == "pb":  # page bin
-        page, id_list = args_func({"page": ("str", 0), "id_list": ("str", ())}).values()
+        page, id_list = args_func({"page": ("int", 0), "id_list": ("str", ())}).values()
         markup = message.reply_markup if page else None
         if markup:
             edit_button_data(markup, 0, 0, f"se b {id_list} mnb")
@@ -882,7 +903,7 @@ def callback_handler(call: CallbackQuery):
 
     elif call_prefix == "pn":  # page notification
         n_date, page, id_list = args_func(
-            {"date": "date", "page": ("str", 0), "id_list": ("str", ())}
+            {"date": "date", "page": ("int", 0), "id_list": ("str", ())}
         ).values()
         markup = message.reply_markup if page else None
         if markup:
@@ -959,11 +980,21 @@ def callback_handler(call: CallbackQuery):
             CallBackAnswer(get_translate("errors.invalid_date")).answer(call_id)
 
     elif call_prefix == "us":  # update search
-        query = html_to_markdown(extract_search_query(message.html_text))
         try:
-            search_message(query).edit(chat_id, message_id)
+            search_results_message(
+                extract_search_query(message.html_text),
+                extract_search_filters(message.html_text),
+            ).edit(chat_id, message_id)
         except ApiTelegramException:
             CallBackAnswer("ok").answer(call_id, True)
+
+    elif call_prefix == "sfs":
+        if message.text.startswith("🔍"):
+            search_filters_message(message, call_data).edit(chat_id, message_id)
+
+    elif call_prefix == "sf":
+        if message.text.startswith("🔍⚙️"):
+            search_filter_message(message, call_data).edit(chat_id, message_id)
 
     elif call_prefix == "md":  # message delete
         delete_message_action(message)
@@ -1216,6 +1247,12 @@ def reply_handler(message: Message, reply_to_message: Message) -> None:
                 return
             else:
                 delete_message_action(message)
+
+    elif reply_to_message.text.startswith("🔍 "):
+        query = html_to_markdown(message.html_text)
+        filters = extract_search_filters(reply_to_message.html_text)
+        search_results_message(query, filters).edit(request.chat_id, reply_to_message.message_id)
+        delete_message_action(message)
 
 
 def cache_add_event_date(state: str = None) -> str | bool:

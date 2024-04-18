@@ -17,9 +17,9 @@ calendar_event_count_template = ("⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "
 
 def create_monthly_calendar_keyboard(
     YY_MM: list | tuple[int, int] = None,
-    command: str | None = None,
-    back: str | None = None,
-    arguments: str | None = None,
+    command: str = None,
+    back: str = None,
+    arguments: str = None,
 ) -> InlineKeyboardMarkup:
     """
     Создаёт календарь на месяц и возвращает inline клавиатуру
@@ -137,12 +137,20 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
                 x = has_events.get(day)
                 tag_event = (number_to_power(x) if x < 10 else "*") if x else ""
                 tag_birthday = "!" if (day in every_year_or_month) else ""
+                date = f"{day:0>2}.{MM:0>2}.{YY}"
                 weekbuttons.append(
                     {
                         f"{tag_today}{day}{tag_event}{tag_birthday}": (
-                            f"{command[1:-1] if command else 'dl'}"
-                            f"{f' {arguments[1:-1]}' if arguments else ''} "
-                            f"{day:0>2}.{MM:0>2}.{YY}"
+                            f"{command[1:-1] if command else 'dl'} "
+                            + (
+                                (
+                                    f"{arguments[1:-1].format(date)}"
+                                    if "{}" in arguments[1:-1]
+                                    else f"{arguments[1:-1]} {date}"
+                                )
+                                if arguments
+                                else date
+                            )
                         ).strip()
                     }
                 )
@@ -180,9 +188,9 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
 
 def create_yearly_calendar_keyboard(
     YY: int,
-    command: str | None = None,
-    back: str | None = None,
-    arguments: str | None = None,
+    command: str = None,
+    back: str = None,
+    arguments: str = None,
 ) -> InlineKeyboardMarkup:
     """
     Создаёт календарь из месяцев на определённый год и возвращает inline клавиатуру
@@ -304,9 +312,9 @@ SELECT date
 
 def create_twenty_year_calendar_keyboard(
     decade: int,
-    command: str | None = None,
-    back: str | None = None,
-    arguments: str | None = None,
+    command: str = None,
+    back: str = None,
+    arguments: str = None,
 ) -> InlineKeyboardMarkup:
     command = f"'{command.strip()}'" if command else None
     back = f"'{back.strip()}'" if back else None
@@ -418,12 +426,6 @@ def edit_button_attrs(
     button = markup.keyboard[row][column]
     button.__setattr__(old, None)
     button.__setattr__(new, val)
-
-
-def edit_button_data(
-    markup: InlineKeyboardMarkup, row: int, column: int, val: str
-) -> None:
-    markup.keyboard[row][column].callback_data = val
 
 
 def delmarkup() -> InlineKeyboardMarkup:

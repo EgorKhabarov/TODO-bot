@@ -93,7 +93,7 @@ SELECT event_id,
 
 class TextMessage:
     def __init__(
-        self, text: str | None = None, markup: InlineKeyboardMarkup | None = None
+        self, text: str = None, markup: InlineKeyboardMarkup = None
     ):
         self.text = text
         self.markup = markup
@@ -174,7 +174,7 @@ class CallBackAnswer:
         self.text = text
 
     def answer(
-        self, call_id: int, show_alert: bool | None = None, url: str | None = None
+        self, call_id: int, show_alert: bool = None, url: str = None
     ):
         bot.answer_callback_query(call_id, self.text, show_alert, url)
 
@@ -197,7 +197,7 @@ class DocumentMessage:
         self,
         document: Any,
         caption: str = None,
-        markup: InlineKeyboardMarkup | None = None,
+        markup: InlineKeyboardMarkup = None,
     ):
         self.document = document
         self.caption = caption
@@ -224,7 +224,7 @@ class EventMessage(TextMessage):
         try:
             self.event: Event = request.entity.get_event(event_id, in_wastebasket)
         except EventNotFound:
-            self.event: Event | None = None
+            self.event: Event = None
 
     def format(
         self,
@@ -276,6 +276,7 @@ class EventsMessage(TextMessage):
         event_list: tuple | list[Event, ...] = tuple(),
         markup: InlineKeyboardMarkup = None,
         page: int = 0,
+        page_indent: int = 0,
     ):
         if markup is ...:
             markup = InlineKeyboardMarkup()
@@ -286,6 +287,7 @@ class EventsMessage(TextMessage):
         self.event_list = event_list
         self._date = date
         self.page = page
+        self.page_indent = page_indent
         self.page_signature_needed = True if page else False
 
     def get_pages_data(self, WHERE: str, params: dict | tuple, callback_data: str):
@@ -365,6 +367,8 @@ SELECT user_id,
                             for numpage, event_ids in row
                         ]
                     )
+            else:
+                self.page_signature_needed = False
         return self
 
     def get_page_events(self, WHERE: str, params: tuple, id_list: list[int]):
@@ -478,14 +482,14 @@ SELECT user_id,
                 strdate=str_date,
                 weekday=week_date,
                 reldate=rel_date,
-            )
+            ).strip()
             + "\n"
         )
         if self.page_signature_needed:
             if self.page == 0:
                 self.page = 1
             translate_page = get_translate("text.page")
-            format_string += f"<b>{translate_page} {self.page}</b>\n"
+            format_string += ("\n"*self.page_indent) + f"<b>{translate_page} {self.page}</b>\n"
 
         format_string += "\n"
 

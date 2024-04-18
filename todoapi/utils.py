@@ -25,9 +25,8 @@ def sqlite_format_date(_column):
     :return: SQL выражение
     """
     return f"""
-SUBSTR({_column}, 7, 4) || '-' ||
-SUBSTR({_column}, 4, 2) || '-' ||
-SUBSTR({_column}, 1, 2)"""
+SUBSTR({_column}, 7, 4) || '-' || SUBSTR({_column}, 4, 2) || '-' || SUBSTR({_column}, 1, 2)
+""".strip()
 
 
 def is_admin_id(chat_id: int) -> bool:

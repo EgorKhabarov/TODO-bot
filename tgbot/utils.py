@@ -487,9 +487,19 @@ def sqlite_format_date2(_date: str) -> str:
     return "-".join(_date.split(".")[::-1])
 
 
-def extract_search_query(message_text: str) -> str:
-    first_line = message_text.split("\n", maxsplit=1)[0]
-    return html.escape(first_line.split(maxsplit=2)[-1][:-1])
+def extract_search_query(message_html_text: str) -> str:
+    first_line = message_html_text.split("\n", maxsplit=1)[0]
+    raw_query = first_line.split(maxsplit=2)[-1][:-1]
+    return html_to_markdown(raw_query.removeprefix("<u>").removesuffix("</u>"))
+
+
+def extract_search_filters(message_html_text: str) -> list[list[str]]:
+    raw_search_filters = message_html_text.split("\n", maxsplit=1)
+    if len(raw_search_filters) == 1 or raw_search_filters[1].startswith("\n"):
+        return []
+    raw_search_filters = raw_search_filters[1].split("\n\n", maxsplit=1)[0]
+    search_filters = raw_search_filters.splitlines()
+    return [html.unescape(search_filter).split(": ") for search_filter in search_filters]
 
 
 def set_bot_commands(not_login: bool = False):

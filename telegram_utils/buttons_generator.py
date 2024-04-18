@@ -1,26 +1,30 @@
-from typing import Literal, Any
+from typing import Literal, Any, TypeAlias
 
 # noinspection PyPackageRequirements
 from telebot.types import (
+    ForceReply,
+    ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
-    ReplyKeyboardMarkup,
-    ForceReply,
-    ReplyKeyboardRemove,
 )
 
 
+buttons_data_types: TypeAlias = (
+    list[list[dict[str, str | dict]]] | list[list[str]] | dict[str, Any] | None
+)
+return_buttons_types: TypeAlias = (
+    ForceReply | ReplyKeyboardMarkup | ReplyKeyboardRemove | InlineKeyboardMarkup | None
+)
+keyboard_types: TypeAlias = Literal["inline", "reply", "force_reply", "reply_remove"]
+
+
 def generate_buttons(
-    buttons_data: list[list[dict[str, str | dict]]]
-    | list[list[str]]
-    | dict[str, Any]
-    | None,
-    keyboard_type: Literal["inline", "reply", "force_reply", "reply_remove"] = "inline",
-) -> (
-    InlineKeyboardMarkup | ReplyKeyboardMarkup | ForceReply | ReplyKeyboardRemove | None
-):
+    buttons_data: buttons_data_types, keyboard_type: keyboard_types = "inline"
+) -> return_buttons_types:
     """
     >>> from pprint import pprint
+    >>> # noinspection PyUnresolvedReferences
     >>> (
     ...     lambda k: pprint(
     ...         [isinstance(k, InlineKeyboardMarkup)]

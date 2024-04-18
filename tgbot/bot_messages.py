@@ -25,23 +25,20 @@ from tgbot.message_generator import (
     EventsMessage,
     event_formats,
 )
-from tgbot.buttons_utils import (
-    delmarkup,
-    create_monthly_calendar_keyboard,
-    encode_id,
-    edit_button_data,
-)
+from tgbot.buttons_utils import delmarkup, encode_id, create_monthly_calendar_keyboard
 from tgbot.types import TelegramAccount
 from tgbot.utils import (
-    sqlite_format_date2,
-    html_to_markdown,
     re_edit_message,
+    html_to_markdown,
+    sqlite_format_date2,
+    extract_search_query,
+    extract_search_filters,
     highlight_text_difference,
 )
 from todoapi.types import db, Event, group_limits
 from todoapi.utils import sqlite_format_date, is_valid_year, chunks
 from todoapi.exceptions import EventNotFound, GroupNotFound, UserNotFound
-from telegram_utils.buttons_generator import generate_buttons
+from telegram_utils.buttons_generator import generate_buttons, edit_button_data
 
 
 def start_message() -> TextMessage:
@@ -62,6 +59,7 @@ def menu_message() -> TextMessage:
         translate_groups,
         translate_seven_days,
         translate_notifications,
+        translate_search,
         translate_settings,
         translate_wastebasket,
         translate_admin,
@@ -90,7 +88,10 @@ def menu_message() -> TextMessage:
             if (request.is_user and request.entity.is_premium) or request.is_member
             else {},
         ],
-        [{f"👥 {translate_group}": "mngr self"} if request.is_member else {}],
+        [
+            {f"🔍 {translate_search}": "mnsr"},
+            {f"👥 {translate_group}": "mngr self"} if request.is_member else {},
+        ],
     ]
     return TextMessage(text, generate_buttons(markup))
 
@@ -199,7 +200,7 @@ def help_message(path: str = "page 1") -> TextMessage:
 
 
 def daily_message(
-    date: datetime | str, id_list: list[int] = (), page: int | str = 0
+    date: datetime | str, id_list: list[int] = (), page: int = 0
 ) -> EventsMessage:
     """
     Генерирует сообщение на один день
@@ -641,7 +642,7 @@ def confirm_changes_message(message: Message) -> None | int:
 
 
 def recurring_events_message(
-    date: str, id_list: list[int] = (), page: int | str = 0
+    date: str, id_list: list[int] = (), page: int = 0
 ) -> EventsMessage:
     """
     :param date: дата у сообщения
@@ -786,7 +787,7 @@ def edit_event_date_message(event_id: int, date: datetime) -> EventMessage | Non
 
 
 def edit_events_date_message(
-    id_list: list[int], date: datetime | None = None
+    id_list: list[int], date: datetime = None
 ) -> EventsMessage:
     if date is None:
         date = request.entity.now_time()
@@ -881,18 +882,29 @@ AND removal_time IS NULL
     return generated
 
 
-def search_message(
-    query: str, id_list: list[int] = (), page: int | str = 1
-) -> EventsMessage:
+def search_results_message(
+    query: str,
+    filters: list[list[str]] = (),
+    id_list: list[int] = (),
+    page: int = 0,
+    is_placeholder: bool = False,
+) -> EventsMessage | TextMessage:
     """
     :param query: поисковый запрос
+    :param filters:
     :param id_list: Список из event_id
     :param page: Номер страницы
-    TODO шаблоны для поиска
+    :param is_placeholder: Пустой поиск
     """
-    page -= 1
-    query = query.replace("\n", " ").strip()
     translate_search = get_translate("messages.search")
+    nothing_found = get_translate("errors.nothing_found")
+
+    if is_placeholder:
+        text = f"🔍 {translate_search}\n\n{query.strip()}"
+        markup = generate_buttons([[{get_theme_emoji("back"): "mnm"}]])
+        return TextMessage(text, markup)
+
+    query = query.replace("\n", " ").strip()
 
     if query.isspace():
         generated = EventsMessage(markup=delmarkup())
@@ -903,9 +915,17 @@ def search_message(
         return generated
 
     markup = generate_buttons(
-        [[{get_theme_emoji("del"): "md"}, {"↖️": "None"}, {"↕️": "None"}, {"🔄": "us"}]]
+        [
+            [
+                {get_theme_emoji("back"): "mnm"},
+                {"↖️": "None"},
+                {"↕️": "None"},
+                {"🔄": "us"},
+                {"⚙️": "sfs"},
+            ]
+        ]
     )
-    generated = EventsMessage(markup=markup, page=page)
+    generated = EventsMessage(markup=markup, page=int(page), page_indent=1)
 
     splitquery = " OR ".join(
         """
@@ -916,16 +936,27 @@ OR event_id LIKE '%' || ? || '%'
 """
         for _ in query.split()
     )
+    filters_conditions = []
+    filters_params = []
+    for _, f in filters[:6]:
+        if m := re.compile(r"^([<>=])(\d{2}\.\d{2}\.\d{4})$").match(f):
+            condition, date = m.groups()
+            filters_conditions.append(f"{sqlite_format_date('date')} {condition}= ?")
+            filters_params.append(sqlite_format_date2(date))
+    string_sql_filters = f"AND ({' AND '.join(filters_conditions)})" if filters else ""
+
     WHERE = f"""
 user_id IS ?
 AND group_id IS ?
 AND removal_time IS NULL
 AND ({splitquery.strip()})
+{string_sql_filters}
 """
     params = (
         request.entity.safe_user_id,
         request.entity.group_id,
         *[y for x in query.split() for y in (x, x, x, x)],
+        *filters_params,
     )
 
     if id_list:
@@ -934,18 +965,112 @@ AND ({splitquery.strip()})
         generated.get_pages_data(WHERE, params, "ps")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
-    edit_button_data(generated.markup, 0, 2, f"se os {string_id} us")
-    edit_button_data(generated.markup, 0, 3, f"ses s {string_id} us")
+    edit_button_data(generated.markup, 0, 1, f"se os {string_id} us")
+    edit_button_data(generated.markup, 0, 2, f"ses s {string_id} us")
+    string_filters = [f"{args[0]}: {html.escape(' '.join(args[1:]))}" for args in filters if args]
+    all_string_filters = "\n".join(string_filters)
     generated.format(
-        title=f"🔍 {translate_search} <u>{html.escape(query)}</u>:",
+        title=f"🔍 {translate_search} <u>{html.escape(query)}</u>:\n{all_string_filters}",
         args=event_formats["r"],
         if_empty=get_translate("errors.nothing_found"),
     )
     return generated
 
+    clue_1 = f"\nНажмите на {get_theme_emoji('add')} чтобы добавить фильтр" if len(filters) < 6 else ""
+    clue_2 = "\nНажмите на кнопки ниже чтобы удалить фильтр" if len(filters) > 0 else ""
+    text = f"""
+🔍⚙️ {translate_search} <u>{html.escape(query)}</u>:
+{all_string_filters}
+{clue_1}{clue_2}
+"""
+    markup = [
+        *[
+            [{f"{n + 1}) " + html.unescape(string_filter): f"sfs rm {n}"}]
+            for n, string_filter in enumerate(string_filters)
+        ],
+        [
+            {get_theme_emoji("back"): "us"},
+            {get_theme_emoji("add"): "sf"}
+            if len(filters) < 6
+            else {}
+        ],
+    ]
+    return TextMessage(text, generate_buttons(markup))
+
+
+def search_filter_message(message: Message, call_data: str) -> TextMessage:
+    query = extract_search_query(message.html_text)
+    filters = extract_search_filters(message.html_text)
+    string_filters = [f"{args[0]}: {html.escape(' '.join(args[1:]))}" for args in filters if args]
+    translate_search = get_translate("messages.search")
+    all_string_filters = "\n".join(string_filters)
+
+    if query.isspace():
+        markup = generate_buttons([[{get_theme_emoji("back"): "mnm"}]])
+        generated = EventsMessage(markup=markup)
+        generated.format(
+            title=f"🔍 {translate_search} ...:\n",
+            if_empty=get_translate("errors.request_empty"),
+        )
+        return generated
+
+    lang = {
+        "ru": {
+            "b": ("До даты", "<"),
+            "d": ("В течении даты", "="),
+            "a": ("После даты", ">"),
+        },
+        "en": {
+            "b": ("Before date", "<"),
+            "d": ("During date", "="),
+            "a": ("After date", ">"),
+        },
+    }[request.entity.settings.lang]
+
+    text = f"""
+🔍⚙️ {translate_search} <u>{html.escape(query)}</u>:
+{all_string_filters}
+
+Выберите дату для фильтра
+"""
+
+    if call_data.startswith("add"):
+        if call_data == "add d":
+            markup = [
+                [{lang["b"][0]: "sf add d b"}],
+                [{lang["d"][0]: "sf add d d"}],
+                [{lang["a"][0]: "sf add d a"}],
+                [{get_theme_emoji("back"): "sf"}],
+            ]
+        elif call_data in ("add d b", "add d d", "add d a"):
+            _, _, t = call_data.split()
+            return monthly_calendar_message(
+                None, "sf", "sfs", text, f"add d {t}"
+            )
+        elif call_data.startswith(("add d b ", "add d d ", "add d a ")):
+            _, _, t, d = call_data.split()
+            translate = lang[t]
+            text = message.text.split("\n\n", maxsplit=1)[0]
+            message.text = f"{text}\n{translate[0]}: {translate[1]}{d}"
+            return search_filters_message(message)
+        else:
+            markup = [
+                [
+                    {"📆": "sf add d"},
+                    # {"🏷": "None"},
+                ],
+                [{get_theme_emoji("back"): "sfs"}],
+            ]
+    else:
+        markup = [
+            [{"📆": "sf add d"}, {"🏷": "None"}],
+            [{get_theme_emoji("back"): "sfs"}],
+        ]
+    return TextMessage(text, generate_buttons(markup))
+
 
 def week_event_list_message(
-    id_list: list[int] = (), page: int | str = 0
+    id_list: list[int] = (), page: int = 0
 ) -> EventsMessage:
     """
     :param id_list: Список из event_id
@@ -1008,7 +1133,7 @@ AND (
     return generated
 
 
-def trash_can_message(id_list: list[int] = (), page: int | str = 0) -> EventsMessage:
+def trash_can_message(id_list: list[int] = (), page: int = 0) -> EventsMessage:
     """
     :param id_list: Список из event_id
     :param page: Номер страницы
@@ -1064,9 +1189,9 @@ DELETE FROM events
 
 
 def notification_message(
-    n_date: datetime | None = None,
+    n_date: datetime = None,
     id_list: list[int] = (),
-    page: int | str = 0,
+    page: int = 0,
     from_command: bool = False,
 ) -> EventsMessage | None:
     if n_date is None:
@@ -1223,17 +1348,18 @@ SELECT GROUP_CONCAT(
 
 
 def monthly_calendar_message(
-    YY_MM: list | tuple[int, int] | None = None,
-    command: str | None = None,
-    back: str | None = None,
-    custom_text: str | None = None,
+    YY_MM: list | tuple[int, int] = None,
+    command: str = None,
+    back: str = None,
+    custom_text: str = None,
+    arguments: str = None
 ) -> TextMessage:
     text = custom_text if custom_text else get_translate("select.date")
-    markup = create_monthly_calendar_keyboard(YY_MM, command, back)
+    markup = create_monthly_calendar_keyboard(YY_MM, command, back, arguments)
     return TextMessage(text, markup)
 
 
-def limits_message(date: datetime | str | None = None) -> TextMessage:
+def limits_message(date: datetime | str = None) -> TextMessage:
     if date is None or date == "now":
         date = request.entity.now_time()
 

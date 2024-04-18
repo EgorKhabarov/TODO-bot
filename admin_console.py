@@ -20,7 +20,7 @@ AlignType: TypeAlias = Literal[
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
-        yield lst[i: i + n]
+        yield lst[i : i + n]
 
 
 def console_width(text: str):
@@ -69,7 +69,9 @@ def decrease_numbers(row_lengths: list[int], max_width: int = 120, min_value: in
     return new_numbers
 
 
-def transform_align(column_count: int, align: tuple[AlignType | str] | AlignType | str = "*"):
+def transform_align(
+    column_count: int, align: tuple[AlignType | str] | AlignType | str = "*"
+):
     # Преобразуем align в подходящий вид
     if isinstance(align, str):
         align = (align, *(align,) * (column_count - 1))
@@ -92,7 +94,7 @@ def line_spliter(
         line_length_arr = []
 
         for char in (text or " "):
-            if char == "\n" or (sum(line_length_arr) >= (width-1)):
+            if char == "\n" or (sum(line_length_arr) >= (width - 1)):
                 sub_lines.append("".join(line_arr))
                 line_arr.clear()
                 line_length_arr.clear()
@@ -115,7 +117,12 @@ def line_spliter(
     return [line.strip() for line in lines]
 
 
-def fill_line(rows: list[list[str]], widths: list[int], align: tuple[AlignType | str], console_mode: bool) -> str:
+def fill_line(
+    rows: list[list[str]],
+    widths: list[int],
+    align: tuple[AlignType | str],
+    console_mode: bool,
+) -> str:
     # noinspection PyTypeChecker
     align_left, align_right = map(
         list, zip(*(a * 2 if len(a) == 1 else a for a in align))
@@ -151,8 +158,7 @@ def fill_line(rows: list[list[str]], widths: list[int], align: tuple[AlignType |
             return widths[index] - (len_func(row[index]) - len(row[index]))
 
         template = "|" + "".join(
-            f" {{:{align[n]}{get_width(n)}}} |"
-            for n in range(len(row))
+            f" {{:{align[n]}{get_width(n)}}} |" for n in range(len(row))
         )
         lines.append(template.format(*row))
 
@@ -175,8 +181,7 @@ def write_table_to_str(
     column_count = max(map(len, table))
     align = transform_align(column_count, align)
     row_lengths = [
-        max(map(lambda c: len_func(str(c)), column))
-        for column in zip(*table)
+        max(map(lambda c: len_func(str(c)), column)) for column in zip(*table)
     ]
 
     # Вычисляем ширину каждой колонки
@@ -189,8 +194,12 @@ def write_table_to_str(
     # Обрезаем длинные строки
     table = [
         [
-            line_spliter(column, max_widths[n], max_height, console_mode, line_break_symbol)
-            for n, column in enumerate((*map(str, row), *("",) * (column_count - len(row))))
+            line_spliter(
+                column, max_widths[n], max_height, console_mode, line_break_symbol
+            )
+            for n, column in enumerate(
+                (*map(str, row), *("",) * (column_count - len(row)))
+            )
         ]
         for row in table
     ]
@@ -206,7 +215,9 @@ def write_table_to_str(
         if not max_width:
             max_width = sum(row_lengths) + (3 * column_count) + 1
 
-        name = line_spliter(name, max_width - 4, max_height, console_mode, line_break_symbol)
+        name = line_spliter(
+            name, max_width - 4, max_height, console_mode, line_break_symbol
+        )
         file.write(
             fill_line(
                 [[n] for n in name],
@@ -225,7 +236,10 @@ def write_table_to_str(
             column.extend(("",) * (max_row_height - len(column)))
 
         # noinspection PyTypeChecker
-        file.write(fill_line(list(map(list, zip(*row))), max_widths, align, console_mode) + "\n")
+        file.write(
+            fill_line(list(map(list, zip(*row))), max_widths, align, console_mode)
+            + "\n"
+        )
 
     file.write(sep.rstrip("\n"))
     file.seek(0)
@@ -262,7 +276,14 @@ def execute(
 
         _file = StringIO()
         write_table_to_str(
-            _file, result or [["ok"]], align, name, name_align, max_width, max_height, console_mode
+            _file,
+            result or [["ok"]],
+            align,
+            name,
+            name_align,
+            max_width,
+            max_height,
+            console_mode,
         )
         if return_data:
             return _file.read()

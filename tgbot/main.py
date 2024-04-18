@@ -40,9 +40,9 @@ from tgbot.handlers import (
 )
 from tgbot.bot_messages import (
     group_message,
-    search_message,
     groups_message,
     account_message,
+    search_results_message,
     confirm_changes_message,
     send_notifications_messages,
 )
@@ -126,7 +126,7 @@ def processing_search_message(message: Message):
     """
     query = html_to_markdown(message.html_text).removeprefix("#")
     telegram_log("search", query)
-    search_message(query).send(request.chat_id)
+    search_results_message(query).send(request.chat_id)
 
 
 @bot.message_handler(func=lambda m: re_inline_message.match(m.text))

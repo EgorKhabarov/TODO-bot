@@ -400,6 +400,16 @@ Call up new messages using bot commands.</b>
                 },
             ),
         },
+        "search_placeholder": {
+            "ru": """
+Ответьте на это сообщение с новым поисковым запросом.
+`<code>.</code>` - искать всё
+""",
+            "en": """
+Reply to this message with a new search query.
+`<code>.</code>` - search all
+""",
+        },
     },
     "messages": {
         "start": {
@@ -1018,6 +1028,7 @@ Visibility <b>{}</b>m""",
                 "Группы",
                 "7 дней",
                 "Уведомления",
+                "Поиск",
                 "Настройки",
                 "Корзина",
                 "Админская",
@@ -1031,6 +1042,7 @@ Visibility <b>{}</b>m""",
                 "Groups",
                 "7 days",
                 "Notifications",
+                "Search",
                 "Settings",
                 "Bin",
                 "Admin",
