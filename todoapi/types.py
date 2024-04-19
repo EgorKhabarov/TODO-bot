@@ -856,12 +856,12 @@ SELECT 1
         except Error as e:
             raise ApiError(e)
 
-    def create_event(self, date: str, text: str, status: str = "⬜") -> int:
+    def create_event(self, date: str, text: str, statuses: str = "[\"⬜\"]") -> int:
         """
 
         :param date:
         :param text:
-        :param status:
+        :param statuses:
         :return: event_id
         :raise TextIsTooBig: if len(text) >= 3800
         :raise WrongDate:
