@@ -93,7 +93,7 @@ def line_spliter(
         line_arr = []
         line_length_arr = []
 
-        for char in (text or " "):
+        for char in text or " ":
             if char == "\n" or (sum(line_length_arr) >= (width - 1)):
                 sub_lines.append("".join(line_arr))
                 line_arr.clear()

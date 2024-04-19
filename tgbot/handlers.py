@@ -725,7 +725,11 @@ def callback_handler(call: CallbackQuery):
             if "s" in info:
                 query = extract_search_query(message.html_text)
                 filters = extract_search_filters(message.html_text)
-                string_filters = [f"{args[0]}: {html.escape(' '.join(args[1:]))}" for args in filters if args]
+                string_filters = [
+                    f"{args[0]}: {html.escape(' '.join(args[1:]))}"
+                    for args in filters
+                    if args
+                ]
                 all_string_filters = "\n".join(string_filters)
                 srch = get_translate("messages.search")
                 if all_string_filters:
@@ -749,7 +753,11 @@ def callback_handler(call: CallbackQuery):
             if "s" in info:
                 query = extract_search_query(message.html_text)
                 filters = extract_search_filters(message.html_text)
-                string_filters = [f"{args[0]}: {html.escape(' '.join(args[1:]))}" for args in filters if args]
+                string_filters = [
+                    f"{args[0]}: {html.escape(' '.join(args[1:]))}"
+                    for args in filters
+                    if args
+                ]
                 all_string_filters = "\n".join(string_filters)
                 srch = get_translate("messages.search")
                 if all_string_filters:
@@ -1223,7 +1231,9 @@ def reply_handler(message: Message, reply_to_message: Message) -> None:
     elif reply_to_message.text.startswith("🔍 "):
         query = html_to_markdown(message.html_text)
         filters = extract_search_filters(reply_to_message.html_text)
-        search_results_message(query, filters).edit(request.chat_id, reply_to_message.message_id)
+        search_results_message(query, filters).edit(
+            request.chat_id, reply_to_message.message_id
+        )
         delete_message_action(message)
 
 

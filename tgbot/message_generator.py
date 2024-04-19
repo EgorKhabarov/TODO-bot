@@ -92,9 +92,7 @@ SELECT event_id,
 
 
 class TextMessage:
-    def __init__(
-        self, text: str = None, markup: InlineKeyboardMarkup = None
-    ):
+    def __init__(self, text: str = None, markup: InlineKeyboardMarkup = None):
         self.text = text
         self.markup = markup
 
@@ -185,9 +183,7 @@ class CallBackAnswer:
     def __init__(self, text: str):
         self.text = text
 
-    def answer(
-        self, call_id: int, show_alert: bool = None, url: str = None
-    ):
+    def answer(self, call_id: int, show_alert: bool = None, url: str = None):
         bot.answer_callback_query(call_id, self.text, show_alert, url)
 
 
@@ -501,7 +497,9 @@ SELECT user_id,
             if self.page == 0:
                 self.page = 1
             translate_page = get_translate("text.page")
-            format_string += ("\n"*self.page_indent) + f"<b>{translate_page} {self.page}</b>\n"
+            format_string += (
+                "\n" * self.page_indent
+            ) + f"<b>{translate_page} {self.page}</b>\n"
 
         format_string += "\n"
 

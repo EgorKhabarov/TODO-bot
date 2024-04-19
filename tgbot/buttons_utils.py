@@ -447,21 +447,23 @@ def create_select_status_keyboard(
     string_statuses = join(status_list)
 
     if folder_path == "folders":
-        buttons_data: tuple[tuple[tuple[str]]] = get_translate("buttons.select_status.folders")
+        buttons_data: tuple[tuple[tuple[str]]] = get_translate(
+            "buttons.select_status.folders"
+        )
         markup = generate_buttons(
             [
                 *[
                     [
-                        {f"{title:{config.ts}<80}": f"{prefix} {string_statuses} {folder} {arguments}"}
+                        {
+                            f"{title:{config.ts}<80}": f"{prefix} {string_statuses} {folder} {arguments}"
+                        }
                         for (title, folder) in row
                     ]
                     for row in buttons_data
                 ],
                 [
                     {
-                        (
-                            rm_status if rm_status else " "
-                        ): (
+                        (rm_status if rm_status else " "): (
                             f"{prefix} {join(filter(lambda x: x != rm_status, status_list)) or '⬜'} folders {arguments}"
                             if rm_status
                             else "None"
@@ -469,7 +471,8 @@ def create_select_status_keyboard(
                     }
                     for rm_status in status_list + [""] * (5 - len(status_list))
                 ]
-                if status_list != ["⬜"] else ({" ": "None"},)*5,
+                if status_list != ["⬜"]
+                else ({" ": "None"},) * 5,
                 [
                     {get_theme_emoji("back"): f"{back} {arguments}"},
                     {"💾": f"{save} {arguments} {string_statuses}"},
@@ -477,7 +480,9 @@ def create_select_status_keyboard(
             ]
         )
     else:
-        buttons_data: tuple[tuple[str]] = get_translate(f"buttons.select_status.{folder_path}")
+        buttons_data: tuple[tuple[str]] = get_translate(
+            f"buttons.select_status.{folder_path}"
+        )
         markup = generate_buttons(
             [
                 *[
@@ -497,7 +502,13 @@ def create_select_status_keyboard(
                     ]
                     for status_column in buttons_data
                 ],
-                [{get_theme_emoji("back"): f"{prefix} {string_statuses} folders {arguments}"}],
+                [
+                    {
+                        get_theme_emoji(
+                            "back"
+                        ): f"{prefix} {string_statuses} folders {arguments}"
+                    }
+                ],
             ]
         )
 

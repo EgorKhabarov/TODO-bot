@@ -25,7 +25,12 @@ from tgbot.message_generator import (
     EventsMessage,
     event_formats,
 )
-from tgbot.buttons_utils import delmarkup, encode_id, create_monthly_calendar_keyboard, create_select_status_keyboard
+from tgbot.buttons_utils import (
+    delmarkup,
+    encode_id,
+    create_monthly_calendar_keyboard,
+    create_select_status_keyboard,
+)
 from tgbot.types import TelegramAccount
 from tgbot.utils import (
     re_edit_message,
@@ -709,7 +714,9 @@ AND
     return generated
 
 
-def event_status_message(status: str, folder_path: str, event_id: int, date: str) -> EventMessage:
+def event_status_message(
+    status: str, folder_path: str, event_id: int, date: str
+) -> EventMessage:
     markup = create_select_status_keyboard(
         prefix="es",
         status_list=status.split(","),
@@ -720,7 +727,9 @@ def event_status_message(status: str, folder_path: str, event_id: int, date: str
     )
     generated = EventMessage(event_id)
     generated.event.status = ",".join(status.split(",")[-5:])
-    generated.format(get_translate("select.status_to_event"), event_formats["dt"], markup)
+    generated.format(
+        get_translate("select.status_to_event"), event_formats["dt"], markup
+    )
     return generated
 
 
@@ -892,7 +901,9 @@ def search_results_message(
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.markup, 0, 1, f"se os {string_id} us")
     edit_button_data(generated.markup, 0, 2, f"ses s {string_id} us")
-    string_filters = [f"{args[0]}: {html.escape(' '.join(args[1:]))}" for args in filters if args]
+    string_filters = [
+        f"{args[0]}: {html.escape(' '.join(args[1:]))}" for args in filters if args
+    ]
     all_string_filters = "\n".join(string_filters)
     generated.format(
         title=f"🔍 {translate_search} <u>{html.escape(query)}</u>:\n{all_string_filters}",
@@ -908,7 +919,9 @@ def search_filters_message(message: Message, call_data: str = "") -> TextMessage
     if call_data.startswith("rm "):
         rmn = int(call_data.removeprefix("rm "))
         filters = [f for n, f in enumerate(filters) if rmn != n]
-    string_filters = [f"{args[0]}: {html.escape(args[1])}" for args in filters if len(args) == 2]
+    string_filters = [
+        f"{args[0]}: {html.escape(args[1])}" for args in filters if len(args) == 2
+    ]
     translate_search = get_translate("messages.search")
     all_string_filters = "\n".join(string_filters)
     if all_string_filters:
@@ -923,8 +936,11 @@ def search_filters_message(message: Message, call_data: str = "") -> TextMessage
         )
         return generated
 
-    clue_1 = f"\nНажмите на {get_theme_emoji('add')} чтобы добавить фильтр" if len(filters) < 6 else ""
-    clue_2 = "\nНажмите на кнопки ниже чтобы удалить фильтр" if len(filters) > 0 else ""
+    raw_clue_1, raw_clue_2 = get_translate("text.search_filters_clue")
+    clue_1 = (
+        "\n" + raw_clue_1.format(get_theme_emoji("add")) if len(filters) < 6 else ""
+    )
+    clue_2 = "\n" + raw_clue_2 if len(filters) > 0 else ""
     text = f"""
 🔍⚙️ {translate_search} <u>{html.escape(query)}</u>:{all_string_filters}
 {clue_1}{clue_2}
@@ -936,9 +952,7 @@ def search_filters_message(message: Message, call_data: str = "") -> TextMessage
         ],
         [
             {get_theme_emoji("back"): "us"},
-            {get_theme_emoji("add"): "sf"}
-            if len(filters) < 6
-            else {}
+            {get_theme_emoji("add"): "sf"} if len(filters) < 6 else {},
         ],
     ]
     return TextMessage(text, generate_buttons(markup))
@@ -947,9 +961,13 @@ def search_filters_message(message: Message, call_data: str = "") -> TextMessage
 def search_filter_message(message: Message, call_data: str) -> TextMessage:
     query = extract_search_query(message.html_text)
     filters = extract_search_filters(message.html_text)
-    string_filters = [f"{args[0]}: {html.escape(' '.join(args[1:]))}" for args in filters if args]
+    string_filters = [
+        f"{args[0]}: {html.escape(' '.join(args[1:]))}" for args in filters if args
+    ]
     translate_search = get_translate("messages.search")
     all_string_filters = "\n".join(string_filters)
+    if all_string_filters:
+        all_string_filters = "\n" + all_string_filters
 
     if query.isspace():
         markup = generate_buttons([[{get_theme_emoji("back"): "mnm"}]])
@@ -960,66 +978,40 @@ def search_filter_message(message: Message, call_data: str) -> TextMessage:
         )
         return generated
 
-    # TODO перевод
-    lang = {
-        "ru": {
-            "b": ("До даты", "<"),
-            "d": ("В течении даты", "="),
-            "a": ("После даты", ">"),
-        },
-        "en": {
-            "b": ("Before date", "<"),
-            "d": ("During date", "="),
-            "a": ("After date", ">"),
-        },
-    }[request.entity.settings.lang]
+    search_filters = get_translate("text.search_filters")
+    clue_1, clue_2 = get_translate("text.search_filters_clue")
 
-    clue_1, clue_2 = "\nВыберите дату для фильтра", "\nВыберите тип фильтра"
-    text = f"""
-🔍⚙️ {translate_search} <u>{html.escape(query)}</u>:
-{all_string_filters}""".strip()
+    text = f"🔍⚙️ {translate_search} <u>{html.escape(query)}</u>:{all_string_filters}"
+    markup = [
+        [
+            {"📆": "sf add d"},
+            {"🏷": "None"},
+        ],
+        [{get_theme_emoji("back"): "sfs"}],
+    ]
 
-    if call_data.startswith("add"):
-        if call_data == "add d":
-            markup = [
-                [{lang["b"][0]: "sf add d b"}],
-                [{lang["d"][0]: "sf add d d"}],
-                [{lang["a"][0]: "sf add d a"}],
-                [{get_theme_emoji("back"): "sf"}],
-            ]
-        elif call_data in ("add d b", "add d d", "add d a"):
-            t = call_data.split()[2]
-            return monthly_calendar_message(
-                None, "sf", "sf", text+f"\n{clue_1}:\n{lang[t][0]}:", f"add d {t}"
-            )
-        elif call_data.startswith(("add d b ", "add d d ", "add d a ")):
-            t, d = call_data.split()[2:]
-            translate = lang[t]
-            text = message.text.split("\n\n", maxsplit=1)[0]
-            message.text = f"{text}\n{translate[0]}: {translate[1]}{d}\n{clue_2}"
-            return search_filters_message(message)
-        else:
-            markup = [
-                [
-                    {"📆": "sf add d"},
-                    # {"🏷": "None"},
-                ],
-                [{get_theme_emoji("back"): "sfs"}],
-            ]
-    else:
+    if call_data == "add d":
         markup = [
-            [
-                {"📆": "sf add d"},
-                # {"🏷": "None"},
-            ],
-            [{get_theme_emoji("back"): "sfs"}],
+            [{search_filters["b"][0]: "sf add d b"}],
+            [{search_filters["d"][0]: "sf add d d"}],
+            [{search_filters["a"][0]: "sf add d a"}],
+            [{get_theme_emoji("back"): "sf"}],
         ]
-    return TextMessage(text + f"\n{clue_2}", generate_buttons(markup))
+    elif call_data in ("add d b", "add d d", "add d a"):
+        t = call_data.split()[2]
+        custom_text = f"{text}\n\n{clue_1}:\n{search_filters[t][0]}:"
+        return monthly_calendar_message(None, "sf", "sf", custom_text, f"add d {t}")
+    elif call_data.startswith(("add d b ", "add d d ", "add d a ")):
+        t, d = call_data.split()[2:]
+        translate = search_filters[t]
+        text = message.text.split("\n\n", maxsplit=1)[0]
+        message.text = f"{text}\n{translate[0]}: {translate[1]}{d}\n\n{clue_2}"
+        return search_filters_message(message)
+
+    return TextMessage(f"{text}\n\n{clue_2}", generate_buttons(markup))
 
 
-def week_event_list_message(
-    id_list: list[int] = (), page: int = 0
-) -> EventsMessage:
+def week_event_list_message(id_list: list[int] = (), page: int = 0) -> EventsMessage:
     """
     :param id_list: Список из event_id
     :param page: Номер страницы
@@ -1300,7 +1292,7 @@ def monthly_calendar_message(
     command: str = None,
     back: str = None,
     custom_text: str = None,
-    arguments: str = None
+    arguments: str = None,
 ) -> TextMessage:
     text = custom_text if custom_text else get_translate("select.date")
     markup = create_monthly_calendar_keyboard(YY_MM, command, back, arguments)

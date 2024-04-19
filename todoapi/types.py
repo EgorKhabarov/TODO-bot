@@ -344,7 +344,14 @@ SELECT (
 
 
 class ExportData:
-    def __init__(self, filename: str, user_id: int = None, group_id: str = None, __sql_where: str = None, __sql_params: tuple = None):
+    def __init__(
+        self,
+        filename: str,
+        user_id: int = None,
+        group_id: str = None,
+        __sql_where: str = None,
+        __sql_params: tuple = None,
+    ):
         self.user_id, self.group_id = user_id, group_id
         self.filename = filename
         self.query = f"""
@@ -1187,14 +1194,18 @@ DELETE FROM events
             raise ApiError(e)
 
     def export_data(
-        self, filename: str, file_format: str = "csv", __sql_where: str = None, __sql_params: str = None
+        self,
+        filename: str,
+        file_format: str = "csv",
+        __sql_where: str = None,
+        __sql_params: str = None,
     ) -> StringIO | BytesIO:
         if file_format not in ("csv", "xml", "json", "jsonl"):
             raise ValueError("Format Is Not Valid")
 
-        return ExportData(filename, self.safe_user_id, self.group_id, __sql_where, __sql_params).export(
-            file_format
-        )
+        return ExportData(
+            filename, self.safe_user_id, self.group_id, __sql_where, __sql_params
+        ).export(file_format)
 
     def check_media_exists(self, event_id: int, media_id: str) -> bool:
         try:

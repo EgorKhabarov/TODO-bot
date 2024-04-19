@@ -410,6 +410,35 @@ Reply to this message with a new search query.
 `<code>.</code>` - search all
 """,
         },
+        "search_filters": {
+            "ru": {
+                "b": ("До даты", "<"),
+                "d": ("В течении даты", "="),
+                "a": ("После даты", ">"),
+            },
+            "en": {
+                "b": ("Before date", "<"),
+                "d": ("During date", "="),
+                "a": ("After date", ">"),
+            },
+        },
+        "search_filters_clue": {
+            "ru": (
+                "Нажмите на {} чтобы добавить фильтр",
+                "Нажмите на кнопки ниже чтобы удалить фильтр",
+            ),
+            "en": (
+                "Click on {} to add a filter",
+                "Click on the buttons below to remove the filter",
+            ),
+        },
+        "search_filter_clue": {
+            "ru": (
+                "Выберите дату для фильтра",
+                "Выберите тип фильтра",
+            ),
+            "en": ("Select date for filter", "Select filter type"),
+        },
     },
     "messages": {
         "start": {

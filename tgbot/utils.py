@@ -500,7 +500,9 @@ def extract_search_filters(message_html_text: str) -> list[list[str]]:
         return []
     raw_search_filters = raw_search_filters[1].split("\n\n", maxsplit=1)[0]
     search_filters = raw_search_filters.splitlines()
-    return [html.unescape(search_filter).split(": ") for search_filter in search_filters]
+    return [
+        html.unescape(search_filter).split(": ") for search_filter in search_filters
+    ]
 
 
 def generate_search_sql_condition(query: str, filters: list[list[str]]):
@@ -520,7 +522,7 @@ OR event_id LIKE '%' || ? || '%'
             condition, date = m.groups()
             filters_conditions.append(f"{sqlite_format_date('date')} {condition}= ?")
             filters_params.append(sqlite_format_date2(date))
-    string_sql_filters = f"AND ({' AND '.join(filters_conditions)})" if filters else ""
+    string_sql_filters = f"AND ({' OR '.join(filters_conditions)})" if filters else ""
 
     WHERE = f"""
 user_id IS ?
@@ -536,6 +538,7 @@ AND ({splitquery.strip()})
         *filters_params,
     )
     return WHERE, params
+
 
 def set_bot_commands(not_login: bool = False):
     """
