@@ -412,14 +412,18 @@ Reply to this message with a new search query.
         },
         "search_filters": {
             "ru": {
-                "b": ("До даты", "<"),
-                "d": ("В течении даты", "="),
-                "a": ("После даты", ">"),
+                "db": ("До даты", "<"),
+                "dd": ("В течении даты", "="),
+                "da": ("После даты", ">"),
+                "tc": ("Совпадение статуса", "="),
+                "ta": ("Примерное совпадение статуса", "≈"),
             },
             "en": {
-                "b": ("Before date", "<"),
-                "d": ("During date", "="),
-                "a": ("After date", ">"),
+                "db": ("Before date", "<"),
+                "dd": ("During date", "="),
+                "da": ("After date", ">"),
+                "tc": ("Status Match", "="),
+                "ta": ("Approximate status match", "≈"),
             },
         },
         "search_filters_clue": {
@@ -434,10 +438,15 @@ Reply to this message with a new search query.
         },
         "search_filter_clue": {
             "ru": (
-                "Выберите дату для фильтра",
                 "Выберите тип фильтра",
+                "Выберите дату для фильтра",
+                "Выберите статус для фильтра",
             ),
-            "en": ("Select date for filter", "Select filter type"),
+            "en": (
+                "Select filter type",
+                "Select date for filter",
+                "Select status for filter",
+            ),
         },
     },
     "messages": {

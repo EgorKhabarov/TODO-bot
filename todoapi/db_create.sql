@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS events (
     event_id            INT  NOT NULL,
     date                TEXT NOT NULL,
     text                TEXT NOT NULL,
-    status              TEXT DEFAULT '⬜',
+    statuses            TEXT DEFAULT '["⬜"]',
     adding_time         TEXT DEFAULT (DATETIME()),
     recent_changes_time TEXT DEFAULT NULL,
     removal_time        TEXT DEFAULT NULL,

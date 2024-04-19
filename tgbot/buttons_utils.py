@@ -73,12 +73,12 @@ SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT)
        AND group_id IS :group_id 
        AND removal_time IS NULL
        AND (
-           status LIKE '%📅%'
+           statuses LIKE '%📅%'
            OR (
                (
-                   status LIKE '%🎉%'
-                   OR status LIKE '%🎊%'
-                   OR status LIKE '%📆%'
+                   statuses LIKE '%🎉%'
+                   OR statuses LIKE '%🎊%'
+                   OR statuses LIKE '%📆%'
                )
                AND SUBSTR(date, 4, 2) = :date
            )
@@ -103,7 +103,7 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
  WHERE user_id IS :user_id
        AND group_id IS :group_id
        AND removal_time IS NULL
-       AND status LIKE '%🗞%';
+       AND statuses LIKE '%🗞%';
 """,
             params={
                 "user_id": request.entity.safe_user_id,
@@ -235,9 +235,9 @@ SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT)
        AND group_id IS :group_id
        AND removal_time IS NULL
        AND (
-           status LIKE '%🎉%'
-           OR status LIKE '%🎊%'
-           OR status LIKE '%📆%'
+           statuses LIKE '%🎉%'
+           OR statuses LIKE '%🎊%'
+           OR statuses LIKE '%📆%'
        );
 """,
             params={
@@ -258,7 +258,7 @@ SELECT date
  WHERE user_id IS :user_id
        AND group_id IS :group_id
        AND removal_time IS NULL
-       AND status LIKE '%📅%'
+       AND statuses LIKE '%📅%'
  LIMIT 1;
 """,
             params={
@@ -361,9 +361,9 @@ SELECT 1
        AND group_id IS :group_id
        AND removal_time IS NULL
        AND (
-           status LIKE '%🎉%'
-           OR status LIKE '%🎊%'
-           OR status LIKE '%📆%'
+           statuses LIKE '%🎉%'
+           OR statuses LIKE '%🎊%'
+           OR statuses LIKE '%📆%'
        );
 """,
         params={
@@ -428,7 +428,7 @@ def create_select_status_keyboard(
     save: str,
     back: str,
     arguments: str = "",
-):
+) -> InlineKeyboardMarkup:
     """
 
     :param prefix:

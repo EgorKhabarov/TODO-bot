@@ -537,7 +537,7 @@ def callback_handler(call: CallbackQuery):
         ).values()
 
         try:
-            request.entity.edit_event_status(event_id, new_status)
+            request.entity.edit_event_status(event_id, new_status.split(","))
         except EventNotFound:
             return daily_message(date).edit(chat_id, message_id)
         except StatusConflict:
@@ -952,15 +952,15 @@ def callback_handler(call: CallbackQuery):
         except ApiTelegramException:
             CallBackAnswer("ok").answer(call_id, True)
 
-    elif call_prefix == "sfs":
+    elif call_prefix == "sfs":  # search filters
         if message.text.startswith("🔍"):
             search_filters_message(message, call_data).edit(chat_id, message_id)
 
-    elif call_prefix == "sf":
+    elif call_prefix == "sf":  # search filter
         if message.text.startswith("🔍⚙️"):
             search_filter_message(message, call_data).edit(chat_id, message_id)
 
-    elif call_prefix == "sfe":
+    elif call_prefix == "sfe":  # search filter export
         if message.text.startswith("🔍"):
             query = extract_search_query(message.html_text)
             filters = extract_search_filters(message.html_text)

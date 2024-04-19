@@ -1,4 +1,5 @@
 import re
+import json
 import html
 import logging
 from datetime import timedelta, datetime
@@ -13,6 +14,7 @@ from telebot import formatting
 # noinspection PyPackageRequirements
 from telebot.types import InlineKeyboardButton, Message
 
+import config
 from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.limits import get_limit_link
@@ -41,7 +43,7 @@ from tgbot.utils import (
     highlight_text_difference,
     generate_search_sql_condition,
 )
-from todoapi.types import db, Event, group_limits
+from todoapi.types import db, group_limits
 from todoapi.utils import sqlite_format_date, is_valid_year, chunks
 from todoapi.exceptions import EventNotFound, GroupNotFound, UserNotFound
 from telegram_utils.buttons_generator import generate_buttons, edit_button_data
@@ -283,27 +285,27 @@ SELECT DISTINCT date
        AND (
     ( -- Каждый год
         (
-            status LIKE '%🎉%'
-            OR status LIKE '%🎊%'
-            OR status LIKE '%📆%'
+            statuses LIKE '%🎉%'
+            OR statuses LIKE '%🎊%'
+            OR statuses LIKE '%📆%'
         )
         AND date LIKE :y_date
     )
     OR
     ( -- Каждый месяц
-        status LIKE '%📅%'
+        statuses LIKE '%📅%'
         AND date LIKE :m_date
     )
     OR
     ( -- Каждую неделю
-        status LIKE '%🗞%'
+        statuses LIKE '%🗞%'
         AND
         strftime('%w', {sqlite_format_date('date')}) =
         CAST(strftime('%w', {sqlite_format_date(':date')}) as TEXT)
     )
     OR
     ( -- Каждый день
-        status LIKE '%📬%'
+        statuses LIKE '%📬%'
     )
 )
 LIMIT 1;
@@ -350,7 +352,7 @@ def event_message(
                 }
                 if message_id
                 else {"📝": "None"},
-                {"🏷" or "🚩": f"es {event.status} folders {event_id} {event.date}"},
+                {"🏷": f"es {event.string_statuses} folders {event_id} {event.date}"},
                 {"🗑": f"ebd {event_id} {event.date}"},
             ],
             [
@@ -497,13 +499,18 @@ def event_history(event_id: int, date: datetime, page: int = 1) -> EventMessage 
                 text = text[:length] + chr(8230)
             return text
 
+        def prepare_value(action, val):
+            if action == "status":
+                return ",".join(json.loads(val))
+            return val
+
         event.text = (
             "\n"
             + "\n\n".join(
                 f"""
 [<u>{parse_utc_datetime(time)}] <b>{history_action_dict.get(action, "?")}</b></u>
-{formatting.hpre(text_limiter(f"{old_val}".strip()), language="language-old")}
-{formatting.hpre(text_limiter(f"{new_val}".strip()), language="language-new")}
+{formatting.hpre(text_limiter(f"{prepare_value(action, old_val)}".strip()), language="language-old")}
+{formatting.hpre(text_limiter(f"{prepare_value(action, new_val)}".strip()), language="language-new")}
 """.strip()
                 for action, (old_val, new_val), time in event.history[::-1][
                     (page - 1) * 4 : (page - 1) * 4 + 4
@@ -663,28 +670,26 @@ AND
 (
     ( -- Каждый год
         (
-            status LIKE '%🎉%'
-            OR
-            status LIKE '%🎊%'
-            OR
-            status LIKE '%📆%'
+            statuses LIKE '%🎉%'
+            OR statuses LIKE '%🎊%'
+            OR statuses LIKE '%📆%'
         )
         AND date LIKE '{date[:-5]}.____'
     )
     OR
     ( -- Каждый месяц
-        status LIKE '%📅%'
+        statuses LIKE '%📅%'
         AND date LIKE '{date[:2]}.__.____'
     )
     OR
     ( -- Каждую неделю
-        status LIKE '%🗞%'
+        statuses LIKE '%🗞%'
         AND strftime('%w', {sqlite_format_date('date')}) =
         CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT)
     )
     OR
     ( -- Каждый день
-        status LIKE '%📬%'
+        statuses LIKE '%📬%'
     )
 )
 """
@@ -726,7 +731,7 @@ def event_status_message(
         arguments=f"{event_id} {date}",
     )
     generated = EventMessage(event_id)
-    generated.event.status = ",".join(status.split(",")[-5:])
+    generated.event._status = json.dumps(status.split(",")[-5:], ensure_ascii=False)
     generated.format(
         get_translate("select.status_to_event"), event_formats["dt"], markup
     )
@@ -890,7 +895,6 @@ def search_results_message(
         ]
     )
     generated = EventsMessage(markup=markup, page=int(page), page_indent=1)
-
     WHERE, params = generate_search_sql_condition(query, filters)
 
     if id_list:
@@ -978,37 +982,53 @@ def search_filter_message(message: Message, call_data: str) -> TextMessage:
         )
         return generated
 
-    search_filters = get_translate("text.search_filters")
-    clue_1, clue_2 = get_translate("text.search_filters_clue")
+    search_filters: dict = get_translate("text.search_filters")
+    clue_1, clue_2, clue_3 = get_translate("text.search_filter_clue")
 
     text = f"🔍⚙️ {translate_search} <u>{html.escape(query)}</u>:{all_string_filters}"
     markup = [
-        [
-            {"📆": "sf add d"},
-            {"🏷": "None"},
-        ],
+        [{f"📆 {search_filters['db'][0]:{config.ts}<80}": "sf add db"}],  # data before
+        [{f"📆 {search_filters['dd'][0]:{config.ts}<80}": "sf add dd"}],  # data during
+        [{f"📆 {search_filters['da'][0]:{config.ts}<80}": "sf add da"}],  # data after
+        [{f"🏷 {search_filters['tc'][0]:{config.ts}<80}": "sf edit tc ⬜ folders"}],  # tag complete match
+        [{f"🏷 {search_filters['ta'][0]:{config.ts}<80}": "sf edit ta ⬜ folders"}],  # tag approximate match
         [{get_theme_emoji("back"): "sfs"}],
     ]
 
-    if call_data == "add d":
-        markup = [
-            [{search_filters["b"][0]: "sf add d b"}],
-            [{search_filters["d"][0]: "sf add d d"}],
-            [{search_filters["a"][0]: "sf add d a"}],
-            [{get_theme_emoji("back"): "sf"}],
-        ]
-    elif call_data in ("add d b", "add d d", "add d a"):
-        t = call_data.split()[2]
-        custom_text = f"{text}\n\n{clue_1}:\n{search_filters[t][0]}:"
-        return monthly_calendar_message(None, "sf", "sf", custom_text, f"add d {t}")
-    elif call_data.startswith(("add d b ", "add d d ", "add d a ")):
-        t, d = call_data.split()[2:]
-        translate = search_filters[t]
+    if call_data in ("add db", "add dd", "add da"):
+        filter_type = call_data.split()[1]
+        custom_text = f"{text}\n\n{clue_2}:\n{search_filters[filter_type][0]}:"
+        return monthly_calendar_message(None, f"sf {call_data}", "sf", custom_text)
+
+    elif call_data.startswith(("add db ", "add dd ", "add da ")):
+        filter_type, date = call_data.split()[1:]
+        description, sign = search_filters[filter_type]
         text = message.text.split("\n\n", maxsplit=1)[0]
-        message.text = f"{text}\n{translate[0]}: {translate[1]}{d}\n\n{clue_2}"
+        message.text = f"{text}\n{description}: {sign}{date}\n\n{clue_1}"
         return search_filters_message(message)
 
-    return TextMessage(f"{text}\n\n{clue_2}", generate_buttons(markup))
+    elif call_data.startswith(("edit tc", "edit ta")):
+        filter_type, statuses, folder = call_data.split()[1:]
+        description, sign = search_filters[filter_type]
+        text = message.text.split("\n\n", maxsplit=1)[0]
+        message.text = f"{text}\n\n{clue_3}\n{description}: {sign}{statuses}"
+        markup = create_select_status_keyboard(
+            prefix=f"sf edit {filter_type}",
+            status_list=statuses.split(","),
+            folder_path=folder,
+            save=f"sf add {filter_type}",
+            back="sf",
+        )
+        return TextMessage(message.html_text, markup)
+
+    elif call_data.startswith(("add tc", "add ta")):
+        filter_type, statuses = call_data.split()[1:]
+        description, sign = search_filters[filter_type]
+        text = message.text.split("\n\n", maxsplit=1)[0]
+        message.text = f"{text}\n{description}: {sign}{statuses}\n\n{clue_1}:\n{search_filters[filter_type][0]}:"
+        return search_filters_message(message)
+
+    return TextMessage(f"{text}\n\n{clue_1}", generate_buttons(markup))
 
 
 def week_event_list_message(id_list: list[int] = (), page: int = 0) -> EventsMessage:
@@ -1030,7 +1050,9 @@ AND (
     OR
     ( -- Каждый год
         (
-            status LIKE '%🎉%' OR status LIKE '%🎊%' OR status LIKE '%📆%'
+            statuses LIKE '%🎉%'
+            OR statuses LIKE '%🎊%'
+            OR statuses LIKE '%📆%'
         )
         AND
         (
@@ -1041,13 +1063,13 @@ AND (
     )
     OR
     ( -- Каждый месяц
-        status LIKE '%📅%'
+        statuses LIKE '%📅%'
         AND SUBSTR(date, 1, 2) 
         BETWEEN strftime('%d', 'now', {tz})
             AND strftime('%d', 'now', '+7 day', {tz})
     )
-    OR status LIKE '%🗞%' -- Каждую неделю
-    OR status LIKE '%📬%' -- Каждый день
+    OR statuses LIKE '%🗞%' -- Каждую неделю
+    OR statuses LIKE '%📬%' -- Каждый день
 )
     """
     params = (
@@ -1143,7 +1165,7 @@ def notification_message(
 user_id IS ?
 AND group_id IS ?
 AND removal_time IS NULL
-AND status NOT LIKE '%🔕%'
+AND statuses NOT LIKE '%🔕%'
 AND (
     ( -- На сегодня и +1 день
         date IN ('{dates[0]:%d.%m.%Y}', '{dates[1]:%d.%m.%Y}')
@@ -1151,32 +1173,32 @@ AND (
     OR
     ( -- Совпадения на +2, +3 и +7 дней
         date IN ({", ".join(f"'{date:%d.%m.%Y}'" for date in dates[2:])})
-        AND status NOT LIKE '%🗞%'
+        AND statuses NOT LIKE '%🗞%'
     )
     OR
     ( -- Каждый год
         (
-            status LIKE '%🎉%'
+            statuses LIKE '%🎉%'
             OR
-            status LIKE '%🎊%'
+            statuses LIKE '%🎊%'
             OR
-            status LIKE '%📆%'
+            statuses LIKE '%📆%'
         )
         AND SUBSTR(date, 1, 5) IN ({", ".join(f"'{date:%d.%m}'" for date in dates)})
     )
     OR
     ( -- Каждый месяц
         SUBSTR(date, 1, 2) IN ({", ".join(f"'{date:%d}'" for date in dates)})
-        AND status LIKE '%📅%'
+        AND statuses LIKE '%📅%'
     )
     OR
     ( -- Каждую неделю
         strftime('%w', {sqlite_format_date('date')}) IN ({", ".join(f"'{w}'" for w in weekdays)})
-        AND status LIKE '%🗞%'
+        AND statuses LIKE '%🗞%'
     )
     OR
     ( -- Каждый день
-        status LIKE '%📬%'
+        statuses LIKE '%📬%'
     )
 )
     """
@@ -1565,7 +1587,7 @@ def select_one_message(
     # Если событий несколько
     markup = []
     for event in events_list:
-        button_title = f"{event.event_id}.{event.status} {event.text}"
+        button_title = f"{event.event_id}.{event.string_statuses} {event.text}"
         button_title = button_title.ljust(60, "⠀")[:60]
 
         if is_in_wastebasket or is_in_search or is_open:
@@ -1608,7 +1630,7 @@ def select_events_message(
     # Если событий несколько
     markup = []
     for n, event in enumerate(events_list):
-        button_title = f"{event.event_id}.{event.status} {event.text}"
+        button_title = f"{event.event_id}.{event.string_statuses} {event.text}"
         button_title = button_title.ljust(60, "⠀")[:60]
         if in_bin or is_in_search:
             button_title = f"{event.date}.{button_title}"[:60]

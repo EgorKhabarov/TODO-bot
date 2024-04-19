@@ -19,12 +19,12 @@ from todoapi.utils import sqlite_format_date
 
 
 event_formats = {
-    "dl": "<b>{numd}.{event_id}.</b>{status}\n{markdown_text}\n",
-    "dt": "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
-    "b": "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({days_before_delete})\n{markdown_text}\n",
-    "r": "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
-    "s": "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u>\n{markdown_text}\n",
-    "a": "<b>{date}.{event_id}.</b>{status} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{text}\n",
+    "dl": "<b>{numd}.{event_id}.</b>{statuses}\n{markdown_text}\n",
+    "dt": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
+    "b": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> ({days_before_delete})\n{markdown_text}\n",
+    "r": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
+    "s": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u>\n{markdown_text}\n",
+    "a": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{text}\n",
 }
 """
 "dl" - Шаблон для событий на один день
@@ -248,7 +248,7 @@ class EventMessage(TextMessage):
         days_before = ""
         markdown_text = ""
         if "{markdown_text}" in event_date_representation:
-            markdown_text = add_status_effect(self.event.text, self.event.status)
+            markdown_text = add_status_effect(self.event.text, self.event.statuses)
 
         days_before_delete = ""
         if self.event.removal_time is not None:
@@ -262,7 +262,7 @@ class EventMessage(TextMessage):
             weekday=week_date,
             reldate=rel_date,
             event_id=f"{self.event.event_id}",
-            status=self.event.status,
+            statuses=self.event.string_statuses,
             markdown_text=markdown_text,
             days_before=days_before,
             days_before_delete=days_before_delete,
@@ -315,27 +315,27 @@ SELECT user_id,
        event_id,
        date,
        text,
-       status,
+       statuses,
        adding_time,
        recent_changes_time,
        removal_time
   FROM events
  WHERE event_id IN ({data[0]})
        AND ({WHERE}) 
- ORDER BY DAYS_BEFORE_EVENT(date, status) {direction},
-          status LIKE '%📬%',
-          status LIKE '%🗞%',
-          status LIKE '%📅%',
-          status LIKE '%📆%',
-          status LIKE '%🎉%',
-          status LIKE '%🎊%';
+ ORDER BY DAYS_BEFORE_EVENT(date, statuses) {direction},
+          statuses LIKE '%📬%',
+          statuses LIKE '%🗞%',
+          statuses LIKE '%📅%',
+          statuses LIKE '%📆%',
+          statuses LIKE '%🎉%',
+          statuses LIKE '%🎊%';
 """,
                     params=params,
                     func=(
                         "DAYS_BEFORE_EVENT",
                         2,
-                        lambda date, status: Event(
-                            0, "", 0, date, "", status, "", "", ""
+                        lambda date, statuses: Event(
+                            0, "", 0, date, "", statuses, "", "", ""
                         ).days_before_event(request.entity.settings.timezone),
                     ),
                 )
@@ -395,7 +395,7 @@ SELECT user_id,
        event_id,
        date,
        text,
-       status,
+       statuses,
        adding_time,
        recent_changes_time,
        removal_time
@@ -404,13 +404,13 @@ SELECT user_id,
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in id_list)})
        AND ({WHERE}) 
- ORDER BY DAYS_BEFORE_EVENT(date, status) {direction},
-          status LIKE '%📬%',
-          status LIKE '%🗞%',
-          status LIKE '%📅%',
-          status LIKE '%📆%',
-          status LIKE '%🎉%',
-          status LIKE '%🎊%';
+ ORDER BY DAYS_BEFORE_EVENT(date, statuses) {direction},
+          statuses LIKE '%📬%',
+          statuses LIKE '%🗞%',
+          statuses LIKE '%📅%',
+          statuses LIKE '%📆%',
+          statuses LIKE '%🎉%',
+          statuses LIKE '%🎊%';
 """,
                     params=(
                         request.entity.safe_user_id,
@@ -421,8 +421,8 @@ SELECT user_id,
                     func=(
                         "DAYS_BEFORE_EVENT",
                         2,
-                        lambda date, status: Event(
-                            0, "", 0, date, "", status, "", "", ""
+                        lambda date, statuses: Event(
+                            0, "", 0, date, "", statuses, "", "", ""
                         ).days_before_event(request.entity.settings.timezone),
                     ),
                 )
@@ -521,7 +521,7 @@ SELECT user_id,
 
                 markdown_text = ""
                 if "{markdown_text}" in args:
-                    markdown_text = add_status_effect(event.text, event.status)
+                    markdown_text = add_status_effect(event.text, event.statuses)
 
                 days_before_delete = ""
                 if event.removal_time is not None:
@@ -537,7 +537,7 @@ SELECT user_id,
                         reldate=rel_date,
                         numd=f"{num + 1}",
                         event_id=f"{event.event_id}",
-                        status=event.status,
+                        statuses=event.string_statuses,
                         markdown_text=markdown_text,
                         days_before=days_before,
                         days_before_delete=days_before_delete,

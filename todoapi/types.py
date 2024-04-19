@@ -357,7 +357,7 @@ class ExportData:
         self.query = f"""
 SELECT event_id,
        date,
-       status,
+       statuses,
        text
   FROM events
  WHERE user_id IS :user_id
@@ -387,11 +387,11 @@ SELECT event_id,
         file.name = self.filename
 
         xml_events = xml.Element("events")
-        for event_id, date, status, text in self.table:
+        for event_id, date, statuses, text in self.table:
             xml_event = xml.SubElement(xml_events, "event")
             xml.SubElement(xml_event, "event_id").text = str(event_id)
             xml.SubElement(xml_event, "date").text = date
-            xml.SubElement(xml_event, "status").text = status
+            xml.SubElement(xml_event, "statuses").text = statuses
             xml.SubElement(xml_event, "text").text = text
             xml.indent(xml_event, space="  ")
 
@@ -416,7 +416,7 @@ SELECT event_id,
             {
                 "event_id": event_id,
                 "date": event_date,
-                "status": event_status,
+                "statuses": event_status,
                 "text": event_text,
             }
             for event_id, event_date, event_status, event_text in self.table
@@ -432,7 +432,7 @@ SELECT event_id,
             {
                 "event_id": event_id,
                 "date": event_date,
-                "status": event_status,
+                "statuses": event_status,
                 "text": event_text,
             }
             for event_id, event_date, event_status, event_text in self.table
@@ -475,12 +475,33 @@ class Settings:
 
 @dataclass
 class Event:
+    """
+    user_id: int
+
+    group_id: str
+
+    event_id: int
+
+    date: str
+
+    text: str
+
+    _status: str
+
+    adding_time: str
+
+    recent_changes_time: str
+
+    removal_time: str
+
+    _history: str = None
+    """
     user_id: int
     group_id: str
     event_id: int
     date: str
     text: str
-    status: str
+    _status: str
     adding_time: str
     recent_changes_time: str
     removal_time: str
@@ -497,6 +518,14 @@ class Event:
     @property
     def history(self) -> list[dict]:
         return json.loads(self._history)
+
+    @property
+    def statuses(self) -> list[str]:
+        return json.loads(self._status)
+
+    @property
+    def string_statuses(self) -> str:
+        return ",".join(self.statuses)
 
     @property
     def media_list(self) -> list["Media"]:
@@ -552,17 +581,17 @@ SELECT media_id,
             return (y - n_time).days, y
 
         # Каждый день
-        if "📬" in self.status:
+        if "📬" in self.statuses:
             return prepare_date(f"{n_time:%d.%m.%Y}")[0]
 
         # Каждую неделю
-        if "🗞" in self.status:
+        if "🗞" in self.statuses:
             now_wd, event_wd = n_time.weekday(), _date.weekday()
             next_date = n_time + timedelta(days=(event_wd - now_wd + 7) % 7)
             dates.append(next_date)
 
         # Каждый месяц
-        elif "📅" in self.status:
+        elif "📅" in self.statuses:
             day_diff, dttm = prepare_date(f"{_date:%d}.{n_time:%m.%Y}")
             month, year = dttm.month, dttm.year
             if day_diff >= 0:
@@ -574,7 +603,7 @@ SELECT media_id,
                     dates.append(dttm.replace(year=year + 1, month=1))
 
         # Каждый год
-        elif {*self.status.split(",")}.intersection({"📆", "🎉", "🎊"}):
+        elif {*self.statuses}.intersection({"📆", "🎉", "🎊"}):
             dttm = prepare_date(f"{_date:%d.%m}.{n_time:%Y}")[1]
             if dttm.date() < n_time.date():
                 dates.append(dttm.replace(year=n_time.year + 1))
@@ -594,7 +623,7 @@ SELECT media_id,
                 "event_id": self.event_id,
                 "date": self.date,
                 "text": self.text,
-                "status": self.status,
+                "statuses": self.statuses,
                 "adding_time": self.adding_time,
                 "recent_changes_time": self.recent_changes_time,
                 "removal_time": self.removal_time,
@@ -610,7 +639,7 @@ SELECT media_id,
             "event_id": self.event_id,
             "date": self.date,
             "text": self.text,
-            "status": self.status,
+            "statuses": self.statuses,
             "adding_time": self.adding_time,
             "recent_changes_time": self.recent_changes_time,
             "removal_time": self.removal_time,
@@ -850,6 +879,8 @@ SELECT 1
         if self.limit.is_exceeded_for_events(date, 1, text_len):
             raise LimitExceeded
 
+        # TODO проверка статуса
+
         try:
             db.execute(
                 """
@@ -859,7 +890,7 @@ INSERT INTO events (
     group_id,
     date,
     text,
-    status
+    statuses
 )
 VALUES (
     COALESCE(
@@ -879,7 +910,7 @@ VALUES (
     :group_id,
     :date,
     :text,
-    :status
+    :statuses
 );
 """,
                 params={
@@ -887,7 +918,7 @@ VALUES (
                     "group_id": self.group_id,
                     "date": date,
                     "text": text,
-                    "status": status,
+                    "statuses": statuses,
                 },
                 commit=True,
             )
@@ -952,13 +983,13 @@ SELECT *
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in event_ids)})
        AND (removal_time IS NOT NULL) = ?
- ORDER BY DAYS_BEFORE_EVENT(date, status) {self.settings.direction},
-          status LIKE '%📬%',
-          status LIKE '%🗞%',
-          status LIKE '%📅%',
-          status LIKE '%📆%',
-          status LIKE '%🎉%',
-          status LIKE '%🎊%';
+ ORDER BY DAYS_BEFORE_EVENT(date, statuses) {self.settings.direction},
+          statuses LIKE '%📬%',
+          statuses LIKE '%🗞%',
+          statuses LIKE '%📅%',
+          statuses LIKE '%📆%',
+          statuses LIKE '%🎉%',
+          statuses LIKE '%🎊%';
 """,
                 params=(
                     self.safe_user_id,
@@ -1046,13 +1077,14 @@ UPDATE events
         except Error as e:
             raise ApiError(e)
 
-    def edit_event_status(self, event_id: int, status: str = "⬜") -> None:
+    def edit_event_status(self, event_id: int, statuses: list[str]) -> None:
         if not self.check_event_exists(event_id):
             raise EventNotFound
 
+        string_statuses = ",".join(statuses)
         if any(
             [
-                st1 in status and st2 in status
+                st1 in string_statuses and st2 in string_statuses
                 for st1, st2 in (
                     ("🔗", "💻"),
                     ("🪞", "💻"),
@@ -1062,8 +1094,6 @@ UPDATE events
             ]
         ):
             raise StatusConflict
-
-        statuses = status.split(",")
 
         # Статусов не может быть больше 5
         # Длинна одного обычного статуса не может быть больше 3 символов
@@ -1084,19 +1114,19 @@ UPDATE events
 
         try:
             db.execute(
-                """
+                f"""
 UPDATE events
    SET status = :status
  WHERE event_id = :event_id
        AND user_id IS :user_id
        AND group_id IS :group_id;
 """,
-                params={
-                    "status": status,
-                    "user_id": self.safe_user_id,
-                    "group_id": self.group_id,
-                    "event_id": event_id,
-                },
+                params=(
+                    *statuses,
+                    event_id,
+                    self.safe_user_id,
+                    self.group_id,
+                ),
                 commit=True,
             )
         except Error as e:

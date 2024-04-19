@@ -11,7 +11,7 @@ def image_generator(icon_size: int) -> Image:
     _image = Image.new("RGB", (icon_size, icon_size), color_background)
     draw = ImageDraw.Draw(_image)
 
-    y = 20
+    y = 10
     draw.rounded_rectangle((195, 195 + y, 583, 583 + y), 57, fill=color_notebook)
     draw.ellipse(((310, 137 + y), (467, 294 + y)), fill=color_notebook)
     draw.ellipse(((353, 180 + y), (424, 251 + y)), fill=color_background)

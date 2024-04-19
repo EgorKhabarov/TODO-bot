@@ -76,6 +76,9 @@ def generate_buttons(
     (True, [[{'text': '1'}, {'text': '2'}, {'text': '3'}]])
     """
 
+    if isinstance(buttons_data, InlineKeyboardMarkup):
+        return buttons_data
+
     match keyboard_type:
         case "inline":
             keyboard = []

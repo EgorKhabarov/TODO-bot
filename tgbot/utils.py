@@ -73,17 +73,16 @@ def telegram_log(action: str, text: str):
         )
 
 
-def add_status_effect(text: str, statuses: str) -> str:
+def add_status_effect(text: str, statuses: list[str]) -> str:
     """
     Добавляем эффекты к событию по статусу
     """
-    statuses_list: list[str] = statuses.split(",")
 
     def check_comment_in_status(comment_string: Literal["##", "//", "--"]) -> bool:
         """
         Проверить будет ли этот символ комментария считаться за комментарий при выбранных языках.
         """
-        status_set = {s.removeprefix("💻") for s in statuses_list if s.startswith("💻")}
+        status_set = {s.removeprefix("💻") for s in statuses if s.startswith("💻")}
 
         if comment_string == "##":
             return not status_set.isdisjoint({"py", "re"})
@@ -195,19 +194,19 @@ def add_status_effect(text: str, statuses: str) -> str:
 
     if ("🔗" in statuses and "⛓" not in statuses) or (
         request.entity.settings.sub_urls
-        and ("💻" not in statuses and "⛓" not in statuses)
+        and ("💻" not in ",".join(statuses) and "⛓" not in statuses)
     ):
         shortcut_text = sub_urls(shortcut_text)
 
-    if "🗒" in statuses_list:
+    if "🗒" in statuses:
         shortcut_text = format_list(shortcut_text)
-    elif "🧮" in statuses_list:
+    elif "🧮" in statuses:
         shortcut_text = format_order_list(shortcut_text)
 
     if "💻" in statuses:
         status = [
             status.removeprefix("💻")
-            for status in statuses_list
+            for status in statuses
             if status.startswith("💻")
         ][-1]
         shortcut_text = (
@@ -215,7 +214,7 @@ def add_status_effect(text: str, statuses: str) -> str:
             if status
             else format_code(shortcut_text)
         )
-    elif "🪞" in statuses_list:
+    elif "🪞" in statuses:
         shortcut_text = format_spoiler(shortcut_text)
 
     if "💬" in statuses:
@@ -510,32 +509,69 @@ def generate_search_sql_condition(query: str, filters: list[list[str]]):
         """
 date LIKE '%' || ? || '%'
 OR text LIKE '%' || ? || '%'
-OR status LIKE '%' || ? || '%'
+OR statuses LIKE '%' || ? || '%'
 OR event_id LIKE '%' || ? || '%'
 """
         for _ in query.split()
     )
-    filters_conditions = []
-    filters_params = []
+    filters_conditions_date = []
+    filters_conditions_status = []
+    filters_params_date = []
+    filters_params_status = []
     for _, f in filters[:6]:
         if m := re.compile(r"^([<>=])(\d{2}\.\d{2}\.\d{4})$").match(f):
             condition, date = m.groups()
-            filters_conditions.append(f"{sqlite_format_date('date')} {condition}= ?")
-            filters_params.append(sqlite_format_date2(date))
-    string_sql_filters = f"AND ({' OR '.join(filters_conditions)})" if filters else ""
+            filters_conditions_date.append(f"{sqlite_format_date('date')} {condition}= ?")
+            filters_params_date.append(sqlite_format_date2(date))
+        elif m := re.compile(r"^([≈=])([^ \n]+)$").match(f):
+            condition, status = m.groups()
+            statuses = status.split(",")
+
+            if condition == "=":
+                filters_conditions_status.append(
+                    f"""
+statuses {condition}= JSON_ARRAY({','.join('?' for _ in statuses)})
+"""
+                )
+                filters_params_status.extend(statuses)
+            else:
+                filters_conditions_status.append(
+                    f"""
+(
+    EXISTS (
+        SELECT value
+          FROM json_each(statuses)
+         WHERE value IN ({','.join('?' for _ in statuses)})
+    )
+)
+"""
+                )
+                filters_params_status.extend(statuses)
+
+    string_sql_filters_date = (
+        f" AND ({' OR '.join(filters_conditions_date)})"
+        if filters_conditions_date
+        else ""
+    )
+    string_sql_filters_status = (
+        f" AND ({' OR '.join(filters_conditions_status)})"
+        if filters_conditions_status
+        else ""
+    )
 
     WHERE = f"""
 user_id IS ?
 AND group_id IS ?
 AND removal_time IS NULL
 AND ({splitquery.strip()})
-{string_sql_filters}
+{string_sql_filters_date}{string_sql_filters_status}
 """
     params = (
         request.entity.safe_user_id,
         request.entity.group_id,
         *[y for x in query.split() for y in (x, x, x, x)],
-        *filters_params,
+        *filters_params_date,
+        *filters_params_status,
     )
     return WHERE, params
 
