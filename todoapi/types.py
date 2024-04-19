@@ -1116,10 +1116,10 @@ UPDATE events
             db.execute(
                 f"""
 UPDATE events
-   SET status = :status
- WHERE event_id = :event_id
-       AND user_id IS :user_id
-       AND group_id IS :group_id;
+   SET statuses = JSON_ARRAY({','.join('?' for _ in statuses)})
+ WHERE event_id = ?
+       AND user_id IS ?
+       AND group_id IS ?;
 """,
                 params=(
                     *statuses,
