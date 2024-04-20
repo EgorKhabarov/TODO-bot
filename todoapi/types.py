@@ -366,7 +366,7 @@ SELECT event_id,
         self.params = (
             user_id,
             group_id,
-            *__sql_params,
+            *(__sql_params or ()),
         )
         try:
             self.table = db.execute(self.query, params=self.params, column_names=True)

@@ -227,7 +227,6 @@ def processing_group_create_message(message: Message):
 
     message_id = cache_create_group()
     name = html_to_markdown(message.html_text)[:32]
-    chat_id = request.entity.request_chat_id
 
     try:
         request.entity.create_group(name)
@@ -238,7 +237,7 @@ def processing_group_create_message(message: Message):
             pass
     else:
         try:
-            groups_message().edit()
+            groups_message().edit(message_id=message_id)
             delete_message_action(message)
         except ApiTelegramException as e:
             if "Description: Bad Request: message is not modified" in str(e):

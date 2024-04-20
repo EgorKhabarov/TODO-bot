@@ -4,7 +4,16 @@ from telebot import TeleBot
 import config
 
 
-bot = TeleBot(config.BOT_TOKEN)
+if (
+    config.TELEGRAM_WEBHOOK
+    and config.TELEGRAM_WEBHOOK_URL
+    and config.TELEGRAM_WEBHOOK_FLASK_PATH
+):
+    threaded = False
+else:
+    threaded = True
+
+bot = TeleBot(config.BOT_TOKEN, threaded=threaded)
 
 bot.parse_mode = "html"
 bot.disable_web_page_preview = True

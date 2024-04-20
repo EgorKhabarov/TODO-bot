@@ -469,11 +469,11 @@ class CallBackHandler:
 
     @prefix("mngrs", {"mode": ("str", "al"), "page": ("int", 1)})
     def groups_message(self, mode: Literal["al", "me", "md", "ad"], page: int) -> None:
+        cache_create_group("", mode, page)
         try:
             groups_message(mode, page).edit()
         except ApiTelegramException:
             pass
-        cache_create_group("")
 
     @prefix("mngr", {"group_id": "str", "mode": ("str", "al")})
     def group_message(self, group_id: str, mode: str, message_id: int) -> None:
@@ -1185,8 +1185,8 @@ class CallBackHandler:
         TextMessage(text, markup).edit()
         CallBackAnswer(get_translate("text.send_group_name")).answer()
 
-    @prefix("gre", {"group_id": "str", "format": ("str", "csv")})
-    def group_export(self, group_id: str, file_format: str):
+    @prefix("gre", {"group_id": "str", "file_format": ("str", "csv")})
+    def group_export(self, group_id: str, file_format: str) -> bool:
         # TODO ограничить кол-во взаимодействий
         if file_format not in ("csv", "xml", "json", "jsonl"):
             return TextMessage(get_translate("errors.export_format")).reply()
@@ -1201,9 +1201,15 @@ class CallBackHandler:
         except ApiTelegramException:
             logging.error(traceback.format_exc())
             TextMessage(get_translate("errors.file_is_too_big")).send()
+            return False
+        else:
+            return True
 
     @prefix("grd", {"group_id": "str", "mode": ("str", "al")})
     def group_delete(self, group_id: str, mode: str):
+        if not self.group_export(group_id, "csv"):
+            return None
+
         try:
             request.entity.delete_group(group_id)
         except (NotGroupMember, NotEnoughPermissions):
@@ -1300,7 +1306,7 @@ def cache_add_event_date(state: str = None) -> str | bool:
             pass
 
 
-def cache_create_group(state: str = None) -> str | bool:
+def cache_create_group(state: str = None, mode: str = "al", page: int = 1) -> str | bool:
     """
     Очищает состояние приёма сообщения у пользователя
     и изменяет сообщение по id из add_event_date
@@ -1323,6 +1329,6 @@ def cache_create_group(state: str = None) -> str | bool:
         message_id = int(data)
         del add_group_cache[request.entity.request_chat_id]
         try:
-            groups_message().edit(request.entity.request_chat_id, message_id)
+            groups_message(mode, page).edit(request.entity.request_chat_id, message_id)
         except ApiTelegramException:
             pass
