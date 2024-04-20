@@ -42,10 +42,6 @@ class WrongDate(Exception):
     pass
 
 
-class StatusConflict(Exception):
-    pass
-
-
 class StatusLengthExceeded(Exception):
     pass
 

@@ -149,7 +149,7 @@ END;
 
 -- Триггер обновления времени последнего изменения события
 CREATE TRIGGER IF NOT EXISTS trigger_recent_changes_time_event
-AFTER UPDATE OF date, text, status, removal_time ON events FOR EACH ROW
+AFTER UPDATE OF date, text, statuses, removal_time ON events FOR EACH ROW
 BEGIN
     UPDATE events
        SET recent_changes_time = DATETIME(),
@@ -160,8 +160,8 @@ BEGIN
                WHEN OLD.text != NEW.text
                THEN JSON_INSERT(history, '$[#]', JSON_ARRAY('text', JSON_ARRAY(OLD.text, NEW.text), DATETIME()))
 
-               WHEN OLD.status != NEW.status
-               THEN JSON_INSERT(history, '$[#]', JSON_ARRAY('status', JSON_ARRAY(OLD.status, NEW.status), DATETIME()))
+               WHEN OLD.statuses != NEW.statuses
+               THEN JSON_INSERT(history, '$[#]', JSON_ARRAY('statuses', JSON_ARRAY(JSON(OLD.statuses), NEW.statuses), DATETIME()))
 
                WHEN OLD.removal_time IS NOT NEW.removal_time AND NEW.removal_time IS NOT NULL
                THEN JSON_INSERT(history, '$[#]', JSON_ARRAY('delete', JSON_ARRAY(OLD.removal_time, NEW.removal_time), DATETIME()))

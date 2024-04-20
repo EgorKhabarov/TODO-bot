@@ -96,15 +96,16 @@ class TextMessage:
         self.text = text
         self.markup = markup
 
-    def send(self, chat_id: int, **kwargs) -> Message:
-        message = request.query.message if request.is_callback else request.query
+    def send(self, chat_id: int = None, **kwargs) -> Message:
+        message: Message = request.query.message if request.is_callback else request.query
+
         message_thread_id = (
             message.reply_to_message.message_thread_id
             if message.reply_to_message
             else message.message_thread_id
         )
         return bot.send_message(
-            chat_id=chat_id,
+            chat_id=chat_id or request.chat_id,
             text=self.text,
             reply_markup=self.markup,
             message_thread_id=message_thread_id,
@@ -113,8 +114,8 @@ class TextMessage:
 
     def edit(
         self,
-        chat_id: int,
-        message_id: int,
+        chat_id: int = None,
+        message_id: int = None,
         *,
         only_markup: bool = False,
         markup: InlineKeyboardMarkup = None,
@@ -139,32 +140,36 @@ class TextMessage:
 
         .edit(chat_id, message_id)
         """
+        message: Message = request.query.message if request.is_callback else request.query
+
         if only_markup:
             bot.edit_message_reply_markup(
-                chat_id=chat_id,
-                message_id=message_id,
+                chat_id=chat_id or request.chat_id,
+                message_id=message_id or message.message_id,
                 reply_markup=self.markup,
                 **kwargs,
             )
         elif markup is not None:
             bot.edit_message_text(
                 text=self.text,
-                chat_id=chat_id,
-                message_id=message_id,
+                chat_id=chat_id or request.chat_id,
+                message_id=message_id or message.message_id,
                 reply_markup=markup,
                 **kwargs,
             )
         else:
             bot.edit_message_text(
                 text=self.text,
-                chat_id=chat_id,
-                message_id=message_id,
+                chat_id=chat_id or request.chat_id,
+                message_id=message_id or message.message_id,
                 reply_markup=self.markup,
                 **kwargs,
             )
 
-    def reply(self, message, **kwargs):
-        message = request.query.message if request.is_callback else request.query
+    def reply(self, message: Message = None, **kwargs):
+        if not message:
+            message: Message = request.query.message if request.is_callback else request.query
+
         message_thread_id = (
             message.reply_to_message.message_thread_id
             if message.reply_to_message
@@ -183,7 +188,10 @@ class CallBackAnswer:
     def __init__(self, text: str):
         self.text = text
 
-    def answer(self, call_id: int, show_alert: bool = None, url: str = None):
+    def answer(self, call_id: int = None, show_alert: bool = None, url: str = None):
+        if not call_id and request.is_callback:
+            call_id = request.query.id
+
         bot.answer_callback_query(call_id, self.text, show_alert, url)
 
 
@@ -191,9 +199,9 @@ class ChatAction:
     def __init__(self, action: str):
         self.action = action
 
-    def send(self, chat_id: int, **kwargs) -> None:
+    def send(self, chat_id: int = None, **kwargs) -> None:
         bot.send_chat_action(
-            chat_id=chat_id,
+            chat_id=chat_id or request.chat_id,
             action=self.action,
             message_thread_id=getattr(request.query, "message_thread_id", None),
             **kwargs,
@@ -211,9 +219,9 @@ class DocumentMessage:
         self.caption = caption
         self.markup = markup
 
-    def send(self, chat_id: int, **kwargs):
+    def send(self, chat_id: int = None, **kwargs):
         bot.send_document(
-            chat_id=chat_id,
+            chat_id=chat_id or request.chat_id,
             document=InputFile(self.document),
             caption=self.caption,
             message_thread_id=getattr(request.query, "message_thread_id", None),

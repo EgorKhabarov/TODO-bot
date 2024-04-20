@@ -382,7 +382,7 @@ Call up new messages using bot commands.</b>
                 "Вы не изменяли эту заметку",
                 {
                     "text": "Изменение текста",
-                    "status": "Изменение статуса",
+                    "statuses": "Изменение статуса",
                     "date": "Изменение даты",
                     "delete": "Удаление",
                     "recover": "Восстановление",
@@ -393,7 +393,7 @@ Call up new messages using bot commands.</b>
                 "You didn't change this note",
                 {
                     "text": "Change text",
-                    "status": "Status change",
+                    "statuses": "Status change",
                     "date": "Date change",
                     "delete": "Delete",
                     "recover": "Recovery",
@@ -753,15 +753,6 @@ Here are the button labels in the message for one event:
 
 <b>Событие может иметь максимум 5 статусов.</b>
 
-Существуют несовместимые статусы.
-Их нельзя поместить вместе на одном событии.
-Если у вас стоит одно событие из пары, то поставить второе вы не сможете.
-Вот полный список несовместимых статусов:
-"🔗" (Ссылка) и "💻" (Код)
-"🪞" (Скрыто) и "💻" (Код)
-"🔗" (Ссылка) и "⛓" (Без сокращения ссылок)
-"🧮" (Нумерованный список) и "🗒" (Список)
-
 <b>Эффекты на статусах применяются только на отображении событий в сообщении.</b> Сам текст события не меняется.
 """,
                 "en": """
@@ -783,15 +774,6 @@ The statuses "🗒" (List) and "🧮" (Numbered list) annotate each line with th
 If you put "--" in front of a line, then this markup do not apply on this line.
 
 <b>An event can have a maximum of 5 statuses.</b>
-
-There are incompatible statuses.
-They cannot be placed together on the same event.
-If you have one event out of a pair, then you will not be able to put the second one.
-Here is the complete list of incompatible statuses:
-"🔗" (Link) and "💻" (Code)
-"🪞" (Hidden) and "💻" (Code)
-"🔗" (Link) and "⛓" (No link abbreviation)
-"🧮" (Numbered list) and "🗒" (List)
 
 <b>Effects on statuses are applied only on the display of events in the message.</b> The text of the event itself does not change.
 """,
@@ -1731,10 +1713,6 @@ or create an account
         "more_5_statuses": {
             "ru": "Нельзя ставить больше 5 статусов",
             "en": "You can not put more than 5 statuses",
-        },
-        "conflict_statuses": {
-            "ru": "Cтатусы конфликтуют друг с другом.",
-            "en": "Statuses conflict with each other.",
         },
         "message_is_too_long": {
             "ru": "Сообщение слишком большое",

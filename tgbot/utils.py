@@ -203,7 +203,7 @@ def add_status_effect(text: str, statuses: list[str]) -> str:
     elif "🧮" in statuses:
         shortcut_text = format_order_list(shortcut_text)
 
-    if "💻" in statuses:
+    if [s for s in statuses if s.startswith("💻")]:
         status = [
             status.removeprefix("💻")
             for status in statuses

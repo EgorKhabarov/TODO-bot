@@ -42,11 +42,9 @@ def else_func(args, kwargs, key, sec) -> None:
     text = get_translate("errors.many_attempts").format(sec)
 
     if isinstance(x, CallbackQuery):
-        func, arg = CallBackAnswer(text).answer, x.id
+        CallBackAnswer(text).answer()
     else:
-        func, arg = TextMessage(text).send, key
-
-    func(arg)
+        TextMessage(text).send()
 
 
 def process_account(func):
@@ -110,9 +108,9 @@ def process_account(func):
                     text = get_translate("errors.error")
 
                     if request.is_callback:
-                        CallBackAnswer(text).answer(x.id)
+                        CallBackAnswer(text).answer()
                     else:
-                        TextMessage(text).send(chat_id)
+                        TextMessage(text).send()
 
         return wrapper(_x)
 

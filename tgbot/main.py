@@ -126,7 +126,7 @@ def processing_search_message(message: Message):
     """
     query = html_to_markdown(message.html_text).removeprefix("#")
     telegram_log("search", query)
-    search_results_message(query).send(request.chat_id)
+    search_results_message(query).send()
 
 
 @bot.message_handler(func=lambda m: re_inline_message.match(m.text))
@@ -150,13 +150,13 @@ def inline_message_handler(message: Message):
             request.entity.edit_user_username(html_to_markdown(name))
             request.entity.user.username = html_to_markdown(name)
         except ValueError:
-            TextMessage(get_translate("errors.wrong_username")).reply(message)
+            TextMessage(get_translate("errors.wrong_username")).reply()
         except NotUniqueUsername:
-            TextMessage(get_translate("errors.username_is_taken")).reply(message)
+            TextMessage(get_translate("errors.username_is_taken")).reply()
         else:
             delete_message_action(message)
             try:
-                account_message(message_id).edit(message.chat.id, message_id)
+                account_message(message_id).edit(message_id=message_id)
             except ApiTelegramException:
                 pass
 
@@ -233,12 +233,12 @@ def processing_group_create_message(message: Message):
         request.entity.create_group(name)
     except LimitExceeded:
         try:
-            TextMessage(get_translate("errors.limit_exceeded")).send(chat_id)
+            TextMessage(get_translate("errors.limit_exceeded")).send()
         except ApiTelegramException:
             pass
     else:
         try:
-            groups_message().edit(chat_id, message_id)
+            groups_message().edit()
             delete_message_action(message)
         except ApiTelegramException as e:
             if "Description: Bad Request: message is not modified" in str(e):

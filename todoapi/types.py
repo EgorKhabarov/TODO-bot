@@ -26,7 +26,6 @@ from todoapi.exceptions import (
     EventNotFound,
     LimitExceeded,
     StatusRepeats,
-    StatusConflict,
     NotGroupMember,
     NotUniqueEmail,
     NotUniqueUsername,
@@ -1000,8 +999,8 @@ SELECT *
                 func=(
                     "DAYS_BEFORE_EVENT",
                     2,
-                    lambda date, status: Event(
-                        0, "", 0, date, "", status, "", "", ""
+                    lambda date, statuses: Event(
+                        0, "", 0, date, "", statuses, "", "", ""
                     ).days_before_event(self.settings.timezone),
                 ),
             )
@@ -1080,20 +1079,6 @@ UPDATE events
     def edit_event_status(self, event_id: int, statuses: list[str]) -> None:
         if not self.check_event_exists(event_id):
             raise EventNotFound
-
-        string_statuses = ",".join(statuses)
-        if any(
-            [
-                st1 in string_statuses and st2 in string_statuses
-                for st1, st2 in (
-                    ("🔗", "💻"),
-                    ("🪞", "💻"),
-                    ("🔗", "⛓"),
-                    ("🧮", "🗒"),
-                )
-            ]
-        ):
-            raise StatusConflict
 
         # Статусов не может быть больше 5
         # Длинна одного обычного статуса не может быть больше 3 символов
@@ -1704,7 +1689,7 @@ VALUES (:group_id, :user_id);
             raise ApiError(e)
 
     def edit_group_member_status(
-        self, status: int, user_id: int, group_id: str = None
+        self, member_status: int, user_id: int, group_id: str = None
     ) -> None:
         group_id = group_id or self.group_id
 
@@ -1721,12 +1706,12 @@ VALUES (:group_id, :user_id);
             db.execute(
                 """
 UPDATE members
-   SET member_status = :status
+   SET member_status = :member_status
  WHERE group_id = :group_id
        AND user_id = :user_id;
 """,
                 params={
-                    "status": status,
+                    "member_status": member_status,
                     "group_id": self.group_id,
                     "user_id": user_id,
                 },
@@ -2179,7 +2164,7 @@ SELECT user_id
     return Account(user_id, group_id)
 
 
-def set_user_status(user_id: int, status: int) -> None:
+def set_user_status(user_id: int, user_status: int) -> None:
     """
     Ставит статус для пользователя с user_id.
     НЕ проводит никаких проверок
@@ -2188,11 +2173,11 @@ def set_user_status(user_id: int, status: int) -> None:
         db.execute(
             """
 UPDATE users
-   SET user_status = :status
+   SET user_status = :user_status
  WHERE user_id = :user_id;
 """,
             params={
-                "status": status,
+                "user_status": user_status,
                 "user_id": user_id,
             },
             commit=True,

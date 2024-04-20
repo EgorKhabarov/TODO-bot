@@ -20,8 +20,8 @@ def delete_message_action(message: Message) -> None:
         if (time() - message.date) / 60 / 60 > 48:
             error_text = get_translate("errors.delete_messages_older_48_h")
             if isinstance(request.query, CallbackQuery):
-                return CallBackAnswer(error_text).answer(request.query.id, True)
+                return CallBackAnswer(error_text).answer(show_alert=True)
         else:
             error_text = get_translate("errors.get_permission")
 
-        TextMessage(error_text, delmarkup()).reply(message)
+        TextMessage(error_text, delmarkup()).reply()

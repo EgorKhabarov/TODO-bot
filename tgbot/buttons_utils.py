@@ -483,20 +483,28 @@ def create_select_status_keyboard(
         buttons_data: tuple[tuple[str]] = get_translate(
             f"buttons.select_status.{folder_path}"
         )
+
+        def unique_string_statuses(row) -> str:
+            new_status = row.split(maxsplit=1)[0]
+
+            if new_status == "⬜":
+                return f"{prefix} ⬜ folders {arguments}"
+
+            if "⬜" in status_list:
+                return f"{prefix} {new_status} folders {arguments}"
+
+            # if new_status in status_list:
+            #     return "raise Error"
+
+            res_status = ",".join(list(dict.fromkeys(status_list + [new_status])))
+            return f"{prefix} {res_status} folders {arguments}"
+
         markup = generate_buttons(
             [
                 *[
                     [
                         {
-                            f"{row:{config.ts}<80}": (
-                                (
-                                    f"{prefix} {string_statuses},{row.split(maxsplit=1)[0]} folders {arguments}"
-                                    if "⬜" not in status_list
-                                    else f"{prefix} {row.split(maxsplit=1)[0]} folders {arguments}"
-                                )
-                                if row.split(maxsplit=1)[0] != "⬜"
-                                else f"{prefix} ⬜ folders {arguments}"
-                            )
+                            f"{row:{config.ts}<80}": unique_string_statuses(row)
                         }
                         for row in status_column
                     ]
@@ -504,9 +512,9 @@ def create_select_status_keyboard(
                 ],
                 [
                     {
-                        get_theme_emoji(
-                            "back"
-                        ): f"{prefix} {string_statuses} folders {arguments}"
+                        get_theme_emoji("back"): (
+                            f"{prefix} {string_statuses} folders {arguments}"
+                        )
                     }
                 ],
             ]

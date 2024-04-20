@@ -480,7 +480,7 @@ def event_show_mode_message(event_id: int) -> EventMessage | None:
     return generated
 
 
-def event_history(event_id: int, date: datetime, page: int = 1) -> EventMessage | None:
+def event_history_message(event_id: int, date: datetime, page: int = 1) -> EventMessage | None:
     generated = EventMessage(event_id)
     event = generated.event
     if not event:
@@ -500,8 +500,8 @@ def event_history(event_id: int, date: datetime, page: int = 1) -> EventMessage 
             return text
 
         def prepare_value(action, val):
-            if action == "status":
-                return ",".join(json.loads(val))
+            if action == "statuses":
+                return ",".join(map(str, val))
             return val
 
         event.text = (
@@ -609,7 +609,7 @@ def confirm_changes_message(message: Message) -> None | int:
                 ]
             ]
         )
-        return TextMessage(translate, markup).reply(message)
+        return TextMessage(translate, markup).reply()
 
     text_diff = highlight_text_difference(
         html.escape(event.text), html.escape(markdown_text)
@@ -720,18 +720,19 @@ AND
 
 
 def event_status_message(
-    status: str, folder_path: str, event_id: int, date: str
+    statuses: str, folder_path: str, event_id: int, date: str
 ) -> EventMessage:
+    statuses_list = statuses.split(",")
     markup = create_select_status_keyboard(
         prefix="es",
-        status_list=status.split(","),
+        status_list=statuses_list,
         folder_path=folder_path,
         save="ess",
         back="em",
         arguments=f"{event_id} {date}",
     )
     generated = EventMessage(event_id)
-    generated.event._status = json.dumps(status.split(",")[-5:], ensure_ascii=False)
+    generated.event._status = json.dumps(statuses_list[-5:], ensure_ascii=False)
     generated.format(
         get_translate("select.status_to_event"), event_formats["dt"], markup
     )
