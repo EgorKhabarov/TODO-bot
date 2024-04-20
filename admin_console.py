@@ -24,7 +24,6 @@ def chunks(lst, n):
 
 
 def console_width(text: str):
-    # return len(text)
     """Определяет количество позиций, которое займет строка в консоли."""
     width = 0
     for char in text:
@@ -93,20 +92,21 @@ def line_spliter(
         line_arr = []
         line_length_arr = []
 
+        if console_width(text or " ") > width:
+            width -= 2
+
         for char in text or " ":
-            if char == "\n" or (sum(line_length_arr) >= (width - 1)):
+            if char == "\n" or (sum(line_length_arr) > width):
                 sub_lines.append("".join(line_arr))
                 line_arr.clear()
                 line_length_arr.clear()
-                # if char == "\n":
-                #     continue
             line_arr.append(char)
             line_length_arr.append(console_width(char))
 
-        sub_lines.append("".join(line_arr))
+        sub_lines.append(f"{''.join(line_arr):<{width}}")
         split_text = f"{line_break_symbol}\n".join(sub_lines)
     else:
-        split_text = f"{line_break_symbol}\n".join(chunks(text or " ", width - 2))
+        split_text = f"{line_break_symbol}\n".join(chunks(text or " ", width))
 
     lines = split_text.replace(f"\n{line_break_symbol}\n", "\n\n").splitlines()
     lines[-1] = lines[-1].removesuffix(line_break_symbol)
