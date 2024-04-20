@@ -58,7 +58,6 @@ if (
         if request.headers.get("content-type") != "application/json":
             return abort(403)
 
-        logging.info(f"{request.headers} {request.data}")
         bot.process_new_updates([Update.de_json(request.get_json())])
         return "ok", 200
 
