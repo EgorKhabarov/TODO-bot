@@ -59,7 +59,7 @@ if (
             return abort(403)
 
         logging.info(f"{request.headers} {request.data}")
-        bot.process_new_updates([Update.de_json(request.stream.read().decode("utf-8"))])
+        bot.process_new_updates([Update.de_json(request.get_json())])
         return "ok", 200
 
     if bot_webhook_info.url != config.TELEGRAM_WEBHOOK_URL:
