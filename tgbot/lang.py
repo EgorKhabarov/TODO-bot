@@ -417,6 +417,7 @@ Reply to this message with a new search query.
                 "da": ("После даты", ">"),
                 "tc": ("Совпадение статуса", "="),
                 "ta": ("Примерное совпадение статуса", "≈"),
+                "tn": ("Не содержит статуса", "≠"),
             },
             "en": {
                 "db": ("Before date", "<"),
@@ -424,6 +425,7 @@ Reply to this message with a new search query.
                 "da": ("After date", ">"),
                 "tc": ("Status Match", "="),
                 "ta": ("Approximate status match", "≈"),
+                "tn": ("Not status match", "≠"),
             },
         },
         "search_filters_clue": {
@@ -453,11 +455,11 @@ Reply to this message with a new search query.
         "start": {
             "ru": """
 Приветствую вас! Я - ваш личный календарь-помощник.
-Здесь вы можете легко создавать события и заметки, которые будут автоматически помещаться в календарь. Используйте специальные эмодзи, чтобы добавить эффекты или сделать поиск еще удобнее!
+Здесь вы можете легко создавать события и заметки, доступ к которым будет из календаря. Используйте специальные эмодзи, чтобы добавить эффекты или сделать поиск еще удобнее!
 
-📅 Календарь: Пользуйтесь удобным календарем на месяц и легко перемещайтесь между днями и месяцами.
+📅 Календарь: Пользуйтесь удобным календарём и легко перемещайтесь между днями и месяцами.
 
-🔍 Поиск: Ищите события по дате или тексту, так что ни одно важное мероприятие не ускользнет от вас!
+🔍 Поиск: Ищите события по тексту и используйте удобные фильтры, чтобы ни одна важная заметка не ускользнула от вашего внимания!
 
 🔔 Уведомления: Никогда не пропустите важные моменты! Настройте уведомления на определенное время или отключите их, когда вам удобно.
 
@@ -469,11 +471,11 @@ Reply to this message with a new search query.
 """,
             "en": """
 Greetings! I am your personal calendar assistant.
-Here you can easily create events and notes that will be automatically placed on the calendar. Just use special emoji to add effects or make your search even more convenient!
+Here you can easily create events and notes that can be accessed from the calendar. Just use special emoji to add effects or make your search even more convenient!
 
-📅 Calendar: Use a convenient monthly calendar and easily move between days and months.
+📅 Calendar: Use a convenient calendar and easily move between days and months.
 
-🔍 Search: Search for events by date or text so that no important event escapes you!
+🔍 Search: Search for events by text and use convenient filters, so that not a single important event will escape your notice!
 
 🔔 Notifications: Never miss important moments! Set notification for a specific time or turn them off at your convenience.
 

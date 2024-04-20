@@ -992,6 +992,7 @@ def search_filter_message(message: Message, call_data: str) -> TextMessage:
         [{f"📆 {search_filters['da'][0]:{config.ts}<80}": "sf add da"}],  # data after
         [{f"🏷 {search_filters['tc'][0]:{config.ts}<80}": "sf edit tc ⬜ folders"}],  # tag complete match
         [{f"🏷 {search_filters['ta'][0]:{config.ts}<80}": "sf edit ta ⬜ folders"}],  # tag approximate match
+        [{f"🏷 {search_filters['tn'][0]:{config.ts}<80}": "sf edit tn ⬜ folders"}],  # tag not match
         [{get_theme_emoji("back"): "sfs"}],
     ]
 
@@ -1007,7 +1008,7 @@ def search_filter_message(message: Message, call_data: str) -> TextMessage:
         message.text = f"{text}\n{description}: {sign}{date}\n\n{clue_1}"
         return search_filters_message(message)
 
-    elif call_data.startswith(("edit tc", "edit ta")):
+    elif call_data.startswith(("edit tc", "edit ta", "edit tn")):
         filter_type, statuses, folder = call_data.split()[1:]
         description, sign = search_filters[filter_type]
         text = message.text.split("\n\n", maxsplit=1)[0]
@@ -1021,7 +1022,7 @@ def search_filter_message(message: Message, call_data: str) -> TextMessage:
         )
         return TextMessage(message.html_text, markup)
 
-    elif call_data.startswith(("add tc", "add ta")):
+    elif call_data.startswith(("add tc", "add ta", "add tn")):
         filter_type, statuses = call_data.split()[1:]
         description, sign = search_filters[filter_type]
         text = message.text.split("\n\n", maxsplit=1)[0]

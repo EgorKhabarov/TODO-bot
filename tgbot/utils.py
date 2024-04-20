@@ -523,7 +523,7 @@ OR event_id LIKE '%' || ? || '%'
             condition, date = m.groups()
             filters_conditions_date.append(f"{sqlite_format_date('date')} {condition}= ?")
             filters_params_date.append(sqlite_format_date2(date))
-        elif m := re.compile(r"^([≈=])([^ \n]+)$").match(f):
+        elif m := re.compile(r"^([≈=≠])([^ \n]+)$").match(f):
             condition, status = m.groups()
             statuses = status.split(",")
 
@@ -531,6 +531,19 @@ OR event_id LIKE '%' || ? || '%'
                 filters_conditions_status.append(
                     f"""
 statuses {condition}= JSON_ARRAY({','.join('?' for _ in statuses)})
+"""
+                )
+                filters_params_status.extend(statuses)
+            if condition == "≠":
+                filters_conditions_status.append(
+                    f"""
+(
+    NOT EXISTS (
+        SELECT value
+          FROM json_each(statuses)
+         WHERE value IN ({','.join('?' for _ in statuses)})
+    )
+)
 """
                 )
                 filters_params_status.extend(statuses)
