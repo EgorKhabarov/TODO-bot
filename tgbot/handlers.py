@@ -3,6 +3,8 @@ import logging
 import traceback
 from time import sleep
 from ast import literal_eval
+from datetime import datetime
+from typing import Callable, Literal
 
 # noinspection PyPackageRequirements
 from telebot.apihelper import ApiTelegramException
@@ -404,55 +406,91 @@ def command_handler(message: Message) -> None:
         TextMessage(get_translate("errors.failure")).reply(message)
 
 
-def callback_handler(call: CallbackQuery):
-    """
-    Реакцию бота на нажатия на кнопки
-    """
+_handlers = {}
+def prefix(prefix_: str | tuple[str, ...], arguments: dict = None, eval_: bool = None):
+    if isinstance(prefix_, str):
+        prefix_: tuple[str] = (prefix_,)
 
-    chat_id, message_id = request.chat_id, call.message.message_id
-    call_id, message = call.id, call.message
+    def decorator(func: Callable):
+        for p in prefix_:
+            _handlers[p] = (
+                func, arguments if arguments is not None else {}, eval_
+            )
+        return func
+    return decorator
 
-    call_prefix = call.data.strip().split(maxsplit=1)[0]
-    call_data = call.data.removeprefix(call_prefix).strip()
-    args_func = getargs(call_data)
 
-    if call_prefix == "mnm":  # menu
+class CallBackHandler:
+    def __call__(self, call: CallbackQuery):
+        call_prefix = call.data.strip().split(maxsplit=1)[0]
+        method: tuple[Callable, dict, bool] | None = _handlers.get(call_prefix)
+
+        if method is None:
+            return
+
+        func, arguments, eval_ = method
+        call_data = call.data.removeprefix(call_prefix).strip()
+
+        # noinspection PyUnresolvedReferences
+        return func(
+            self,
+            *literal_eval(call_data) if eval_ else (),
+            **{
+                k: v
+                for k, v in {
+                    "chat_id": call.message.chat.id,
+                    "message_id": call.message.message_id,
+                    "message": call.message,
+                    "call_id": call.id,
+                    "call_data": call_data,
+                    "call": call,
+                    **getargs(call_data)(arguments),
+                }.items()
+                if k in func.__code__.co_varnames
+            }
+        )
+
+    @prefix("mnm")
+    def menu(self, chat_id: int, message_id: int) -> None:
         menu_message().edit(chat_id, message_id)
 
-    elif call_prefix == "mns":  # settings
+    @prefix("mns")
+    def settings(self, chat_id: int, message_id: int, call_id: int) -> None:
         try:
             settings_message().edit(chat_id, message_id)
         except ApiTelegramException:
             CallBackAnswer("ok").answer(call_id, True)
 
-    elif call_prefix == "mnw":  # week_event_list
+    @prefix("mnw")
+    def week_event_list(self, chat_id: int, message_id: int, call_id: int) -> None:
         try:
             week_event_list_message().edit(chat_id, message_id)
         except ApiTelegramException:
             CallBackAnswer("ok").answer(call_id, True)
 
-    elif call_prefix == "mngrs":  # groups message
-        mode, page = args_func({"mode": ("str", "al"), "page": ("int", 1)}).values()
+    @prefix("mngrs", {"mode": ("str", "al"), "page": ("int", 1)})
+    def groups_message(self, mode: Literal["al", "me", "md", "ad"], page: int, chat_id: int, message_id: int) -> None:
         try:
             groups_message(mode, page).edit(chat_id, message_id)
         except ApiTelegramException:
             pass
         cache_create_group("")
 
-    elif call_prefix == "mngr":  # group message
-        group_id, mode = args_func({"group_id": "str", "mode": ("str", "al")}).values()
+    @prefix("mngr", {"group_id": "str", "mode": ("str", "al")})
+    def group_message(self, group_id: str, mode: str, chat_id: int, message_id: int) -> None:
         group_message(group_id, message_id, mode).edit(chat_id, message_id)
 
-    elif call_prefix == "mna":  # account message
+    @prefix("mna")
+    def account_message(self, chat_id: int, message_id: int):
         account_message(message_id).edit(chat_id, message_id)
 
-    elif call_prefix == "mnc":  # calendar
-        date = literal_eval(call_data)[0]
+    @prefix("mnc", eval_=True)
+    def calendar(self, date: str, chat_id: int, message_id: int):
         date = new_time_calendar() if date == "now" else date
         monthly_calendar_message(date, "dl", "mnm").edit(chat_id, message_id)
 
-    elif call_prefix == "mnh":  # help
-        page = args_func({"page": ("long str", "page 1")})["page"]
+    @prefix("mnh", {"page": ("long str", "page 1")})
+    def help_message(self, page: str, chat_id: int, message_id: int, call_id: int, message: Message):
         markup = None if page.startswith("page") else message.reply_markup
 
         try:
@@ -461,7 +499,8 @@ def callback_handler(call: CallbackQuery):
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
 
-    elif call_prefix == "mnb":  # bin
+    @prefix("mnb")
+    def bin_message(self, chat_id: int, message_id: int, call_id: int):
         if (request.is_user and request.entity.is_premium) or request.is_member:
             try:
                 trash_can_message().edit(chat_id, message_id)
@@ -470,9 +509,8 @@ def callback_handler(call: CallbackQuery):
         else:
             CallBackAnswer(get_translate("errors.error")).answer(call_id, True)
 
-    elif call_prefix == "mnn":  # notification
-        n_date = args_func({"date": "date"})["date"]
-
+    @prefix("mnn", {"date": "date"})
+    def notification(self, n_date: datetime, chat_id: int, message_id: int, call_id: int):
         if n_date is None:
             return monthly_calendar_message(
                 None, "mnn", "mnm", get_translate("select.notification_date")
@@ -483,22 +521,23 @@ def callback_handler(call: CallbackQuery):
         except ApiTelegramException:
             CallBackAnswer("ok").answer(call_id, True)
 
-    elif call_prefix == "mnsr":
+    @prefix("mnsr")
+    def search_message(self, chat_id: int, message_id: int):
         search_results_message(
             get_translate("text.search_placeholder"), id_list=[0], is_placeholder=True
         ).edit(chat_id, message_id)
 
-    elif call_prefix == "dl":
+    @prefix("dl", {"date": "date"})
+    def daily_message(self, date: datetime, chat_id: int, message_id: int, call_id: int):
         cache_add_event_date("")
-        date = args_func({"date": "date"})["date"]
         try:
             daily_message(date).edit(chat_id, message_id)
         except ApiTelegramException:
             logging.error(traceback.format_exc())
             CallBackAnswer("ok").answer(call_id, True)
 
-    elif call_prefix == "em":  # event message
-        event_id = args_func({"event_id": "int"})["event_id"]
+    @prefix("em", {"event_id": "int"})
+    def event_message(self, event_id: int, chat_id: int, message_id: int, call_id: int):
         generated = event_message(event_id, message_id=message_id)
         if generated:
             try:
@@ -509,9 +548,9 @@ def callback_handler(call: CallbackQuery):
             text = get_translate("errors.no_events_to_interact")
             CallBackAnswer(text).answer(call_id, True)
 
-    elif call_prefix == "ea":  # event add
+    @prefix("ea", {"date": "str"})
+    def event_add(self, date: datetime, chat_id: int, message_id: int, call_id: int, message: Message):
         cache_add_event_date("")
-        date = args_func({"date": "str"})["date"]
 
         # Проверяем будет ли превышен лимит для пользователя, если добавить 1 событие с 1 символом
         if request.entity.limit.is_exceeded_for_events(date, 1, 1):
@@ -525,17 +564,12 @@ def callback_handler(call: CallbackQuery):
         markup = generate_buttons([[{get_theme_emoji("back"): f"dl {date}"}]])
         TextMessage(text, markup).edit(chat_id, message_id)
 
-    elif call_prefix == "es":  # event status page
-        statuses, folder, event_id, date = args_func(
-            {"statuses": "str", "folder": "str", "event_id": "int", "date": "str"}
-        ).values()
+    @prefix("es", {"statuses": "str", "folder": "str", "event_id": "int", "date": "str"})
+    def event_status_page(self, statuses: str, folder: str, event_id: int, date: str, chat_id: int, message_id: int):
         event_status_message(statuses, folder, event_id, date).edit(chat_id, message_id)
 
-    elif call_prefix == "ess":
-        event_id, date, new_status = args_func(
-            {"event_id": "int", "date": "str", "new_status": "str"}
-        ).values()
-
+    @prefix("ess", {"event_id": "int", "date": "str", "new_status": "str"})
+    def event_status_set(self, event_id: int, date: str, new_status: str, chat_id: int, message_id: int, call_id: int):
         try:
             request.entity.edit_event_status(event_id, new_status.split(","))
         except EventNotFound:
@@ -555,11 +589,14 @@ def callback_handler(call: CallbackQuery):
 
         CallBackAnswer(text).answer(call_id, True)
 
-    elif call_prefix == "eet":  # event edit text
-        event_id, event_date = args_func({"event_id": "int", "date": "date"}).values()
+    @prefix("eet", {"event_id": "int", "date": "date"})
+    def event_edit_text(self, event_id: int, date: datetime, chat_id: int, message_id: int, call_id: int, message: Message):
         text = message.text.split("\n", maxsplit=2)[-1]
+
         try:
             request.entity.edit_event_text(event_id, text)
+        except EventNotFound:
+            daily_message(date).edit(chat_id, message_id)
         except TextIsTooBig:
             text = get_translate("errors.message_is_too_long")
         except LimitExceeded:
@@ -572,8 +609,8 @@ def callback_handler(call: CallbackQuery):
             return
         CallBackAnswer(text).answer(call_id, True)
 
-    elif call_prefix == "eds":  # event new date set
-        event_id, date = args_func({"event_id": "int", "date": "date"}).values()
+    @prefix("eds", {"event_id": "int", "date": "date"})
+    def event_new_date_set(self, event_id: int, date: datetime, chat_id: int, message_id: int, call_id: int):
         try:
             request.entity.edit_event_date(event_id, f"{date:%d.%m.%Y}")
         except (ApiError, WrongDate):
@@ -584,16 +621,16 @@ def callback_handler(call: CallbackQuery):
             CallBackAnswer(get_translate("text.changes_saved")).answer(call_id)
             event_message(event_id, False, message_id).edit(chat_id, message_id)
 
-    elif call_prefix == "ed":  # event delete
-        event_id, date = args_func({"event_id": "int", "date": "date"}).values()
+    @prefix("ed", {"event_id": "int", "date": "date"})
+    def event_delete(self, event_id: int, date: datetime, chat_id: int, message_id: int, call_id: int):
         try:
             request.entity.delete_event(event_id)
         except EventNotFound:
             CallBackAnswer(get_translate("errors.error")).answer(call_id)
         daily_message(date).edit(chat_id, message_id)
 
-    elif call_prefix == "edb":  # event delete to bin
-        event_id, date = args_func({"event_id": "int", "date": "date"}).values()
+    @prefix("edb", {"event_id": "int", "date": "date"})
+    def event_delete_to_bin(self, event_id: int, date: datetime, chat_id: int, message_id: int, call_id: int):
         try:
             request.entity.delete_event_to_bin(event_id)
         except NotEnoughPermissions:
@@ -604,35 +641,43 @@ def callback_handler(call: CallbackQuery):
 
         daily_message(date).edit(chat_id, message_id)
 
-    elif call_prefix in ("esdt", "ebd", "eab", "esh", "eh"):
-        """
-        event select new date
-        event before delete
-        event about
-        event show
-        event history
-        """
-        event_id, date, page = args_func(
-            {"event_id": "int", "date": "date", "page": ("int", 1)}
-        ).values()
-
-        if call_prefix == "esdt":
-            generated = edit_event_date_message(event_id, date)
-        elif call_prefix == "ebd":
-            generated = before_event_delete_message(event_id)
-        elif call_prefix == "eab":
-            generated = about_event_message(event_id)
-        elif call_prefix == "esh":
-            generated = event_show_mode_message(event_id)
-        else:
-            generated = event_history(event_id, date, page)
-
+    @prefix("esdt", {"event_id": "int", "date": "date"})
+    def event_select_new_date(self, event_id: int, date: datetime, chat_id: int, message_id: int):
+        generated = edit_event_date_message(event_id, date)
         if generated is None:
             generated = daily_message(date)
         generated.edit(chat_id, message_id)
 
-    elif call_prefix == "esm":  # events message
-        id_list = args_func({"id_list": "str"})["id_list"]
+    @prefix("ebd", {"event_id": "int", "date": "date"})
+    def event_before_delete(self, event_id: int, date: datetime, chat_id: int, message_id: int):
+        generated = before_event_delete_message(event_id)
+        if generated is None:
+            generated = daily_message(date)
+        generated.edit(chat_id, message_id)
+
+    @prefix("eab", {"event_id": "int", "date": "date"})
+    def event_before_delete(self, event_id: int, date: datetime, chat_id: int, message_id: int):
+        generated = about_event_message(event_id)
+        if generated is None:
+            generated = daily_message(date)
+        generated.edit(chat_id, message_id)
+
+    @prefix("esh", {"event_id": "int", "date": "date"})
+    def event_before_delete(self, event_id: int, date: datetime, chat_id: int, message_id: int):
+        generated = event_show_mode_message(event_id)
+        if generated is None:
+            generated = daily_message(date)
+        generated.edit(chat_id, message_id)
+
+    @prefix("eh", {"event_id": "int", "date": "date", "page": ("int", 1)})
+    def event_before_delete(self, event_id: int, date: datetime, page: int, chat_id: int, message_id: int):
+        generated = event_history(event_id, date, page)
+        if generated is None:
+            generated = daily_message(date)
+        generated.edit(chat_id, message_id)
+
+    @prefix("esm", {"id_list": "str"})
+    def events_message(self, id_list: str, chat_id: int, message_id: int, call_id: int, message: Message):
         if id_list == "_":
             id_list = encode_id(
                 [
@@ -652,17 +697,18 @@ def callback_handler(call: CallbackQuery):
             text = get_translate("errors.no_events_to_interact")
             CallBackAnswer(text).answer(call_id, True)
 
-    elif call_prefix in ("esbd", "essd"):
-        # events before delete, events select new date
-        id_list = args_func({"id_list": "str"})["id_list"]
-        if call_prefix == "esbd":
-            generated = before_events_delete_message(decode_id(id_list))
-        else:
-            generated = edit_events_date_message(decode_id(id_list))
+    @prefix("esbd", {"id_list": "str"})
+    def events_before_delete(self, id_list: str, chat_id: int, message_id: int):
+        generated = before_events_delete_message(decode_id(id_list))
         generated.edit(chat_id, message_id)
 
-    elif call_prefix == "esd":  # events delete
-        id_list, date = args_func({"id_list": "str", "date": "date"}).values()
+    @prefix("essd", {"id_list": "str"})
+    def events_select_new_date(self, id_list: str, chat_id: int, message_id: int):
+        generated = edit_events_date_message(decode_id(id_list))
+        generated.edit(chat_id, message_id)
+
+    @prefix("esd", {"id_list": "str", "date": "date"})
+    def events_delete(self, id_list: str, date: datetime, chat_id: int, message_id: int, call_id: int):
         not_deleted: list[int] = []
         for event_id in decode_id(id_list):
             try:
@@ -676,8 +722,8 @@ def callback_handler(call: CallbackQuery):
 
         daily_message(date).edit(chat_id, message_id)
 
-    elif call_prefix == "esdb":  # events delete to bin
-        id_list, date = args_func({"id_list": "str", "date": "date"}).values()
+    @prefix("esdb", {"id_list": "str", "date": "date"})
+    def events_delete_to_bin(self, id_list: str, date: datetime, chat_id: int, message_id: int, call_id: int):
         not_deleted: list[int] = []
         for event_id in decode_id(id_list):
             try:
@@ -692,8 +738,8 @@ def callback_handler(call: CallbackQuery):
 
         daily_message(date).edit(chat_id, message_id)
 
-    elif call_prefix == "esds":  # events new date set
-        id_list, date = args_func({"id_list": "str", "date": "date"}).values()
+    @prefix("esds", {"id_list": "str", "date": "date"})
+    def events_new_date_set(self, id_list: str, date: datetime, chat_id: int, message_id: int, call_id: int):
         id_list = decode_id(id_list)
         not_edit: list[int] = []
         for event_id in id_list:
@@ -709,8 +755,8 @@ def callback_handler(call: CallbackQuery):
 
         events_message(id_list).edit(chat_id, message_id)
 
-    elif call_prefix == "se":  # select event
-        info, id_list = args_func({"info": "str", "id_list": "str"}).values()
+    @prefix("se", {"info": "str", "id_list": "str"})
+    def select_event(self, info: str, id_list: str, chat_id: int, message_id: int, call_id: int, call_data: str, message: Message):
         back_data = call_data.removeprefix(f"{info} {id_list}").strip()
         # TODO Добавить если поставить кавычки " или ', то можно внутри юзать пробел
         generated = select_one_message(
@@ -740,8 +786,8 @@ def callback_handler(call: CallbackQuery):
             no_events = get_translate("errors.no_events_to_interact")
             CallBackAnswer(no_events).answer(call_id, True)
 
-    elif call_prefix == "ses":  # select events
-        info, id_list = args_func({"info": "str", "id_list": "str"}).values()
+    @prefix("ses", {"info": "str", "id_list": "str"})
+    def select_events(self, info: str, id_list: str, chat_id: int, message_id: int, call_id: int, call_data: str, message: Message):
         back_data = call_data.removeprefix(f"{info} {id_list}").strip()
         generated = select_events_message(
             decode_id(id_list),
@@ -768,7 +814,9 @@ def callback_handler(call: CallbackQuery):
             no_events = get_translate("errors.no_events_to_interact")
             CallBackAnswer(no_events).answer(call_id, True)
 
-    elif call_prefix in ("sal", "sbal"):  # select all | select all in bin
+    @prefix(("sal", "sbal"))
+    def select_all(self, chat_id: int, message_id: int, message: Message):
+        # select all | select all in bin
         for line in message.reply_markup.keyboard[:-1]:
             for button in line:
                 button.text = (
@@ -779,8 +827,9 @@ def callback_handler(call: CallbackQuery):
         generated = TextMessage(markup=message.reply_markup)
         generated.edit(chat_id, message_id, only_markup=True)
 
-    elif call_prefix in ("son", "sbon"):  # select one | select one in bin
-        row, column = args_func({"row": "int", "column": ("int", 0)}).values()
+    @prefix(("son", "sbon"), {"row": "int", "column": ("int", 0)})
+    def select_one(self, row: int, column: int, chat_id: int, message_id: int, message: Message):
+        # select one | select one in bin
         button = message.reply_markup.keyboard[row][column]
         button.text = (
             button.text.removeprefix("👉")
@@ -790,10 +839,8 @@ def callback_handler(call: CallbackQuery):
         generated = TextMessage(markup=message.reply_markup)
         generated.edit(chat_id, message_id, only_markup=True)
 
-    elif call_prefix == "pd":  # page daily
-        date, page, id_list = args_func(
-            {"date": "str", "page": ("int", 0), "id_list": ("str", "")}
-        ).values()
+    @prefix("pd", {"date": "str", "page": ("int", 0), "id_list": ("str", "")})
+    def page_daily(self, date: str, page: int, id_list: str, chat_id: int, message_id: int, call_id: int, message: Message):
         markup = message.reply_markup if page else None
         if markup:
             edit_button_data(markup, 0, 1, f"se _ {id_list} pd {date}")
@@ -806,10 +853,8 @@ def callback_handler(call: CallbackQuery):
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
 
-    elif call_prefix == "pr":  # page recurring
-        date, page, id_list = args_func(
-            {"date": "str", "page": ("int", 0), "id_list": ("str", "")}
-        ).values()
+    @prefix("pr", {"date": "str", "page": ("int", 0), "id_list": ("str", "")})
+    def page_recurring(self, date: str, page: int, id_list: str, chat_id: int, message_id: int, call_id: int, message: Message):
         markup = message.reply_markup if page else None
         if markup:
             edit_button_data(markup, 0, -1, f"se o {id_list} pr {date}")
@@ -821,8 +866,8 @@ def callback_handler(call: CallbackQuery):
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
 
-    elif call_prefix == "ps":  # page search
-        page, id_list = args_func({"page": ("int", 1), "id_list": ("str", "")}).values()
+    @prefix("ps", {"page": ("int", 1), "id_list": ("str", "")})
+    def page_search(self, page: int, id_list: str, chat_id: int, message_id: int, call_id: int, message: Message):
         markup = message.reply_markup if page else None
         if markup:
             edit_button_data(markup, 0, 1, f"se os {id_list} us")
@@ -838,8 +883,8 @@ def callback_handler(call: CallbackQuery):
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
 
-    elif call_prefix == "pw":  # page week event list
-        page, id_list = args_func({"page": ("int", 0), "id_list": ("str", ())}).values()
+    @prefix("pw", {"page": ("int", 0), "id_list": ("str", ())})
+    def page_week_event_list(self, page: int, id_list: str, chat_id: int, message_id: int, call_id: int, message: Message):
         markup = message.reply_markup if page else None
         if markup:
             edit_button_data(markup, 0, 2, f"se o {id_list} mnw")
@@ -851,8 +896,8 @@ def callback_handler(call: CallbackQuery):
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
 
-    elif call_prefix == "pb":  # page bin
-        page, id_list = args_func({"page": ("int", 0), "id_list": ("str", ())}).values()
+    @prefix("pb", {"page": ("int", 0), "id_list": ("str", ())})
+    def page_bin(self, page: int, id_list: str, chat_id: int, message_id: int, call_id: int, message: Message):
         markup = message.reply_markup if page else None
         if markup:
             edit_button_data(markup, 0, 0, f"se b {id_list} mnb")
@@ -865,10 +910,8 @@ def callback_handler(call: CallbackQuery):
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
 
-    elif call_prefix == "pn":  # page notification
-        n_date, page, id_list = args_func(
-            {"date": "date", "page": ("int", 0), "id_list": ("str", ())}
-        ).values()
+    @prefix("pn", {"date": "date", "page": ("int", 0), "id_list": ("str", ())})
+    def page_notification(self, n_date: datetime, page: int, id_list: str, chat_id: int, message_id: int, call_id: int, message: Message):
         markup = message.reply_markup if page else None
         if markup:
             edit_button_data(markup, 0, -1, f"se o {id_list} mnn {n_date:%d.%m.%Y}")
@@ -879,9 +922,8 @@ def callback_handler(call: CallbackQuery):
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer(call_id)
 
-    elif call_prefix == "cm":  # calendar month
-        command, back, date, arguments = literal_eval(call_data)
-
+    @prefix("cm", eval_=True)
+    def calendar_month(self, command, back, date, arguments, chat_id: int, message_id: int, call_id: int, call: CallbackQuery):
         if date == "now":
             date = new_time_calendar()
 
@@ -901,9 +943,8 @@ def callback_handler(call: CallbackQuery):
         else:
             CallBackAnswer(get_translate("errors.invalid_date")).answer(call_id)
 
-    elif call_prefix == "cy":  # calendar year
-        command, back, year, arguments = literal_eval(call_data)
-
+    @prefix("cy", eval_=True)
+    def calendar_year(self, command, back, year, arguments, chat_id: int, message_id: int, call_id: int):
         if year == "now":
             year = request.entity.now_time().year
 
@@ -921,9 +962,8 @@ def callback_handler(call: CallbackQuery):
         else:
             CallBackAnswer(get_translate("errors.invalid_date")).answer(call_id)
 
-    elif call_prefix == "ct":  # calendar twenty year
-        command, back, decade, arguments = literal_eval(call_data)
-
+    @prefix("ct", eval_=True)
+    def calendar_twenty_year(self, command, back, decade, arguments, chat_id: int, message_id: int, call_id: int):
         if decade == "now":
             decade = int(str(request.entity.now_time().year)[:3])
         else:
@@ -943,7 +983,8 @@ def callback_handler(call: CallbackQuery):
         else:
             CallBackAnswer(get_translate("errors.invalid_date")).answer(call_id)
 
-    elif call_prefix == "us":  # update search
+    @prefix("us")
+    def update_search(self, chat_id: int, message_id: int, call_id: int, message: Message):
         try:
             search_results_message(
                 extract_search_query(message.html_text),
@@ -952,15 +993,18 @@ def callback_handler(call: CallbackQuery):
         except ApiTelegramException:
             CallBackAnswer("ok").answer(call_id, True)
 
-    elif call_prefix == "sfs":  # search filters
+    @prefix("sfs")
+    def search_filters(self, chat_id: int, message_id: int, call_data: str, message: Message):
         if message.text.startswith("🔍"):
             search_filters_message(message, call_data).edit(chat_id, message_id)
 
-    elif call_prefix == "sf":  # search filter
+    @prefix("sf")
+    def search_filter(self, chat_id: int, message_id: int, call_data: str, message: Message):
         if message.text.startswith("🔍⚙️"):
             search_filter_message(message, call_data).edit(chat_id, message_id)
 
-    elif call_prefix == "sfe":  # search filter export
+    @prefix("sfe")
+    def search_filter_export(self, chat_id: int, message: Message):
         if message.text.startswith("🔍"):
             query = extract_search_query(message.html_text)
             filters = extract_search_filters(message.html_text)
@@ -976,10 +1020,12 @@ def callback_handler(call: CallbackQuery):
                 logging.info(f'export ApiTelegramException "{e}"')
                 TextMessage(get_translate("errors.file_is_too_big")).send(chat_id)
 
-    elif call_prefix == "md":  # message delete
+    @prefix("md")
+    def message_delete(self, message: Message):
         delete_message_action(message)
 
-    elif call_prefix == "std":  # settings restore to default
+    @prefix("std")
+    def settings_restore_to_default(self, chat_id: int, message_id: int, call_id: int):
         old_lang = request.entity.settings.lang
         request.entity.set_telegram_user_settings(
             lang="ru",
@@ -1002,9 +1048,8 @@ def callback_handler(call: CallbackQuery):
         except ApiTelegramException:
             pass
 
-    elif call_prefix == "ste":  # settings set
-        par_name, par_val = args_func({"par_name": "str", "par_val": "str"}).values()
-
+    @prefix("ste", {"par_name": "str", "par_val": "str"})
+    def settings_set(self, par_name: str, par_val: str, chat_id: int, message_id: int, call_id: int):
         if par_name not in (
             "lang",
             "sub_urls",
@@ -1029,7 +1074,8 @@ def callback_handler(call: CallbackQuery):
         except ApiTelegramException:
             pass
 
-    elif call_prefix == "bcl":  # bin clear
+    @prefix("bcl")
+    def bin_clear(self, chat_id: int, message_id: int, call_id: int):
         request.entity.clear_basket()
 
         try:
@@ -1037,8 +1083,8 @@ def callback_handler(call: CallbackQuery):
         except ApiTelegramException:
             CallBackAnswer("ok").answer(call_id, True)
 
-    elif call_prefix == "bem":  # event message bin
-        event_id = args_func({"event_id": "int"})["event_id"]
+    @prefix("bem", {"event_id": "int"})
+    def event_message_bin(self, event_id: int, chat_id: int, message_id: int, call_id: int):
         generated = event_message(event_id, True, message_id=message_id)
         if generated:
             try:
@@ -1049,8 +1095,8 @@ def callback_handler(call: CallbackQuery):
             text = get_translate("errors.no_events_to_interact")
             CallBackAnswer(text).answer(call_id, True)
 
-    elif call_prefix == "bed":  # event delete bin
-        event_id = args_func({"event_id": "int"})["event_id"]
+    @prefix("bed", {"event_id": "int"})
+    def event_delete_bin(self, event_id: int, chat_id: int, message_id: int, call_id: int):
         try:
             request.entity.delete_event(event_id, in_bin=True)
         except EventNotFound:
@@ -1060,9 +1106,8 @@ def callback_handler(call: CallbackQuery):
         except ApiTelegramException:
             pass
 
-    elif call_prefix == "ber":  # event recover bin
-        event_id, date = args_func({"event_id": "int", "date": "date"}).values()
-
+    @prefix("ber", {"event_id": "int", "date": "date"})
+    def event_recover_bin(self, event_id: int, date: datetime, chat_id: int, message_id: int, call_id: int):
         try:
             request.entity.recover_event(event_id)
         except (EventNotFound, LimitExceeded):
@@ -1071,8 +1116,8 @@ def callback_handler(call: CallbackQuery):
 
         trash_can_message().edit(chat_id, message_id)
 
-    elif call_prefix == "bsm":  # events message bin
-        id_list = args_func({"id_list": "str"})["id_list"]
+    @prefix("bsm", {"id_list": "str"})
+    def events_message_bin(self, id_list: str, chat_id: int, message_id: int, call_id: int, message: Message):
         if id_list == "_" or not id_list:
             id_list = encode_id(
                 [
@@ -1092,8 +1137,8 @@ def callback_handler(call: CallbackQuery):
             text = get_translate("errors.no_events_to_interact")
             CallBackAnswer(text).answer(call_id, True)
 
-    elif call_prefix == "bsd":  # events delete bin
-        id_list = args_func({"id_list": "str"})["id_list"]
+    @prefix("bsd", {"id_list": "str"})
+    def events_delete_bin(self, id_list: str, chat_id: int, message_id: int, call_id: int):
         not_deleted: list[int] = []
         for event_id in decode_id(id_list):
             try:
@@ -1106,8 +1151,8 @@ def callback_handler(call: CallbackQuery):
 
         trash_can_message().edit(chat_id, message_id)
 
-    elif call_prefix == "bsr":  # events recover bin
-        id_list, date = args_func({"id_list": "str", "date": "date"}).values()
+    @prefix("bsr", {"id_list": "str", "date": "date"})
+    def events_recover_bin(self, id_list: str, date: datetime, chat_id: int, message_id: int, call_id: int):
         not_recover: list[int] = []
         for event_id in decode_id(id_list):
             try:
@@ -1120,20 +1165,22 @@ def callback_handler(call: CallbackQuery):
 
         trash_can_message().edit(chat_id, message_id)
 
-    elif call_prefix == "logout":
+    @prefix("logout")
+    def logout(self, chat_id: int, message_id: int):
         if request.is_user:
             set_user_telegram_chat_id(request.entity, None)
             set_bot_commands(True)
             TextMessage(get_translate("errors.success")).edit(chat_id, message_id)
 
-    elif call_prefix == "lm":  # limits message
-        date = args_func({"date": "date"})["date"]
+    @prefix("lm", {"date": "date"})
+    def limits_message(self, date: datetime, chat_id: int, message_id: int):
         if not date:
             generated = monthly_calendar_message(None, "lm", "mna")
             return generated.edit(chat_id, message_id)
         limits_message(date).edit(chat_id, message_id, disable_web_page_preview=False)
 
-    elif call_prefix == "grcr":  # group create
+    @prefix("grcr")
+    def group_create(self, chat_id: int, message_id: int, call_id: int):
         cache_create_group("")
         if request.entity.limit.is_exceeded_for_groups(create=True):
             text = get_translate("errors.limit_exceeded")
@@ -1149,11 +1196,9 @@ def callback_handler(call: CallbackQuery):
         TextMessage(text, markup).edit(chat_id, message_id)
         CallBackAnswer(get_translate("text.send_group_name")).answer(call_id)
 
-    elif call_prefix == "gre":  # group export
-        group_id, file_format = args_func(
-            {"group_id": "str", "format": ("str", "csv")}
-        ).values()
-
+    @prefix("gre", {"group_id": "str", "format": ("str", "csv")})
+    def group_export(self, group_id: str, file_format: str, chat_id: int, message: Message):
+        # TODO ограничить кол-во взаимодействий
         if file_format not in ("csv", "xml", "json", "jsonl"):
             return TextMessage(get_translate("errors.export_format")).reply(message)
 
@@ -1168,9 +1213,8 @@ def callback_handler(call: CallbackQuery):
             logging.error(traceback.format_exc())
             TextMessage(get_translate("errors.file_is_too_big")).send(chat_id)
 
-    elif call_prefix == "grd":  # group delete
-        group_id, mode = args_func({"group_id": "str", "mode": ("str", "al")}).values()
-
+    @prefix("grd", {"group_id": "str", "mode": ("str", "al")})
+    def group_delete(self, group_id: str, mode: str, chat_id: int, message_id: int, call_id: int):
         try:
             request.entity.delete_group(group_id)
         except (NotGroupMember, NotEnoughPermissions):
@@ -1178,9 +1222,8 @@ def callback_handler(call: CallbackQuery):
         else:
             groups_message(mode).edit(chat_id, message_id)
 
-    elif call_prefix == "grlv":  # group leave
-        group_id, mode = args_func({"group_id": "str", "mode": ("str", "al")}).values()
-
+    @prefix("grlv", {"group_id": "str", "mode": ("str", "al")})
+    def group_leave(self, group_id: str, mode: str, chat_id: int, message_id: int, call_id: int):
         try:
             request.entity.remove_group_member(request.entity.user_id, group_id)
         except NotGroupMember:
@@ -1188,9 +1231,8 @@ def callback_handler(call: CallbackQuery):
         else:
             groups_message(mode).edit(chat_id, message_id)
 
-    elif call_prefix == "grrgr":  # group remove from telegram group
-        group_id, mode = args_func({"group_id": "str", "mode": ("str", "al")}).values()
-
+    @prefix("grrgr", {"group_id": "str", "mode": ("str", "al")})
+    def group_remove_from_telegram_group(self, group_id: str, mode: str, chat_id: int, message_id: int, call_id: int):
         try:
             request.entity.set_group_telegram_chat_id(group_id)
         except (NotGroupMember, NotEnoughPermissions):
@@ -1198,7 +1240,8 @@ def callback_handler(call: CallbackQuery):
         else:
             group_message(group_id, message_id, mode).edit(chat_id, message_id)
 
-    elif call_prefix == "get_premium":
+    @prefix("get_premium")
+    def get_premium(self, chat_id: int, message_id: int, call_id: int):
         # Заглушка на получение доступа к корзине и повышенным лимитам
         # TODO реализовать нормальное получение
         if request.is_user:
@@ -1206,6 +1249,9 @@ def callback_handler(call: CallbackQuery):
             CallBackAnswer("ok").answer(call_id, True)
             request.entity.user.user_status = 1
             account_message(message_id).edit(chat_id, message_id)
+
+
+callback_handler = CallBackHandler()
 
 
 def reply_handler(message: Message, reply_to_message: Message) -> None:
