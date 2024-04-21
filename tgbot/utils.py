@@ -205,9 +205,7 @@ def add_status_effect(text: str, statuses: list[str]) -> str:
 
     if [s for s in statuses if s.startswith("💻")]:
         status = [
-            status.removeprefix("💻")
-            for status in statuses
-            if status.startswith("💻")
+            status.removeprefix("💻") for status in statuses if status.startswith("💻")
         ][-1]
         shortcut_text = (
             format_code_lang(shortcut_text, status)
@@ -521,7 +519,9 @@ OR event_id LIKE '%' || ? || '%'
     for _, f in filters[:6]:
         if m := re.compile(r"^([<>=])(\d{2}\.\d{2}\.\d{4})$").match(f):
             condition, date = m.groups()
-            filters_conditions_date.append(f"{sqlite_format_date('date')} {condition}= ?")
+            filters_conditions_date.append(
+                f"{sqlite_format_date('date')} {condition}= ?"
+            )
             filters_params_date.append(sqlite_format_date2(date))
         elif m := re.compile(r"^([≈=≠])([^ \n]+)$").match(f):
             condition, status = m.groups()

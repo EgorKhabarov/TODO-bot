@@ -480,7 +480,9 @@ def event_show_mode_message(event_id: int) -> EventMessage | None:
     return generated
 
 
-def event_history_message(event_id: int, date: datetime, page: int = 1) -> EventMessage | None:
+def event_history_message(
+    event_id: int, date: datetime, page: int = 1
+) -> EventMessage | None:
     generated = EventMessage(event_id)
     event = generated.event
     if not event:
@@ -991,9 +993,12 @@ def search_filter_message(message: Message, call_data: str) -> TextMessage:
         [{f"📆 {search_filters['db'][0]:{config.ts}<80}": "sf add db"}],  # data before
         [{f"📆 {search_filters['dd'][0]:{config.ts}<80}": "sf add dd"}],  # data during
         [{f"📆 {search_filters['da'][0]:{config.ts}<80}": "sf add da"}],  # data after
-        [{f"🏷 {search_filters['tc'][0]:{config.ts}<80}": "sf edit tc ⬜ folders"}],  # tag complete match
-        [{f"🏷 {search_filters['ta'][0]:{config.ts}<80}": "sf edit ta ⬜ folders"}],  # tag approximate match
-        [{f"🏷 {search_filters['tn'][0]:{config.ts}<80}": "sf edit tn ⬜ folders"}],  # tag not match
+        # tag complete match
+        [{f"🏷 {search_filters['tc'][0]:{config.ts}<80}": "sf edit tc ⬜ folders"}],
+        # tag approximate match
+        [{f"🏷 {search_filters['ta'][0]:{config.ts}<80}": "sf edit ta ⬜ folders"}],
+        # tag not match
+        [{f"🏷 {search_filters['tn'][0]:{config.ts}<80}": "sf edit tn ⬜ folders"}],
         [{get_theme_emoji("back"): "sfs"}],
     ]
 

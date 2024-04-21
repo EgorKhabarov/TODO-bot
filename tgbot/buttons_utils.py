@@ -503,9 +503,7 @@ def create_select_status_keyboard(
             [
                 *[
                     [
-                        {
-                            f"{row:{config.ts}<80}": unique_string_statuses(row)
-                        }
+                        {f"{row:{config.ts}<80}": unique_string_statuses(row)}
                         for row in status_column
                     ]
                     for status_column in buttons_data

@@ -495,6 +495,7 @@ class Event:
 
     _history: str = None
     """
+
     user_id: int
     group_id: str
     event_id: int
@@ -855,7 +856,7 @@ SELECT 1
         except Error as e:
             raise ApiError(e)
 
-    def create_event(self, date: str, text: str, statuses: str = "[\"⬜\"]") -> int:
+    def create_event(self, date: str, text: str, statuses: str = '["⬜"]') -> int:
         """
 
         :param date:

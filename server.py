@@ -8,8 +8,6 @@ from tgbot.limits import create_image_from_link
 import config
 
 if config.TELEGRAM_WEBHOOK:
-    import logging
-
     # noinspection PyPackageRequirements
     from telebot.types import Update
     from tgbot.main import bot

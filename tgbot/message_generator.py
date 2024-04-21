@@ -97,7 +97,9 @@ class TextMessage:
         self.markup = markup
 
     def send(self, chat_id: int = None, **kwargs) -> Message:
-        message: Message = request.query.message if request.is_callback else request.query
+        message: Message = (
+            request.query.message if request.is_callback else request.query
+        )
 
         message_thread_id = (
             message.reply_to_message.message_thread_id
@@ -140,7 +142,9 @@ class TextMessage:
 
         .edit(chat_id, message_id)
         """
-        message: Message = request.query.message if request.is_callback else request.query
+        message: Message = (
+            request.query.message if request.is_callback else request.query
+        )
 
         if only_markup:
             bot.edit_message_reply_markup(
@@ -168,7 +172,9 @@ class TextMessage:
 
     def reply(self, message: Message = None, **kwargs):
         if not message:
-            message: Message = request.query.message if request.is_callback else request.query
+            message: Message = (
+                request.query.message if request.is_callback else request.query
+            )
 
         message_thread_id = (
             message.reply_to_message.message_thread_id

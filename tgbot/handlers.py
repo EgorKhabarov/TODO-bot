@@ -406,16 +406,17 @@ def command_handler(message: Message) -> None:
 
 
 _handlers = {}
+
+
 def prefix(prefix_: str | tuple[str, ...], arguments: dict = None, eval_: bool = None):
     if isinstance(prefix_, str):
         prefix_: tuple[str] = (prefix_,)
 
     def decorator(func: Callable):
         for p in prefix_:
-            _handlers[p] = (
-                func, arguments if arguments is not None else {}, eval_
-            )
+            _handlers[p] = func, arguments if arguments is not None else {}, eval_
         return func
+
     return decorator
 
 
@@ -446,7 +447,7 @@ class CallBackHandler:
                     **getargs(call_data)(arguments),
                 }.items()
                 if k in func.__code__.co_varnames
-            }
+            },
         )
 
     @prefix("mnm")
@@ -553,8 +554,8 @@ class CallBackHandler:
 
         # Проверяем будет ли превышен лимит для пользователя, если добавить 1 событие с 1 символом
         if request.entity.limit.is_exceeded_for_events(date, 1, 1):
-            CallBackAnswer(get_translate("errors.exceeded_limit")).answer(show_alert=True)
-            return
+            call_answer = CallBackAnswer(get_translate("errors.exceeded_limit"))
+            return call_answer.answer(show_alert=True)
 
         cache_add_event_date(f"{date},{message_id}")
         send_event_text = get_translate("text.send_event_text")
@@ -563,12 +564,20 @@ class CallBackHandler:
         markup = generate_buttons([[{get_theme_emoji("back"): f"dl {date}"}]])
         TextMessage(text, markup).edit()
 
-    @prefix("es", {"statuses": "str", "folder": "str", "event_id": "int", "date": "str"})
+    @prefix(
+        "es", {"statuses": "str", "folder": "str", "event_id": "int", "date": "str"}
+    )
     def event_status_page(self, statuses: str, folder: str, event_id: int, date: str):
         event_status_message(statuses, folder, event_id, date).edit()
 
     @prefix("ess", {"event_id": "int", "date": "str", "new_status": "str"})
-    def event_status_set(self, event_id: int, date: str, new_status: str, message_id: int, call: CallbackQuery):
+    def event_status_set(
+        self,
+        event_id: int,
+        date: str,
+        new_status: str,
+        message_id: int,
+    ):
         try:
             request.entity.edit_event_status(event_id, new_status.split(","))
         except EventNotFound:
@@ -587,7 +596,9 @@ class CallBackHandler:
         CallBackAnswer(text).answer(show_alert=True)
 
     @prefix("eet", {"event_id": "int", "date": "date"})
-    def event_edit_text(self, event_id: int, date: datetime, message_id: int, message: Message):
+    def event_edit_text(
+        self, event_id: int, date: datetime, message_id: int, message: Message
+    ):
         text = message.text.split("\n", maxsplit=2)[-1]
 
         try:
@@ -613,7 +624,8 @@ class CallBackHandler:
         except (ApiError, WrongDate):
             CallBackAnswer(get_translate("errors.error")).answer()
         except LimitExceeded:
-            CallBackAnswer(get_translate("errors.limit_exceeded")).answer(show_alert=True)
+            call_answer = CallBackAnswer(get_translate("errors.limit_exceeded"))
+            call_answer.answer(show_alert=True)
         else:
             CallBackAnswer(get_translate("text.changes_saved")).answer()
             event_message(event_id, False, message_id).edit()
@@ -753,7 +765,9 @@ class CallBackHandler:
         events_message(id_list).edit()
 
     @prefix("se", {"info": "str", "id_list": "str"})
-    def select_event(self, info: str, id_list: str, call_data: str, message_id: int, message: Message):
+    def select_event(
+        self, info: str, id_list: str, call_data: str, message_id: int, message: Message
+    ):
         back_data = call_data.removeprefix(f"{info} {id_list}").strip()
         # TODO Добавить если поставить кавычки " или ', то можно внутри юзать пробел
         generated = select_one_message(
@@ -825,7 +839,9 @@ class CallBackHandler:
         generated.edit(only_markup=True)
 
     @prefix(("son", "sbon"), {"row": "int", "column": ("int", 0)})
-    def select_one(self, row: int, column: int, chat_id: int, message_id: int, message: Message):
+    def select_one(
+        self, row: int, column: int, chat_id: int, message_id: int, message: Message
+    ):
         # select one | select one in bin
         button = message.reply_markup.keyboard[row][column]
         button.text = (
@@ -900,7 +916,9 @@ class CallBackHandler:
             CallBackAnswer(text).answer()
 
     @prefix("pn", {"date": "date", "page": ("int", 0), "id_list": ("str", ())})
-    def page_notification(self, n_date: datetime, page: int, id_list: str, message: Message):
+    def page_notification(
+        self, n_date: datetime, page: int, id_list: str, message: Message
+    ):
         markup = message.reply_markup if page else None
         if markup:
             edit_button_data(markup, 0, -1, f"se o {id_list} mnn {n_date:%d.%m.%Y}")
@@ -1227,7 +1245,9 @@ class CallBackHandler:
             groups_message(mode).edit()
 
     @prefix("grrgr", {"group_id": "str", "mode": ("str", "al")})
-    def group_remove_from_telegram_group(self, group_id: str, mode: str, message_id: int):
+    def group_remove_from_telegram_group(
+        self, group_id: str, mode: str, message_id: int
+    ):
         try:
             request.entity.set_group_telegram_chat_id(group_id)
         except (NotGroupMember, NotEnoughPermissions):
@@ -1306,7 +1326,9 @@ def cache_add_event_date(state: str = None) -> str | bool:
             pass
 
 
-def cache_create_group(state: str = None, mode: str = "al", page: int = 1) -> str | bool:
+def cache_create_group(
+    state: str = None, mode: str = "al", page: int = 1
+) -> str | bool:
     """
     Очищает состояние приёма сообщения у пользователя
     и изменяет сообщение по id из add_event_date
