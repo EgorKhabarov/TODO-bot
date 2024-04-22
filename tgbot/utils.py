@@ -598,8 +598,8 @@ statuses {condition}= JSON_ARRAY({','.join('?' for _ in statuses)})
 
     if filters_conditions_status:
         string_sql_filters_status = (
-            f"AND (\n    {f'{n}    OR '.join(filters_conditions_status)}"
-            f"\n)")
+            f"AND (\n    {f'{n}    OR '.join(filters_conditions_status)}\n)"
+        )
     else:
         string_sql_filters_status = ""
 
@@ -619,7 +619,7 @@ AND ({splitquery.strip()})
         *filters_params_date,
         *filters_params_status,
     )
-    logging.info(f"{WHERE} {params}",)
+    logging.debug(f"{WHERE} {params}")
     return WHERE, params
 
 

@@ -357,7 +357,10 @@ class ExportData:
 SELECT event_id,
        date,
        statuses,
-       text
+       text,
+       adding_time,
+       recent_changes_time,
+       history
   FROM events
  WHERE user_id IS :user_id
        AND group_id IS :group_id
@@ -386,12 +389,15 @@ SELECT event_id,
         file.name = self.filename
 
         xml_events = xml.Element("events")
-        for event_id, date, statuses, text in self.table:
+        for i, d, s, t, a, r, h in self.table:
             xml_event = xml.SubElement(xml_events, "event")
-            xml.SubElement(xml_event, "event_id").text = str(event_id)
-            xml.SubElement(xml_event, "date").text = date
-            xml.SubElement(xml_event, "statuses").text = statuses
-            xml.SubElement(xml_event, "text").text = text
+            xml.SubElement(xml_event, "i").text = f"{i}"
+            xml.SubElement(xml_event, "d").text = d
+            xml.SubElement(xml_event, "s").text = s
+            xml.SubElement(xml_event, "t").text = t
+            xml.SubElement(xml_event, "a").text = a
+            xml.SubElement(xml_event, "r").text = r
+            xml.SubElement(xml_event, "h").text = h
             xml.indent(xml_event, space="  ")
 
         tree = xml.ElementTree(xml_events)
@@ -411,32 +417,16 @@ SELECT event_id,
     def json(self) -> StringIO:
         file = StringIO()
         file.name = self.filename
-        d = tuple(
-            {
-                "event_id": event_id,
-                "date": event_date,
-                "statuses": event_status,
-                "text": event_text,
-            }
-            for event_id, event_date, event_status, event_text in self.table
-        )
-        file.write(json.dumps(d, indent=4, ensure_ascii=False))
+        file.write(json.dumps(self.table, ensure_ascii=False))
         file.seek(0)
         return file
 
     def jsonl(self) -> StringIO:
         file = StringIO()
         file.name = self.filename
-        d = tuple(
-            {
-                "event_id": event_id,
-                "date": event_date,
-                "statuses": event_status,
-                "text": event_text,
-            }
-            for event_id, event_date, event_status, event_text in self.table
+        file.writelines(
+            json.dumps(line, ensure_ascii=False) + "\n" for line in self.table
         )
-        file.writelines(json.dumps(line, ensure_ascii=False) + "\n" for line in d)
         file.seek(0)
         return file
 
