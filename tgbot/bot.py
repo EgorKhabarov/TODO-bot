@@ -32,8 +32,8 @@ def bot_log_info():
             "database": config.DATABASE_PATH,
             "log_file": config.LOG_FILE_PATH,
             "notifications": config.BOT_NOTIFICATIONS,
+            **({"webhook": True} if bot_webhook_info.url else {}),
             "__version__": config.__version__,
-            **({"webhook_url": bot_webhook_info.url} if bot_webhook_info.url else {}),
         }
     )
 
