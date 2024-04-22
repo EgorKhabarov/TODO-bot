@@ -1,5 +1,14 @@
 import subprocess
 
+# TODO Убрать если https://github.com/eternnoir/pyTelegramBotAPI/pull/2083 будет добавлен
+from unittest import mock
+from telegram_utils.patch import PathedMessage
+
+
+import sys
+
+sys.path.append("../")
+
 
 def run_pytest():
     try:
@@ -19,4 +28,5 @@ def run_pytest():
 
 
 if __name__ == "__main__":
-    run_pytest()
+    with mock.patch("telebot.types.Message", PathedMessage):
+        run_pytest()
