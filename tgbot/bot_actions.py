@@ -19,6 +19,7 @@ def delete_message_action(message: Message) -> None:
     except ApiTelegramException:
         if (time() - message.date) / 60 / 60 > 48:
             error_text = get_translate("errors.delete_messages_older_48_h")
+            error_text = error_text.replace("<b>", "").replace("</b>", "")
             if isinstance(request.query, CallbackQuery):
                 return CallBackAnswer(error_text).answer(show_alert=True)
         else:

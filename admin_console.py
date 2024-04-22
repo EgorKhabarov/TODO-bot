@@ -3,7 +3,7 @@ import csv
 from datetime import datetime
 from io import StringIO
 from pprint import pprint, pformat
-from typing import TypeAlias, Literal, Any
+from typing import TypeAlias, Literal, Any, Callable
 
 import unicodedata
 from IPython import embed
@@ -249,6 +249,7 @@ def execute(
     query: str,
     params: dict | tuple = (),
     commit: bool = False,
+    func: tuple[str, Callable] | None = None,
     mode: Literal["table", "raw", "pprint"] = "table",
     max_width: int | type(max) | type(max) | None = max,
     max_height: int | type(max) | type(max) | None = max,
@@ -258,7 +259,12 @@ def execute(
     return_data: bool = False,
     console_mode: bool = True,
 ) -> None | str | list[tuple[int | str | bytes | Any, ...], ...]:
-    result = db.execute(query, params, commit, column_names=True)
+    if func:
+        func_name, func_func = func
+        # noinspection PyUnresolvedReferences
+        func = (func_name, func_func.__code__.co_argcount, func_func)
+
+    result = db.execute(query, params, commit, column_names=True, func=func)
 
     if mode == "table":
         if max_width is max or max_height is max:
@@ -326,6 +332,7 @@ execute(
     query: str,
     params: dict | tuple = (),
     commit: bool = False,
+    func: tuple[str, Callable] | None = None,
     mode: Literal["table", "raw", "pprint"] = "table",
     max_width: int | min | max | None = max,
     max_height: int | min | max | None = max,

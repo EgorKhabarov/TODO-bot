@@ -121,6 +121,13 @@ def generate_buttons(
 
 
 def edit_button_data(
-    markup: InlineKeyboardMarkup, row: int, column: int, val: str
+    markup: InlineKeyboardMarkup,
+    row: int,
+    column: int,
+    callback_data: str = ...,
+    text: str = ...,
 ) -> None:
-    markup.keyboard[row][column].callback_data = val
+    if callback_data is not ...:
+        markup.keyboard[row][column].callback_data = callback_data
+    if text is not ...:
+        markup.keyboard[row][column].text = text

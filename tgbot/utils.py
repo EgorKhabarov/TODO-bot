@@ -506,23 +506,33 @@ def generate_search_sql_condition(query: str, filters: list[list[str]]):
     splitquery = " OR ".join(
         """
 date LIKE '%' || ? || '%'
-OR text LIKE '%' || ? || '%'
-OR statuses LIKE '%' || ? || '%'
-OR event_id LIKE '%' || ? || '%'
+ OR text LIKE '%' || ? || '%'
+ OR statuses LIKE '%' || ? || '%'
+ OR event_id LIKE '%' || ? || '%'
 """
         for _ in query.split()
     )
     filters_conditions_date = []
+    filters_conditions_date_e = []
     filters_conditions_status = []
     filters_params_date = []
+    filters_params_date_e = []
     filters_params_status = []
+
     for _, f in filters[:6]:
         if m := re.compile(r"^([<>=])(\d{2}\.\d{2}\.\d{4})$").match(f):
             condition, date = m.groups()
-            filters_conditions_date.append(
-                f"{sqlite_format_date('date')} {condition}= ?"
-            )
-            filters_params_date.append(sqlite_format_date2(date))
+
+            if condition == "=":
+                filters_conditions_date_e.append(
+                    f"{sqlite_format_date('date')} {condition}= ?"
+                )
+                filters_params_date_e.append(sqlite_format_date2(date))
+            else:
+                filters_conditions_date.append(
+                    f"{sqlite_format_date('date')} {condition}= ?"
+                )
+                filters_params_date.append(sqlite_format_date2(date))
         elif m := re.compile(r"^([≈=≠])([^ \n]+)$").match(f):
             condition, status = m.groups()
             statuses = status.split(",")
@@ -561,31 +571,55 @@ statuses {condition}= JSON_ARRAY({','.join('?' for _ in statuses)})
                 )
                 filters_params_status.extend(statuses)
 
-    string_sql_filters_date = (
-        f" AND ({' OR '.join(filters_conditions_date)})"
-        if filters_conditions_date
-        else ""
-    )
-    string_sql_filters_status = (
-        f" AND ({' OR '.join(filters_conditions_status)})"
-        if filters_conditions_status
-        else ""
-    )
+    n = "\n"
+
+    if filters_conditions_date_e:
+        string_sql_filters_date_e = (
+            f"AND (\n        "
+            f"{f'{n}        OR '.join(filters_conditions_date_e)}"
+            f"\n    )"
+        )
+    else:
+        string_sql_filters_date_e = ""
+
+    if filters_params_date:
+        string_sql_filters_date = (
+            f"    AND\n    (\n        "
+            f"{f'{n}        AND '.join(filters_conditions_date)}"
+            f"\n    )"
+        )
+        if string_sql_filters_date_e:
+            string_sql_filters_date = (
+                f"AND (\n    {string_sql_filters_date_e[4:]}\n"
+                f"OR {string_sql_filters_date[7:]}\n)"
+            )
+    else:
+        string_sql_filters_date = ""
+
+    if filters_conditions_status:
+        string_sql_filters_status = (
+            f"AND (\n    {f'{n}    OR '.join(filters_conditions_status)}"
+            f"\n)")
+    else:
+        string_sql_filters_status = ""
 
     WHERE = f"""
 user_id IS ?
 AND group_id IS ?
 AND removal_time IS NULL
 AND ({splitquery.strip()})
-{string_sql_filters_date}{string_sql_filters_status}
+{string_sql_filters_date}
+{string_sql_filters_status}
 """
     params = (
         request.entity.safe_user_id,
         request.entity.group_id,
         *[y for x in query.split() for y in (x, x, x, x)],
+        *filters_params_date_e,
         *filters_params_date,
         *filters_params_status,
     )
+    logging.info(f"{WHERE} {params}",)
     return WHERE, params
 
 
