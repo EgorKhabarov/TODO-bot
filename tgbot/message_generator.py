@@ -12,7 +12,7 @@ from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.buttons_utils import encode_id
 from tgbot.time_utils import relatively_string_date
-from tgbot.utils import add_status_effect
+from tgbot.utils import add_status_effect, get_message_thread_id
 from todoapi.exceptions import EventNotFound
 from todoapi.types import db, Event
 from todoapi.utils import sqlite_format_date
@@ -97,20 +97,11 @@ class TextMessage:
         self.markup = markup
 
     def send(self, chat_id: int = None, **kwargs) -> Message:
-        message: Message = (
-            request.query.message if request.is_callback else request.query
-        )
-
-        message_thread_id = (
-            message.reply_to_message.message_thread_id
-            if message.reply_to_message
-            else message.message_thread_id
-        )
         return bot.send_message(
             chat_id=chat_id or request.chat_id,
             text=self.text,
             reply_markup=self.markup,
-            message_thread_id=message_thread_id,
+            message_thread_id=get_message_thread_id(),
             **kwargs,
         )
 
@@ -142,14 +133,18 @@ class TextMessage:
 
         .edit(chat_id, message_id)
         """
-        message: Message = (
-            request.query.message if request.is_callback else request.query
-        )
+        if not message_id:
+            if request.is_callback:
+                message: Message = request.query.message
+            else:
+                message: Message = request.query
+
+            message_id = message.message_id
 
         if only_markup:
             bot.edit_message_reply_markup(
                 chat_id=chat_id or request.chat_id,
-                message_id=message_id or message.message_id,
+                message_id=message_id,
                 reply_markup=self.markup,
                 **kwargs,
             )
@@ -157,7 +152,7 @@ class TextMessage:
             bot.edit_message_text(
                 text=self.text,
                 chat_id=chat_id or request.chat_id,
-                message_id=message_id or message.message_id,
+                message_id=message_id,
                 reply_markup=markup,
                 **kwargs,
             )
@@ -165,22 +160,25 @@ class TextMessage:
             bot.edit_message_text(
                 text=self.text,
                 chat_id=chat_id or request.chat_id,
-                message_id=message_id or message.message_id,
+                message_id=message_id,
                 reply_markup=self.markup,
                 **kwargs,
             )
 
     def reply(self, message: Message = None, **kwargs):
-        if not message:
-            message: Message = (
-                request.query.message if request.is_callback else request.query
-            )
+        if message:
+            if message.reply_to_message:
+                message_thread_id = message.reply_to_message.message_thread_id
+            else:
+                message_thread_id = message.message_thread_id
+        else:
+            message_thread_id = get_message_thread_id()
 
-        message_thread_id = (
-            message.reply_to_message.message_thread_id
-            if message.reply_to_message
-            else message.message_thread_id
-        )
+            if request.is_message:
+                message = request.query
+            else:
+                message = request.query.message
+
         bot.reply_to(
             message=message,
             text=self.text,
@@ -246,7 +244,7 @@ class EventMessage(TextMessage):
         try:
             self.event: Event = request.entity.get_event(event_id, in_wastebasket)
         except EventNotFound:
-            self.event: Event = None
+            self.event: None = None
 
     def format(
         self,

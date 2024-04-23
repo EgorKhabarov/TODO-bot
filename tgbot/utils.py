@@ -642,3 +642,20 @@ def set_bot_commands(not_login: bool = False):
         bot.set_my_commands(commands, BotCommandScopeChat(request.chat_id))
     except ApiTelegramException as e:
         logging.error(f'set_bot_commands ApiTelegramException "{e}"')
+
+
+def get_message_thread_id() -> int | None:
+    if request.query and request.is_callback:
+        if request.is_callback:
+            message: Message = request.query.message
+        else:
+            message: Message = request.query
+
+        if message.reply_to_message:
+            message_thread_id = message.reply_to_message.message_thread_id
+        else:
+            message_thread_id = message.message_thread_id
+    else:
+        message_thread_id = None
+
+    return message_thread_id

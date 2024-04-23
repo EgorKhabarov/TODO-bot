@@ -1248,25 +1248,42 @@ AND (
 def send_notifications_messages() -> None:
     n_date = datetime.utcnow()
     with db.connection(), db.cursor():
-        chat_ids, notification_types = db.execute(
+        chat_ids, notification_types, account_type = db.execute(
             """
 -- id людей через запятую, которым нужно сейчас прислать уведомление
 SELECT GROUP_CONCAT(
-    COALESCE(
-        (
-            SELECT chat_id
-              FROM users
-             WHERE users.user_id = tg_settings.user_id
+        COALESCE(
+            (
+                SELECT chat_id
+                  FROM users
+                 WHERE users.user_id = tg_settings.user_id
+            ),
+            (
+                SELECT chat_id
+                  FROM groups
+                 WHERE groups.group_id = tg_settings.group_id
+            )
         ),
-        (
-            SELECT chat_id
-              FROM groups
-             WHERE groups.group_id = tg_settings.group_id
-        )
+        ','
     ),
-    ','
-),
-       GROUP_CONCAT(notifications, ',')
+        GROUP_CONCAT(notifications, ','),
+        GROUP_CONCAT(
+            CASE 
+                WHEN tg_settings.user_id THEN 'user'
+                WHEN tg_settings.group_id THEN (
+                    SELECT 'group:'
+                           || (
+                               SELECT chat_id
+                                 FROM users
+                                WHERE user_id = owner_id
+                           )
+                      FROM groups
+                     WHERE groups.group_id = tg_settings.group_id
+                )
+                ELSE NULL
+            END,
+            ','
+        )
   FROM tg_settings
  WHERE notifications != 0
        AND (
@@ -1283,16 +1300,19 @@ SELECT GROUP_CONCAT(
             },
         )[0]
         chat_id_list = zip(
-            [int(x) for x in chat_ids.split(",")] if chat_ids else (),
-            [int(x) for x in notification_types.split(",")]
-            if notification_types
-            else (),
-        )  # [('id1,id2,id3',)] -> [id1, id2, id3]
+            map(int, chat_ids.split(",")) if chat_ids else (),
+            map(int, notification_types.split(",")) if notification_types else (),
+            account_type.split(",") if account_type else (),
+        )
 
-    for chat_id, n_type in chat_id_list:
+    for chat_id, n_type, a_type in chat_id_list:
         try:
-            request.entity = TelegramAccount(chat_id)
-        except UserNotFound:
+            if a_type.startswith("user"):
+                request.entity = TelegramAccount(chat_id)
+            elif a_type.startswith("group:"):
+                owner_id = a_type.split(":")[1]
+                request.entity = TelegramAccount(owner_id, chat_id)
+        except (UserNotFound, GroupNotFound):
             continue
 
         if request.entity.user.user_status == -1:
