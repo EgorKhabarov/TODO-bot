@@ -78,7 +78,6 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
     import hmac
     import hashlib
 
-
     def is_valid_signature(x_hub_signature, data, private_key):
         # x_hub_signature and data are from the webhook payload
         # private key is your webhook secret
@@ -130,8 +129,7 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
 
             payload = request.get_json()
             if payload is None:
-                print("Deploy payload is empty: {payload}".format(
-                    payload=payload))
+                print("Deploy payload is empty: {payload}".format(payload=payload))
                 abort(abort_code)
 
             if payload["ref"] != "refs/heads/master":
@@ -152,4 +150,6 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
 
             os.system("touch {}".format(config.WSGI_PATH))
 
-            return "Updated PythonAnywhere server to commit {commit}".format(commit=commit_hash)
+            return "Updated PythonAnywhere server to commit {commit}".format(
+                commit=commit_hash
+            )
