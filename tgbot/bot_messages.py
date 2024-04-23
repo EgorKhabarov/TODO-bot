@@ -1252,38 +1252,38 @@ def send_notifications_messages() -> None:
             """
 -- id людей через запятую, которым нужно сейчас прислать уведомление
 SELECT GROUP_CONCAT(
-        COALESCE(
-            (
-                SELECT chat_id
-                  FROM users
-                 WHERE users.user_id = tg_settings.user_id
-            ),
-            (
-                SELECT chat_id
-                  FROM groups
-                 WHERE groups.group_id = tg_settings.group_id
-            )
-        ),
-        ','
-    ),
-        GROUP_CONCAT(notifications, ','),
-        GROUP_CONCAT(
-            CASE 
-                WHEN tg_settings.user_id THEN 'user'
-                WHEN tg_settings.group_id THEN (
-                    SELECT 'group:'
-                           || (
-                               SELECT chat_id
-                                 FROM users
-                                WHERE user_id = owner_id
-                           )
-                      FROM groups
-                     WHERE groups.group_id = tg_settings.group_id
-                )
-                ELSE NULL
-            END,
-            ','
-        )
+           COALESCE(
+               (
+                   SELECT chat_id
+                     FROM users
+                    WHERE users.user_id = tg_settings.user_id
+               ),
+               (
+                   SELECT chat_id
+                     FROM groups
+                    WHERE groups.group_id = tg_settings.group_id
+               )
+           ),
+           ','
+       ),
+       GROUP_CONCAT(notifications, ','),
+       GROUP_CONCAT(
+           CASE 
+               WHEN tg_settings.user_id THEN 'user'
+               WHEN tg_settings.group_id THEN (
+                   SELECT 'group:'
+                          || (
+                              SELECT chat_id
+                                FROM users
+                               WHERE user_id = owner_id
+                          )
+                     FROM groups
+                    WHERE groups.group_id = tg_settings.group_id
+               )
+               ELSE NULL
+           END,
+           ','
+       )
   FROM tg_settings
  WHERE notifications != 0
        AND (
