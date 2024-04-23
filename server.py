@@ -14,8 +14,8 @@ if config.TELEGRAM_WEBHOOK:
     from tgbot.bot import bot_webhook_info
 
 
-Thread(target=os.system, args=("python start_bot.py",)).start()
 app = Flask(__name__)
+Thread(target=os.system, args=("python start_bot.py",)).start()
 
 
 @app.route("/")
@@ -153,3 +153,6 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
             return "Updated PythonAnywhere server to commit {commit}".format(
                 commit=commit_hash
             )
+
+if __name__ == "__main__":
+    app.run()
