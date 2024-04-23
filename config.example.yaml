@@ -15,7 +15,7 @@ TELEGRAM_WEBHOOK_URL: ""  # Full webhook url
 TELEGRAM_WEBHOOK_FLASK_PATH: ""  # Flask webhook path
 
 GITHUB_WEBHOOK: False  # Is GitHub webhook enabled?
-GITHUB_WEBHOOK_URL: ""  # GitHub webhook url
+GITHUB_WEBHOOK_FLASK_PATH: ""  # GitHub webhook url
 GITHUB_WEBHOOK_SECRET: ""  # GitHub webhook secret
 WSGI_PATH: ""  # WSGI file path
 

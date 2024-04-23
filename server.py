@@ -69,7 +69,7 @@ if (
         bot.set_webhook(config.TELEGRAM_WEBHOOK_URL)
 
 
-if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_URL:
+if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
     """
     From https://habr.com/ru/articles/457348/
     """
@@ -88,7 +88,7 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_URL:
         mac = hmac.new(encoded_key, msg=data, digestmod=algorithm)
         return hmac.compare_digest(mac.hexdigest(), github_signature)
 
-    @app.route(config.GITHUB_WEBHOOK_URL, methods=["POST"])
+    @app.route(config.GITHUB_WEBHOOK_FLASK_PATH, methods=["POST"])
     def webhook():
         if request.method != "POST":
             return "OK"
