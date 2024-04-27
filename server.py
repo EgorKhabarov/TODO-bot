@@ -6,7 +6,13 @@ from flask import Flask, request, abort, send_file
 import config
 from logger import logger
 from tgbot.limits import create_image_from_link
-from start_bot import bot, start_bot, start_notifications_thread, bot_webhook_info, bot_log_info
+from start_bot import (
+    bot,
+    start_bot,
+    start_notifications_thread,
+    bot_webhook_info,
+    bot_log_info,
+)
 
 # noinspection PyPackageRequirements
 from telebot.types import Update
@@ -154,6 +160,7 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
             return "Updated PythonAnywhere server to commit {commit}".format(
                 commit=commit_hash
             )
+
 
 if __name__ == "__main__":
     app.run()
