@@ -12,8 +12,9 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import CallbackQuery, Message
 
 import config
+from logger import logger
+from tgbot.bot import bot
 from tgbot.request import request
-from tgbot.bot import bot, bot_log_info
 from tgbot.buttons_utils import delmarkup
 from tgbot.dispatcher import process_account
 from tgbot.message_generator import TextMessage
@@ -47,9 +48,7 @@ from tgbot.bot_messages import (
     send_notifications_messages,
 )
 from todoapi.types import db
-from todoapi.logger import logging
 from todoapi.log_cleaner import clear_logs
-from todoapi.db_creator import create_tables
 from todoapi.exceptions import (
     WrongDate,
     TextIsTooBig,
@@ -59,19 +58,13 @@ from todoapi.exceptions import (
     NotUniqueUsername,
     NotEnoughPermissions,
 )
-from telegram_utils.command_parser import command_regex
 from telegram_utils.buttons_generator import generate_buttons
-
-
-create_tables()
-logging.info(bot_log_info())
-command_regex.set_username(bot.user.username)
 
 
 @bot.message_handler(content_types=["migrate_to_chat_id"], chat_types=["group"])
 def migrate_chat(message: Message):
     """Миграция chat.id группы в супергруппу"""
-    logging.info(
+    logger.info(
         f"[{message.chat.id:<10}] migrate_to_chat_id {message.migrate_to_chat_id}"
     )
     params = {

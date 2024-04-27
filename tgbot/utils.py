@@ -1,7 +1,6 @@
 import re
 import html
 import difflib
-import logging
 from urllib.parse import urlparse
 from typing import Literal
 from datetime import timedelta, datetime, timezone
@@ -18,6 +17,7 @@ from telebot.types import Message, CallbackQuery, BotCommandScopeChat
 from telebot.apihelper import ApiTelegramException
 
 import config
+from logger import logger
 from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.lang import get_translate
@@ -51,7 +51,7 @@ def telegram_log(action: str, text: str):
     text = text.replace("\n", "\\n")
     thread_id = getattr(request.query, "message", request.query).message_thread_id
     if request.entity:
-        logging.info(
+        logger.info(
             f"[{str(request.entity_type).capitalize()}:{request.entity.request_id}]"
             + f"[{request.entity.request_chat_id:<10}"
             + (f":{thread_id}" if thread_id else "")
@@ -64,7 +64,7 @@ def telegram_log(action: str, text: str):
             + f".{action} {text}"
         )
     else:
-        logging.info(
+        logger.info(
             f"[Not Login {str(request.entity_type).capitalize()}]"
             + f"[{request.chat_id:<10}"
             + (f":{thread_id}" if thread_id else "")
@@ -246,7 +246,7 @@ def fetch_weather(city: str) -> str:
     """
     Возвращает текущую погоду по городу city
     """
-    logging.info(f"weather in {city}")
+    logger.info(f"weather in {city}")
     url = "http://api.openweathermap.org/data/2.5/weather"
     weather = requests.get(
         url,
@@ -327,7 +327,7 @@ def fetch_forecast(city: str) -> str:
     """
     Прогноз погоды на 5 дней для города city
     """
-    logging.info(f"forecast in {city}")
+    logger.info(f"forecast in {city}")
     url = "http://api.openweathermap.org/data/2.5/forecast"
     weather = requests.get(
         url,
@@ -417,9 +417,9 @@ def poke_link() -> None:
     try:
         requests.get(config.SERVER_URL, headers=config.headers)
     except MissingSchema as e:
-        logging.error(f"poke_link {e}")
+        logger.error(f"poke_link {e}")
     except ConnectionError:
-        logging.error("poke_link 404")
+        logger.error("poke_link 404")
 
 
 def highlight_text_difference(_old_text, _new_text):
@@ -619,7 +619,7 @@ AND ({splitquery.strip()})
         *filters_params_date,
         *filters_params_status,
     )
-    logging.debug(f"{WHERE} {params}")
+    # logger.debug(f"{WHERE} {params}")
     return WHERE, params
 
 
@@ -641,7 +641,7 @@ def set_bot_commands(not_login: bool = False):
     try:
         bot.set_my_commands(commands, BotCommandScopeChat(request.chat_id))
     except ApiTelegramException as e:
-        logging.error(f'set_bot_commands ApiTelegramException "{e}"')
+        logger.error(f'set_bot_commands ApiTelegramException "{e}"')
 
 
 def get_message_thread_id() -> int | None:

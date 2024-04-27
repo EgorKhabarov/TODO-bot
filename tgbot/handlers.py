@@ -1,5 +1,4 @@
 import html
-import logging
 import traceback
 from time import sleep
 from ast import literal_eval
@@ -13,6 +12,7 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import Message, CallbackQuery
 
 import config
+from logger import logger
 from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.time_utils import new_time_calendar
@@ -344,7 +344,7 @@ def command_handler(message: Message) -> None:
         try:
             DocumentMessage(file).send()
         except ApiTelegramException as e:
-            logging.info(f'export ApiTelegramException "{e}"')
+            logger.info(f'export ApiTelegramException "{e}"')
             TextMessage(get_translate("errors.file_is_too_big")).send()
 
     elif command_text == "id":
@@ -533,7 +533,6 @@ class CallBackHandler:
         try:
             daily_message(date).edit()
         except ApiTelegramException:
-            logging.error(traceback.format_exc())
             CallBackAnswer("ok").answer(show_alert=True)
 
     @prefix("em", {"event_id": "int"})
@@ -587,7 +586,7 @@ class CallBackHandler:
         except StatusRepeats:
             text = get_translate("errors.status_already_posted")
         except ApiError:
-            logging.error(traceback.format_exc())
+            logger.error(traceback.format_exc())
             text = get_translate("errors.error")
         else:
             generated = event_message(event_id, False, message_id)
@@ -1024,7 +1023,7 @@ class CallBackHandler:
             try:
                 DocumentMessage(file).send()
             except ApiTelegramException as e:
-                logging.info(f'export ApiTelegramException "{e}"')
+                logger.info(f'export ApiTelegramException "{e}"')
                 TextMessage(get_translate("errors.file_is_too_big")).send()
 
     @prefix("md")
@@ -1217,7 +1216,7 @@ class CallBackHandler:
         try:
             DocumentMessage(file).send()
         except ApiTelegramException:
-            logging.error(traceback.format_exc())
+            logger.error(traceback.format_exc())
             TextMessage(get_translate("errors.file_is_too_big")).send()
             return False
         else:

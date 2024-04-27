@@ -2,18 +2,10 @@
 from telebot import TeleBot
 
 import config
+from telegram_utils.command_parser import command_regex
 
 
-if (
-    config.TELEGRAM_WEBHOOK
-    and config.TELEGRAM_WEBHOOK_URL
-    and config.TELEGRAM_WEBHOOK_FLASK_PATH
-):
-    threaded = False
-else:
-    threaded = True
-
-bot = TeleBot(config.BOT_TOKEN, threaded=threaded)
+bot = TeleBot(config.BOT_TOKEN)
 
 bot.parse_mode = "html"
 bot.disable_web_page_preview = True
@@ -23,6 +15,7 @@ bot_settings = """
 Bot Settings => Group Privacy => disabled
 Bot Settings => Inline Mode   => disabled
 """
+command_regex.set_username(bot.user.username)
 
 
 def bot_log_info():

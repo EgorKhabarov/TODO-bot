@@ -3,19 +3,19 @@ from threading import Thread
 
 from flask import Flask, request, abort, send_file
 
-from tgbot.limits import create_image_from_link
-
 import config
+from logger import logger
+from tgbot.limits import create_image_from_link
+from start_bot import bot, start_bot, start_notifications_thread, bot_webhook_info, bot_log_info
 
-if config.TELEGRAM_WEBHOOK:
-    # noinspection PyPackageRequirements
-    from telebot.types import Update
-    from tgbot.main import bot
-    from tgbot.bot import bot_webhook_info
+# noinspection PyPackageRequirements
+from telebot.types import Update
 
 
 app = Flask(__name__)
-Thread(target=os.system, args=("python start_bot.py",)).start()
+logger.info(bot_log_info())
+Thread(target=start_bot, daemon=True).start()
+start_notifications_thread()
 
 
 @app.route("/")
@@ -148,6 +148,7 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
             build_commit = f'build_commit = "{commit_hash}"'
             print(f"{build_commit}")
 
+            os.system("pip install -r requirements.txt")
             os.system("touch {}".format(config.WSGI_PATH))
 
             return "Updated PythonAnywhere server to commit {commit}".format(

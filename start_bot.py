@@ -1,24 +1,25 @@
-# TODO Убрать если https://github.com/eternnoir/pyTelegramBotAPI/pull/2083 будет добавлен
-# TODO Убрать если https://github.com/eternnoir/pyTelegramBotAPI/pull/2222 будет добавлен
-from unittest import mock
-from telegram_utils.patch import PathedMessage, PathedTextQuote
+from threading import Thread
+
+import config
+from tgbot.main import bot, schedule_loop
+from tgbot.bot import bot_webhook_info, bot_log_info
+from logger import logger
 
 
-with (
-    mock.patch("telebot.types.Message", PathedMessage),
-    mock.patch("telebot.types.TextQuote", PathedTextQuote),
-):
-    from threading import Thread
+def start_bot():
+    if not config.TELEGRAM_WEBHOOK:
+        if not bot_webhook_info.url:
+            bot.remove_webhook()
 
-    import config
-    from tgbot.bot import bot, bot_webhook_info
-    from tgbot.main import schedule_loop
+        bot.infinity_polling()
 
-    if __name__ == "__main__":
-        if config.BOT_NOTIFICATIONS or config.POKE_SERVER_URL:
-            Thread(target=schedule_loop, daemon=True).start()
 
-        if not config.TELEGRAM_WEBHOOK:
-            if not bot_webhook_info.url:
-                bot.remove_webhook()
-            bot.infinity_polling()
+def start_notifications_thread():
+    if config.BOT_NOTIFICATIONS or config.POKE_SERVER_URL:
+        Thread(target=schedule_loop, daemon=True).start()
+
+
+if __name__ == "__main__":
+    logger.info(bot_log_info())
+    start_notifications_thread()
+    start_bot()

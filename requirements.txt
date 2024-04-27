@@ -1,8 +1,9 @@
 requests~=2.31.0
-pyTelegramBotAPI==4.17.0
+# TODO вернуть pyTelegramBotAPI==4.17.0
+git+https://github.com/eternnoir/pyTelegramBotAPI.git@3e82e69d07f500f77b7f0027b49623e714051da1
 pillow==10.3.0
 pytest~=8.1.1
-SQLAlchemy~=2.0.29
+# SQLAlchemy~=2.0.29
 vedis~=0.7.2
 Flask~=3.0.2
 cachetools~=5.3.3

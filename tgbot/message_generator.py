@@ -1,5 +1,5 @@
-import logging
 from copy import deepcopy
+from logger import logger
 from sqlite3 import Error
 from typing import Literal, Any
 from datetime import datetime
@@ -440,7 +440,7 @@ SELECT user_id,
                 )
             ]
         except Error as e:
-            logging.info(
+            logger.info(
                 f'[message_generator.py -> MessageGenerator.get_events] Error "{e}"'
             )
             self.event_list = []

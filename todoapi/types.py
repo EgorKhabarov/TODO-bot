@@ -1,6 +1,5 @@
 import csv
 import json
-import logging
 from uuid import uuid4
 from io import StringIO, BytesIO
 from dataclasses import dataclass
@@ -14,7 +13,7 @@ from typing import Callable, Any, Literal
 from vedis import Vedis
 from oauthlib.common import generate_token
 
-from config import DATABASE_PATH, VEDIS_PATH
+import config
 from todoapi.exceptions import (
     ApiError,
     Forbidden,
@@ -114,17 +113,17 @@ class DataBase:
     @contextmanager
     def connection(self):
         # self.sqlite_connection = connect(config.DATABASE_PATH)
-        # logging.debug("connection.start()")
+        # logger.debug("connection.start()")
         yield
-        # logging.debug("connection.close()")
+        # logger.debug("connection.close()")
         # self.sqlite_connection.close()
 
     @contextmanager
     def cursor(self):
         # self.sqlite_cursor = self.sqlite_connection.cursor()
-        # logging.debug("cursor.start()")
+        # logger.debug("cursor.start()")
         yield
-        # logging.debug("cursor.close()")
+        # logger.debug("cursor.close()")
         # self.sqlite_cursor.close()
 
     def execute(
@@ -148,14 +147,15 @@ class DataBase:
         :param script: query состоит из нескольких запросов
         :return: Результат запроса
         """
-        self.sqlite_connection = connect(DATABASE_PATH)
+        self.sqlite_connection = connect(config.DATABASE_PATH)
         self.sqlite_cursor = self.sqlite_connection.cursor()
         if func:
             self.sqlite_connection.create_function(*func)
-        logging.debug(
-            "SQLite3.EXECUTE: "
-            + " ".join([line.strip() for line in query.split("\n")]).strip()
-        )
+
+        # logger.debug(
+        #     "SQLite3.EXECUTE: "
+        #     + " ".join([line.strip() for line in query.split("\n")]).strip()
+        # )
 
         if script:
             self.sqlite_cursor.executescript(query)
@@ -2178,4 +2178,4 @@ UPDATE users
 
 
 db = DataBase()
-vedisdb = Vedis(VEDIS_PATH)
+vedisdb = Vedis(config.VEDIS_PATH)

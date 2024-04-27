@@ -1,7 +1,6 @@
 import re
 import json
 import html
-import logging
 from datetime import timedelta, datetime
 from typing import Literal
 
@@ -15,6 +14,7 @@ from telebot import formatting
 from telebot.types import InlineKeyboardButton, Message
 
 import config
+from logger import logger
 from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.limits import get_limit_link
@@ -652,7 +652,7 @@ def confirm_changes_message(message: Message) -> None | int:
         generated.edit(request.chat_id, message_id)
     except ApiTelegramException as e:
         if "message is not modified" not in f"{e}":
-            logging.error(f'confirm_changes_message ApiTelegramException "{e}"')
+            logger.error(f'confirm_changes_message ApiTelegramException "{e}"')
             return 1
 
 
@@ -1322,7 +1322,7 @@ SELECT CAST(
             except ApiTelegramException:
                 status = "Error"
 
-            logging.info(
+            logger.info(
                 f"notifications -> {request.entity.request_chat_id} -> {status}"
             )
 
