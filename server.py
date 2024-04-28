@@ -6,13 +6,9 @@ from flask import Flask, request, abort, send_file
 import config
 from logger import logger
 from tgbot.limits import create_image_from_link
-from start_bot import (
-    bot,
-    start_bot,
-    start_notifications_thread,
-    bot_webhook_info,
-    bot_log_info,
-)
+from tgbot.main import bot
+from tgbot.bot import bot_webhook_info, bot_log_info
+from start_bot import start_bot, start_notifications_thread
 
 # noinspection PyPackageRequirements
 from telebot.types import Update
@@ -20,7 +16,13 @@ from telebot.types import Update
 
 app = Flask(__name__)
 logger.info(bot_log_info())
-Thread(target=start_bot, daemon=True).start()
+
+if not config.TELEGRAM_WEBHOOK:
+    if not bot_webhook_info.url:
+        bot.remove_webhook()
+
+    Thread(target=start_bot, daemon=True).start()
+
 start_notifications_thread()
 
 

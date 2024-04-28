@@ -5,7 +5,17 @@ import config
 from telegram_utils.command_parser import command_regex
 
 
-bot = TeleBot(config.BOT_TOKEN)
+if (
+    config.TELEGRAM_WEBHOOK
+    and config.TELEGRAM_WEBHOOK_URL
+    and config.TELEGRAM_WEBHOOK_FLASK_PATH
+):
+    threaded = False
+else:
+    threaded = True
+
+# TODO следить за num_threads
+bot = TeleBot(config.BOT_TOKEN, threaded=threaded, num_threads=10)
 
 bot.parse_mode = "html"
 bot.disable_web_page_preview = True
