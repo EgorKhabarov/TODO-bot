@@ -973,7 +973,8 @@ SELECT *
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in event_ids)})
        AND (removal_time IS NOT NULL) = ?
- ORDER BY DAYS_BEFORE_EVENT(date, statuses) {self.settings.direction},
+ ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) {self.settings.direction},
+          DAYS_BEFORE_EVENT(date, statuses) DESC,
           statuses LIKE '%📬%',
           statuses LIKE '%🗞%',
           statuses LIKE '%📅%',

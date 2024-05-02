@@ -10,12 +10,11 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, I
 from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.lang import get_translate
-from tgbot.buttons_utils import encode_id
 from tgbot.time_utils import relatively_string_date
+from tgbot.buttons_utils import encode_id, number_to_power
 from tgbot.utils import add_status_effect, get_message_thread_id
 from todoapi.exceptions import EventNotFound
 from todoapi.types import db, Event
-from todoapi.utils import sqlite_format_date
 
 
 event_formats = {
@@ -35,6 +34,12 @@ event_formats = {
 "s" - Шаблон для показа событий, без относительных дат
 "a" - Шаблон для показа сообщения о событии, без markdown разметки
 """
+
+
+def DAYS_BEFORE_EVENT(date, statuses):
+    return Event(
+        0, "", 0, date, "", statuses, "", "", ""
+    ).days_before_event(request.entity.settings.timezone)
 
 
 def pagination(
@@ -61,10 +66,12 @@ SELECT event_id,
        LENGTH(text) 
   FROM events
  WHERE {WHERE}
- ORDER BY {sqlite_format_date('date')} {direction}
+ ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) {direction},
+          DAYS_BEFORE_EVENT(date, statuses) DESC
  LIMIT 400;
 """,
         params=params,
+        func=("DAYS_BEFORE_EVENT", 2, DAYS_BEFORE_EVENT),
     )
     _result = []
     group = []
@@ -334,7 +341,8 @@ SELECT user_id,
   FROM events
  WHERE event_id IN ({data[0]})
        AND ({WHERE}) 
- ORDER BY DAYS_BEFORE_EVENT(date, statuses) {direction},
+ ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) {direction},
+          DAYS_BEFORE_EVENT(date, statuses) DESC,
           statuses LIKE '%📬%',
           statuses LIKE '%🗞%',
           statuses LIKE '%📅%',
@@ -343,18 +351,10 @@ SELECT user_id,
           statuses LIKE '%🎊%';
 """,
                     params=params,
-                    func=(
-                        "DAYS_BEFORE_EVENT",
-                        2,
-                        lambda date, statuses: Event(
-                            0, "", 0, date, "", statuses, "", "", ""
-                        ).days_before_event(request.entity.settings.timezone),
-                    ),
+                    func=("DAYS_BEFORE_EVENT", 2, DAYS_BEFORE_EVENT),
                 )
             ]
 
-            if direction == "ASC":
-                first_message = first_message[::-1]
             self.event_list = first_message
 
             count_columns = 5
@@ -379,7 +379,7 @@ SELECT user_id,
                     self.markup.row(
                         *[
                             InlineKeyboardButton(
-                                f"{numpage}",
+                                f"{numpage}{number_to_power(str(len(event_ids.split(','))))}",
                                 callback_data=f"{callback_data.strip()} {numpage} {event_ids}",
                             )
                             if event_ids
@@ -416,7 +416,8 @@ SELECT user_id,
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in id_list)})
        AND ({WHERE}) 
- ORDER BY DAYS_BEFORE_EVENT(date, statuses) {direction},
+ ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) {direction},
+          DAYS_BEFORE_EVENT(date, statuses) DESC,
           statuses LIKE '%📬%',
           statuses LIKE '%🗞%',
           statuses LIKE '%📅%',
@@ -430,13 +431,7 @@ SELECT user_id,
                         *id_list,
                         *params,
                     ),
-                    func=(
-                        "DAYS_BEFORE_EVENT",
-                        2,
-                        lambda date, statuses: Event(
-                            0, "", 0, date, "", statuses, "", "", ""
-                        ).days_before_event(request.entity.settings.timezone),
-                    ),
+                    func=("DAYS_BEFORE_EVENT", 2, DAYS_BEFORE_EVENT),
                 )
             ]
         except Error as e:
@@ -445,8 +440,6 @@ SELECT user_id,
             )
             self.event_list = []
         else:
-            if direction == "ASC":
-                res = res[::-1]
             self.event_list = res
         return self
 

@@ -111,7 +111,7 @@ def settings_message() -> TextMessage:
     settings = request.entity.settings
     not_lang = "ru" if settings.lang == "en" else "en"
     not_sub_urls = 1 if settings.sub_urls == 0 else 0
-    not_direction_smile = {"DESC": "⬆️", "ASC": "⬇️"}[settings.direction]
+    not_direction_smile = {"DESC": "⬇️", "ASC": "⬆️"}[settings.direction]
     not_direction_sql = {"DESC": "ASC", "ASC": "DESC"}[settings.direction]
     not_notifications_ = (("🔕", 1), ("🔔", 2), ("📆", 0))[settings.notifications]
     n_hours, n_minutes = [int(i) for i in settings.notifications_time.split(":")]
@@ -157,7 +157,7 @@ def settings_message() -> TextMessage:
         html.escape(settings.city),
         str_utz,
         f"{request.entity.now_time():%Y.%m.%d  <u>%H:%M</u>}",
-        {"DESC": "⬇️", "ASC": "⬆️"}[settings.direction],
+        {"DESC": "⬆️", "ASC": "⬇️"}[settings.direction],
         ("🔕", "🔔", "📆")[settings.notifications],
         f"{n_hours:0>2}:{n_minutes:0>2}" if settings.notifications else "",
         not_theme[2],

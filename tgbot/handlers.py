@@ -1291,9 +1291,12 @@ def reply_handler(message: Message, reply_to_message: Message) -> None:
     elif reply_to_message.text.startswith("🔍 "):
         query = html_to_markdown(message.html_text)
         filters = extract_search_filters(reply_to_message.html_text)
-        search_results_message(query, filters).edit(
-            request.chat_id, reply_to_message.message_id
-        )
+        try:
+            search_results_message(query, filters).edit(
+                request.chat_id, reply_to_message.message_id
+            )
+        except ApiTelegramException:
+            pass
         delete_message_action(message)
 
 

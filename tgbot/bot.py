@@ -14,8 +14,7 @@ if (
 else:
     threaded = True
 
-# TODO следить за num_threads
-bot = TeleBot(config.BOT_TOKEN, threaded=threaded, num_threads=10)
+bot = TeleBot(config.BOT_TOKEN, threaded=threaded)
 
 bot.parse_mode = "html"
 bot.disable_web_page_preview = True
