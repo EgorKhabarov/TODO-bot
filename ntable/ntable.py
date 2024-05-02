@@ -80,6 +80,30 @@ def transform_align(
     return align[:column_count]
 
 
+def transform_width(width: int | tuple[int, ...] | None, column_count: int, row_lengths: list[int]) -> list[int]:
+    if width is not None and isinstance(width, tuple):
+        width: tuple[int]
+        if len(width) < column_count:
+            width: tuple = tuple(
+                (*width, *(width[-1],) * (column_count - len(width)))
+            )
+        width: int = sum(width) + (3 * len(width)) + 1
+
+    if width is not None and width < column_count + (3 * column_count) + 1:
+        width: int = (
+            sum(1 if rl > 1 else 0 for rl in row_lengths) + (3 * column_count) + 1
+        )
+
+    # Вычисляем ширину каждой колонки
+    if width:
+        sum_column_width = width - (3 * column_count) - 1
+        max_widths = decrease_numbers(row_lengths, sum_column_width)
+    else:
+        max_widths = row_lengths
+
+    return max_widths
+
+
 def line_spliter(
     text: str,
     width: int = 126,
@@ -198,9 +222,6 @@ def write_table_to_file(
     :param line_break_symbol:
     :return:
     """
-    max_height = max_height or 20
-    column_count = max(map(len, table))
-    align = transform_align(column_count, align)
     row_lengths: list[int] = []
 
     for column in zip(*table):
@@ -217,25 +238,10 @@ def write_table_to_file(
 
         row_lengths.append(max(cell_widths))
 
-    if max_width is not None and isinstance(max_width, tuple):
-        max_width: tuple[int]
-        if len(max_width) < column_count:
-            max_width: tuple = tuple(
-                (*max_width, *(max_width[-1],) * (column_count - len(max_width)))
-            )
-        max_width: int = sum(max_width) + (3 * len(max_width)) + 1
-
-    if max_width is not None and max_width < column_count + (3 * column_count) + 1:
-        max_width: int = (
-            sum(1 if rl > 1 else 0 for rl in row_lengths) + (3 * column_count) + 1
-        )
-
-    # Вычисляем ширину каждой колонки
-    if max_width:
-        sum_column_width = max_width - (3 * column_count) - 1
-        max_widths = decrease_numbers(row_lengths, sum_column_width)
-    else:
-        max_widths = row_lengths
+    column_count = max(map(len, table))
+    align = transform_align(column_count, align)
+    max_widths = transform_width(max_width, column_count, row_lengths)
+    max_height = max_height or 20
 
     # Обрезаем длинные строки
     table = [
