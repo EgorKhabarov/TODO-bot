@@ -611,7 +611,9 @@ def confirm_changes_message(message: Message) -> None | int:
                 ]
             ]
         )
-        return TextMessage(translate, markup).reply()
+
+        TextMessage(translate, markup).send(reply_to_message_id=message_id)
+        return
 
     text_diff = highlight_text_difference(
         html.escape(event.text), html.escape(markdown_text)

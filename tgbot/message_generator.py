@@ -37,9 +37,9 @@ event_formats = {
 
 
 def DAYS_BEFORE_EVENT(date, statuses):
-    return Event(
-        0, "", 0, date, "", statuses, "", "", ""
-    ).days_before_event(request.entity.settings.timezone)
+    return Event(0, "", 0, date, "", statuses, "", "", "").days_before_event(
+        request.entity.settings.timezone
+    )
 
 
 def pagination(
