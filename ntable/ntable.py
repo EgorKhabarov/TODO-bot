@@ -80,13 +80,13 @@ def transform_align(
     return align[:column_count]
 
 
-def transform_width(width: int | tuple[int, ...] | None, column_count: int, row_lengths: list[int]) -> list[int]:
+def transform_width(
+    width: int | tuple[int, ...] | None, column_count: int, row_lengths: list[int]
+) -> list[int]:
     if width is not None and isinstance(width, tuple):
         width: tuple[int]
         if len(width) < column_count:
-            width: tuple = tuple(
-                (*width, *(width[-1],) * (column_count - len(width)))
-            )
+            width: tuple = tuple((*width, *(width[-1],) * (column_count - len(width))))
         width: int = sum(width) + (3 * len(width)) + 1
 
     if width is not None and width < column_count + (3 * column_count) + 1:
