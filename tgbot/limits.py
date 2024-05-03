@@ -57,9 +57,14 @@ def get_limit_link(date: str = "now") -> str:
             tuple(event_limits[request.entity.user.user_status].values()),
         ):
             percent = int((x / y) * 100)
+            f_count, b_count = percent // 10, 10 - (percent // 10)
+
+            if percent > 100:
+                f_count, b_count = 10, 0
+
             lst.append(
                 f"<b>{text}</b>\n<u>{x}/{y}</u> "
-                f"[{f*(percent//10)}{b*(10-(percent//10))}] "
+                f"[{f*f_count}{b*b_count}] "
                 f"({percent}%)"
             )
         return f"{date}\n\n" + "\n\n".join(lst)
