@@ -132,6 +132,7 @@ test_database_copy_path = Path("tests/data/test_database_copy.sqlite3")
 test_database_path.parent.mkdir(parents=True, exist_ok=True)
 config.DATABASE_PATH = test_database_copy_path
 from todoapi.db_creator import create_tables  # noqa: E402
+
 create_tables()
 config.DATABASE_PATH = test_database_path
 shutil.copy(test_database_copy_path, test_database_path)
@@ -140,4 +141,5 @@ history.set([])
 from todoapi.types import create_user, get_account_from_password  # noqa: E402
 from tgbot.request import request  # noqa: E402
 from tgbot.types import set_user_telegram_chat_id, TelegramAccount  # noqa: E402
+
 history.set(None)
