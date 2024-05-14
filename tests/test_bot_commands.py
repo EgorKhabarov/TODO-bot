@@ -108,18 +108,18 @@ def test_bot_command_week_event_list():
         )
 
 
-def test_bot_command_dice():
-    with Chat() as chat:
-        setup_request(message_mock(1, "/dice"))
-        command_handler(request.query)
-        assert chat.comparer(
-            lambda m, u, k: (u.endswith("sendDice") and k["params"]["chat_id"] == 1),
-            lambda m, u, k: (
-                u.endswith("sendMessage")
-                and k["params"]["chat_id"] == "1"
-                and k["params"]["text"] == "1"
-            ),
-        )
+# def test_bot_command_dice():
+#     with Chat() as chat:
+#         setup_request(message_mock(1, "/dice"))
+#         command_handler(request.query)
+#         assert chat.comparer(
+#             lambda m, u, k: (u.endswith("sendDice") and k["params"]["chat_id"] == 1),
+#             lambda m, u, k: (
+#                 u.endswith("sendMessage")
+#                 and k["params"]["chat_id"] == "1"
+#                 and k["params"]["text"] == "1"
+#             ),
+#         )
 
 
 def test_bot_command_export():

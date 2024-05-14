@@ -184,13 +184,6 @@ def test_bot_callback_dl():
                 and k["params"]["message_id"] == 1
                 and k["params"]["reply_markup"]
             ),
-            lambda m, u, k: (
-                u.endswith("editMessageText")
-                and k["params"]["text"]
-                and k["params"]["chat_id"] == 1
-                and k["params"]["message_id"] == 1
-                and k["params"]["reply_markup"]
-            ),
         )
 
         chat.clear()

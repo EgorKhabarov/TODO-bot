@@ -1,3 +1,4 @@
+import os
 import shutil
 from pprint import pformat
 from pathlib import Path
@@ -10,7 +11,7 @@ from typing import Callable
 from telebot import apihelper, util
 
 # noinspection PyPackageRequirements
-from telebot.types import Message
+from telebot.types import Message, CallbackQuery
 
 import config
 
@@ -114,22 +115,30 @@ def custom_sender(method, url, **kwargs):
     return result
 
 
-def setup_request(message: Message):
-    request.set(message)
+def setup_request(x: Message | CallbackQuery):
+    request.set(x)
 
     if request.is_user:
         request.entity = TelegramAccount(request.chat_id)
     else:
-        request.entity = TelegramAccount(message.from_user.id, request.chat_id)
+        request.entity = TelegramAccount(x.from_user.id, request.chat_id)
 
 
 apihelper.CUSTOM_REQUEST_SENDER = custom_sender
 
 
 config.BOT_TOKEN = "TEST_TOKEN"
+test_vedis = Path("tests/data/test_vedis.vedis")
 test_database_path = Path("tests/data/test_database.sqlite3")
 test_database_copy_path = Path("tests/data/test_database_copy.sqlite3")
 test_database_path.parent.mkdir(parents=True, exist_ok=True)
+config.VEDIS_PATH = test_vedis
+
+if test_database_path.exists():
+    os.remove(test_database_path)
+if test_vedis.exists():
+    os.remove(test_vedis)
+
 config.DATABASE_PATH = test_database_copy_path
 from todoapi.db_creator import create_tables  # noqa: E402
 
