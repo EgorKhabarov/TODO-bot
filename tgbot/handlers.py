@@ -15,7 +15,7 @@ import config
 from logger import logger
 from tgbot.bot import bot
 from tgbot.request import request
-from tgbot.time_utils import new_time_calendar
+from tgbot.time_utils import now_time_calendar
 from tgbot.bot_actions import delete_message_action
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.message_generator import (
@@ -486,7 +486,7 @@ class CallBackHandler:
 
     @prefix("mnc", eval_=True)
     def calendar(self, date: str):
-        date = new_time_calendar() if date == "now" else date
+        date = now_time_calendar() if date == "now" else date
         monthly_calendar_message(date, "dl", "mnm").edit()
 
     @prefix("mnh", {"page": ("long str", "page 1")})
@@ -877,9 +877,11 @@ class CallBackHandler:
     @prefix("ps", {"page": ("int", 1), "id_list": ("str", "")})
     def page_search(self, page: int, id_list: str, message: Message):
         markup = message.reply_markup if page else None
+
         if markup:
             edit_button_data(markup, 0, 1, f"se os {id_list} us")
             edit_button_data(markup, 0, 2, f"ses s {id_list} us")
+
         try:
             search_results_message(
                 extract_search_query(message.html_text),
@@ -931,7 +933,7 @@ class CallBackHandler:
     @prefix("cm", eval_=True)
     def calendar_month(self, command, back, date, arguments, call: CallbackQuery):
         if date == "now":
-            date = new_time_calendar()
+            date = now_time_calendar()
 
         if is_valid_year(date[0]):
             markup = create_monthly_calendar_keyboard(date, command, back, arguments)
@@ -960,7 +962,7 @@ class CallBackHandler:
                 TextMessage(markup=markup).edit(only_markup=True)
             except ApiTelegramException:
                 # Сообщение не изменено
-                date = new_time_calendar()
+                date = now_time_calendar()
                 markup = create_monthly_calendar_keyboard(
                     date, command, back, arguments
                 )

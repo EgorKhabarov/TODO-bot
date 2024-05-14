@@ -5,7 +5,7 @@ from tgbot.request import request
 from tgbot.lang import get_translate
 
 
-def new_time_calendar() -> tuple[int, int]:
+def now_time_calendar() -> tuple[int, int]:
     """
     Возвращает [год, месяц]
     """

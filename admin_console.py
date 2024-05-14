@@ -7,9 +7,10 @@ from pprint import pprint, pformat
 from typing import Literal, Any, Callable
 
 from IPython import embed
+from ntable import write_table_to_file
+from ntable.ntable import AlignType
 
 from config import WSGI_PATH
-from ntable import write_table_to_file, AlignType
 from todoapi.types import db, Account  # noqa
 from tgbot.types import TelegramAccount  # noqa
 

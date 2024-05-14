@@ -910,6 +910,7 @@ def search_results_message(
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.markup, 0, 1, f"se os {string_id} us")
     edit_button_data(generated.markup, 0, 2, f"ses s {string_id} us")
+
     string_filters = [
         f"{args[0]}: {html.escape(' '.join(args[1:]))}" for args in filters if args
     ]
