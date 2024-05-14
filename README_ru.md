@@ -3,6 +3,8 @@
     <td><a href="/README_ru.md">RU</a></td>
 </table>
 
+[![Tests](https://github.com/EgorKhabarov/TODO-bot/actions/workflows/tests.yml/badge.svg)](https://github.com/EgorKhabarov/TODO-bot/actions/workflows/tests.yml)
+
 <h1>Бот для организации заметок по датам.</h1>
 <i>Хранение, добавление, редактирование и удаление заметки по дате.
 Можно пометить заметку с помощью эмодзи.

@@ -3,6 +3,8 @@
     <td><a href="/README_ru.md">RU</a></td>
 </table>
 
+[![Tests](https://github.com/EgorKhabarov/TODO-bot/actions/workflows/tests.yml/badge.svg)](https://github.com/EgorKhabarov/TODO-bot/actions/workflows/tests.yml)
+
 <h1>Bot for organizing notes by dates.</h1>
 <i>Storing, adding, editing and deleting notes by date.
 You can tag a note with an emoji.
