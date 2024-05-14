@@ -1,26 +1,70 @@
-import os
-import sys
+import shutil
 from pprint import pformat
 from pathlib import Path
 
-from tests.mocks import message_mock
-
-
-sys.path.append("../")
-
+# noinspection PyPackageRequirements
+from contextvars import ContextVar
+from typing import Callable
 
 # noinspection PyPackageRequirements
-from contextvars import ContextVar  # noqa: E402
-from typing import Callable  # noqa: E402
+from telebot import apihelper, util
 
 # noinspection PyPackageRequirements
-from telebot import apihelper, util  # noqa: E402
+from telebot.types import Message
 
-import config  # noqa: E402
-from tgbot.request import request  # noqa: E402
-from todoapi.types import create_user, get_account_from_password  # noqa: E402
-from tgbot.types import set_user_telegram_chat_id, TelegramAccount  # noqa: E402
-from todoapi.db_creator import create_tables  # noqa: E402
+import config
+
+
+class Chat:
+    def __enter__(self):
+        shutil.copy(test_database_copy_path, test_database_path)
+
+        create_user("example@gmail.com", "example_username", "example_password")
+        account = get_account_from_password("example_username", "example_password")
+        set_user_telegram_chat_id(account, 1)
+
+        history.set([])
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+    def comparer(
+        self,
+        *funcs: Callable[[str, str, dict[str, str | int | dict[str, str | int]]], bool],
+    ):
+        length: int = len(funcs)
+        assert (
+            len(self.history) == length
+        ), f"""
+len(
+{pformat(self.history, sort_dicts=False)}
+) != {length}
+"""
+
+        for n, func in enumerate(funcs):
+            import inspect
+
+            assert func(
+                *self.history[n].values()
+            ), f"""
+(
+{inspect.getsource(func)}
+)(
+*{pformat(tuple(self.history[n].values()), sort_dicts=False)}
+)"""
+
+        return True
+
+    def clear(self) -> None:
+        self.history.clear()
+
+    @property
+    def history(self) -> list[dict]:
+        return history.get()  # type: ignore
+
+
+history = ContextVar("history")
 
 
 def custom_sender(method, url, **kwargs):
@@ -70,60 +114,7 @@ def custom_sender(method, url, **kwargs):
     return result
 
 
-class Chat:
-    def __enter__(self):
-        try:
-            os.remove(test_database_path)
-        except FileNotFoundError:
-            pass
-
-        create_tables()
-        create_user("example@gmail.com", "example_username", "example_password")
-        account = get_account_from_password("example_username", "example_password")
-        set_user_telegram_chat_id(account, 1)
-
-        history.set([])
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        os.remove(test_database_path)
-
-    def comparer(
-        self,
-        *funcs: Callable[[str, str, dict[str, str | int | dict[str, str | int]]], bool],
-    ):
-        length: int = len(funcs)
-        assert (
-            len(self.history) == length
-        ), f"""
-len(
-{pformat(self.history, sort_dicts=False)}
-) != {length}
-"""
-
-        for n, func in enumerate(funcs):
-            import inspect
-
-            assert func(
-                *self.history[n].values()
-            ), f"""
-(
-{inspect.getsource(func)}
-)(
-*{pformat(tuple(self.history[n].values()), sort_dicts=False)}
-)"""
-
-        return True
-
-    def clear(self) -> None:
-        self.history.clear()
-
-    @property
-    def history(self) -> list[dict]:
-        return history.get()  # type: ignore
-
-
-def setup_request(message: message_mock):
+def setup_request(message: Message):
     request.set(message)
 
     if request.is_user:
@@ -133,7 +124,20 @@ def setup_request(message: message_mock):
 
 
 apihelper.CUSTOM_REQUEST_SENDER = custom_sender
-history = ContextVar("history")
+
+
+config.BOT_TOKEN = "TEST_TOKEN"
 test_database_path = Path("tests/data/test_database.sqlite3")
-config.DATABASE_PATH = test_database_path
+test_database_copy_path = Path("tests/data/test_database_copy.sqlite3")
 test_database_path.parent.mkdir(parents=True, exist_ok=True)
+config.DATABASE_PATH = test_database_copy_path
+from todoapi.db_creator import create_tables  # noqa: E402
+create_tables()
+config.DATABASE_PATH = test_database_path
+shutil.copy(test_database_copy_path, test_database_path)
+
+history.set([])
+from todoapi.types import create_user, get_account_from_password  # noqa: E402
+from tgbot.request import request  # noqa: E402
+from tgbot.types import set_user_telegram_chat_id, TelegramAccount  # noqa: E402
+history.set(None)

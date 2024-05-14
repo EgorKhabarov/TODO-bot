@@ -1,7 +1,14 @@
+from pathlib import Path
+
 import yaml
 
 
-with open("config.yaml", "r", encoding="utf-8") as file:
+config_path = "config.yaml"
+
+if not Path(config_path).exists():
+    config_path = "config.example.yaml"
+
+with open(config_path, "r", encoding="utf-8") as file:
     config: dict = yaml.safe_load(file.read()) or {}
 
 DATABASE_PATH = config.get("DATABASE_PATH", "data/database.sqlite3")
@@ -54,8 +61,8 @@ COMMANDS = (
     "logout",
 )
 
-ts = chr(10240)  # transparent symbol
+ts = chr(10240)  # transparent symbol "⠀" or chr(10240) or "\U00002800"
 """Специальный прозрачный символ для заполнения пустого места в кнопках"""
 
-__version__ = "2024.05.15.1"
+__version__ = "2024.05.15.2"
 __author__ = "EgorKhabarov"
