@@ -64,5 +64,5 @@ COMMANDS = (
 ts = chr(10240)  # transparent symbol "⠀" or chr(10240) or "\U00002800"
 """Специальный прозрачный символ для заполнения пустого места в кнопках"""
 
-__version__ = "2024.05.15.2"
+__version__ = "2024.05.15.3"
 __author__ = "EgorKhabarov"

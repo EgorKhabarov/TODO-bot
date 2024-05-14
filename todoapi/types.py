@@ -33,7 +33,6 @@ from todoapi.exceptions import (
 )
 from todoapi.utils import (
     re_date,
-    re_email,
     re_username,
     hash_password,
     is_valid_year,
@@ -2056,7 +2055,7 @@ DELETE FROM users
 
 
 def create_user(email: str, username: str, password: str) -> None:
-    if not re_email.match(email) or not re_username.match(username) or not password:
+    if "@" not in email or not re_username.match(username) or not password:
         raise ApiError
 
     try:

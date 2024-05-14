@@ -96,7 +96,7 @@ from todoapi.exceptions import (
     NotEnoughPermissions,
 )
 from todoapi.log_cleaner import clear_logs
-from todoapi.utils import is_valid_year, re_email, re_username
+from todoapi.utils import is_valid_year, re_username
 from todoapi.types import (
     Account,
     VedisCache,
@@ -166,7 +166,7 @@ def not_login_handler(x: CallbackQuery | Message) -> None:
     def signup(email: str, username: str, password: str) -> None:
         if not (email and username and password):
             TextMessage(get_translate("errors.no_account"), markup).reply()
-        elif not re_email.match(email):
+        elif "@" not in email:
             TextMessage(get_translate("errors.wrong_email")).reply()
         elif not re_username.match(username):
             TextMessage(get_translate("errors.wrong_username")).reply()
