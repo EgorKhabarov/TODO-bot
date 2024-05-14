@@ -80,21 +80,25 @@ def menu_message() -> TextMessage:
             {f"📚 {translate_help}": "mnh"},
             {f"📆 {translate_calendar}": "mnc ('now',)"},
         ],
-        [
-            {f"👤 {translate_account}": "mna"},
-            {f"👥 {translate_groups}": "mngrs"},
-        ]
-        if request.is_user
-        else [],
+        (
+            [
+                {f"👤 {translate_account}": "mna"},
+                {f"👥 {translate_groups}": "mngrs"},
+            ]
+            if request.is_user
+            else []
+        ),
         [
             {f"📆 {translate_seven_days}": "pw"},
             {f"🔔 {translate_notifications}": "mnn"},
         ],
         [
             {f"⚙️ {translate_settings}": "mns"},
-            {f"🗑 {translate_wastebasket}": "mnb"}
-            if (request.is_user and request.entity.is_premium) or request.is_member
-            else {},
+            (
+                {f"🗑 {translate_wastebasket}": "mnb"}
+                if (request.is_user and request.entity.is_premium) or request.is_member
+                else {}
+            ),
         ],
         [
             {f"🔍 {translate_search}": "mnsr"},
@@ -342,16 +346,18 @@ def event_message(
     if not in_wastebasket:
         markup = [
             [
-                {
-                    "📝": {
-                        "switch_inline_query_current_chat": (
-                            f"event({event_id}, {message_id}).text\n"
-                            f"{html.unescape(event.text)}"
-                        )
+                (
+                    {
+                        "📝": {
+                            "switch_inline_query_current_chat": (
+                                f"event({event_id}, {message_id}).text\n"
+                                f"{html.unescape(event.text)}"
+                            )
+                        }
                     }
-                }
-                if message_id
-                else {"📝": "None"},
+                    if message_id
+                    else {"📝": "None"}
+                ),
                 {"🏷": f"es {event.string_statuses} folders {event_id} {event.date}"},
                 {"🗑": f"ebd {event_id} {event.date}"},
             ],
@@ -524,16 +530,22 @@ def event_history_message(
 
     markup = generate_buttons(
         [
-            [
-                {"<": f"eh {event_id} {date:%d.%m.%Y} {page - 1}"}
-                if page > 1 and event.history[::-1][: (page - 1) * 4]
-                else {" ": "None"},
-                {">": f"eh {event_id} {date:%d.%m.%Y} {page + 1}"}
-                if event.history[::-1][(page - 1) * 4 + 4 :]
-                else {" ": "None"},
-            ]
-            if event.history
-            else [],
+            (
+                [
+                    (
+                        {"<": f"eh {event_id} {date:%d.%m.%Y} {page - 1}"}
+                        if page > 1 and event.history[::-1][: (page - 1) * 4]
+                        else {" ": "None"}
+                    ),
+                    (
+                        {">": f"eh {event_id} {date:%d.%m.%Y} {page + 1}"}
+                        if event.history[::-1][(page - 1) * 4 + 4 :]
+                        else {" ": "None"}
+                    ),
+                ]
+                if event.history
+                else []
+            ),
             [
                 {get_theme_emoji("back"): f"em {event_id}"},
                 {"🔄": f"eh {event_id} {date:%d.%m.%Y}"},
@@ -802,9 +814,11 @@ def before_event_delete_message(event_id: int) -> EventMessage | None:
         [
             [
                 {f"❌ {delete_permanently}": f"ed {event.event_id} {event.date}"},
-                {f"🗑 {trash_bin}": f"edb {event.event_id} {event.date}"}
-                if request.entity.is_premium
-                else {},
+                (
+                    {f"🗑 {trash_bin}": f"edb {event.event_id} {event.date}"}
+                    if request.entity.is_premium
+                    else {}
+                ),
             ],
             [{get_theme_emoji("back"): f"em {event_id}"}],
         ]
@@ -840,9 +854,11 @@ AND removal_time IS NULL
     markup = [
         [
             {f"❌ {delete_permanently}": f"esd {string_id} {date}"},
-            {f"🗑 {trash_bin}": f"esdb {string_id} {date}"}
-            if is_wastebasket_available
-            else {},
+            (
+                {f"🗑 {trash_bin}": f"esdb {string_id} {date}"}
+                if is_wastebasket_available
+                else {}
+            ),
         ],
         [{get_theme_emoji("back"): f"esm {string_id}"}],
     ]
@@ -1386,26 +1402,30 @@ def group_message(
             markup = generate_buttons(
                 [
                     [
-                        {
-                            change_group_name: {
-                                "switch_inline_query_current_chat": (
-                                    f"group({group.group_id}, {message_id}).name\n"
-                                    f"{html.unescape(group.name)}"
-                                )
+                        (
+                            {
+                                change_group_name: {
+                                    "switch_inline_query_current_chat": (
+                                        f"group({group.group_id}, {message_id}).name\n"
+                                        f"{html.unescape(group.name)}"
+                                    )
+                                }
                             }
-                        }
-                        if message_id
-                        else {change_group_name: "None"},
+                            if message_id
+                            else {change_group_name: "None"}
+                        ),
                     ],
                     [
                         {delete_group: f"grd {group.group_id} {mode}"},
-                        {remove_bot_from_group: f"grrgr {group.group_id} {mode}"}
-                        if group.chat_id
-                        else {
-                            get_translate("text.add_bot_to_group"): {
-                                "url": startgroup_url
+                        (
+                            {remove_bot_from_group: f"grrgr {group.group_id} {mode}"}
+                            if group.chat_id
+                            else {
+                                get_translate("text.add_bot_to_group"): {
+                                    "url": startgroup_url
+                                }
                             }
-                        },
+                        ),
                     ],
                     [
                         {get_theme_emoji("back"): f"mngrs {mode}"},
@@ -1418,25 +1438,29 @@ def group_message(
                 [
                     [
                         {export_group: f"gre {group.group_id} csv"},
-                        {
-                            change_group_name: {
-                                "switch_inline_query_current_chat": (
-                                    f"group({group.group_id}, {message_id}).name\n"
-                                    f"{html.unescape(group.name)}"
-                                )
+                        (
+                            {
+                                change_group_name: {
+                                    "switch_inline_query_current_chat": (
+                                        f"group({group.group_id}, {message_id}).name\n"
+                                        f"{html.unescape(group.name)}"
+                                    )
+                                }
                             }
-                        }
-                        if message_id
-                        else {change_group_name: "None"},
+                            if message_id
+                            else {change_group_name: "None"}
+                        ),
                     ],
                     [
-                        {remove_bot_from_group: f"grrgr {group.group_id} {mode}"}
-                        if group.chat_id
-                        else {
-                            get_translate("text.add_bot_to_group"): {
-                                "url": startgroup_url
+                        (
+                            {remove_bot_from_group: f"grrgr {group.group_id} {mode}"}
+                            if group.chat_id
+                            else {
+                                get_translate("text.add_bot_to_group"): {
+                                    "url": startgroup_url
+                                }
                             }
-                        },
+                        ),
                     ],
                     [
                         {get_theme_emoji("back"): f"mngrs {mode}"},
@@ -1518,12 +1542,16 @@ def groups_message(
                 {get_theme_emoji("back"): "mnm"},
                 *(
                     [
-                        {"<": f"mngrs {mode} {page - 1}"}
-                        if prev_pages
-                        else {" ": "None"},
-                        {">": f"mngrs {mode} {page + 1}"}
-                        if after_pages
-                        else {" ": "None"},
+                        (
+                            {"<": f"mngrs {mode} {page - 1}"}
+                            if prev_pages
+                            else {" ": "None"}
+                        ),
+                        (
+                            {">": f"mngrs {mode} {page + 1}"}
+                            if after_pages
+                            else {" ": "None"}
+                        ),
                     ]
                     if len(groups_chunk) != 1 and groups
                     else []
@@ -1546,9 +1574,11 @@ def account_message(message_id: int) -> TextMessage:
     )
     markup = generate_buttons(
         [
-            [{f"{get_translate('text.get_premium')}🤩": "get_premium"}]
-            if request.entity.user.user_status == 0
-            else [],
+            (
+                [{f"{get_translate('text.get_premium')}🤩": "get_premium"}]
+                if request.entity.user.user_status == 0
+                else []
+            ),
             [
                 {
                     f"{get_translate('text.edit_username')}👤": {

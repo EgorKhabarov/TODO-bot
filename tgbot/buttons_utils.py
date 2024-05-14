@@ -173,15 +173,17 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
         second_line,
         *buttons_lines,
         arrows_buttons,
-        [
-            {
-                get_theme_emoji("back"): (
-                    f"{back[1:-1]}{f' {arguments[1:-1]}' if arguments else ''}"
-                )
-            }
-        ]
-        if back
-        else [],
+        (
+            [
+                {
+                    get_theme_emoji("back"): (
+                        f"{back[1:-1]}{f' {arguments[1:-1]}' if arguments else ''}"
+                    )
+                }
+            ]
+            if back
+            else []
+        ),
     ]
 
     return generate_buttons(markup)
@@ -297,15 +299,17 @@ SELECT date
             {text: f"cy ({command},{back},{year},{arguments})"}
             for text, year in {"<<": YY - 1, "⟳": "'now'", ">>": YY + 1}.items()
         ],
-        [
-            {
-                get_theme_emoji("back"): (
-                    f"{back[1:-1]}" f"{f' {arguments[1:-1]}' if arguments else ''}"
-                )
-            }
-        ]
-        if back
-        else [],
+        (
+            [
+                {
+                    get_theme_emoji("back"): (
+                        f"{back[1:-1]}" f"{f' {arguments[1:-1]}' if arguments else ''}"
+                    )
+                }
+            ]
+            if back
+            else []
+        ),
     ]
 
     return generate_buttons(markup)
@@ -407,14 +411,16 @@ SELECT 1
                 }.items()
             ],
             [
-                {
-                    get_theme_emoji("back"): (
-                        f"{back[1:-1]}{f' {arguments[1:-1]}' if arguments else ''}"
-                    )
-                }
-            ]
-            if back
-            else [],
+                (
+                    {
+                        get_theme_emoji("back"): (
+                            f"{back[1:-1]}{f' {arguments[1:-1]}' if arguments else ''}"
+                        )
+                    }
+                    if back
+                    else {}
+                )
+            ],
         ]
     )
 
@@ -461,18 +467,20 @@ def create_select_status_keyboard(
                     ]
                     for row in buttons_data
                 ],
-                [
-                    {
-                        (rm_status if rm_status else " "): (
-                            f"{prefix} {join(filter(lambda x: x != rm_status, status_list)) or '⬜'} folders {arguments}"
-                            if rm_status
-                            else "None"
-                        )
-                    }
-                    for rm_status in status_list + [""] * (5 - len(status_list))
-                ]
-                if status_list != ["⬜"]
-                else ({" ": "None"},) * 5,
+                (
+                    [
+                        {
+                            (rm_status if rm_status else " "): (
+                                f"{prefix} {join(filter(lambda x: x != rm_status, status_list)) or '⬜'} folders {arguments}"
+                                if rm_status
+                                else "None"
+                            )
+                        }
+                        for rm_status in status_list + [""] * (5 - len(status_list))
+                    ]
+                    if status_list != ["⬜"]
+                    else ({" ": "None"},) * 5
+                ),
                 [
                     {get_theme_emoji("back"): f"{back} {arguments}"},
                     {"💾": f"{save} {arguments} {string_statuses}"},

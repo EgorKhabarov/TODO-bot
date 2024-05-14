@@ -378,12 +378,14 @@ SELECT user_id,
                 for row in page_diapason[:8]:
                     self.markup.row(
                         *[
-                            InlineKeyboardButton(
-                                f"{numpage}{number_to_power(str(len(event_ids.split(','))))}",
-                                callback_data=f"{callback_data.strip()} {numpage} {event_ids}",
+                            (
+                                InlineKeyboardButton(
+                                    f"{numpage}{number_to_power(str(len(event_ids.split(','))))}",
+                                    callback_data=f"{callback_data.strip()} {numpage} {event_ids}",
+                                )
+                                if event_ids
+                                else InlineKeyboardButton(" ", callback_data="None")
                             )
-                            if event_ids
-                            else InlineKeyboardButton(" ", callback_data="None")
                             for numpage, event_ids in row
                         ]
                     )

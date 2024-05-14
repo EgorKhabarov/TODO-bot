@@ -130,16 +130,18 @@ def add_status_effect(text: str, statuses: list[str]) -> str:
         return "\n".join(
             (
                 (
-                    "0️⃣" * (width - len(str(num := num + 1)))
-                )  # Ставим нули перед основным числом
-                + "⃣".join(str(num))  # Само число
-                + "⃣"
-                + line
-                if not is_comment_line(line)
-                else remove_comment_prefix(line)
+                    (
+                        "0️⃣" * (width - len(str(num := num + 1)))
+                    )  # Ставим нули перед основным числом
+                    + "⃣".join(str(num))  # Само число
+                    + "⃣"
+                    + line
+                    if not is_comment_line(line)
+                    else remove_comment_prefix(line)
+                )
+                if line
+                else ""
             )
-            if line
-            else ""
             for line in lst
         )
 
@@ -152,14 +154,16 @@ def add_status_effect(text: str, statuses: list[str]) -> str:
         return "\n".join(
             (
                 (
-                    (big_point if line.startswith("!!") else point)
-                    + line.removeprefix("!!")
+                    (
+                        (big_point if line.startswith("!!") else point)
+                        + line.removeprefix("!!")
+                    )
+                    if not is_comment_line(line)
+                    else remove_comment_prefix(line)
                 )
-                if not is_comment_line(line)
-                else remove_comment_prefix(line)
+                if line
+                else ""
             )
-            if line
-            else ""
             for line in lst
         )
 
