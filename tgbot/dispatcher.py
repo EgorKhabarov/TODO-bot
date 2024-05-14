@@ -9,11 +9,11 @@ from telebot.apihelper import ApiTelegramException
 
 from logger import logger
 from cachetools import LRUCache
+from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.utils import telegram_log
 from tgbot.types import TelegramAccount
 from tgbot.handlers import not_login_handler
-from tgbot.request import request, EntityType, QueryType
 from tgbot.message_generator import CallBackAnswer, TextMessage
 from todoapi.types import db
 from todoapi.utils import is_admin_id, rate_limit
@@ -50,30 +50,19 @@ def else_func(args, kwargs, key, sec) -> None:
 def process_account(func):
     @wraps(func)
     def check_argument(_x: Message | CallbackQuery):
-        request.query = _x
-        request.query_type = QueryType(
-            message=isinstance(_x, Message),
-            callback=isinstance(_x, CallbackQuery),
-        )
+        request.set(_x)
+
         if request.is_message:
-            message = _x
-            if _x.content_type != "migrate_to_chat_id" and (
-                _x.text.startswith("/") and not command_regex.match(_x.text)
+            if request.query.content_type != "migrate_to_chat_id" and (
+                request.query.text.startswith("/") and not command_regex.match(_x.text)
             ):
                 # Если команда будет обращена к другим ботам, то не реагировать
                 return
         elif request.is_callback:
-            message = _x.message
-            if _x.data == "None":
+            if request.query.data == "None":
                 return
         else:
             return
-
-        request.chat_id = chat_id = message.chat.id
-        request.entity_type = EntityType(
-            user=message.chat.type == "private",
-            member=message.chat.type != "private",
-        )
 
         @rate_limit(rate_limit_200_1800, 200, 60 * 30, key_func, else_func)
         @rate_limit(rate_limit_30_60, 30, 60, key_func, else_func)
@@ -82,14 +71,16 @@ def process_account(func):
                 try:
                     try:
                         if request.is_user:
-                            request.entity = TelegramAccount(chat_id)
+                            request.entity = TelegramAccount(request.chat_id)
                         else:
-                            request.entity = TelegramAccount(x.from_user.id, chat_id)
+                            request.entity = TelegramAccount(
+                                x.from_user.id, request.chat_id
+                            )
                     except (UserNotFound, GroupNotFound):
                         request.entity = None
 
                         if request.is_message:
-                            telegram_log("send", message.text[:40])
+                            telegram_log("send", request.message.text[:40])
                         else:
                             telegram_log("press", x.data)
 
@@ -99,7 +90,7 @@ def process_account(func):
                             request.entity.user.user_status == -1
                             if request.is_user
                             else request.entity.group.member_status == -1
-                        ) and not is_admin_id(chat_id):
+                        ) and not is_admin_id(request.chat_id):
                             return
 
                         return func(x)

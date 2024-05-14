@@ -105,7 +105,7 @@ class TextMessage:
 
     def send(self, chat_id: int = None, **kwargs) -> Message:
         return bot.send_message(
-            chat_id=chat_id or request.chat_id,
+            chat_id=int(chat_id or request.chat_id),
             text=self.text,
             reply_markup=self.markup,
             message_thread_id=get_message_thread_id(),
@@ -150,24 +150,24 @@ class TextMessage:
 
         if only_markup:
             bot.edit_message_reply_markup(
-                chat_id=chat_id or request.chat_id,
-                message_id=message_id,
+                chat_id=int(chat_id or request.chat_id),
+                message_id=int(message_id),
                 reply_markup=self.markup,
                 **kwargs,
             )
         elif markup is not None:
             bot.edit_message_text(
                 text=self.text,
-                chat_id=chat_id or request.chat_id,
-                message_id=message_id,
+                chat_id=int(chat_id or request.chat_id),
+                message_id=int(message_id),
                 reply_markup=markup,
                 **kwargs,
             )
         else:
             bot.edit_message_text(
                 text=self.text,
-                chat_id=chat_id or request.chat_id,
-                message_id=message_id,
+                chat_id=int(chat_id or request.chat_id),
+                message_id=int(message_id),
                 reply_markup=self.markup,
                 **kwargs,
             )

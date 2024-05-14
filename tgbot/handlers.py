@@ -325,7 +325,7 @@ def command_handler(message: Message) -> None:
             chat_id, message_thread_id=request.query.message_thread_id or None
         ).json["dice"]["value"]
         sleep(4)
-        TextMessage(value).send()
+        TextMessage(str(value)).send()
 
     elif command_text == "export":
         file_format = get_command_arguments(
@@ -548,7 +548,7 @@ class CallBackHandler:
             CallBackAnswer(text).answer(show_alert=True)
 
     @prefix("ea", {"date": "str"})
-    def event_add(self, date: datetime, message_id: int, message: Message):
+    def event_add(self, date: str, message_id: int, message: Message):
         cache_add_event_date("")
 
         # Проверяем будет ли превышен лимит для пользователя, если добавить 1 событие с 1 символом

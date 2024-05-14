@@ -34,6 +34,7 @@ class Request:
     _entity_type = ContextVar("entity_type", default=None)
     _chat_id = ContextVar("chat_id", default=None)
     _query = ContextVar("query", default=None)
+    _message = ContextVar("message", default=None)
     _query_type = ContextVar("query_type", default=None)
 
     @property
@@ -69,6 +70,14 @@ class Request:
         self._query.set(query)  # type: ignore
 
     @property
+    def message(self) -> Message:
+        return self._message.get()  # type: ignore
+
+    @message.setter
+    def message(self, message: Message) -> None:
+        self._message.set(message)  # type: ignore
+
+    @property
     def query_type(self) -> QueryType:
         return self._query_type.get()  # type: ignore
 
@@ -91,6 +100,23 @@ class Request:
     @property
     def is_callback(self) -> bool:
         return self.query_type.callback
+
+    def set(self, query: Message | CallbackQuery):
+        self.query = query
+        self.query_type = QueryType(
+            message=isinstance(query, Message),
+            callback=isinstance(query, CallbackQuery),
+        )
+        if request.is_callback:
+            self.message = query.message
+        else:
+            self.message = query
+
+        self.chat_id = self.message.chat.id
+        self.entity_type = EntityType(
+            user=self.message.chat.type == "private",
+            member=self.message.chat.type != "private",
+        )
 
 
 request = Request()

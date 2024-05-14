@@ -140,4 +140,6 @@ TelegramAccount(chat_id: int, group_chat_id: int = None)
 TERMINAL() -> tuple[int, int]
 """
 
-embed(colors="Linux")
+
+if __name__ == "__main__":
+    embed(colors="Linux")

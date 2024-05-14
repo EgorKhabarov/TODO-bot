@@ -2,7 +2,7 @@ import yaml
 
 
 with open("config.yaml", "r", encoding="utf-8") as file:
-    config: dict = yaml.safe_load(file.read())
+    config: dict = yaml.safe_load(file.read()) or {}
 
 DATABASE_PATH = config.get("DATABASE_PATH", "data/database.sqlite3")
 VEDIS_PATH = config.get("VEDIS_PATH", "data/export_cooldown.vedis")
@@ -57,5 +57,5 @@ COMMANDS = (
 ts = chr(10240)  # transparent symbol
 """Специальный прозрачный символ для заполнения пустого места в кнопках"""
 
-__version__ = "2024.05.14.2"
+__version__ = "2024.05.15.0"
 __author__ = "EgorKhabarov"
