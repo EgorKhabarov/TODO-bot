@@ -49,7 +49,7 @@ def relatively_string_date(day_diff: int) -> tuple[str, str, str]:
         day_before_yesterday,
         after,
         ago,
-        Fday,
+        func_rel_day,
     ) = get_translate("arrays.relative_date_list")
     week_days = get_translate("arrays.week_days_list_full")
     month_list = get_translate("arrays.months_name2")
@@ -66,9 +66,9 @@ def relatively_string_date(day_diff: int) -> tuple[str, str, str]:
         case -2:
             rel_date = day_before_yesterday
         case n if n > 2:
-            rel_date = f"{after} {n} {Fday(n)}"
+            rel_date = f"{after} {n} {func_rel_day(n)}"
         case _ as n:
-            rel_date = f"{-n} {Fday(n)} {ago}"
+            rel_date = f"{-n} {func_rel_day(n)} {ago}"
 
     date = request.entity.now_time() + timedelta(days=day_diff)
     str_date = f"{date.day} {month_list[date.month - 1]}"

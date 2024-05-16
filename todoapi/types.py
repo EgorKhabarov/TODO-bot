@@ -88,8 +88,8 @@ group_limits = {
         "max_groups_creator": 0,
     },
     0: {
-        "max_groups_participate": 50,  # number of groups a user can belong to
-        "max_groups_creator": 1,  # how many groups can you have
+        "max_groups_participate": 50,  # count of groups you can be a member of
+        "max_groups_creator": 1,  # count of groups you can own
     },
     1: {
         "max_groups_participate": 100,
@@ -178,17 +178,17 @@ class VedisCache:
         self.table = table
 
     def __getitem__(self, key: Any) -> None | str:
-        with vedisdb.transaction():
-            data = vedisdb.hget(self.table, key)
+        with vdb.transaction():
+            data = vdb.hget(self.table, key)
             return data.decode() if data else None
 
     def __setitem__(self, key, value):
-        with vedisdb.transaction():
-            vedisdb.hset(self.table, key, value)
+        with vdb.transaction():
+            vdb.hset(self.table, key, value)
 
     def __delitem__(self, key):
-        with vedisdb.transaction():
-            vedisdb.hdel(self.table, key)
+        with vdb.transaction():
+            vdb.hdel(self.table, key)
 
 
 class Limit:
@@ -581,23 +581,23 @@ SELECT media_id,
 
         # Every month
         elif "📅" in self.statuses:
-            day_diff, dttm = prepare_date(f"{_date:%d}.{n_time:%m.%Y}")
-            month, year = dttm.month, dttm.year
+            day_diff, dt = prepare_date(f"{_date:%d}.{n_time:%m.%Y}")
+            month, year = dt.month, dt.year
             if day_diff >= 0:
-                dates.append(dttm)
+                dates.append(dt)
             else:
                 if month < 12:
-                    dates.append(dttm.replace(month=month + 1))
+                    dates.append(dt.replace(month=month + 1))
                 else:
-                    dates.append(dttm.replace(year=year + 1, month=1))
+                    dates.append(dt.replace(year=year + 1, month=1))
 
         # Every year
         elif {*self.statuses}.intersection({"📆", "🎉", "🎊"}):
-            dttm = prepare_date(f"{_date:%d.%m}.{n_time:%Y}")[1]
-            if dttm.date() < n_time.date():
-                dates.append(dttm.replace(year=n_time.year + 1))
+            dt = prepare_date(f"{_date:%d.%m}.{n_time:%Y}")[1]
+            if dt.date() < n_time.date():
+                dates.append(dt.replace(year=n_time.year + 1))
             else:
-                dates.append(dttm.replace(year=n_time.year))
+                dates.append(dt.replace(year=n_time.year))
 
         else:
             return prepare_date(self.date)[0]
@@ -1835,7 +1835,7 @@ SELECT lang,
         timezone           INT  CHECK (-13 < timezone < 13) DEFAULT (3),
         direction          TEXT CHECK (direction IN ('DESC', 'ASC')) DEFAULT 'DESC',
         notifications      INT  CHECK (notifications IN (0, 1, 2)) DEFAULT (0),
-        notifications_time TEXT DEFAULT '08:00',
+        notifications_time TEXT DEFAULT "08:00",
         theme              INT  DEFAULT (0),
         """
         update_list = []
@@ -2179,4 +2179,4 @@ UPDATE users
 
 
 db = DataBase()
-vedisdb = Vedis(config.VEDIS_PATH)
+vdb = Vedis(config.VEDIS_PATH)

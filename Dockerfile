@@ -1,9 +1,11 @@
 FROM python:3.11
 
-WORKDIR /bot
+WORKDIR /app
 
-COPY . .
+COPY . /app
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-CMD ["python3", "server.py"]
+EXPOSE 5000
+
+CMD ["python", "server.py"]

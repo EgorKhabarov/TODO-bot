@@ -52,7 +52,7 @@ def execute(
 
     if mode == "table":
         if max_width is max or max_height is max:
-            _max_width, _max_height = TERMINAL()
+            _max_width, _max_height = terminal_size()
             if max_width is max:
                 max_width = _max_width
 
@@ -104,11 +104,12 @@ def export(query: str = "SELECT * FROM events;", params: dict | tuple = ()) -> s
     return path
 
 
-def TERMINAL():
-    return os.get_terminal_size()
+def terminal_size() -> tuple[int, int]:
+    _terminal_size = os.get_terminal_size()
+    return _terminal_size.columns, _terminal_size.lines
 
 
-def RESTART_SERVER():
+def restart_server() -> None:
     if WSGI_PATH:
         subprocess.call(["touch", WSGI_PATH])
     else:
@@ -137,7 +138,8 @@ export(
 )
 Account(user_id: int, group_id: str = None)
 TelegramAccount(chat_id: int, group_chat_id: int = None)
-TERMINAL() -> tuple[int, int]
+terminal() -> tuple[int, int]
+restart_server()
 """
 
 

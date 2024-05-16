@@ -98,7 +98,7 @@ SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT)
         for x in db.execute(
             f"""
 -- Number of days of the week in which there are events that repeat every week
-SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT) 
+SELECT DISTINCT CAST (STRFTIME('%w', {sqlite_format_date('date')}) - 1 AS INT) 
   FROM events
  WHERE user_id IS :user_id
        AND group_id IS :group_id

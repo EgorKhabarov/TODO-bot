@@ -70,7 +70,6 @@ def menu_message() -> TextMessage:
         translate_search,
         translate_settings,
         translate_wastebasket,
-        translate_admin,
         translate_group,
     ) = get_translate("messages.menu")
 
@@ -224,7 +223,7 @@ def daily_message(
     if isinstance(date, str):
         date = datetime.strptime(date, "%d.%m.%Y")
 
-    WHERE = """
+    sql_where = """
 user_id IS ?
 AND group_id IS ?
 AND date = ?
@@ -260,9 +259,9 @@ AND removal_time IS NULL
     generated = EventsMessage(f"{date:%d.%m.%Y}", markup=markup, page=page)
 
     if id_list:
-        generated.get_page_events(WHERE, params, id_list)
+        generated.get_page_events(sql_where, params, id_list)
     else:
-        generated.get_pages_data(WHERE, params, f"pd {date:%d.%m.%Y}")
+        generated.get_pages_data(sql_where, params, f"pd {date:%d.%m.%Y}")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.markup, 0, 1, f"se _ {string_id} pd {date:%d.%m.%Y}")
@@ -274,7 +273,7 @@ AND removal_time IS NULL
         if_empty=get_translate("errors.nodata"),
     )
 
-    # Add an additional button for days that have holidays
+    # Add a button for days that have holidays
     daylist = [
         x[0]
         for x in db.execute(
@@ -304,8 +303,8 @@ SELECT DISTINCT date
     ( -- Every week
         statuses LIKE '%🗞%'
         AND
-        strftime('%w', {sqlite_format_date('date')}) =
-        CAST(strftime('%w', {sqlite_format_date(':date')}) as TEXT)
+        STRFTIME('%w', {sqlite_format_date('date')}) =
+        CAST(STRFTIME('%w', {sqlite_format_date(':date')}) as TEXT)
     )
     OR
     ( -- Every day
@@ -405,7 +404,7 @@ def events_message(
     Message to interact with events
     """
     generated = EventsMessage()
-    WHERE = f"""
+    sql_where = f"""
 user_id IS ?
 AND group_id IS ?
 AND removal_time IS {'NOT' if is_in_wastebasket else ''} NULL
@@ -414,7 +413,7 @@ AND removal_time IS {'NOT' if is_in_wastebasket else ''} NULL
         request.entity.safe_user_id,
         request.entity.group_id,
     )
-    generated.get_page_events(WHERE, params, id_list)
+    generated.get_page_events(sql_where, params, id_list)
     date = generated.event_list[0].date if generated.event_list else ""
     string_id = encode_id(id_list)
 
@@ -678,7 +677,7 @@ def recurring_events_message(
     :param id_list: List of event_id
     :param page: Page number
     """
-    WHERE = f"""
+    sql_where = f"""
 user_id IS ?
 AND group_id IS ?
 AND removal_time IS NULL
@@ -700,8 +699,8 @@ AND
     OR
     ( -- Every week
         statuses LIKE '%🗞%'
-        AND strftime('%w', {sqlite_format_date('date')}) =
-        CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT)
+        AND STRFTIME('%w', {sqlite_format_date('date')}) =
+        CAST(STRFTIME('%w', '{sqlite_format_date2(date)}') as TEXT)
     )
     OR
     ( -- Every day
@@ -720,9 +719,9 @@ AND
     generated = EventsMessage(date, markup=back_open_markup, page=page)
 
     if id_list:
-        generated.get_page_events(WHERE, params, id_list)
+        generated.get_page_events(sql_where, params, id_list)
     else:
-        generated.get_pages_data(WHERE, params, f"pr {date}")
+        generated.get_pages_data(sql_where, params, f"pr {date}")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.markup, 0, 1, f"se o {string_id} pr {date}")
@@ -777,7 +776,7 @@ def edit_events_date_message(
     if date is None:
         date = request.entity.now_time()
 
-    WHERE = """
+    sql_where = """
 user_id IS ?
 AND group_id IS ?
 """
@@ -786,7 +785,7 @@ AND group_id IS ?
         request.entity.group_id,
     )
     generated = EventsMessage()
-    generated.get_page_events(WHERE, params, id_list)
+    generated.get_page_events(sql_where, params, id_list)
     generated.format(
         title=f"<b>{get_translate('select.what_do_with_events')}:</b>",
         args=event_formats["r"],
@@ -834,7 +833,7 @@ def before_events_delete_message(id_list: list[int]) -> EventsMessage:
     Generates a message with delete buttons,
     deleting to bin (for premium) and changing the date.
     """
-    WHERE = """
+    sql_where = """
 user_id IS ?
 AND group_id IS ?
 AND removal_time IS NULL
@@ -844,7 +843,7 @@ AND removal_time IS NULL
         request.entity.group_id,
     )
     generated = EventsMessage()
-    generated.get_page_events(WHERE, params, id_list)
+    generated.get_page_events(sql_where, params, id_list)
 
     is_wastebasket_available = request.entity.is_premium
     string_id = encode_id(id_list)
@@ -883,7 +882,7 @@ def search_results_message(
     :param filters:
     :param id_list: List of event_id
     :param page: Page number
-    :param is_placeholder: Is placeholder
+    :param is_placeholder: Is a placeholder?
     """
     translate_search = get_translate("messages.search")
     nothing_found = get_translate("errors.nothing_found")
@@ -916,12 +915,12 @@ def search_results_message(
         ]
     )
     generated = EventsMessage(markup=markup, page=int(page), page_indent=1)
-    WHERE, params = generate_search_sql_condition(query, filters)
+    sql_where, params = generate_search_sql_condition(query, filters)
 
     if id_list:
-        generated.get_page_events(WHERE, params, id_list)
+        generated.get_page_events(sql_where, params, id_list)
     else:
-        generated.get_pages_data(WHERE, params, "ps")
+        generated.get_pages_data(sql_where, params, "ps")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.markup, 0, 1, f"se os {string_id} us")
@@ -1009,9 +1008,12 @@ def search_filter_message(message: Message, call_data: str) -> TextMessage:
 
     text = f"🔍⚙️ {translate_search} <u>{html.escape(query)}</u>:{all_string_filters}"
     markup = [
-        [{f"📆 {search_filters['db'][0]:{config.ts}<80}": "sf add db"}],  # data before
-        [{f"📆 {search_filters['dd'][0]:{config.ts}<80}": "sf add dd"}],  # data during
-        [{f"📆 {search_filters['da'][0]:{config.ts}<80}": "sf add da"}],  # data after
+        # data before
+        [{f"📆 {search_filters['db'][0]:{config.ts}<80}": "sf add db"}],
+        # data during
+        [{f"📆 {search_filters['dd'][0]:{config.ts}<80}": "sf add dd"}],
+        # data after
+        [{f"📆 {search_filters['da'][0]:{config.ts}<80}": "sf add da"}],
         # tag complete match
         [{f"🏷 {search_filters['tc'][0]:{config.ts}<80}": "sf edit tc ⬜ folders"}],
         # tag approximate match
@@ -1063,7 +1065,7 @@ def week_event_list_message(id_list: list[int] = (), page: int = 0) -> EventsMes
     :param page: Page number
     """
     tz = f"'{request.entity.settings.timezone:+} hours'"
-    WHERE = f"""
+    sql_where = f"""
 user_id IS ?
 AND group_id IS ?
 AND removal_time IS NULL
@@ -1082,17 +1084,17 @@ AND (
         )
         AND
         (
-            strftime('%m-%d', {sqlite_format_date('date')})
-            BETWEEN strftime('%m-%d', 'now', {tz})
-                AND strftime('%m-%d', 'now', '+7 day', {tz})
+            STRFTIME('%m-%d', {sqlite_format_date('date')})
+            BETWEEN STRFTIME('%m-%d', 'now', {tz})
+                AND STRFTIME('%m-%d', 'now', '+7 day', {tz})
         )
     )
     OR
     ( -- Every month
         statuses LIKE '%📅%'
         AND SUBSTR(date, 1, 2) 
-        BETWEEN strftime('%d', 'now', {tz})
-            AND strftime('%d', 'now', '+7 day', {tz})
+        BETWEEN STRFTIME('%d', 'now', {tz})
+            AND STRFTIME('%d', 'now', '+7 day', {tz})
     )
     OR statuses LIKE '%🗞%' -- Every week
     OR statuses LIKE '%📬%' -- Every day
@@ -1108,9 +1110,9 @@ AND (
     )
     generated = EventsMessage(markup=markup, page=page)
     if id_list:
-        generated.get_page_events(WHERE, params, id_list)
+        generated.get_page_events(sql_where, params, id_list)
     else:
-        generated.get_pages_data(WHERE, params, "pw")
+        generated.get_pages_data(sql_where, params, "pw")
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.markup, 0, 2, f"se o {string_id} mnw")
     generated.format(
@@ -1126,7 +1128,7 @@ def trash_can_message(id_list: list[int] = (), page: int = 0) -> EventsMessage:
     :param id_list: List of event_id
     :param page: Page number
     """
-    WHERE = """
+    sql_where = """
 user_id IS ?
 AND group_id IS ?
 AND removal_time IS NOT NULL
@@ -1140,7 +1142,7 @@ AND removal_time IS NOT NULL
 -- Deleting events older than 30 days
 DELETE FROM events
       WHERE removal_time IS NOT NULL AND 
-            (julianday('now') - julianday(removal_time) > 30);
+            (JULIANDAY('now') - JULIANDAY(removal_time) > 30);
 """,
         commit=True,
     )
@@ -1159,9 +1161,9 @@ DELETE FROM events
     generated = EventsMessage(markup=markup, page=page)
 
     if id_list:
-        generated.get_page_events(WHERE, params, id_list)
+        generated.get_page_events(sql_where, params, id_list)
     else:
-        generated.get_pages_data(WHERE, params, "pb")
+        generated.get_pages_data(sql_where, params, "pb")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.markup, 0, 0, f"se b {string_id} mnb")
@@ -1186,7 +1188,7 @@ def notification_message(
 
     dates = [n_date + timedelta(days=days) for days in (0, 1, 2, 3, 7)]
     weekdays = ["0" if (w := date.weekday()) == 6 else f"{w + 1}" for date in dates[:2]]
-    WHERE = f"""
+    sql_where = f"""
 user_id IS ?
 AND group_id IS ?
 AND removal_time IS NULL
@@ -1218,7 +1220,7 @@ AND (
     )
     OR
     ( -- Every week
-        strftime('%w', {sqlite_format_date('date')}) IN ({", ".join(f"'{w}'" for w in weekdays)})
+        STRFTIME('%w', {sqlite_format_date('date')}) IN ({", ".join(f"'{w}'" for w in weekdays)})
         AND statuses LIKE '%🗞%'
     )
     OR
@@ -1244,9 +1246,9 @@ AND (
 
     generated = EventsMessage(markup=markup, page=page)
     if id_list:
-        generated.get_page_events(WHERE, params, id_list)
+        generated.get_page_events(sql_where, params, id_list)
     else:
-        generated.get_pages_data(WHERE, params, f"pn {n_date:%d.%m.%Y}")
+        generated.get_pages_data(sql_where, params, f"pn {n_date:%d.%m.%Y}")
         string_id = encode_id([event.event_id for event in generated.event_list])
         edit_button_data(
             generated.markup, 0, -1, f"se o {string_id} mnn {n_date:%d.%m.%Y}"
@@ -1484,7 +1486,7 @@ def group_message(
 
 
 def groups_message(
-    mode: Literal["al", "me", "md", "ad"] = "al", page: int = 1
+    mode: Literal["al", "me", "md", "ad"] | str = "al", page: int = 1
 ) -> TextMessage:
     match mode:
         case "al":

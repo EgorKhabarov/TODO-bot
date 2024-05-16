@@ -276,7 +276,7 @@ SELECT lang,
         timezone           INT  CHECK (-13 < timezone < 13) DEFAULT (3),
         direction          TEXT CHECK (direction IN ('DESC', 'ASC')) DEFAULT 'DESC',
         notifications      INT  CHECK (notifications IN (0, 1, 2)) DEFAULT (0),
-        notifications_time TEXT DEFAULT '08:00',
+        notifications_time TEXT DEFAULT "08:00",
         theme              INT  DEFAULT (0),
         """
         update_list = []
@@ -441,15 +441,15 @@ SELECT entry_date,
         if not groups:
             raise GroupNotFound
 
-        tggroups = []
+        tg_groups = []
         for group, member in zip(groups, members):
             if self.check_member_exists(group_id=group[0]):
-                tggroups.append(TelegramGroup(*group, *member))
+                tg_groups.append(TelegramGroup(*group, *member))
 
-        if not tggroups:
+        if not tg_groups:
             raise GroupNotFound
 
-        return tggroups
+        return tg_groups
 
     def get_my_groups(self, page: int = 1) -> list[TelegramGroup]:
         if self.group_id:

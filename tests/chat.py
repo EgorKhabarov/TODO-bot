@@ -136,6 +136,10 @@ config.VEDIS_PATH = test_vedis
 
 if test_database_path.exists():
     os.remove(test_database_path)
+
+if test_database_copy_path.exists():
+    os.remove(test_database_copy_path)
+
 if test_vedis.exists():
     os.remove(test_vedis)
 

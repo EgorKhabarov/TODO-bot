@@ -1257,7 +1257,7 @@ class CallBackHandler:
             group_message(group_id, message_id, mode).edit()
 
     @prefix("get_premium")
-    def get_premium(self, message_id: int, call_id: int):
+    def get_premium(self, message_id: int):
         # Заглушка на получение доступа к корзине и повышенным лимитам
         # TODO реализовать нормальное получение
         if request.is_user:
@@ -1307,9 +1307,9 @@ def cache_add_event_date(state: str = None) -> str | bool:
     Clears the user's message receipt status
     and changes the message by id from add_event_date
 
-    if state - put
-    if state is None - get
-    if state == "" - clear
+    If state - put
+    If state is None - get
+    If state == "" - clear
     """
 
     if state:
@@ -1337,9 +1337,9 @@ def cache_create_group(
     Clears the user's message receipt status
     and changes the message by id from add_event_date
 
-    if state - put
-    if state is None - get
-    if state == "" - clear
+    If state - put
+    If state is None - get
+    If state == "" - clear
     """
 
     if state:

@@ -64,7 +64,7 @@ from telegram_utils.buttons_generator import generate_buttons
 @bot.message_handler(content_types=["migrate_to_chat_id"], chat_types=["group"])
 def migrate_chat(message: Message):
     """
-    Migrating chat.id group to supergroup
+    Migrating chat_id group to supergroup
     """
     logger.info(
         f"[{message.chat.id:<10}] migrate_to_chat_id {message.migrate_to_chat_id}"

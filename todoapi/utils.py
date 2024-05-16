@@ -18,7 +18,7 @@ sql_date_pattern = re.compile(r"\d{4}-\d{2}-\d{2}")
 def sqlite_format_date(_column):
     """
     Database sql column converts from format
-    dd.mm.yyyy to yyyy.mm.dd as an sql expression
+    dd.mm.yyyy to yyyy.mm.dd for sql expression
 
     :param _column: Column for transformation.
     :return: SQL expression

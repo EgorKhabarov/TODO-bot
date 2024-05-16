@@ -36,14 +36,14 @@ event_formats = {
 """
 
 
-def DAYS_BEFORE_EVENT(date, statuses):
+def calculate_days_before_event(date, statuses):
     return Event(0, "", 0, date, "", statuses, "", "", "").days_before_event(
         request.entity.settings.timezone
     )
 
 
 def pagination(
-    WHERE: str,
+    sql_where: str,
     params: dict,
     direction: Literal["ASC", "DESC"] = "DESC",
     max_group_len: int = 10,
@@ -51,7 +51,7 @@ def pagination(
     max_group_id_len: int = 39,
 ) -> list[str]:
     """
-    :param WHERE: SQL condition
+    :param sql_where: SQL condition
     :param params: options
     :param direction: Sorting direction
     :param max_group_len: Maximum number of elements per page
@@ -65,13 +65,13 @@ def pagination(
 SELECT event_id,
        LENGTH(text) 
   FROM events
- WHERE {WHERE}
+ WHERE {sql_where}
  ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) {direction},
           DAYS_BEFORE_EVENT(date, statuses) DESC
  LIMIT 400;
 """,
         params=params,
-        func=("DAYS_BEFORE_EVENT", 2, DAYS_BEFORE_EVENT),
+        func=("DAYS_BEFORE_EVENT", 2, calculate_days_before_event),
     )
     _result = []
     group = []
@@ -259,10 +259,9 @@ class EventMessage(TextMessage):
         event_date_representation: str = "",
         markup: InlineKeyboardMarkup = None,
     ):
-        days_before_event = self.event.days_before_event(
-            request.entity.settings.timezone
+        str_date, rel_date, week_date = relatively_string_date(
+            self.event.days_before_event(request.entity.settings.timezone)
         )
-        str_date, rel_date, week_date = relatively_string_date(days_before_event)
 
         days_before = ""
         markdown_text = ""
@@ -317,12 +316,12 @@ class EventsMessage(TextMessage):
         self.page_indent = page_indent
         self.page_signature_needed = True if page else False
 
-    def get_pages_data(self, WHERE: str, params: dict | tuple, callback_data: str):
+    def get_pages_data(self, sql_where: str, params: dict | tuple, callback_data: str):
         """
         Get a list of row id tuples by page
         """
         direction = request.entity.settings.direction
-        data = pagination(WHERE, params, direction)
+        data = pagination(sql_where, params, direction)
 
         if data:
             first_message = [
@@ -340,7 +339,7 @@ SELECT user_id,
        removal_time
   FROM events
  WHERE event_id IN ({data[0]})
-       AND ({WHERE}) 
+       AND ({sql_where}) 
  ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) {direction},
           DAYS_BEFORE_EVENT(date, statuses) DESC,
           statuses LIKE '%📬%',
@@ -351,7 +350,7 @@ SELECT user_id,
           statuses LIKE '%🎊%';
 """,
                     params=params,
-                    func=("DAYS_BEFORE_EVENT", 2, DAYS_BEFORE_EVENT),
+                    func=("DAYS_BEFORE_EVENT", 2, calculate_days_before_event),
                 )
             ]
 
@@ -374,26 +373,26 @@ SELECT user_id,
                     # Filling the empty buttons in the last row up to 5
                     page_diapason[-1].append((0, ""))
 
-                # Trim down to 8 button lines so there aren't too many button lines
+                # Trim down to 8 button lines, so there aren't too many button lines
                 for row in page_diapason[:8]:
                     self.markup.row(
                         *[
                             (
                                 InlineKeyboardButton(
-                                    f"{numpage}{number_to_power(str(len(event_ids.split(','))))}",
-                                    callback_data=f"{callback_data.strip()} {numpage} {event_ids}",
+                                    f"{page_num}{number_to_power(str(len(event_ids.split(','))))}",
+                                    callback_data=f"{callback_data.strip()} {page_num} {event_ids}",
                                 )
                                 if event_ids
                                 else InlineKeyboardButton(" ", callback_data="None")
                             )
-                            for numpage, event_ids in row
+                            for page_num, event_ids in row
                         ]
                     )
             else:
                 self.page_signature_needed = False
         return self
 
-    def get_page_events(self, WHERE: str, params: tuple, id_list: list[int]):
+    def get_page_events(self, sql_where: str, params: tuple, id_list: list[int]):
         """
         Returns events included in values with the WHERE condition
         """
@@ -417,7 +416,7 @@ SELECT user_id,
  WHERE user_id IS ?
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in id_list)})
-       AND ({WHERE}) 
+       AND ({sql_where}) 
  ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) {direction},
           DAYS_BEFORE_EVENT(date, statuses) DESC,
           statuses LIKE '%📬%',
@@ -433,7 +432,7 @@ SELECT user_id,
                         *id_list,
                         *params,
                     ),
-                    func=("DAYS_BEFORE_EVENT", 2, DAYS_BEFORE_EVENT),
+                    func=("DAYS_BEFORE_EVENT", 2, calculate_days_before_event),
                 )
             ]
         except Error as e:
@@ -455,36 +454,24 @@ SELECT user_id,
     ):
         """
         Filling out a message using a template
-
-        {date}     - Date ["0000.00.00"]
-
-        {strdate}  - String Date ["0 January"]
-
+        {date} - Date ["0000.00.00"]
+        {strdate} - String Date ["0 January"]
         {weekday} - Week Date ["Monday"]
+        {reldate} - Relatively Date ["Tomorrow"]
 
-        {reldate}  - Relatively Date ["Tomorrow"]
-
-
-
-        {numd}     - Serial number (digits) ["1 2 3"]
-
+        {numd} - Serial number (digits) ["1 2 3"]
         {event_id} - Event_id ["1"]
-
-        {status}   - Status ["⬜"]
-
+        {status} - Status ["⬜"]
         {markdown_text} - wraps the text in the desired status tag ["<b>"]
-
-        {text}     - Text ["text"]
-
+        {text} - Text ["text"]
         {days_before_delete} - Days until removal
-
         {days_before} - (Days until)
 
-        :param title:    Heading
-        :param args:     Repeating pattern
-        :param ending:   End of message
+        :param title: Heading
+        :param args: Repeating pattern
+        :param ending: End of message
         :param if_empty: If the query result is empty
-        :return:         message.text
+        :return: message.text
         """
         dt_date = datetime.strptime(self._date, "%d.%m.%Y")
         n_time = request.entity.now_time()

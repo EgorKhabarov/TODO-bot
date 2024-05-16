@@ -24,6 +24,7 @@ from tgbot.lang import get_translate
 from tgbot.time_utils import relatively_string_date
 from todoapi.utils import is_admin_id, rate_limit, sqlite_format_date
 
+
 re_inline_message = re.compile(rf"\A@{re.escape(bot.user.username)} ")
 re_edit_message = re.compile(
     r"(?s)\A@\w{5,32} event\((\d+), (\d+)\)\.text(?:\n|\Z)(.*)"
@@ -123,7 +124,7 @@ def add_status_effect(text: str, statuses: list[str]) -> str:
     def format_order_list(_text: str, num=0) -> str:  # Numbers each line
         lst = _text.splitlines()
 
-        # We get the length of the indent so that it doesn’t move
+        # We get the length of the indent so that it does not move
         width = len(str(len(tuple(line for line in lst if not is_comment_line(line)))))
 
         # Fill in indented numbers + text, and if there is a double line break then ""
@@ -329,7 +330,7 @@ def fetch_weather(city: str) -> str:
 @cached(TTLCache(100, 60 * 60), _get_cache_city_key)
 def fetch_forecast(city: str) -> str:
     """
-    5-day weather forecast for city
+    5-day weather forecast for the city
     """
     logger.info(f"forecast in {city}")
     url = "http://api.openweathermap.org/data/2.5/forecast"
@@ -607,7 +608,7 @@ statuses {condition}= JSON_ARRAY({','.join('?' for _ in statuses)})
     else:
         string_sql_filters_status = ""
 
-    WHERE = f"""
+    sql_where = f"""
 user_id IS ?
 AND group_id IS ?
 AND removal_time IS NULL
@@ -624,7 +625,7 @@ AND ({splitquery.strip()})
         *filters_params_status,
     )
     # logger.debug(f"{WHERE} {params}")
-    return WHERE, params
+    return sql_where, params
 
 
 def set_bot_commands(not_login: bool = False):

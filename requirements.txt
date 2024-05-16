@@ -1,12 +1,10 @@
 requests~=2.31.0
-pyTelegramBotAPI==4.18.0
+pyTelegramBotAPI==4.18.1
 pillow==10.3.0
-pytest~=8.1.1
+pytest~=8.2.0
 vedis~=0.7.2
 Flask~=3.0.2
 cachetools~=5.3.3
-PyYAML~=6.0.1
 oauthlib~=3.2.2
-ipython~=8.13.2
+ipython~=8.24.0
 git+https://github.com/EgorKhabarov/ntable.git@master
-# SQLAlchemy~=2.0.29
