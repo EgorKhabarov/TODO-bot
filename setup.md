@@ -8,13 +8,19 @@
 ### HTTPS
 
 ```shell
-git clone https://github.com/EgorKhabarov/TODO-bot.git .
+git clone https://github.com/EgorKhabarov/TODO-bot.git
 ```
 
 ### SSH
 
 ```shell
-git clone git@github.com:EgorKhabarov/TODO-bot.git .
+git clone git@github.com:EgorKhabarov/TODO-bot.git
+```
+
+# cd
+
+```shell
+cd TODO-bot
 ```
 
 # Preparation
@@ -68,7 +74,7 @@ python start_bot.py
 python -c "from server import app; app.run('0.0.0.0')"
 ```
 
-# Obtaining administrator rights
+# Getting administrator rights
 
 ### Get your telegram **chat_id**.
 
@@ -87,3 +93,12 @@ Add the resulting **chat_id** to `ADMIN_IDS` in `config.yaml` and restart the bo
 - Create a web server using the latest available version of Python
 - In the `Code` category change `Working directory` to the path to the folder with `server.py`
 - In the `Security` category change `Force HTTPS` to `Enabled`
+
+# Docker
+
+```shell
+docker build -t todo-bot .
+docker volume create todo-bot-data
+docker volume create todo-bot-logs
+docker run -p 5000:5000 -v todo-bot-data:/app/data -v todo-bot-logs:/app/logs --name todo-bot-container todo-bot
+```

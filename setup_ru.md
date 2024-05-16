@@ -8,13 +8,19 @@
 ### HTTPS
 
 ```shell
-git clone https://github.com/EgorKhabarov/TODO-bot.git .
+git clone https://github.com/EgorKhabarov/TODO-bot.git
 ```
 
 ### SSH
 
 ```shell
-git clone git@github.com:EgorKhabarov/TODO-bot.git .
+git clone git@github.com:EgorKhabarov/TODO-bot.git
+```
+
+# cd
+
+```shell
+cd TODO-bot
 ```
 
 # Подготовка
@@ -87,3 +93,12 @@ python -c "from server import app; app.run('0.0.0.0')"
 - Создать веб сервер на последней доступной версии Python
 - В категории `Code` изменить `Working directory` на путь до папки с `server.py`
 - В категории `Security` изменить `Force HTTPS` на `Enabled`
+
+# Docker
+
+```shell
+docker build -t todo-bot .
+docker volume create todo-bot-data
+docker volume create todo-bot-logs
+docker run -p 5000:5000 -v todo-bot-data:/app/data -v todo-bot-logs:/app/logs --name todo-bot-container todo-bot
+```

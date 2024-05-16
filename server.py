@@ -165,4 +165,4 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host="0.0.0.0", port=5000)
