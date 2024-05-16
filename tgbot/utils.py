@@ -75,12 +75,12 @@ def telegram_log(action: str, text: str):
 
 def add_status_effect(text: str, statuses: list[str]) -> str:
     """
-    Добавляем эффекты к событию по статусу
+    Adding effects to an event by status
     """
 
     def check_comment_in_status(comment_string: Literal["##", "//", "--"]) -> bool:
         """
-        Проверить будет ли этот символ комментария считаться за комментарий при выбранных языках.
+        Check whether this comment symbol will be considered a comment in the selected languages.
         """
         status_set = {s.removeprefix("💻") for s in statuses if s.startswith("💻")}
 
@@ -95,8 +95,8 @@ def add_status_effect(text: str, statuses: list[str]) -> str:
 
     def is_comment_line(line: str) -> bool:
         """
-        Проверяет строку на комментарий для списков ("🗒") и сортированный список ("🧮").
-        Комментарий не будет работать если в статусе стоит язык, в котором это часть синтаксиса.
+        Tests a string for a comment for lists ("🗒") and a sorted list ("🧮").
+        The comment will not work if the status contains a language in which it is part of the syntax.
         """
         return line == config.ts or (
             line.startswith("— ")
@@ -107,8 +107,8 @@ def add_status_effect(text: str, statuses: list[str]) -> str:
 
     def remove_comment_prefix(line: str) -> str:
         """
-        Удаляет префикс комментария.
-        В зависимости от наличия комментария удаляет
+        Removes the comment prefix.
+        Deletes depending on the presence of a comment
         """
         line = line.removeprefix("— ")
 
@@ -120,20 +120,20 @@ def add_status_effect(text: str, statuses: list[str]) -> str:
             line = line.removeprefix("// ")
         return line
 
-    def format_order_list(_text: str, num=0) -> str:  # Нумерует каждую строчку
+    def format_order_list(_text: str, num=0) -> str:  # Numbers each line
         lst = _text.splitlines()
 
-        # Получаем длину отступа чтобы не съезжало
+        # We get the length of the indent so that it doesn’t move
         width = len(str(len(tuple(line for line in lst if not is_comment_line(line)))))
 
-        # Заполняем с отступами числа + текст, а если двойной перенос строки то ""
+        # Fill in indented numbers + text, and if there is a double line break then ""
         return "\n".join(
             (
                 (
                     (
                         "0️⃣" * (width - len(str(num := num + 1)))
-                    )  # Ставим нули перед основным числом
-                    + "⃣".join(str(num))  # Само число
+                    )  # Put zeros in front of the base number
+                    + "⃣".join(str(num))  # The number itself
                     + "⃣"
                     + line
                     if not is_comment_line(line)
@@ -146,7 +146,7 @@ def add_status_effect(text: str, statuses: list[str]) -> str:
         )
 
     def format_list(_text: str) -> str:
-        """Заменяет \n на :black_small_square: (эмодзи Telegram)"""
+        """Replaces \n to :black_small_square: (emoji Telegram)"""
         point = "▫️" if request.entity.settings.theme == 1 else "▪️"
         big_point = "◻️" if request.entity.settings.theme == 1 else "◼️"
         lst = _text.splitlines()
@@ -174,8 +174,8 @@ def add_status_effect(text: str, statuses: list[str]) -> str:
         def la(m: re.Match):
             url = re.sub(r"\Ahttp://", "https://", m[0])
 
+            # If this is a link to a user
             if re.search(r"https://t\.me/\w{5,32}", url):
-                # Если это ссылка на пользователя
                 return f"<a href='{url}'>@{url.removeprefix('https://t.me/')}</a>"
 
             return f"<a href='{url}'>{urlparse(url).netloc}</a>"
@@ -193,7 +193,7 @@ def add_status_effect(text: str, statuses: list[str]) -> str:
 
     escape_text = html.escape(text)
 
-    # Сокращаем несколько подряд переносов строки
+    # Reducing several consecutive line breaks
     shortcut_text = re.sub(r"\n(\n*)\n", "\n\n", escape_text)
 
     if ("🔗" in statuses and "⛓" not in statuses) or (
@@ -248,7 +248,7 @@ def _else_func(args, kwargs, key, sec) -> str:  # noqa
 @cached(TTLCache(100, 60 * 5), _get_cache_city_key)
 def fetch_weather(city: str) -> str:
     """
-    Возвращает текущую погоду по городу city
+    Returns the current weather for the city
     """
     logger.info(f"weather in {city}")
     url = "http://api.openweathermap.org/data/2.5/weather"
@@ -329,7 +329,7 @@ def fetch_weather(city: str) -> str:
 @cached(TTLCache(100, 60 * 60), _get_cache_city_key)
 def fetch_forecast(city: str) -> str:
     """
-    Прогноз погоды на 5 дней для города city
+    5-day weather forecast for city
     """
     logger.info(f"forecast in {city}")
     url = "http://api.openweathermap.org/data/2.5/forecast"
@@ -407,8 +407,8 @@ def fetch_forecast(city: str) -> str:
 
 def is_secure_chat(message: Message | CallbackQuery):
     """
-    Безопасный ли чат для админских команд.
-    Чат должен быть приватным.
+    Is chat safe for admin commands?
+    Chat must be private.
     """
     if isinstance(message, CallbackQuery):
         message = message.message
@@ -458,11 +458,11 @@ def html_to_markdown(html_text: str) -> str:
         return f"https://{url}"
 
     def replace_url(m: re.Match) -> str:
-        # Экранируем символы []() для правильного взаимодействия с markdown ссылками
+        # Escaping []() characters for proper interaction with Markdown links
         url = prepare_url(m.group(1)).replace("(", "%28").replace(")", "%29")
-        caption = str(m.group(2)).strip().replace("[", "\[").replace("]", "\]")
+        caption = str(m.group(2)).strip().replace("[", "\\[").replace("]", "\\]")
 
-        # Проверяем, что caption не совпадает с доменом ссылки
+        # Checking that the caption does not match the link domain
         condition = caption != urlparse(m.group(1)).netloc
         if condition:
             return f"[{caption}]({url}){m.group(3)}"
@@ -629,7 +629,7 @@ AND ({splitquery.strip()})
 
 def set_bot_commands(not_login: bool = False):
     """
-    Ставит список команд для пользователя chat_id
+    Sets a list of commands for the user chat_id
     """
 
     if not_login:

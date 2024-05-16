@@ -17,33 +17,33 @@ calendar_event_count_template = ("⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "
 
 
 def create_monthly_calendar_keyboard(
-    YY_MM: list | tuple[int, int] = None,
+    year_month: list | tuple[int, int] = None,
     command: str = None,
     back: str = None,
     arguments: str = None,
 ) -> InlineKeyboardMarkup:
     """
-    Создаёт календарь на месяц и возвращает inline клавиатуру
-    :param YY_MM: Необязательный аргумент. Если None, то подставит текущую дату.
-    :param command: Команда, которую пихать в кнопку + дата
-    :param back: Кнопка назад
-    :param arguments: Аргументы у команды и back
+    Creates a monthly calendar and returns an inline keyboard
+    :param year_month: Optional argument. If None, then it will substitute the current date.
+    :param command: The command to push into the button + date
+    :param back: Back button
+    :param arguments: Arguments for the command and back
     """
     command = f"'{command.strip()}'" if command else None
     back = f"'{back.strip()}'" if back else None
     arguments = f"'{arguments.strip()}'" if arguments else None
 
-    if YY_MM:
-        YY, MM = YY_MM
+    if year_month:
+        year, month = year_month
     else:
-        YY, MM = now_time_calendar()
+        year, month = now_time_calendar()
 
-    # Дни в которые есть события
+    # Days with events
     has_events = {
         x[0]: x[1]
         for x in db.execute(
             """
--- Дни в которые есть события
+-- Days with events
 SELECT CAST (SUBSTR(date, 1, 2) AS INT) AS day_number,
        COUNT(event_id) AS event_count
   FROM events
@@ -56,17 +56,17 @@ SELECT CAST (SUBSTR(date, 1, 2) AS INT) AS day_number,
             params={
                 "user_id": request.entity.safe_user_id,
                 "group_id": request.entity.group_id,
-                "date": f"__.{MM:0>2}.{YY}",
+                "date": f"__.{month:0>2}.{year}",
             },
         )
     }
 
-    # Дни рождения, праздники и каждый год или месяц
+    # Birthdays, holidays and every year or month
     every_year_or_month = tuple(
         x[0]
         for x in db.execute(
             """
--- Номера дней дней рождений в конкретном месяце
+-- Numbers of birthdays in a specific month
 SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT) 
   FROM events
  WHERE user_id IS :user_id
@@ -87,17 +87,17 @@ SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT)
             params={
                 "user_id": request.entity.safe_user_id,
                 "group_id": request.entity.group_id,
-                "date": f"{MM:0>2}",
+                "date": f"{month:0>2}",
             },
         )
     )
 
-    # Каждую неделю
+    # Every week
     every_week = tuple(
         6 if x[0] == -1 else x[0]
         for x in db.execute(
             f"""
--- Номер дней недели в которых есть события повторяющиеся каждую неделю события
+-- Number of days of the week in which there are events that repeat every week
 SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT) 
   FROM events
  WHERE user_id IS :user_id
@@ -117,29 +117,29 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
         for wd, week_day in enumerate(get_translate("arrays.week_days_list"))
     ]
 
-    row_calendar = monthcalendar(YY, MM)
+    row_calendar = monthcalendar(year, month)
     title = (
-        f"{get_translate('arrays.months_name')[MM - 1]} "
-        f"({MM}.{YY}) ({year_info(YY)}) "
-        f"({get_week_number(YY, MM, 1)}-"
-        f"{get_week_number(YY, MM, max(row_calendar[-1]))})"
+        f"{get_translate('arrays.months_name')[month - 1]} "
+        f"({month}.{year}) ({year_info(year)}) "
+        f"({get_week_number(year, month, 1)}-"
+        f"{get_week_number(year, month, max(row_calendar[-1]))})"
     )
-    first_line = [{title: f"cy ({command},{back},{YY},{arguments})"}]
+    first_line = [{title: f"cy ({command},{back},{year},{arguments})"}]
 
     buttons_lines = []
     today = request.entity.now_time().day
-    for weekcalendar in row_calendar:
-        weekbuttons = []
-        for wd, day in enumerate(weekcalendar):
+    for week_calendar in row_calendar:
+        week_buttons = []
+        for wd, day in enumerate(week_calendar):
             if day == 0:
-                weekbuttons.append({"  ": "None"})
+                week_buttons.append({"  ": "None"})
             else:
                 tag_today = "#" if day == today else ""
                 x = has_events.get(day)
                 tag_event = (number_to_power(x) if x < 10 else "*") if x else ""
                 tag_birthday = "!" if (day in every_year_or_month) else ""
-                date = f"{day:0>2}.{MM:0>2}.{YY}"
-                weekbuttons.append(
+                date = f"{day:0>2}.{month:0>2}.{year}"
+                week_buttons.append(
                     {
                         f"{tag_today}{day}{tag_event}{tag_birthday}": (
                             f"{command[1:-1] if command else 'dl'} "
@@ -155,16 +155,16 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
                         ).strip()
                     }
                 )
-        buttons_lines.append(weekbuttons)
+        buttons_lines.append(week_buttons)
 
     arrows_buttons = [
         {text: f"cm ({command},{back},{data},{arguments})" if data != "None" else data}
         for text, data in {
-            "<<": f"({YY - 1},{MM})",
-            "<": f"({YY - 1},12)" if MM == 1 else f"({YY},{MM - 1})",
+            "<<": f"({year - 1},{month})",
+            "<": f"({year - 1},12)" if month == 1 else f"({year},{month - 1})",
             "⟳": "'now'",
-            ">": f"({YY + 1},1)" if MM == 12 else f"({YY},{MM + 1})",
-            ">>": f"({YY + 1},{MM})",
+            ">": f"({year + 1},1)" if month == 12 else f"({year},{month + 1})",
+            ">>": f"({year + 1},{month})",
         }.items()
     ]
 
@@ -190,24 +190,24 @@ SELECT DISTINCT CAST (strftime('%w', {sqlite_format_date('date')}) - 1 AS INT)
 
 
 def create_yearly_calendar_keyboard(
-    YY: int,
+    year: int,
     command: str = None,
     back: str = None,
     arguments: str = None,
 ) -> InlineKeyboardMarkup:
     """
-    Создаёт календарь из месяцев на определённый год и возвращает inline клавиатуру
+    Creates a calendar of months for a specific year and returns an inline keyboard
     """
     command = f"'{command.strip()}'" if command else None
     back = f"'{back.strip()}'" if back else None
     arguments = f"'{arguments.strip()}'" if arguments else None
 
-    # В этом году
+    # This year
     month_list = {
         x[0]: x[1]
         for x in db.execute(
             """
--- Месяцы в которых есть события
+-- Months with events
 SELECT CAST (SUBSTR(date, 4, 2) AS INT) AS month_number,
        COUNT(event_id) AS event_count
   FROM events
@@ -220,17 +220,17 @@ SELECT CAST (SUBSTR(date, 4, 2) AS INT) AS month_number,
             params={
                 "user_id": request.entity.safe_user_id,
                 "group_id": request.entity.group_id,
-                "date": f"__.__.{YY}",
+                "date": f"__.__.{year}",
             },
         )
     }
 
-    # Повторение каждый год
+    # Repeat every year
     every_year = [
         x[0]
         for x in db.execute(
             """
--- Номера месяцев дней рождений в конкретном месяце
+-- Month numbers of birthdays in a specific month
 SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT) 
   FROM events
  WHERE user_id IS :user_id
@@ -249,12 +249,12 @@ SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT)
         )
     ]
 
-    # Повторение каждый месяц
+    # Repeat every month
     every_month = [
         x[0]
         for x in db.execute(
             """
--- Есть ли событие, которое повторяется каждый месяц
+-- Is there an event that repeats every month?
 SELECT date
   FROM events
  WHERE user_id IS :user_id
@@ -283,7 +283,7 @@ SELECT date
             month_buttons[-1].append(
                 {
                     f"{tag_today}{nameM}{tag_event}{tag_birthday}": (
-                        f"cm ({command},{back},({YY},{numm}),{arguments})"
+                        f"cm ({command},{back},({year},{numm}),{arguments})"
                     )
                 }
             )
@@ -291,13 +291,13 @@ SELECT date
     markup = [
         [
             {
-                f"{YY} ({year_info(YY)})": f"ct ({command},{back},{str(YY)[:3]},{arguments})"
+                f"{year} ({year_info(year)})": f"ct ({command},{back},{str(year)[:3]},{arguments})"
             }
         ],
         *month_buttons,
         [
-            {text: f"cy ({command},{back},{year},{arguments})"}
-            for text, year in {"<<": YY - 1, "⟳": "'now'", ">>": YY + 1}.items()
+            {text: f"cy ({command},{back},{y},{arguments})"}
+            for text, y in {"<<": year - 1, "⟳": "'now'", ">>": year + 1}.items()
         ],
         (
             [
@@ -334,12 +334,12 @@ def create_twenty_year_calendar_keyboard(
     year = int(f"{millennium}{decade}0")
     years = chunks([(n, y) for n, y in enumerate(range(year, year + 20))], 4)
 
-    # В этом году
+    # This year
     year_list = {
         x[0]: x[1]
         for x in db.execute(
             """
--- Года в которых есть события
+-- Years with events
 SELECT CAST (SUBSTR(date, 7, 4) AS INT) AS year_number,
        COUNT(event_id) AS event_count
   FROM events
@@ -355,10 +355,10 @@ SELECT CAST (SUBSTR(date, 7, 4) AS INT) AS year_number,
         )
     }
 
-    # Повторение каждый год
+    # Repeat every year
     every_year = db.execute(
         """
--- Номера месяцев дней рождений в конкретном месяце
+-- Month numbers of birthdays in a specific month
 SELECT 1
   FROM events
  WHERE user_id IS :user_id
@@ -471,7 +471,8 @@ def create_select_status_keyboard(
                     [
                         {
                             (rm_status if rm_status else " "): (
-                                f"{prefix} {join(filter(lambda x: x != rm_status, status_list)) or '⬜'} folders {arguments}"
+                                f"{prefix} {join(filter(lambda x: x != rm_status, status_list)) or '⬜'} "
+                                f"folders {arguments}"
                                 if rm_status
                                 else "None"
                             )
@@ -543,8 +544,8 @@ def delmarkup() -> InlineKeyboardMarkup:
 
 def number_to_power(string: str) -> str:
     """
-    Превратит строку чисел в строку степеней.
-    Например "123" в "¹²³".
+    Turns a string of numbers into a string of powers.
+    For example "123" in "¹²³".
     """
     return "".join(calendar_event_count_template[int(ch)] for ch in str(string))
 

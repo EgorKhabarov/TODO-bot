@@ -63,7 +63,9 @@ from telegram_utils.buttons_generator import generate_buttons
 
 @bot.message_handler(content_types=["migrate_to_chat_id"], chat_types=["group"])
 def migrate_chat(message: Message):
-    """Миграция chat.id группы в супергруппу"""
+    """
+    Migrating chat.id group to supergroup
+    """
     logger.info(
         f"[{message.chat.id:<10}] migrate_to_chat_id {message.migrate_to_chat_id}"
     )
@@ -91,7 +93,7 @@ UPDATE groups
 @process_account
 def bot_command_handler(message: Message):
     """
-    Ловит команды от пользователей
+    Catches commands from users
     """
     telegram_log("send", html_to_markdown(message.html_text))
     command_handler(message)
@@ -101,7 +103,7 @@ def bot_command_handler(message: Message):
 @process_account
 def bot_callback_query_handler(call: CallbackQuery):
     """
-    Ловит нажатия на кнопки
+    Catches button clicks
     """
     telegram_log("press", call.data)
     callback_handler(call)
@@ -113,9 +115,7 @@ def bot_callback_query_handler(call: CallbackQuery):
 @process_account
 def processing_search_message(message: Message):
     """
-    Ловит сообщения поиска
-    #   (ИЛИ)
-    #!  (И)
+    Catches search messages
     """
     query = html_to_markdown(message.html_text).removeprefix("#")
     telegram_log("search", query)
@@ -202,8 +202,8 @@ def inline_message_handler(message: Message):
 @process_account
 def processing_reply_message(message: Message):
     """
-    Ловит сообщения ответ на сообщение бота с настройками
-    Изменение города пользователя
+    Catches messages in response to a bot message with settings
+    Changing the user's city
     """
     message_start = message.reply_to_message.text.split("\n", 1)[0]
     telegram_log("send", f"reply {message_start}")
@@ -214,7 +214,7 @@ def processing_reply_message(message: Message):
 @process_account
 def processing_group_create_message(message: Message):
     """
-    Ловит сообщения для добавления группы
+    Catches messages to add a group
     """
     telegram_log("send", "group create")
 
@@ -241,19 +241,17 @@ def processing_group_create_message(message: Message):
 @process_account
 def add_event_handler(message: Message):
     """
-    Ловит сообщение если пользователь хочет добавить событие
+    Catch a message if the user wants to add an event
     """
     html_text = message.html_text
 
     if message.quote:
-        # noinspection PyUnresolvedReferences TODO
         html_text = f"<blockquote>{message.quote.html_text}</blockquote>\n{html_text}"
 
     markdown_text = html_to_markdown(html_text.strip())
     telegram_log("send", "add event")
     new_event_date = cache_add_event_date().split(",")[0]
 
-    # Если сообщение длиннее 3800 символов, то ошибка
     if len(markdown_text) >= 3800:
         message_is_too_long = get_translate("errors.message_is_too_long")
         bot.reply_to(message, message_is_too_long, reply_markup=delmarkup())
@@ -266,7 +264,6 @@ def add_event_handler(message: Message):
         bot.reply_to(message, exceeded_limit, reply_markup=delmarkup())
         return
 
-    # Пытаемся создать событие
     try:
         request.entity.create_event(new_event_date, markdown_text)
     except (TextIsTooBig, WrongDate, LimitExceeded):
@@ -279,7 +276,6 @@ def add_event_handler(message: Message):
 
 
 def schedule_loop():
-    # ждём чтобы цикл уведомлений начинался
     def process():
         while_time = datetime.utcnow()
         weekday = while_time.weekday()
@@ -300,6 +296,7 @@ def schedule_loop():
             Thread(target=clear_logs, daemon=True).start()
 
     process()
+    # wait for the notification cycle to start
     sleep(60 - datetime.utcnow().second)
     while True:
         process()

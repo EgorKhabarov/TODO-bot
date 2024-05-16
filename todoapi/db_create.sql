@@ -15,10 +15,10 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS groups (
     group_id          TEXT PRIMARY KEY NOT NULL,
-    name              TEXT NOT NULL,  -- Название группы
+    name              TEXT NOT NULL,  -- Group name
     token             TEXT UNIQUE NOT NULL,
     token_create_time TEXT NOT NULL DEFAULT (DATETIME()),
-    owner_id          INT  NOT NULL,  -- Владелец группы
+    owner_id          INT  NOT NULL,  -- Group owner
     max_event_id      INT  DEFAULT (1),
     icon              TEXT DEFAULT NULL,
     chat_id           INT  UNIQUE DEFAULT NULL,
@@ -118,7 +118,7 @@ CREATE TABLE IF NOT EXISTS errors (
 
 ------------------------------------------------------------------------------------------------------------------------
 
--- При удалении пользователя, удаляем все строки связанные с ним.
+-- When deleting a user, we delete all rows associated with it.
 CREATE TRIGGER IF NOT EXISTS trigger_delete_user
 AFTER DELETE ON users FOR EACH ROW
 BEGIN
@@ -129,7 +129,7 @@ BEGIN
     DELETE FROM members        WHERE user_id = OLD.user_id;
 END;
 
--- Триггер обновления времени последнего изменения токена
+-- Trigger for updating the time of the last token change
 CREATE TRIGGER IF NOT EXISTS trigger_recent_changes_time_user_token
 AFTER UPDATE OF token ON users FOR EACH ROW
 BEGIN
@@ -138,7 +138,7 @@ BEGIN
      WHERE user_id = NEW.user_id;
 END;
 
--- Триггер обновления времени последнего изменения токена в группах
+-- Trigger for updating the time of the last token change in groups
 CREATE TRIGGER IF NOT EXISTS trigger_recent_changes_time_group_token
 AFTER UPDATE OF token ON groups FOR EACH ROW
 BEGIN
@@ -147,7 +147,7 @@ BEGIN
      WHERE group_id = NEW.group_id;
 END;
 
--- Триггер обновления времени последнего изменения события
+-- Trigger for updating the last change time of an event
 CREATE TRIGGER IF NOT EXISTS trigger_recent_changes_time_event
 AFTER UPDATE OF date, text, statuses, removal_time ON events FOR EACH ROW
 BEGIN
@@ -194,7 +194,7 @@ BEGIN
            AND JSON_ARRAY_LENGTH(history) > 10;
 END;
 
--- При удалении события, удаляем медиа принадлежащие этому событию.
+-- When deleting an event, we delete the media belonging to this event.
 CREATE TRIGGER IF NOT EXISTS trigger_delete_event_media
 AFTER DELETE ON events FOR EACH ROW
 BEGIN
@@ -205,7 +205,7 @@ BEGIN
 END;
 
 
--- При добавлении группы, добавляем запись в members с user_id владельца группы
+-- When adding a group, add an entry to members with the user_id of the group owner
 CREATE TRIGGER IF NOT EXISTS trigger_add_group_member
 AFTER INSERT ON groups FOR EACH ROW
 BEGIN
@@ -213,7 +213,7 @@ BEGIN
     VALUES (NEW.group_id, NEW.owner_id, DATETIME(), 2);
 END;
 
--- При удалении группы, удаляем все строки из members связанные с этой группой.
+-- When deleting a group, we delete all rows from members associated with this group.
 CREATE TRIGGER IF NOT EXISTS trigger_delete_group
 AFTER DELETE ON groups FOR EACH ROW
 BEGIN
@@ -222,7 +222,7 @@ BEGIN
     DELETE FROM tg_settings WHERE group_id IS OLD.group_id;
 END;
 
--- При добавлении пользователя добавлять запись в настройки.
+-- When adding a user, add an entry to the settings.
 CREATE TRIGGER IF NOT EXISTS trigger_create_user
 BEFORE INSERT ON users FOR EACH ROW
 BEGIN
@@ -230,7 +230,7 @@ BEGIN
     VALUES (NEW.user_id);
 END;
 
--- При добавлении chat_id в users то добавляет удаляет запись в tg_settings (login)
+-- When adding chat_id to users, it adds and deletes the entry in tg_settings (login)
 CREATE TRIGGER IF NOT EXISTS trigger_add_user_chat_id
 BEFORE UPDATE OF chat_id ON users FOR EACH ROW
 WHEN OLD.chat_id IS NULL
@@ -239,7 +239,7 @@ BEGIN
                                VALUES (NEW.user_id);
 END;
 
--- При добавлении chat_id в groups то добавляет удаляет запись в tg_settings
+-- When adding chat_id to groups, it adds and deletes the entry in tg_settings
 CREATE TRIGGER IF NOT EXISTS trigger_add_group_chat_id
 AFTER UPDATE OF chat_id ON groups FOR EACH ROW
 WHEN OLD.chat_id IS NULL
@@ -248,5 +248,5 @@ BEGIN
                                VALUES (NEW.group_id);
 END;
 
--- индекс
+-- index
 CREATE INDEX IF NOT EXISTS index_event_search ON events (user_id, group_id, event_id, date);

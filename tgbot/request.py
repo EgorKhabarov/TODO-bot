@@ -27,7 +27,7 @@ class QueryType:
 
 class Request:
     """
-    Класс контекстных переменных
+    Context Variable Class
     """
 
     _entity = ContextVar("entity", default=None)

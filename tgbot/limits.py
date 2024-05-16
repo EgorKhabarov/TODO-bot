@@ -90,20 +90,20 @@ def _semicircle(title: str, x: int, y: int, theme: str):
     image = Image.new("RGB", (291, 202), background_color)
     draw = Draw(image)
 
-    # Название дуги
+    # Arc name
     text_width, text_height = [wh // 2 for wh in draw.textbbox((0, 0), title, font)[2:]]
     draw.text(
         (145 - text_width, 15 - text_height), title, invert_background_color, font
     )
 
-    # Рисуем дугу
+    # Drawing an arc
     draw.pieslice(((45, 42), (245, 242)), 180, 360, fill=bg_color)  # "#778795"
     draw.pieslice(
         ((45, 42), (245, 242)),
         180,
         ((180 + (percent / 100) * 180) if percent < 101 else 360),
         fill=color,
-    )  # "#303b44"
+    )
     draw.pieslice(((95, 50 + 42), (195, 192)), 180, 360, fill=background_color)
 
     text_width, text_height = [wh // 2 for wh in draw.textbbox((0, 0), text, font)[2:]]

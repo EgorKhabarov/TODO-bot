@@ -88,8 +88,8 @@ group_limits = {
         "max_groups_creator": 0,
     },
     0: {
-        "max_groups_participate": 50,  # количество групп, в которых пользователь может состоять
-        "max_groups_creator": 1,  # сколько групп можно иметь
+        "max_groups_participate": 50,  # number of groups a user can belong to
+        "max_groups_creator": 1,  # how many groups can you have
     },
     1: {
         "max_groups_participate": 100,
@@ -135,16 +135,16 @@ class DataBase:
         script: bool = False,
     ) -> list[tuple[int | str | bytes | Any, ...], ...]:
         """
-        Выполняет SQL запрос
-        Пробовал через with, но оно не закрывало файл
+        Executes SQL query
+        I tried with, but it didn't close the file
 
-        :param query: Запрос
-        :param params: Параметры запроса (необязательно)
-        :param commit: Нужно ли сохранить изменения? (необязательно, по умолчанию False)
-        :param column_names: Названия столбцов вставить в результат.
-        :param func: Оконная функция. (название функции, кол-во аргументов, функция)
-        :param script: query состоит из нескольких запросов
-        :return: Результат запроса
+        :param query: SQL Query.
+        :param params: Query parameters (optional)
+        :param commit: Should I save my changes? (optional, defaults to False)
+        :param column_names: Insert column names into the result.
+        :param func: Window function. (function name, number of arguments, function)
+        :param script: Query consists of several requests
+        :return: Query result
         """
         self.sqlite_connection = connect(config.DATABASE_PATH)
         self.sqlite_cursor = self.sqlite_connection.cursor()
@@ -273,7 +273,7 @@ SELECT (
     def is_exceeded_for_events(
         self, date: str | datetime = None, event_count: int = 0, symbol_count: int = 0
     ) -> bool:
-        inf = float("inf")  # Бесконечность
+        inf = float("inf")
         actual_limits = self.get_event_limits(date)
 
         limits_event_count = zip(
@@ -453,7 +453,7 @@ class Media:
 class Settings:
     lang: str = "ru"
     sub_urls: bool = True
-    city: str = "Москва"
+    city: str = "Moscow"
     timezone: int = 3
     direction: str = "DESC"
     notifications: bool = False
@@ -548,8 +548,8 @@ SELECT media_id,
     @property
     def days_before_delete(self) -> int:
         """
-        Вычисляет количество дней до удаления события из корзины.
-        Если событие уже должно быть удалено, возвращает -1.
+        Calculates the number of days until an event is removed from the trash.MoscowInfinity
+        If the event should already be deleted, returns -1.
         """
         if sql_date_pattern.match(self.removal_time):
             _d1 = datetime.utcnow()
@@ -569,17 +569,17 @@ SELECT media_id,
             y = datetime.strptime(date, "%d.%m.%Y")
             return (y - n_time).days, y
 
-        # Каждый день
+        # Every day
         if "📬" in self.statuses:
             return prepare_date(f"{n_time:%d.%m.%Y}")[0]
 
-        # Каждую неделю
+        # Every week
         if "🗞" in self.statuses:
             now_wd, event_wd = n_time.weekday(), _date.weekday()
             next_date = n_time + timedelta(days=(event_wd - now_wd + 7) % 7)
             dates.append(next_date)
 
-        # Каждый месяц
+        # Every month
         elif "📅" in self.statuses:
             day_diff, dttm = prepare_date(f"{_date:%d}.{n_time:%m.%Y}")
             month, year = dttm.month, dttm.year
@@ -591,7 +591,7 @@ SELECT media_id,
                 else:
                     dates.append(dttm.replace(year=year + 1, month=1))
 
-        # Каждый год
+        # Every year
         elif {*self.statuses}.intersection({"📆", "🎉", "🎊"}):
             dttm = prepare_date(f"{_date:%d.%m}.{n_time:%Y}")[1]
             if dttm.date() < n_time.date():
@@ -818,7 +818,7 @@ class Account:
 
     def now_time(self) -> datetime:
         """
-        Возвращает datetime.utcnow() с учётом часового пояса пользователя
+        Returns datetime.utcnow() taking into account the user's time zone
         """
         return datetime.utcnow() + timedelta(hours=self.settings.timezone)
 
@@ -1009,7 +1009,7 @@ SELECT *
 
         event = self.get_event(event_id)
 
-        # Вычисляем количество добавленных символов
+        # Calculate the number of added characters
         old_text_len, new_text_len = len(event.text), len(text)
         new_symbol_count = (
             0 if new_text_len < old_text_len else new_text_len - old_text_len
@@ -1071,13 +1071,14 @@ UPDATE events
         if not self.check_event_exists(event_id):
             raise EventNotFound
 
-        # Статусов не может быть больше 5
-        # Длинна одного обычного статуса не может быть больше 3 символов
-        # Язык кода ("💻") не может быть больше 6 символов
+        # There cannot be more than 5 statuses
+        # The length of one regular status cannot be more than 3 characters\
+        # Code language ("💻") cannot be more than 6 characters
         if (
             len(statuses) > 5
             or max(
-                # Если длинна больше 6, то сумма булева (>) значения и 3 будет больше 3
+                # If the length is greater than 6, then the sum of the Boolean (>) value
+                # and 3 + result of (>) will be greater than 3
                 (3 + (len(s.removeprefix("💻")) > 6)) if s.startswith("💻") else len(s)
                 for s in statuses
             )
@@ -2157,8 +2158,8 @@ SELECT user_id
 
 def set_user_status(user_id: int, user_status: int) -> None:
     """
-    Ставит статус для пользователя с user_id.
-    НЕ проводит никаких проверок
+    Sets the status for the user with user_id.
+    Does NOT conduct any checks
     """
     try:
         db.execute(

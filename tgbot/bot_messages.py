@@ -57,7 +57,7 @@ def start_message() -> TextMessage:
 
 def menu_message() -> TextMessage:
     """
-    Генерирует сообщение меню
+    Generates a menu message
     """
     (
         translate_menu,
@@ -110,7 +110,7 @@ def menu_message() -> TextMessage:
 
 def settings_message() -> TextMessage:
     """
-    Ставит настройки для пользователя chat_id
+    Sets settings for user chat_id
     """
     settings = request.entity.settings
     not_lang = "ru" if settings.lang == "en" else "en"
@@ -189,14 +189,14 @@ def settings_message() -> TextMessage:
 
 def help_message(path: str = "page 1") -> TextMessage:
     """
-    Сообщение помощи
+    Help message
     """
     translate = get_translate(f"messages.help.{path}")
     title = get_translate("messages.help.title")
 
     if path.startswith("page"):
         text, keyboard = translate
-        # Изменяем последнюю кнопку
+        # Changing the last button
         last_button: dict = keyboard[-1][-1]
         k, v = last_button.popitem()
         new_k = (
@@ -215,11 +215,11 @@ def daily_message(
     date: datetime | str, id_list: list[int] = (), page: int = 0
 ) -> EventsMessage:
     """
-    Генерирует сообщение на один день
+    Generates a message for one day
 
-    :param date: Дата сообщения
-    :param id_list: Список из event_id
-    :param page: Номер страницы
+    :param date: Message date
+    :param id_list: List of event_id
+    :param page: Page number
     """
     if isinstance(date, str):
         date = datetime.strptime(date, "%d.%m.%Y")
@@ -274,12 +274,12 @@ AND removal_time IS NULL
         if_empty=get_translate("errors.nodata"),
     )
 
-    # Добавить дополнительную кнопку для дней в которых есть праздники
+    # Add an additional button for days that have holidays
     daylist = [
         x[0]
         for x in db.execute(
             f"""
--- Если находит, то добавлять кнопку повторяющихся событий
+-- If found, then add a repeating events button
 SELECT DISTINCT date
   FROM events
  WHERE user_id IS :user_id
@@ -287,7 +287,7 @@ SELECT DISTINCT date
        AND removal_time IS NULL
        AND date != :date
        AND (
-    ( -- Каждый год
+    ( -- Every year
         (
             statuses LIKE '%🎉%'
             OR statuses LIKE '%🎊%'
@@ -296,19 +296,19 @@ SELECT DISTINCT date
         AND date LIKE :y_date
     )
     OR
-    ( -- Каждый месяц
+    ( -- Every month
         statuses LIKE '%📅%'
         AND date LIKE :m_date
     )
     OR
-    ( -- Каждую неделю
+    ( -- Every week
         statuses LIKE '%🗞%'
         AND
         strftime('%w', {sqlite_format_date('date')}) =
         CAST(strftime('%w', {sqlite_format_date(':date')}) as TEXT)
     )
     OR
-    ( -- Каждый день
+    ( -- Every day
         statuses LIKE '%📬%'
     )
 )
@@ -336,7 +336,7 @@ def event_message(
     event_id: int, in_wastebasket: bool = False, message_id: int = None
 ) -> EventMessage | None:
     """
-    Сообщение для взаимодействия с одним событием
+    Message to interact with one event
     """
     generated = EventMessage(event_id, in_wastebasket)
     event = generated.event
@@ -402,7 +402,7 @@ def events_message(
     id_list: list[int], is_in_wastebasket: bool = False
 ) -> EventsMessage:
     """
-    Сообщение для взаимодействия с одним событием
+    Message to interact with events
     """
     generated = EventsMessage()
     WHERE = f"""
@@ -562,9 +562,9 @@ def event_history_message(
 
 def confirm_changes_message(message: Message) -> None | int:
     """
-    Генерация сообщения для подтверждения изменений текста события.
+    Generate a message to confirm changes to the event text.
 
-    Возвращает 1 если есть ошибка.
+    Returns 1 if there is an error.
     """
     event_id, message_id, html_text = re_edit_message.findall(message.html_text)[0]
     event_id, message_id = int(event_id), int(message_id)
@@ -572,10 +572,9 @@ def confirm_changes_message(message: Message) -> None | int:
     event = generated.event
 
     if not event:
-        return 1  # Этого события нет
+        return 1  # This event does not exist
 
     if message.quote:
-        # noinspection PyUnresolvedReferences TODO
         html_text = f"<blockquote>{message.quote.html_text}</blockquote>\n{html_text}"
 
     markdown_text = html_to_markdown(html_text).strip()
@@ -590,11 +589,12 @@ def confirm_changes_message(message: Message) -> None | int:
         delete_message_action(message)
         return 1
 
-    # Уменьшится ли длинна события
+    # is the event length decrease
     new_event_len, len_old_event = len(markdown_text), len(event.text)
     tag_max_len_exceeded = new_event_len > 3800
 
-    # Вычисляем сколько символов добавил пользователь. Если символов стало меньше, то 0.
+    # Calculate how many characters the user added.
+    # If there are fewer characters, then 0.
     tag_len_less = len_old_event > new_event_len
     added_length = 0 if tag_len_less else new_event_len - len_old_event
 
@@ -630,8 +630,8 @@ def confirm_changes_message(message: Message) -> None | int:
     text_diff = highlight_text_difference(
         html.escape(event.text), html.escape(markdown_text)
     )
-    # Находим пересечения выделений изменений и html экранирования
-    # На случай если в базе данных окажется html экранированный текст
+    # Finding the intersections of change highlighting and html escaping
+    # In case there is html escaped text in the database
     text_diff = re.sub(
         r"&(<(/?)u>)(lt|gt|quot|#39);",
         lambda m: (
@@ -674,9 +674,9 @@ def recurring_events_message(
     date: str, id_list: list[int] = (), page: int = 0
 ) -> EventsMessage:
     """
-    :param date: дата у сообщения
-    :param id_list: Список из event_id
-    :param page: Номер страницы
+    :param date: message date
+    :param id_list: List of event_id
+    :param page: Page number
     """
     WHERE = f"""
 user_id IS ?
@@ -684,7 +684,7 @@ AND group_id IS ?
 AND removal_time IS NULL
 AND 
 (
-    ( -- Каждый год
+    ( -- Every year
         (
             statuses LIKE '%🎉%'
             OR statuses LIKE '%🎊%'
@@ -693,18 +693,18 @@ AND
         AND date LIKE '{date[:-5]}.____'
     )
     OR
-    ( -- Каждый месяц
+    ( -- Every month
         statuses LIKE '%📅%'
         AND date LIKE '{date[:2]}.__.____'
     )
     OR
-    ( -- Каждую неделю
+    ( -- Every week
         statuses LIKE '%🗞%'
         AND strftime('%w', {sqlite_format_date('date')}) =
         CAST(strftime('%w', '{sqlite_format_date2(date)}') as TEXT)
     )
     OR
-    ( -- Каждый день
+    ( -- Every day
         statuses LIKE '%📬%'
     )
 )
@@ -714,10 +714,10 @@ AND
         request.entity.group_id,
     )
 
-    backopenmarkup = generate_buttons(
+    back_open_markup = generate_buttons(
         [[{get_theme_emoji("back"): f"pd {date}"}, {"↖️": "None"}]]
     )
-    generated = EventsMessage(date, markup=backopenmarkup, page=page)
+    generated = EventsMessage(date, markup=back_open_markup, page=page)
 
     if id_list:
         generated.get_page_events(WHERE, params, id_list)
@@ -800,8 +800,8 @@ AND group_id IS ?
 
 def before_event_delete_message(event_id: int) -> EventMessage | None:
     """
-    Генерирует сообщение с кнопками удаления,
-    удаления в корзину (для премиум) и изменения даты.
+    Generates a message with delete buttons,
+    deleting to bin (for premium) and changing the date.
     """
     generated = EventMessage(event_id)
     event = generated.event
@@ -831,8 +831,8 @@ def before_event_delete_message(event_id: int) -> EventMessage | None:
 
 def before_events_delete_message(id_list: list[int]) -> EventsMessage:
     """
-    Генерирует сообщение с кнопками удаления,
-    удаления в корзину (для премиум) и изменения даты.
+    Generates a message with delete buttons,
+    deleting to bin (for premium) and changing the date.
     """
     WHERE = """
 user_id IS ?
@@ -879,11 +879,11 @@ def search_results_message(
     is_placeholder: bool = False,
 ) -> EventsMessage | TextMessage:
     """
-    :param query: поисковый запрос
+    :param query: Search query
     :param filters:
-    :param id_list: Список из event_id
-    :param page: Номер страницы
-    :param is_placeholder: Пустой поиск
+    :param id_list: List of event_id
+    :param page: Page number
+    :param is_placeholder: Is placeholder
     """
     translate_search = get_translate("messages.search")
     nothing_found = get_translate("errors.nothing_found")
@@ -1059,8 +1059,8 @@ def search_filter_message(message: Message, call_data: str) -> TextMessage:
 
 def week_event_list_message(id_list: list[int] = (), page: int = 0) -> EventsMessage:
     """
-    :param id_list: Список из event_id
-    :param page: Номер страницы
+    :param id_list: List of event_id
+    :param page: Page number
     """
     tz = f"'{request.entity.settings.timezone:+} hours'"
     WHERE = f"""
@@ -1074,7 +1074,7 @@ AND (
             AND DATE('now', '+7 day', {tz})
     )
     OR
-    ( -- Каждый год
+    ( -- Every year
         (
             statuses LIKE '%🎉%'
             OR statuses LIKE '%🎊%'
@@ -1088,14 +1088,14 @@ AND (
         )
     )
     OR
-    ( -- Каждый месяц
+    ( -- Every month
         statuses LIKE '%📅%'
         AND SUBSTR(date, 1, 2) 
         BETWEEN strftime('%d', 'now', {tz})
             AND strftime('%d', 'now', '+7 day', {tz})
     )
-    OR statuses LIKE '%🗞%' -- Каждую неделю
-    OR statuses LIKE '%📬%' -- Каждый день
+    OR statuses LIKE '%🗞%' -- Every week
+    OR statuses LIKE '%📬%' -- Every day
 )
     """
     params = (
@@ -1123,8 +1123,8 @@ AND (
 
 def trash_can_message(id_list: list[int] = (), page: int = 0) -> EventsMessage:
     """
-    :param id_list: Список из event_id
-    :param page: Номер страницы
+    :param id_list: List of event_id
+    :param page: Page number
     """
     WHERE = """
 user_id IS ?
@@ -1135,10 +1135,9 @@ AND removal_time IS NOT NULL
         request.entity.safe_user_id,
         request.entity.group_id,
     )
-    # Удаляем события старше 30 дней
     db.execute(
         """
--- Удаляем события старше 30 дней
+-- Deleting events older than 30 days
 DELETE FROM events
       WHERE removal_time IS NOT NULL AND 
             (julianday('now') - julianday(removal_time) > 30);
@@ -1193,16 +1192,16 @@ AND group_id IS ?
 AND removal_time IS NULL
 AND statuses NOT LIKE '%🔕%'
 AND (
-    ( -- На сегодня и +1 день
+    ( -- For today and +1 day
         date IN ('{dates[0]:%d.%m.%Y}', '{dates[1]:%d.%m.%Y}')
     )
     OR
-    ( -- Совпадения на +2, +3 и +7 дней
+    ( -- Matches on +2, +3 and +7 days
         date IN ({", ".join(f"'{date:%d.%m.%Y}'" for date in dates[2:])})
         AND statuses NOT LIKE '%🗞%'
     )
     OR
-    ( -- Каждый год
+    ( -- Every year
         (
             statuses LIKE '%🎉%'
             OR
@@ -1213,17 +1212,17 @@ AND (
         AND SUBSTR(date, 1, 5) IN ({", ".join(f"'{date:%d.%m}'" for date in dates)})
     )
     OR
-    ( -- Каждый месяц
+    ( -- Every month
         SUBSTR(date, 1, 2) IN ({", ".join(f"'{date:%d}'" for date in dates)})
         AND statuses LIKE '%📅%'
     )
     OR
-    ( -- Каждую неделю
+    ( -- Every week
         strftime('%w', {sqlite_format_date('date')}) IN ({", ".join(f"'{w}'" for w in weekdays)})
         AND statuses LIKE '%🗞%'
     )
     OR
-    ( -- Каждый день
+    ( -- Every day
         statuses LIKE '%📬%'
     )
 )
@@ -1347,14 +1346,14 @@ SELECT CAST(
 
 
 def monthly_calendar_message(
-    YY_MM: list | tuple[int, int] = None,
+    yy_mm: list | tuple[int, int] = None,
     command: str = None,
     back: str = None,
     custom_text: str = None,
     arguments: str = None,
 ) -> TextMessage:
     text = custom_text if custom_text else get_translate("select.date")
-    markup = create_monthly_calendar_keyboard(YY_MM, command, back, arguments)
+    markup = create_monthly_calendar_keyboard(yy_mm, command, back, arguments)
     return TextMessage(text, markup)
 
 
@@ -1616,7 +1615,6 @@ def select_one_message(
     is_open: bool = False,
     message_id: int = None,
 ) -> TextMessage | None:
-    # Если событий нет
     if len(id_list) == 0:
         return None
 
@@ -1625,7 +1623,6 @@ def select_one_message(
     except EventNotFound:
         return None
 
-    # Если событие одно
     if len(events_list) == 1:
         event = events_list[0]
         if is_open:
@@ -1635,7 +1632,6 @@ def select_one_message(
 
         return generated
 
-    # Если событий несколько
     markup = []
     for event in events_list:
         button_title = f"{event.event_id}.{event.string_statuses} {event.text}"
@@ -1665,7 +1661,6 @@ def select_one_message(
 def select_events_message(
     id_list: list[int], back_data: str, in_bin: bool = False, is_in_search: bool = False
 ) -> TextMessage | None:
-    # Если событий нет
     if len(id_list) == 0:
         return None
 
@@ -1674,11 +1669,9 @@ def select_events_message(
     except EventNotFound:
         return None
 
-    # Если событие одно
     if len(events_list) == 1:
         return events_message([events_list[0].event_id], in_bin)
 
-    # Если событий несколько
     markup = []
     for n, event in enumerate(events_list):
         button_title = f"{event.event_id}.{event.string_statuses} {event.text}"

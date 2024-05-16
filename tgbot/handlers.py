@@ -261,9 +261,9 @@ def not_login_handler(x: CallbackQuery | Message) -> None:
 
 def command_handler(message: Message) -> None:
     """
-    Отвечает за реакцию бота на команды
-    Метод message.text.startswith("")
-    используется и для групп (в них сообщение приходит в формате /command{bot.user.username})
+    Responsible for the bot's response to commands
+    Method message.text.startswith("")
+    also used for groups (the message comes to them in the format /command{bot.user.username})
     """
     chat_id, message_text = request.chat_id, message.text
     parsed_command = parse_command(message_text, {"arg": "long str"})
@@ -299,14 +299,13 @@ def command_handler(message: Message) -> None:
         TextMessage(f"Version {config.__version__}").send()
 
     elif command_text in ("weather", "forecast"):
-        # Проверяем есть ли аргументы
-        nowcity = get_command_arguments(
+        now_city = get_command_arguments(
             message_text, {"city": ("long str", request.entity.settings.city)}
         )["city"]
 
         func = fetch_weather if command_text == "weather" else fetch_forecast
         try:
-            text = func(city=nowcity)
+            text = func(city=now_city)
         except KeyError:
             text = get_translate(f"errors.{command_text}_invalid_city_name")
 
@@ -551,7 +550,7 @@ class CallBackHandler:
     def event_add(self, date: str, message_id: int, message: Message):
         cache_add_event_date("")
 
-        # Проверяем будет ли превышен лимит для пользователя, если добавить 1 событие с 1 символом
+        # Check whether the limit for the user will be exceeded if we add 1 event with 1 character
         if request.entity.limit.is_exceeded_for_events(date, 1, 1):
             call_answer = CallBackAnswer(get_translate("errors.exceeded_limit"))
             return call_answer.answer(show_alert=True)
@@ -940,7 +939,7 @@ class CallBackHandler:
             try:
                 TextMessage(markup=markup).edit(only_markup=True)
             except ApiTelegramException:
-                # Если нажата кнопка ⟳, но сообщение не изменено
+                # If the ⟳ button is pressed but the message is not changed
                 now_date = request.entity.now_time()
 
                 if command is not None and back is not None:
@@ -961,7 +960,7 @@ class CallBackHandler:
             try:
                 TextMessage(markup=markup).edit(only_markup=True)
             except ApiTelegramException:
-                # Сообщение не изменено
+                # The message has not been changed
                 date = now_time_calendar()
                 markup = create_monthly_calendar_keyboard(
                     date, command, back, arguments
@@ -984,7 +983,7 @@ class CallBackHandler:
             try:
                 TextMessage(markup=markup).edit(only_markup=True)
             except ApiTelegramException:
-                # Сообщение не изменено
+                # The message has not been changed
                 year = request.entity.now_time().year
                 markup = create_yearly_calendar_keyboard(year, command, back, arguments)
                 TextMessage(markup=markup).edit(only_markup=True)
@@ -1038,7 +1037,7 @@ class CallBackHandler:
         request.entity.set_telegram_user_settings(
             lang="ru",
             sub_urls=1,
-            city="Москва",
+            city="Moscow",
             timezone=3,
             direction="DESC",
             notifications=0,
@@ -1120,7 +1119,7 @@ class CallBackHandler:
             request.entity.recover_event(event_id)
         except (EventNotFound, LimitExceeded):
             CallBackAnswer(get_translate("errors.error")).answer(show_alert=True)
-            return  # такого события нет
+            return
 
         trash_can_message().edit()
 
@@ -1195,6 +1194,7 @@ class CallBackHandler:
             return CallBackAnswer(text).answer()
 
         cache_create_group(str(message_id))
+        # TODO перевод
         text = """
 👥 Группы 👥
 
@@ -1272,7 +1272,7 @@ callback_handler = CallBackHandler()
 
 def reply_handler(message: Message, reply_to_message: Message) -> None:
     """
-    Реакции на ответ на сообщение бота
+    Reactions to a reply to a bot message
     """
 
     if reply_to_message.text.startswith("⚙️"):
@@ -1304,12 +1304,12 @@ def reply_handler(message: Message, reply_to_message: Message) -> None:
 
 def cache_add_event_date(state: str = None) -> str | bool:
     """
-    Очищает состояние приёма сообщения у пользователя
-    и изменяет сообщение по id из add_event_date
+    Clears the user's message receipt status
+    and changes the message by id from add_event_date
 
-    if state - поставить
-    if state is None - получить
-    if state == "" - очистить
+    if state - put
+    if state is None - get
+    if state == "" - clear
     """
 
     if state:
@@ -1334,12 +1334,12 @@ def cache_create_group(
     state: str = None, mode: str = "al", page: int = 1
 ) -> str | bool:
     """
-    Очищает состояние приёма сообщения у пользователя
-    и изменяет сообщение по id из add_event_date
+    Clears the user's message receipt status
+    and changes the message by id from add_event_date
 
-    if state - поставить
-    if state is None - получить
-    if state == "" - очистить
+    if state - put
+    if state is None - get
+    if state == "" - clear
     """
 
     if state:

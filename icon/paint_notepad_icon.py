@@ -31,7 +31,7 @@ def image_generator(icon_size: int, font_path: str, icon_version: str = None) ->
     notebook_offset_y = 159
 
     def draw_notebook(offset_x: int, offset_y: int):
-        # Тени блокнота
+        # Notepad shadows
         for n in range(9):
             n *= 36
             draw.polygon(
@@ -44,7 +44,7 @@ def image_generator(icon_size: int, font_path: str, icon_version: str = None) ->
                 fill=color_dark_background,
             )
 
-        # Большая тень
+        # Big shadow
         draw.polygon(
             (
                 (offset_x + 330, offset_y + 1),
@@ -56,14 +56,14 @@ def image_generator(icon_size: int, font_path: str, icon_version: str = None) ->
             fill=color_dark_background,
         )
 
-        # Лист
+        # Sheet
         draw.rounded_rectangle(
             (offset_x, offset_y + 41, offset_x + 358, offset_y + 444),
             10,
             fill=color_notebook,
         )
 
-        # Скрепки
+        # Paper clips
         for n in range(9):
             n *= 36
             draw.rounded_rectangle(
@@ -72,7 +72,7 @@ def image_generator(icon_size: int, font_path: str, icon_version: str = None) ->
                 fill=color_paper_clips,
             )
 
-        # Записи
+        # Posts
         for n in range(5):
             n *= 55
             draw.rounded_rectangle(

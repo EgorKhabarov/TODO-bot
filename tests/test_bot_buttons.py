@@ -515,7 +515,7 @@ def test_bot_callback_esdb():
         else:
             assert False, "not raised todoapi.exceptions.NotEnoughPermissions"
 
-        # Изменить статус user-а
+        # Change user status
         chat.clear()
         # callback_handler(request.query)
         # assert chat.comparer(

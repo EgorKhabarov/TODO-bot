@@ -7,7 +7,7 @@ from tgbot.lang import get_translate
 
 def now_time_calendar() -> tuple[int, int]:
     """
-    Возвращает [год, месяц]
+    Returns [year, month]
     """
     date = request.entity.now_time()
     return date.year, date.month
@@ -15,8 +15,8 @@ def now_time_calendar() -> tuple[int, int]:
 
 def year_info(year: int) -> str:
     """
-    Строковая информация про год
-    "'имя месяца' ('номер месяца'.'год')('високосный или нет' 'животное этого года')"
+    String information about the year
+    "'month name' ('month number'.'year')('leap year or not' 'animal of this year')"
     """
     result = ""
     if isleap(year):  # year % 4 == 0 and (year % 100 != 0 or year % 400 == 0):
@@ -29,17 +29,17 @@ def year_info(year: int) -> str:
     return result
 
 
-def get_week_number(YY, MM, DD) -> int:
+def get_week_number(year, month, day) -> int:
     """
-    Номер недели по дате
+    Week number by date
     """
-    return datetime(YY, MM, DD).isocalendar()[1]
+    return datetime(year, month, day).isocalendar()[1]
 
 
 def relatively_string_date(day_diff: int) -> tuple[str, str, str]:
     """
     str_date, rel_date, week_date = relatively_string_date(Event(...).days_before_event(timezone))
-    # ('4 Апреля', 'Сегодня', 'Четверг')
+    # ('April 4', 'Today', 'Thursday')
     """
     (
         today,

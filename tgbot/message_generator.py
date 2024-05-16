@@ -26,13 +26,13 @@ event_formats = {
     "a": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{text}\n",
 }
 """
-"dl" - Шаблон для событий на один день
-"dt" - Шаблон для событий на разные дни
-"b" - Шаблон для корзины, показывает количество дней до уделения события
-"r" - Шаблон для событий которые могут повторяться,
-      показывает количество дней до следующего повторения
-"s" - Шаблон для показа событий, без относительных дат
-"a" - Шаблон для показа сообщения о событии, без markdown разметки
+"dl" - Template for events for one day
+"dt" - Template for events on different days
+"b" - Template for the cart, shows the number of days until the event is allocated
+"r" - A pattern for events that can be repeated,
+      shows the number of days until the next repetition
+"s" - Template for displaying events, without relative dates
+"a" - Template for displaying an event message, without markdown markup
 """
 
 
@@ -51,13 +51,13 @@ def pagination(
     max_group_id_len: int = 39,
 ) -> list[str]:
     """
-    :param WHERE: SQL условие
-    :param params: параметры
-    :param direction: Направление сортировки
-    :param max_group_len: Максимальное количество элементов на странице
-    :param max_group_symbols_count: Максимальное количество символов на странице
-    :param max_group_id_len: Максимальная длинна сокращённого id
-    Количество данных в кнопке ограничено 64 символами
+    :param WHERE: SQL condition
+    :param params: options
+    :param direction: Sorting direction
+    :param max_group_len: Maximum number of elements per page
+    :param max_group_symbols_count: Maximum number of characters per page
+    :param max_group_id_len: Maximum length of shortened id
+    The amount of data in a button is limited to 64 characters
     """
 
     data = db.execute(
@@ -124,8 +124,8 @@ class TextMessage:
         """
         :param chat_id: chat_id
         :param message_id: message_id
-        :param only_markup: обновить только клавиатуру self.markup
-        :param markup: обновить текст self.text и клавиатура markup
+        :param only_markup: update only keyboard self.markup
+        :param markup: update self.text and keyboard markup
 
 
         bot.edit_message_text(text, chat_id, message_id, reply_markup=self.markup)
@@ -242,7 +242,7 @@ class DocumentMessage:
 
 class EventMessage(TextMessage):
     """
-    Класс для взаимодействия с одним событием
+    Class for interacting with one event
     """
 
     def __init__(self, event_id: int, in_wastebasket: bool = False):
@@ -294,7 +294,7 @@ class EventMessage(TextMessage):
 
 class EventsMessage(TextMessage):
     """
-    Класс для заполнения и форматирования сообщений по шаблону
+    Class for filling and formatting messages using a template
     """
 
     def __init__(
@@ -319,7 +319,7 @@ class EventsMessage(TextMessage):
 
     def get_pages_data(self, WHERE: str, params: dict | tuple, callback_data: str):
         """
-        Получить список кортежей строк id по страницам
+        Get a list of row id tuples by page
         """
         direction = request.entity.settings.direction
         data = pagination(WHERE, params, direction)
@@ -359,22 +359,22 @@ SELECT user_id,
 
             count_columns = 5
             page_diapason: list[list[tuple[int, str]]] = []
-            for num, d in enumerate(data):  # Заполняем данные из диапазонов в список
+            for num, d in enumerate(data):  # Filling data from ranges into a list
                 if int(f"{num}"[-1]) in (0, count_columns):
-                    # Разделяем диапазоны в строчки по 5
+                    # Divide the ranges into lines of 5
                     page_diapason.append([])
-                # Номер страницы, id
+                # Page number, id
                 page_diapason[-1].append(
                     (num + 1, encode_id([int(i) for i in d.split(",")]))
                 )
 
-            if len(page_diapason[0]) != 1:  # Если страниц больше одной
+            if len(page_diapason[0]) != 1:  # If there is more than one page
                 self.page_signature_needed = True
                 for i in range(count_columns - len(page_diapason[-1])):
-                    # Заполняем пустые кнопки в последнем ряду до 5
+                    # Filling the empty buttons in the last row up to 5
                     page_diapason[-1].append((0, ""))
 
-                # Обрезаем до 8 строк кнопок чтобы не было слишком много строк кнопок
+                # Trim down to 8 button lines so there aren't too many button lines
                 for row in page_diapason[:8]:
                     self.markup.row(
                         *[
@@ -395,7 +395,7 @@ SELECT user_id,
 
     def get_page_events(self, WHERE: str, params: tuple, id_list: list[int]):
         """
-        Возвращает события входящие в values с условием WHERE
+        Returns events included in values with the WHERE condition
         """
         direction = request.entity.settings.direction
 
@@ -454,36 +454,36 @@ SELECT user_id,
         **kwargs,
     ):
         """
-        Заполнение сообщения по шаблону
+        Filling out a message using a template
 
-        {date}     - Date                                                                       ["0000.00.00"]
+        {date}     - Date ["0000.00.00"]
 
-        {strdate}  - String Date                                                                ["0 January"]
+        {strdate}  - String Date ["0 January"]
 
-        {weekday} - Week Date                                                                   ["Понедельник"]
+        {weekday} - Week Date ["Monday"]
 
-        {reldate}  - Relatively Date                                                            ["Завтра"]
+        {reldate}  - Relatively Date ["Tomorrow"]
 
 
 
-        {numd}     - Порядковый номер (циферки)                                                 ["1 2 3"]
+        {numd}     - Serial number (digits) ["1 2 3"]
 
-        {event_id} - Event_id                                                                   ["1"]
+        {event_id} - Event_id ["1"]
 
-        {status}   - Status                                                                     ["⬜"]
+        {status}   - Status ["⬜"]
 
-        {markdown_text} - оборачивает текст в нужный тег по статусу                             ["<b>"]
+        {markdown_text} - wraps the text in the desired status tag ["<b>"]
 
-        {text}     - Text                                                                       ["text"]
+        {text}     - Text ["text"]
 
-        {days_before_delete} - Дней до удаления
+        {days_before_delete} - Days until removal
 
-        {days_before} - (Дней до)
+        {days_before} - (Days until)
 
-        :param title:    Заголовок
-        :param args:     Повторяющийся шаблон
-        :param ending:   Конец сообщения
-        :param if_empty: Если результат запроса пустой
+        :param title:    Heading
+        :param args:     Repeating pattern
+        :param ending:   End of message
+        :param if_empty: If the query result is empty
         :return:         message.text
         """
         dt_date = datetime.strptime(self._date, "%d.%m.%Y")

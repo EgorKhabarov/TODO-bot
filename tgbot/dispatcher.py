@@ -56,7 +56,7 @@ def process_account(func):
             if request.query.content_type != "migrate_to_chat_id" and (
                 request.query.text.startswith("/") and not command_regex.match(_x.text)
             ):
-                # Если команда будет обращена к другим ботам, то не реагировать
+                # If the command is addressed to other bots, then do not respond
                 return
         elif request.is_callback:
             if request.query.data == "None":
