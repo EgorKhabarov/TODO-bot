@@ -4,6 +4,7 @@ pillow==10.3.0
 pytest~=8.2.0
 vedis~=0.7.2
 Flask~=3.0.2
+PyYAML~=6.0.1
 cachetools~=5.3.3
 oauthlib~=3.2.2
 ipython~=8.24.0
