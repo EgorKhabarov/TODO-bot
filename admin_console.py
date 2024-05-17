@@ -19,7 +19,7 @@ def execute(
     query: str,
     params: dict | tuple = (),
     commit: bool = False,
-    func: tuple[str, Callable] | None = None,
+    functions: tuple[tuple[str, Callable]] | None = None,
     mode: Literal["table", "raw", "pprint"] = "table",
     max_width: int | type(max) | type(max) | None = max,
     max_height: int | type(max) | type(max) | None = max,
@@ -33,7 +33,7 @@ def execute(
     :param query: SQL query
     :param params: tuple[str | int] or dict[str, str | int]
     :param commit: bool
-    :param func: (func_name, func) or None
+    :param functions: (func_name, func) or None
     :param mode: "table" - ASCII table "raw" "pprint"
     :param max_width:
     :param max_height:
@@ -43,12 +43,14 @@ def execute(
     :param return_data:
     :return:
     """
-    if func:
-        func_name, func_func = func
-        # noinspection PyUnresolvedReferences
-        func = (func_name, func_func.__code__.co_argcount, func_func)
+    if functions:
+        functions = tuple(
+            # noinspection PyUnresolvedReferences
+            (lambda fn, ff: (fn, ff.__code__.co_argcount, ff))(*func)
+            for func in functions
+        )
 
-    result = db.execute(query, params, commit, column_names=True, func=func)
+    result = db.execute(query, params, commit, column_names=True, functions=functions)
 
     if mode == "table":
         if max_width is max or max_height is max:

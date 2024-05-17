@@ -71,7 +71,7 @@ SELECT event_id,
  LIMIT 400;
 """,
         params=params,
-        func=("DAYS_BEFORE_EVENT", 2, calculate_days_before_event),
+        functions=(("DAYS_BEFORE_EVENT", calculate_days_before_event),),
     )
     _result = []
     group = []
@@ -350,7 +350,7 @@ SELECT user_id,
           statuses LIKE '%🎊%';
 """,
                     params=params,
-                    func=("DAYS_BEFORE_EVENT", 2, calculate_days_before_event),
+                    functions=(("DAYS_BEFORE_EVENT", calculate_days_before_event),),
                 )
             ]
 
@@ -432,7 +432,7 @@ SELECT user_id,
                         *id_list,
                         *params,
                     ),
-                    func=("DAYS_BEFORE_EVENT", 2, calculate_days_before_event),
+                    functions=(("DAYS_BEFORE_EVENT", calculate_days_before_event),),
                 )
             ]
         except Error as e:

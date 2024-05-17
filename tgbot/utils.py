@@ -1,5 +1,6 @@
 import re
 import html
+import shlex
 import difflib
 from urllib.parse import urlparse
 from typing import Literal
@@ -508,6 +509,11 @@ def extract_search_filters(message_html_text: str) -> list[list[str]]:
 
 
 def generate_search_sql_condition(query: str, filters: list[list[str]]):
+    try:
+        query_words = shlex.split(query)
+    except ValueError:
+        query_words = query.split()
+
     splitquery = " OR ".join(
         """
 date LIKE '%' || ? || '%'
@@ -515,7 +521,7 @@ date LIKE '%' || ? || '%'
  OR statuses LIKE '%' || ? || '%'
  OR event_id LIKE '%' || ? || '%'
 """
-        for _ in query.split()
+        for _ in query_words
     )
     filters_conditions_date = []
     filters_conditions_date_e = []
@@ -619,7 +625,7 @@ AND ({splitquery.strip()})
     params = (
         request.entity.safe_user_id,
         request.entity.group_id,
-        *[y for x in query.split() for y in (x, x, x, x)],
+        *[y for x in query_words for y in (x, x, x, x)],
         *filters_params_date_e,
         *filters_params_date,
         *filters_params_status,

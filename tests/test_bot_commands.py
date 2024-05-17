@@ -188,3 +188,29 @@ def test_bot_command_logout():
                 and k["params"]["scope"]
             ),
         )
+
+
+def test_bot_command_search():
+    with Chat() as chat:
+        setup_request(message_mock(1, "/search"))
+        command_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("sendMessage")
+                and k["params"]["chat_id"] == "1"
+                and k["params"]["text"]
+                and k["params"]["reply_markup"]
+            ),
+        )
+
+        chat.clear()
+        setup_request(message_mock(1, "/search ."))
+        command_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("sendMessage")
+                and k["params"]["chat_id"] == "1"
+                and k["params"]["text"]
+                and k["params"]["reply_markup"]
+            ),
+        )

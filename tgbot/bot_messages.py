@@ -894,7 +894,7 @@ def search_results_message(
 
     query = query.replace("\n", " ").strip()
 
-    if query.isspace():
+    if not query.strip() or query.isspace():
         generated = EventsMessage(markup=delmarkup())
         generated.format(
             title=f"🔍 {translate_search} ...:\n",

@@ -24,13 +24,15 @@ def generate_buttons(
 ) -> return_buttons_types:
     """
     >>> from pprint import pprint
-    >>> # noinspection PyUnresolvedReferences
-    >>> (
-    ...     lambda k: pprint(
-    ...         [isinstance(k, InlineKeyboardMarkup)]
-    ...         + [[b.to_dict() for b in r] for r in k.keyboard]
-    ...     )
-    ... )(
+    >>> def inline_buttons_printer(buttons: return_buttons_types):
+    ...     result = [isinstance(buttons, InlineKeyboardMarkup)]
+    ...     for r in buttons.keyboard:
+    ...         result.append([])
+    ...         for b in r:
+    ...             result[-1].append(b.to_dict())
+    ...     pprint(result)
+    ...
+    >>> inline_buttons_printer(
     ...     generate_buttons(
     ...         [
     ...             [
@@ -70,9 +72,9 @@ def generate_buttons(
      [{'callback_data': 'call data', 'text': 'button text'}],
      [{'callback_data': 'call data', 'text': 'button text'},
       {'callback_data': 'call data', 'text': 'button text'}]]
-    >>> (
-    ...     lambda k: (isinstance(k, ReplyKeyboardMarkup), k.keyboard)
-    ... )(generate_buttons([["1", "2", "3"]], keyboard_type="reply"))
+    >>> def reply_buttons_printer(buttons):
+    ...     print((isinstance(buttons, ReplyKeyboardMarkup), buttons.keyboard))
+    >>> reply_buttons_printer(generate_buttons([["1", "2", "3"]], keyboard_type="reply"))
     (True, [[{'text': '1'}, {'text': '2'}, {'text': '3'}]])
     """
 

@@ -34,7 +34,7 @@ def image_generator(icon_size: int, font_path: str, icon_version: str = None) ->
     # Black squares of days
     for y in (351, 406, 458, 512):
         for x in (239, 306, 373, 440, 506):
-            # First square at top left
+            # First square at the top left
             if x == 239 and y == 351:
                 continue
             # Two squares bottom right

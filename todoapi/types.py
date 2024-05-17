@@ -131,7 +131,7 @@ class DataBase:
         params: tuple | dict = (),
         commit: bool = False,
         column_names: bool = False,
-        func: tuple[str, int, Callable] = None,
+        functions: tuple[tuple[str, Callable]] = None,
         script: bool = False,
     ) -> list[tuple[int | str | bytes | Any, ...], ...]:
         """
@@ -142,14 +142,18 @@ class DataBase:
         :param params: Query parameters (optional)
         :param commit: Should I save my changes? (optional, defaults to False)
         :param column_names: Insert column names into the result.
-        :param func: Window function. (function name, number of arguments, function)
+        :param functions: Window functions. (function name, function)
         :param script: Query consists of several requests
         :return: Query result
         """
         self.sqlite_connection = connect(config.DATABASE_PATH)
         self.sqlite_cursor = self.sqlite_connection.cursor()
-        if func:
-            self.sqlite_connection.create_function(*func)
+
+        if functions:
+            for func in functions:
+                fn, ff = func
+                # noinspection PyUnresolvedReferences
+                self.sqlite_connection.create_function(fn, ff.__code__.co_argcount, ff)
 
         # logger.debug(
         #     "SQLite3.EXECUTE: "
@@ -987,12 +991,13 @@ SELECT *
                     *event_ids,
                     in_bin,
                 ),
-                func=(
-                    "DAYS_BEFORE_EVENT",
-                    2,
-                    lambda date, statuses: Event(
-                        0, "", 0, date, "", statuses, "", "", ""
-                    ).days_before_event(self.settings.timezone),
+                functions=(
+                    (
+                        "DAYS_BEFORE_EVENT",
+                        lambda date, statuses: Event(
+                            0, "", 0, date, "", statuses, "", "", ""
+                        ).days_before_event(self.settings.timezone),
+                    ),
                 ),
             )
         except Error as e:
