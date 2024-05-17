@@ -2,7 +2,6 @@ import os
 import csv
 import subprocess
 from datetime import datetime
-from io import StringIO
 from pprint import pprint, pformat
 from typing import Literal, Any, Callable
 
@@ -66,9 +65,8 @@ def execute(
         if max_height is min:
             max_height = None
 
-        file = StringIO()
         write_table_to_file(
-            file=file,
+            file=None,
             table=result or [["ok"]],
             align=align,
             name=name,
@@ -76,10 +74,6 @@ def execute(
             max_width=max_width,
             max_height=max_height,
         )
-        if return_data:
-            return file.read()
-        [print(line, end="") for line in file]
-        print()
     elif mode == "raw":
         if return_data:
             return result
