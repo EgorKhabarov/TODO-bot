@@ -64,5 +64,5 @@ COMMANDS = (
 ts = chr(10240)  # transparent symbol "⠀" or chr(10240) or "\U00002800"
 """Special transparent symbol for filling empty space in buttons"""
 
-__version__ = "2024.05.19.0"
+__version__ = "2024.05.19.1"
 __author__ = "EgorKhabarov"

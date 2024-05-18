@@ -6,8 +6,8 @@ from pprint import pprint, pformat
 from typing import Literal, Any, Callable
 
 from IPython import embed
-from ntable import write_table_to_file
-from ntable.ntable import AlignType
+from table2text import print_table
+from table2text.table2text import AlignType
 
 from config import WSGI_PATH
 from todoapi.types import db, Account  # noqa
@@ -65,8 +65,7 @@ def execute(
         if max_height is min:
             max_height = None
 
-        write_table_to_file(
-            file=None,
+        print_table(
             table=result or [["ok"]],
             align=align,
             name=name,

@@ -9,4 +9,4 @@ cachetools~=5.3.3
 oauthlib~=3.2.2
 IPython~=8.24.0
 GitPython==3.1.43
-git+https://github.com/EgorKhabarov/ntable.git@master
+git+https://github.com/EgorKhabarov/table2text.git@master

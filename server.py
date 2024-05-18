@@ -32,7 +32,7 @@ def home():
 
 
 @app.route("/v")
-def version():
+def v():
     return config.__version__
 
 
@@ -162,7 +162,10 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
             print(f"{build_commit}")
 
             os.system("pip install -r requirements.txt")
-            os.system("touch {}".format(config.WSGI_PATH))
+            try:
+                os.system("touch {}".format(config.WSGI_PATH))
+            except OSError:
+                pass
 
             return "Updated PythonAnywhere server to commit {commit}".format(
                 commit=commit_hash
