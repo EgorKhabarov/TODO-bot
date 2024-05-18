@@ -18,7 +18,7 @@ app = Flask(__name__)
 logger.info(bot_log_info())
 
 if not config.TELEGRAM_WEBHOOK:
-    if not bot_webhook_info.url:
+    if bot_webhook_info.url:
         bot.remove_webhook()
 
     Thread(target=start_bot, daemon=True).start()
