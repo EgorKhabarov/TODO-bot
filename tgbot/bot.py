@@ -11,7 +11,7 @@ if config.TELEGRAM_WEBHOOK:
 else:
     threaded = True
 
-bot = TeleBot(config.BOT_TOKEN, threaded=threaded)
+bot = TeleBot(config.BOT_TOKEN, threaded=threaded, num_threads=5)
 
 bot.parse_mode = "html"
 bot.disable_web_page_preview = True

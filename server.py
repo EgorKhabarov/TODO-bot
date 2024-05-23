@@ -28,6 +28,11 @@ def home():
     return "200", 200
 
 
+@app.route("/favicon.ico")
+def favicon():
+    return send_file("icon/notepad_icon.png")
+
+
 @app.route("/v")
 def v():
     return config.__version__
