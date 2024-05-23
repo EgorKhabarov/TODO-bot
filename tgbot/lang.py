@@ -570,7 +570,7 @@ name: `<code>{}</code>`
 {page}) Название: `<code>{name}</code>`
      id: `<code>{group_id}</code>`
      Статус: `<code>{status}</code>`
-     Вступил: `<code>{entry_date}</code>` ({rel_entry_date})
+     Вступил: `<code>{entry_date}</code>`
      chat_id: `<code>{chat_id}</code>`
 """,
                 ("Все", "Участник", "Модератор", "Администратор"),
@@ -588,7 +588,7 @@ You have groups: {}
 {page}) name: `<code>{name}</code>`
      id: `<code>{group_id}</code>`
      status: `<code>{status}</code>`
-     entry_date: `<code>{entry_date}</code>` ({rel_entry_date})
+     entry_date: `<code>{entry_date}</code>`
      chat_id: `<code>{chat_id}</code>`
 """,
                 ("All", "Member", "Moderator", "Admin"),

@@ -1,5 +1,6 @@
 # noinspection PyPackageRequirements
 from telebot import TeleBot
+from table2string import stringify_table
 
 import config
 from telegram_utils.command_parser import command_regex
@@ -29,6 +30,11 @@ command_regex.set_username(bot.user.username)
 
 def bot_log_info():
     bot_dict = bot.user.to_dict()
+    del bot_dict["last_name"]
+    del bot_dict["is_premium"]
+    del bot_dict["language_code"]
+    del bot_dict["added_to_attachment_menu"]
+    del bot_dict["can_connect_to_business"]
     bot_dict.update(
         {
             "database": config.DATABASE_PATH,
@@ -54,16 +60,8 @@ def bot_log_info():
                 f"{bot_settings.strip()}"
             )
 
-    max_len_left = max(len(k) for k in bot_dict.keys())
-    max_len_right = max(len(str(v)) for v in bot_dict.values())
-    max_len = max_len_left + max_len_right + 5
-
-    return (
-        "\n"
-        + f"+{'-' * max_len}+\n"
-        + "".join(
-            f"| {k: >{max_len_left}} = {str(v): <{max_len_right}} |\n"
-            for k, v in bot_dict.items()
-        )
-        + f"+{'-' * max_len}+"
+    return "\n" + stringify_table(
+        [(k, v) for k, v in bot_dict.items()],
+        align=(">", "<"),
+        sep=False,
     )

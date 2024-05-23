@@ -1515,12 +1515,7 @@ def groups_message(
                 name=html.escape(group.name),
                 group_id=group.group_id,
                 status=get_translate(f"text.status.{group.member_status}").capitalize(),
-                **dict(
-                    zip(
-                        ("entry_date", "rel_entry_date"),
-                        parse_utc_datetime(group.entry_date, True),
-                    )
-                ),
+                entry_date=parse_utc_datetime(group.entry_date),
                 chat_id=group.chat_id if group.chat_id else "-",
             ).strip()
             for n, group in enumerate(groups)

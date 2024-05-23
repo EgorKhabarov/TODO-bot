@@ -6,8 +6,8 @@ from pprint import pprint, pformat
 from typing import Literal, Any, Callable
 
 from IPython import embed
-from table2text import print_table
-from table2text.table2text import AlignType
+from table2string import print_table
+from table2string.table2string import AlignType
 
 from config import WSGI_PATH
 from todoapi.types import db, Account  # noqa
