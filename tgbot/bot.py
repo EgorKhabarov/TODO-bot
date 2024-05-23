@@ -6,11 +6,7 @@ import config
 from telegram_utils.command_parser import command_regex
 
 
-if (
-    config.TELEGRAM_WEBHOOK
-    and config.TELEGRAM_WEBHOOK_URL
-    and config.TELEGRAM_WEBHOOK_FLASK_PATH
-):
+if config.TELEGRAM_WEBHOOK:
     threaded = False
 else:
     threaded = True

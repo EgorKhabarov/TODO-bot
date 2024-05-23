@@ -8,7 +8,7 @@ from logger import logger
 
 def start_bot():
     if not config.TELEGRAM_WEBHOOK:
-        if not bot_webhook_info.url:
+        if bot_webhook_info.url:
             bot.remove_webhook()
 
         bot.infinity_polling()
