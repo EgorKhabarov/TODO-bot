@@ -1,4 +1,6 @@
 import re
+import random
+import string
 from time import time
 from hashlib import sha256
 from functools import wraps
@@ -36,25 +38,11 @@ def is_admin_id(chat_id: int) -> bool:
     return chat_id in config.ADMIN_IDS
 
 
-def is_premium_user(user) -> bool:
-    """
-    Is a premium user
-    """
-    return user.user_status >= 1 or is_admin_id(user.chat_id)
-
-
 def is_valid_year(year: int) -> bool:
     """
     Is the year valid (in the range from 1900 to 2300)?
     """
     return 1900 <= year <= 2300
-
-
-def isdigit(string: str) -> bool:
-    """
-    Replacing str.isdigit()
-    """
-    return string.isdigit() if string[:1] != "-" else string[1:].isdigit()
 
 
 def chunks(lst, n):
@@ -94,3 +82,7 @@ def rate_limit(
         return wrapper
 
     return decorator
+
+
+def generate_token(length=32):
+    return "".join(random.choices(string.ascii_letters + string.digits, k=length))

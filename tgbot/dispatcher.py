@@ -6,9 +6,9 @@ from telebot.types import Message, CallbackQuery
 
 # noinspection PyPackageRequirements
 from telebot.apihelper import ApiTelegramException
+from cachetools import LRUCache
 
 from logger import logger
-from cachetools import LRUCache
 from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.utils import telegram_log
@@ -37,7 +37,7 @@ def key_func(x: Message | CallbackQuery) -> int:
     lambda *args, **kwargs: request.entity.user_id,
     lambda *args, **kwargs: None,
 )
-def else_func(args, kwargs, key, sec) -> None:
+def else_func(args, kwargs, key, sec) -> None:  # noqa
     x = kwargs.get("x") or args[0]
     text = get_translate("errors.many_attempts").format(sec)
 

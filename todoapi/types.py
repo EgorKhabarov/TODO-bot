@@ -11,7 +11,6 @@ from datetime import datetime, timedelta
 from typing import Callable, Any, Literal
 
 from vedis import Vedis
-from oauthlib.common import generate_token
 
 import config
 from todoapi.exceptions import (
@@ -36,6 +35,7 @@ from todoapi.utils import (
     re_username,
     hash_password,
     is_valid_year,
+    generate_token,
     sql_date_pattern,
 )
 

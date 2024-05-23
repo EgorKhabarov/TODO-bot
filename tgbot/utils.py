@@ -2,14 +2,14 @@ import re
 import html
 import shlex
 import difflib
-from urllib.parse import urlparse
 from typing import Literal
+from urllib.parse import urlparse
 from datetime import timedelta, datetime, timezone
 
 import requests
 from requests import ConnectionError
-from cachetools import TTLCache, LRUCache, cached
 from requests.exceptions import MissingSchema
+from cachetools import TTLCache, LRUCache, cached
 
 # noinspection PyPackageRequirements
 from telebot.types import Message, CallbackQuery, BotCommandScopeChat
