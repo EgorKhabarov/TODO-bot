@@ -7,11 +7,11 @@ from telegram_utils.command_parser import command_regex
 
 
 if config.TELEGRAM_WEBHOOK:
-    threaded = False
+    threaded, num_threads = False, 6
 else:
-    threaded = True
+    threaded, num_threads = True, 2
 
-bot = TeleBot(config.BOT_TOKEN, threaded=threaded, num_threads=5)
+bot = TeleBot(config.BOT_TOKEN, threaded=threaded, num_threads=num_threads)
 
 bot.parse_mode = "html"
 bot.disable_web_page_preview = True

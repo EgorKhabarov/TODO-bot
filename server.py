@@ -34,10 +34,6 @@ def favicon():
 
 
 @app.route("/v")
-def v():
-    return config.__version__
-
-
 @app.route("/version")
 def version():
     return config.__version__
