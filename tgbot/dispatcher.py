@@ -8,7 +8,6 @@ from telebot.types import Message, CallbackQuery
 from telebot.apihelper import ApiTelegramException
 from cachetools import LRUCache
 
-from logger import logger
 from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.utils import telegram_log
@@ -16,6 +15,7 @@ from tgbot.types import TelegramAccount
 from tgbot.handlers import not_login_handler
 from tgbot.message_generator import CallBackAnswer, TextMessage
 from todoapi.types import db
+from todoapi.logger import logger
 from todoapi.utils import is_admin_id, rate_limit
 from todoapi.exceptions import UserNotFound, GroupNotFound, ApiError
 from telegram_utils.command_parser import command_regex

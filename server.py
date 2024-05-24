@@ -1,17 +1,16 @@
 import os
 from threading import Thread
 
+# noinspection PyPackageRequirements
+from telebot.types import Update
 from flask import Flask, request, abort, send_file
 
 import config
-from logger import logger
-from tgbot.limits import create_image_from_link
-from tgbot.main import bot
-from tgbot.bot import bot_webhook_info, bot_log_info
 from start_bot import start_bot, start_notifications_thread
-
-# noinspection PyPackageRequirements
-from telebot.types import Update
+from tgbot.main import bot
+from tgbot.limits import create_image_from_link
+from tgbot.bot import bot_webhook_info, bot_log_info
+from todoapi.logger import logger
 
 
 app = Flask(__name__)

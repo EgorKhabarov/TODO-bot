@@ -14,7 +14,6 @@ from telebot import formatting
 from telebot.types import InlineKeyboardButton, Message
 
 import config
-from logger import logger
 from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.limits import get_limit_link
@@ -43,6 +42,7 @@ from tgbot.utils import (
     highlight_text_difference,
     generate_search_sql_condition,
 )
+from todoapi.logger import logger
 from todoapi.types import db, group_limits
 from todoapi.utils import sqlite_format_date, is_valid_year, chunks
 from todoapi.exceptions import EventNotFound, GroupNotFound, UserNotFound

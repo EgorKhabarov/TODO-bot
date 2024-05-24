@@ -12,7 +12,6 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import CallbackQuery, Message
 
 import config
-from logger import logger
 from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.buttons_utils import delmarkup
@@ -48,6 +47,7 @@ from tgbot.bot_messages import (
     send_notifications_messages,
 )
 from todoapi.types import db
+from todoapi.logger import logger
 from todoapi.log_cleaner import clear_logs
 from todoapi.exceptions import (
     WrongDate,

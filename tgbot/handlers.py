@@ -12,7 +12,6 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import Message, CallbackQuery
 
 import config
-from logger import logger
 from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.time_utils import now_time_calendar
@@ -95,6 +94,7 @@ from todoapi.exceptions import (
     StatusLengthExceeded,
     NotEnoughPermissions,
 )
+from todoapi.logger import logger
 from todoapi.log_cleaner import clear_logs
 from todoapi.utils import is_valid_year, re_username
 from todoapi.types import (

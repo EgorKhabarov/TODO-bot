@@ -1,8 +1,7 @@
 from copy import deepcopy
-from logger import logger
 from sqlite3 import Error
-from typing import Literal, Any
 from datetime import datetime
+from typing import Literal, Any
 
 # noinspection PyPackageRequirements
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, InputFile
@@ -13,8 +12,9 @@ from tgbot.lang import get_translate
 from tgbot.time_utils import relatively_string_date
 from tgbot.buttons_utils import encode_id, number_to_power
 from tgbot.utils import add_status_effect, get_message_thread_id
-from todoapi.exceptions import EventNotFound
+from todoapi.logger import logger
 from todoapi.types import db, Event
+from todoapi.exceptions import EventNotFound
 
 
 event_formats = {

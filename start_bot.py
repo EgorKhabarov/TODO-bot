@@ -3,7 +3,7 @@ from threading import Thread
 import config
 from tgbot.main import bot, schedule_loop
 from tgbot.bot import bot_webhook_info, bot_log_info
-from logger import logger
+from todoapi.logger import logger
 
 
 def start_bot():
