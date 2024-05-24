@@ -1178,13 +1178,16 @@ DELETE FROM events
 
 
 def notification_message(
-    n_date: datetime = None,
+    n_date: datetime | str = None,
     id_list: list[int] = (),
     page: int = 0,
     from_command: bool = False,
 ) -> EventsMessage | None:
-    if n_date is None:
+    if n_date is None or n_date == "now":
         n_date = request.entity.now_time()
+
+    if isinstance(n_date, str):
+        n_date = datetime.strptime(n_date, "%d.%m.%Y")
 
     dates = [n_date + timedelta(days=days) for days in (0, 1, 2, 3, 7)]
     weekdays = ["0" if (w := date.weekday()) == 6 else f"{w + 1}" for date in dates[:2]]
@@ -1237,7 +1240,8 @@ AND (
     markup = generate_buttons(
         [
             [
-                {get_theme_emoji("back"): "mnn" if from_command else "mnm"},
+                {get_theme_emoji("back"): "mnm"},
+                {"📆": f"mnnc {n_date:%d.%m.%Y}"} if from_command else {},
                 {"🔄": f"mnn {n_date:%d.%m.%Y}"},
                 {"↖️": "None"},
             ]

@@ -508,17 +508,21 @@ class CallBackHandler:
         else:
             CallBackAnswer(get_translate("errors.error")).answer(show_alert=True)
 
-    @prefix("mnn", {"date": "date"})
+    @prefix("mnn", {"date": "str"})
     def notification(self, date: datetime):
-        if date is None:
-            return monthly_calendar_message(
-                None, "mnn", "mnm", get_translate("select.notification_date")
-            ).edit()
-
         try:
             notification_message(date, from_command=True).edit()
         except ApiTelegramException:
             CallBackAnswer("ok").answer(show_alert=True)
+
+    @prefix("mnnc", {"date": "date"})
+    def notification_calendar(self, date: datetime):
+        return monthly_calendar_message(
+            (date.year, date.month) if date else None,
+            "mnn",
+            "mnm",
+            get_translate("select.notification_date"),
+        ).edit()
 
     @prefix("mnsr")
     def search_message(self):
