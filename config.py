@@ -61,8 +61,11 @@ COMMANDS = (
     "logout",
 )
 
-ts = chr(10240)  # transparent symbol "⠀" or chr(10240) or "\U00002800"
-"""Special transparent symbol for filling empty space in buttons"""
+ts = "\U00002800"
+"""
+Special transparent symbol for filling empty space in buttons
+"⠀" or chr(10240) or "\\U00002800"
+"""
 
-__version__ = "2024.05.24.3"
+__version__ = "2024.05.25.0"
 __author__ = "EgorKhabarov"

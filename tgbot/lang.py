@@ -490,25 +490,25 @@ Use all the advantages of the bot to streamline your life and not miss a single 
             "ru": """⚙️ Настройки ⚙️
 
 [<u>Язык</u>]
-<b>{}</b>
+<b>{lang}</b>
 
 [<u>Уменьшать ссылки</u>]*
-<b>{}</b> <i>(True рекомендуется)</i>
+<b>{link}</b> <i>(True рекомендуется)</i>
 
 [<u>Город</u>]**
-<b>{}</b> <i>(Москва по умолчанию)</i>
+<b>{city}</b> <i>(Москва по умолчанию)</i>
 
 [<u>Часовой пояс</u>]
-<b>{}</b> <i>(3 по умолчанию)</i> У вас сейчас <b>{}</b>?
+<b>{timezone}</b> <i>(3 по умолчанию)</i> У вас сейчас <b>{timezone_question}</b>?
 
 [<u>Порядок событий в сообщении</u>]
-<b>{}</b> <i>(⬇️ по умолчанию)</i>
+<b>{sorting}</b> <i>(⬇️ по умолчанию)</i>
 
 [<u>Уведомления</u>](🔕→🔔→📆)
-<b>{} {}</b> <i>(🔕 по умолчанию)</i>
+<b>{notification_type} {notification_time}</b> <i>(🔕 по умолчанию)</i>
 
 [<u>Тема</u>]***
-<b>{}</b> <i>(⬜ по умолчанию)</i>
+<b>{theme}</b> <i>(⬜ по умолчанию)</i>
 
 *(<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 >www.youtube.com</a> <i>вместо полной ссылки</i>)
@@ -517,25 +517,25 @@ Use all the advantages of the bot to streamline your life and not miss a single 
             "en": """⚙️ Settings ⚙️
 
 [<u>Language</u>]
-<b>{}</b>
+<b>{lang}</b>
 
 [<u>Minify links</u>]
-<b>{}</b> <i>(True recommended)</i>
+<b>{link}</b> <i>(True recommended)</i>
 
 [<u>City</u>]
-<b>{}</b> <i>(Moscow by default)</i>
+<b>{city}</b> <i>(Moscow by default)</i>
 
 [<u>Timezone</u>]
-<b>{}</b> <i>(3 by default)</i> Do you have <b>{}</b> now?
+<b>{timezone}</b> <i>(3 by default)</i> Do you have <b>{timezone_question}</b> now?
 
 [<u>Order of events in a message</u>]
-<b>{}</b> <i>(⬇️ by default)</i>
+<b>{sorting}</b> <i>(⬇️ by default)</i>
 
 [<u>Notifications</u>](🔕→🔔→📆)
-<b>{} {}</b> <i>(🔕 by default)</i>
+<b>{notification_type} {notification_time}</b> <i>(🔕 by default)</i>
 
 [<u>Theme</u>]***
-<b>{}</b> <i>(⬜ by default)</i>
+<b>{theme}</b> <i>(⬜ by default)</i>
 
 *(<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 >www.youtube.com</a> <i>instead of full link</i>)

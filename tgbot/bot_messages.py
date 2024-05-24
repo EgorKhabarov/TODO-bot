@@ -155,15 +155,15 @@ def settings_message() -> TextMessage:
         }
 
     text = get_translate("messages.settings").format(
-        settings.lang,
-        bool(settings.sub_urls),
-        html.escape(settings.city),
-        str_utz,
-        f"{request.entity.now_time():%Y.%m.%d  <u>%H:%M</u>}",
-        {"DESC": "⬆️", "ASC": "⬇️"}[settings.direction],
-        ("🔕", "🔔", "📆")[settings.notifications],
-        f"{n_hours:0>2}:{n_minutes:0>2}" if settings.notifications else "",
-        not_theme[2],
+        lang=settings.lang,
+        link=bool(settings.sub_urls),
+        city=html.escape(settings.city),
+        timezone=str_utz,
+        timezone_question=f"{request.entity.now_time():%Y.%m.%d  <u>%H:%M</u>}",
+        sorting={"DESC": "⬆️", "ASC": "⬇️"}[settings.direction],
+        notification_type=("🔕", "🔔", "📆")[settings.notifications],
+        notification_time=f"{n_hours:0>2}:{n_minutes:0>2}" if settings.notifications else "",
+        theme=not_theme[2],
     )
     markup = generate_buttons(
         [
