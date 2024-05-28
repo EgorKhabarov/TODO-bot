@@ -297,8 +297,12 @@ def fetch_weather(city: str) -> str:
     weather_description = (
         weather["weather"][0]["description"].capitalize().replace(" ", "\u00A0")
     )
-    time_in_city = f"{datetime.now(timezone.utc)+delta}".replace("-", ".")[:-13]
-    weather_time = f"{datetime.utcfromtimestamp(weather['dt'])+delta}".replace("-", ".")
+
+    time_in_city = datetime.now(timezone.utc) + delta
+    weather_time = datetime.utcfromtimestamp(weather["dt"]) + delta
+    time_in_city = f"{time_in_city:%Y.%m.%d %H:%M:%S}"
+    weather_time = f"{weather_time:%Y.%m.%d %H:%M:%S}"
+
     temp = int(weather["main"]["temp"])
     feels_like = int(weather["main"]["feels_like"])
     wind_speed = f"{weather['wind']['speed']:.1f}"

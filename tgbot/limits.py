@@ -64,7 +64,7 @@ def get_limit_link(date: str = "now") -> str:
 
             lst.append(
                 f"<b>{text}</b>\n<u>{x}/{y}</u> "
-                f"[{f*f_count}{b*b_count}] "
+                f"[{f * f_count}{b * b_count}] "
                 f"({percent}%)"
             )
         return f"{date}\n\n" + "\n\n".join(lst)
