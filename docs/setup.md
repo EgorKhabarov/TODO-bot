@@ -1,6 +1,6 @@
 <table>
-    <td><a href="/setup.md">EN</a></td>
-    <td><a href="/setup_ru.md">RU</a></td>
+    <td><a href="/docs/setup.md">EN</a></td>
+    <td><a href="/docs/setup_ru.md">RU</a></td>
 </table>
 
 # Download

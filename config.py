@@ -67,5 +67,5 @@ Special transparent symbol for filling empty space in buttons
 "⠀" or chr(10240) or "\\U00002800"
 """
 
-__version__ = "2024.05.25.1"
+__version__ = "2024.05.28.0"
 __author__ = "EgorKhabarov"

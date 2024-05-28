@@ -162,7 +162,9 @@ def settings_message() -> TextMessage:
         timezone_question=f"{request.entity.now_time():%Y.%m.%d  <u>%H:%M</u>}",
         sorting={"DESC": "⬆️", "ASC": "⬇️"}[settings.direction],
         notification_type=("🔕", "🔔", "📆")[settings.notifications],
-        notification_time=f"{n_hours:0>2}:{n_minutes:0>2}" if settings.notifications else "",
+        notification_time=(
+            f"{n_hours:0>2}:{n_minutes:0>2}" if settings.notifications else ""
+        ),
         theme=not_theme[2],
     )
     markup = generate_buttons(

@@ -1,6 +1,6 @@
 <table>
     <td><a href="/README.md">EN</a></td>
-    <td><a href="/README_ru.md">RU</a></td>
+    <td><a href="/docs/README_ru.md">RU</a></td>
 </table>
 
 [![Tests](https://github.com/EgorKhabarov/TODO-bot/actions/workflows/tests.yml/badge.svg)](https://github.com/EgorKhabarov/TODO-bot/actions/workflows/tests.yml)
@@ -11,7 +11,7 @@
 Удобный поиск по эмодзи статусам и датам.
 Дни рождения и праздники помечаются на календаре (нужно поставить эмодзи статус).</i>
 
-[Инструкция по установке](/setup_ru.md)
+[Инструкция по установке](/docs/setup_ru.md)
 
 ---
 

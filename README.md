@@ -1,6 +1,6 @@
 <table>
     <td><a href="/README.md">EN</a></td>
-    <td><a href="/README_ru.md">RU</a></td>
+    <td><a href="/docs/README_ru.md">RU</a></td>
 </table>
 
 [![GitHub Actions Workflow Status](https://github.com/EgorKhabarov/TODO-bot/actions/workflows/tests.yml/badge.svg)](https://github.com/EgorKhabarov/TODO-bot/actions/workflows/tests.yml)
@@ -11,7 +11,7 @@ You can tag a note with an emoji.
 Convenient search by emoji statuses and dates.
 Birthdays and holidays are marked on the calendar (you need to set an emoji status).</i>
 
-[Installation instructions](/setup.md)
+[Installation instructions](/docs/setup.md)
 
 ---
 

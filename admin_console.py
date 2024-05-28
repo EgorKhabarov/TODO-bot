@@ -7,7 +7,6 @@ from typing import Literal, Any, Callable
 
 from IPython import embed
 from table2string import print_table
-from table2string.table2string import AlignType
 
 from config import WSGI_PATH
 from todoapi.types import db, Account  # noqa
@@ -22,9 +21,9 @@ def execute(
     mode: Literal["table", "raw", "pprint"] = "table",
     max_width: int | type(max) | type(max) | None = max,
     max_height: int | type(max) | type(max) | None = max,
-    align: tuple[AlignType] | AlignType = "*",
+    align: tuple[str, ...] | str = "*",
     name: str = None,
-    name_align: Literal["<", ">", "^"] = None,
+    name_align: str = None,
     return_data: bool = False,
 ) -> None | str | list[tuple[int | str | bytes | Any, ...], ...]:
     """
