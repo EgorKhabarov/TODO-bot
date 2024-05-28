@@ -21,6 +21,7 @@ def execute(
     mode: Literal["table", "raw", "pprint"] = "table",
     max_width: int | type(max) | type(max) | None = max,
     max_height: int | type(max) | type(max) | None = max,
+    maximize_height: bool = False,
     align: tuple[str, ...] | str = "*",
     name: str = None,
     name_align: str = None,
@@ -35,6 +36,7 @@ def execute(
     :param mode: "table" - ASCII table "raw" "pprint"
     :param max_width:
     :param max_height:
+    :param maximize_height:
     :param align:
     :param name:
     :param name_align:
@@ -71,6 +73,7 @@ def execute(
             name_align=name_align,
             max_width=max_width,
             max_height=max_height,
+            maximize_height=maximize_height,
         )
     elif mode == "raw":
         if return_data:
