@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import yaml
@@ -30,7 +31,18 @@ TELEGRAM_WEBHOOK_FLASK_PATH = config.get("TELEGRAM_WEBHOOK_FLASK_PATH", "")
 GITHUB_WEBHOOK = config.get("GITHUB_WEBHOOK", False)
 GITHUB_WEBHOOK_FLASK_PATH = config.get("GITHUB_WEBHOOK_FLASK_PATH", "")
 GITHUB_WEBHOOK_SECRET = config.get("GITHUB_WEBHOOK_SECRET", "")
-WSGI_PATH = config.get("WSGI_PATH", "")
+
+__wp = config.get("WSGI_PATH")
+
+if __wp:
+    WSGI_PATH = Path(__wp)
+else:
+    if GITHUB_WEBHOOK and os.getenv("PYTHONANYWHERE_DOMAIN"):
+        WSGI_PATH = Path(
+            f"/var/www/{os.getenv('USERNAME')}_pythonanywhere_com_wsgi.py"
+        )
+    else:
+        WSGI_PATH = None
 
 ADMIN_IDS = tuple(config.get("ADMIN_IDS", ()))
 
@@ -67,5 +79,5 @@ Special transparent symbol for filling empty space in buttons
 "⠀" or chr(10240) or "\\U00002800"
 """
 
-__version__ = "2024.05.29.1"
+__version__ = "2024.06.01.0"
 __author__ = "EgorKhabarov"
