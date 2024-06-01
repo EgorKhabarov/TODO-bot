@@ -100,7 +100,7 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
     @app.route(config.GITHUB_WEBHOOK_FLASK_PATH, methods=["POST"])
     def webhook():
         if request.method != "POST":
-            return "request.method != \"POST\""
+            return 'request.method != "POST"'
         else:
             abort_code = 418
             # Do initial validations on required headers
@@ -151,7 +151,7 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
                 return json.dumps({"msg": "Didn't pull any information from remote!"})
 
             commit_hash = pull_info[0].commit.hexsha
-            print(f"build_commit = \"{commit_hash}\"")
+            print(f'build_commit = "{commit_hash}"')
 
             os.system("pip install -r requirements.txt")
 

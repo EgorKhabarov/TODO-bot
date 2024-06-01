@@ -38,9 +38,7 @@ if __wp:
     WSGI_PATH = Path(__wp)
 else:
     if GITHUB_WEBHOOK and os.getenv("PYTHONANYWHERE_DOMAIN"):
-        WSGI_PATH = Path(
-            f"/var/www/{os.getenv('USERNAME')}_pythonanywhere_com_wsgi.py"
-        )
+        WSGI_PATH = Path(f"/var/www/{os.getenv('USERNAME')}_pythonanywhere_com_wsgi.py")
     else:
         WSGI_PATH = None
 
@@ -79,5 +77,5 @@ Special transparent symbol for filling empty space in buttons
 "⠀" or chr(10240) or "\\U00002800"
 """
 
-__version__ = "2024.06.01.0"
+__version__ = "2024.06.01.1"
 __author__ = "EgorKhabarov"
