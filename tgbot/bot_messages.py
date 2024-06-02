@@ -1071,6 +1071,7 @@ def week_event_list_message(id_list: list[int] = (), page: int = 0) -> EventsMes
 user_id IS ?
 AND group_id IS ?
 AND removal_time IS NULL
+AND statuses NOT LIKE '%🔕%'
 AND (
     (
         {sqlite_format_date('date')}
