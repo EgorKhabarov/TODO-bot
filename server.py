@@ -122,7 +122,7 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
                 return json.dumps({"msg": "Wrong event type"})
 
             if not request.is_json:
-                abort(abort_code)
+                abort(415, "Change `Content type` to `application/json`")
 
             x_hub_signature = request.headers.get("X-Hub-Signature")
             # webhook content type should be application/json for request.data to have the payload
