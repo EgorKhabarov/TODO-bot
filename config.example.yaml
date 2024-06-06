@@ -6,8 +6,6 @@ BOT_TOKEN: ""  # https://t.me/BotFather
 WEATHER_API_KEY: ""  # https://home.openweathermap.org/api_keys
 
 BOT_NOTIFICATIONS: True  # Are notifications enabled at the bot level?
-POKE_SERVER_URL: False  # Should server poke the link SERVER_URL?
-SERVER_URL: ""
 LIMIT_IMAGE_GENERATOR_URL: ""  # "/limit" Flask endpoint for generating pictures of limits
 
 TELEGRAM_WEBHOOK: False  # Is Telegram webhook enabled?

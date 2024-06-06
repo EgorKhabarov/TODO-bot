@@ -20,8 +20,6 @@ BOT_TOKEN = config.get("BOT_TOKEN", "")
 WEATHER_API_KEY = config.get("WEATHER_API_KEY", "")
 
 BOT_NOTIFICATIONS = config.get("BOT_NOTIFICATIONS", True)
-POKE_SERVER_URL = config.get("POKE_SERVER_URL", False)
-SERVER_URL = config.get("SERVER_URL", "")
 LIMIT_IMAGE_GENERATOR_URL = config.get("LIMIT_IMAGE_GENERATOR_URL")
 
 TELEGRAM_WEBHOOK = config.get("TELEGRAM_WEBHOOK", False)
@@ -77,5 +75,5 @@ Special transparent symbol for filling empty space in buttons
 "⠀" or chr(10240) or "\\U00002800"
 """
 
-__version__ = "2024.06.02.1"
+__version__ = "2024.06.06.0"
 __author__ = "EgorKhabarov"

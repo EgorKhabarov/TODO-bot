@@ -7,8 +7,6 @@ from urllib.parse import urlparse
 from datetime import timedelta, datetime, timezone
 
 import requests
-from requests import ConnectionError
-from requests.exceptions import MissingSchema
 from cachetools import TTLCache, LRUCache, cached
 
 # noinspection PyPackageRequirements
@@ -423,15 +421,6 @@ def is_secure_chat(message: Message | CallbackQuery):
     return is_admin_id(chat_id) and chat_type == "private"
 
 
-def poke_link() -> None:
-    try:
-        requests.get(config.SERVER_URL, headers=config.headers)
-    except MissingSchema as e:
-        logger.error(f"poke_link {e}")
-    except ConnectionError:
-        logger.error("poke_link 404")
-
-
 def highlight_text_difference(_old_text, _new_text):
     sequence_matcher = difflib.SequenceMatcher(None, _old_text, _new_text)
     opcodes = sequence_matcher.get_opcodes()
@@ -475,18 +464,25 @@ def html_to_markdown(html_text: str) -> str:
         else:
             return f"{url}{m.group(3)}"
 
-    while "<blockquote>" in html_text or "</blockquote>" in html_text:
-        s, e = html_text.index("<blockquote>"), html_text.index("</blockquote>")
-        ls, le = len("<blockquote>"), len("</blockquote>")
-        html_text = "".join(
-            [
-                html_text[:s],
-                "\n> " + html_text[s + ls : e].replace("\n", "\n> ") + "\n",
-                html_text[e + le :],
-            ]
-        )
+    while (
+        "<blockquote>" in html_text
+        or "<blockquote expandable>" in html_text
+        or "</blockquote>" in html_text
+    ):
+        try:
+            start_tag = "<blockquote>"
+            start, len_start = html_text.index(start_tag), len(start_tag)
+        except ValueError:
+            start_tag = "<blockquote expandable>"
+            start, len_start = html_text.index(start_tag), len(start_tag)
 
-    return html.unescape(link_sub.sub(replace_url, html_text))
+        end_tag = "</blockquote>"
+        end, len_end = html_text.index(end_tag), len(end_tag)
+
+        quote = html_text[start + len_start : end].replace("\n", "\n> ")
+        html_text = f"{html_text[:start]}\n> {quote}{html_text[end + len_end :]}"
+
+    return html.unescape(link_sub.sub(replace_url, html_text)).strip()
 
 
 def sqlite_format_date2(_date: str) -> str:
