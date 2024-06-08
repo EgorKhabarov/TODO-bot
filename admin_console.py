@@ -6,7 +6,7 @@ from pprint import pprint, pformat
 from typing import Literal, Any, Callable
 
 from IPython import embed
-from table2string import print_table, Themes
+from table2string import print_table, Themes, Theme
 
 from config import WSGI_PATH
 from todoapi.types import db, Account  # noqa
@@ -26,6 +26,7 @@ def execute(
     name: str = None,
     name_align: str = "^",
     return_data: bool = False,
+    theme: Theme = Themes.ascii_thin,
 ) -> None | str | list[tuple[int | str | bytes | Any, ...], ...]:
     """
 
@@ -41,6 +42,7 @@ def execute(
     :param name:
     :param name_align:
     :param return_data:
+    :param theme:
     :return:
     """
     if functions:
@@ -74,7 +76,7 @@ def execute(
             max_width=max_width,
             max_height=max_height,
             maximize_height=maximize_height,
-            theme=Themes.rounded_thick,
+            theme=theme,
         )
     elif mode == "raw":
         if return_data:
