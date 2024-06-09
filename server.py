@@ -68,12 +68,12 @@ if (
 
     @app.route(config.TELEGRAM_WEBHOOK_FLASK_PATH, methods=["POST"])
     def process_updates():
-        if (
-            request.headers.get("content-type") != "application/json"
-            or request.headers.get("X-Telegram-Bot-Api-Secret-Token")
-            != config.TELEGRAM_WEBHOOK_SECRET_TOKEN
-        ):
+        if request.headers.get("content-type") != "application/json":
             return abort(403)
+
+        if secret_token := request.headers.get("X-Telegram-Bot-Api-Secret-Token", None):
+            if secret_token != config.TELEGRAM_WEBHOOK_SECRET_TOKEN:
+                return abort(403)
 
         bot.process_new_updates([Update.de_json(request.json())])
         return "ok", 200
@@ -82,7 +82,7 @@ if (
         bot.remove_webhook()
         bot.set_webhook(
             url=config.TELEGRAM_WEBHOOK_URL,
-            secret_token=config.TELEGRAM_WEBHOOK_SECRET_TOKEN,
+            secret_token=config.TELEGRAM_WEBHOOK_SECRET_TOKEN or None,
         )
 
 
