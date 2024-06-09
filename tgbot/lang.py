@@ -631,6 +631,7 @@ reg_date: {}</code></pre>
                             "📄 Статусы": "mnh Statuses",
                             "📄 Лимиты": "mnh Limits",
                             "📂 Виды сообщений": "mnh page 2",
+                            "🗞 О боте": "mnh page 3",
                             "🔙": "mnm",
                         }.items()
                     ],
@@ -648,6 +649,7 @@ Buttons with text are marked with a smiley 📄. The button folder is marked wit
                             "📄 Statuses": "mnh Statuses",
                             "📄 Limits": "mnh Limits",
                             "📂 Types of messages": "mnh page 2",
+                            "🗞 About bot": "mnh page 3",
                             "🔙": "mnm",
                         }.items()
                     ],
@@ -688,6 +690,38 @@ Select a topic button to read more.
                             "📄 Basket": "mnh Basket",
                             "📄 Search": "mnh Search",
                             "📄 Notifications": "mnh Notifications",
+                            "🔙": "mnh page 1",
+                        }.items()
+                    ],
+                ],
+            },
+            "page 3": {
+                "ru": [
+                    """
+<u><b>О боте</b></u>
+
+▪️ .
+""",
+                    [
+                        [{k.ljust(60, config.ts): v}]
+                        for k, v in {
+                            "📄 Новости бота": "mnh BotNews",
+                            "📄 Версия бота": "mnh BotVersion",
+                            "🔙": "mnh page 1",
+                        }.items()
+                    ],
+                ],
+                "en": [
+                    """
+<u><b>About bot</b></u>
+
+▪️ .
+""",
+                    [
+                        [{k.ljust(60, config.ts): v}]
+                        for k, v in {
+                            "📄 Bot news": "mnh BotNews",
+                            "📄 Bot version": "mnh BotVersion",
                             "🔙": "mnh page 1",
                         }.items()
                     ],
@@ -1008,6 +1042,30 @@ For example, the request <code>#03.05. Music</code> will return all events that 
 Notifications are disabled by default.
 You can enable and customize the notification time in the settings (/settings).
 The bot notifies about important "🟥" events, events with recurring status ("📬", "📅", "🗞", "📆"), and events with the status "🔔".
+""",
+            },
+            "BotNews": {
+                "ru": """
+<u><b>Новости бота</b></u>
+
+▪️ .
+""",
+                "en": """
+<u><b>Bot News</b></u>
+
+▪️ .
+""",
+            },
+            "BotVersion": {
+                "ru": f"""
+<b>Версия бота</b>
+
+<pre><code class='language-версия'>{config.__version__}</code></pre>
+""",
+                "en": f"""
+<b>Bot Version</b>
+
+<pre><code class='language-version'>{config.__version__}</code></pre>
 """,
             },
         },
