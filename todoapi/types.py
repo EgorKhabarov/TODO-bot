@@ -36,6 +36,7 @@ from todoapi.utils import (
     hash_password,
     is_valid_year,
     generate_token,
+    verify_password,
     sql_date_pattern,
 )
 
@@ -760,14 +761,13 @@ SELECT user_id,
        token_create_time,
        reg_date
   FROM users
- WHERE username = :username
-       AND password = :password;
+ WHERE username = :username;
 """,
-                params={
-                    "username": username,
-                    "password": hash_password(password),
-                },
+                params={"username": username},
             )[0]
+
+            if not verify_password(user[4], password):
+                raise IndexError
         except Error as e:
             raise ApiError(e)
         except IndexError:
@@ -1977,7 +1977,7 @@ UPDATE users
         if (not new_password) or (not old_password):
             raise ValueError
 
-        if hash_password(old_password) != self.user.password:
+        if not verify_password(self.user.password, old_password):
             raise NotEnoughPermissions
 
         try:
@@ -2141,24 +2141,24 @@ def get_account_from_password(
     username: str, password: str, group_id: str = None
 ) -> Account:
     try:
-        user_id = db.execute(
+        user = db.execute(
             """
-SELECT user_id
+SELECT user_id,
+       password
   FROM users
- WHERE username = :username
-       AND password = :password;
+ WHERE username = :username;
 """,
-            params={
-                "username": username,
-                "password": hash_password(password),
-            },
-        )[0][0]
+            params={"username": username},
+        )[0]
+
+        if not verify_password(user[1], password):
+            raise IndexError
     except Error as e:
         raise ApiError(e)
     except IndexError:
         raise UserNotFound
 
-    return Account(user_id, group_id)
+    return Account(user[0], group_id)
 
 
 def set_user_status(user_id: int, user_status: int) -> None:

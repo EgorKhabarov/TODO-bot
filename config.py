@@ -25,6 +25,7 @@ LIMIT_IMAGE_GENERATOR_URL = config.get("LIMIT_IMAGE_GENERATOR_URL")
 TELEGRAM_WEBHOOK = config.get("TELEGRAM_WEBHOOK", False)
 TELEGRAM_WEBHOOK_URL = config.get("TELEGRAM_WEBHOOK_URL", "")
 TELEGRAM_WEBHOOK_FLASK_PATH = config.get("TELEGRAM_WEBHOOK_FLASK_PATH", "")
+TELEGRAM_WEBHOOK_SECRET_TOKEN = config.get("TELEGRAM_WEBHOOK_SECRET_TOKEN") or None
 
 GITHUB_WEBHOOK = config.get("GITHUB_WEBHOOK", False)
 GITHUB_WEBHOOK_FLASK_PATH = config.get("GITHUB_WEBHOOK_FLASK_PATH", "")
@@ -75,5 +76,5 @@ Special transparent symbol for filling empty space in buttons
 "⠀" or chr(10240) or "\\U00002800"
 """
 
-__version__ = "2024.06.08.0"
+__version__ = "2024.06.09.0"
 __author__ = "EgorKhabarov"

@@ -12,7 +12,7 @@ from todoapi.exceptions import (
     NotEnoughPermissions,
     Forbidden,
 )
-from todoapi.utils import hash_password
+from todoapi.utils import verify_password
 
 
 class TelegramSettings(Settings):
@@ -179,14 +179,13 @@ SELECT user_id,
        max_event_id,
        reg_date
   FROM users
- WHERE username = :username
-       AND password = :password;
+ WHERE username = :username;
 """,
-                params={
-                    "username": username,
-                    "password": hash_password(password),
-                },
+                params={"username": username},
             )[0]
+
+            if not verify_password(user[4], password):
+                raise IndexError
         except Error as e:
             raise ApiError(e)
         except IndexError:
@@ -584,24 +583,24 @@ def get_telegram_account_from_password(
     username: str, password: str, group_chat_id: str = None
 ) -> TelegramAccount:
     try:
-        chat_id = db.execute(
+        user = db.execute(
             """
-SELECT chat_id
+SELECT chat_id,
+       password
   FROM users
- WHERE username = :username
-       AND password = :password;
+ WHERE username = :username;
 """,
-            params={
-                "username": username,
-                "password": hash_password(password),
-            },
-        )[0][0]
+            params={"username": username},
+        )[0]
+
+        if not verify_password(user[1], password):
+            raise IndexError
     except Error as e:
         raise ApiError(e)
     except IndexError:
         raise UserNotFound
 
-    return TelegramAccount(chat_id, group_chat_id)
+    return TelegramAccount(user[0], group_chat_id)
 
 
 def set_user_telegram_chat_id(

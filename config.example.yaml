@@ -11,6 +11,8 @@ LIMIT_IMAGE_GENERATOR_URL: ""  # "/limit" Flask endpoint for generating pictures
 TELEGRAM_WEBHOOK: False  # Is Telegram webhook enabled?
 TELEGRAM_WEBHOOK_URL: ""  # Full Telegram webhook url
 TELEGRAM_WEBHOOK_FLASK_PATH: ""  # Telegram webhook Flask path
+TELEGRAM_WEBHOOK_SECRET_TOKEN: ""  # Telegram webhook secret token 1-256 characters.
+                                   # Only characters A-Z, a-z, 0-9, _ and - are allowed.
 
 GITHUB_WEBHOOK: False  # Is GitHub webhook enabled?
 GITHUB_WEBHOOK_FLASK_PATH: ""  # GitHub webhook Flask path

@@ -187,6 +187,8 @@ def not_login_handler(x: CallbackQuery | Message) -> None:
                 except ApiError as e:
                     print(e)
                     TextMessage(get_translate("errors.failure")).reply()
+                except UserNotFound:
+                    TextMessage(get_translate("errors.error")).reply()
                 else:
                     TextMessage(get_translate("errors.success")).send(message.chat.id)
                     bot.delete_message(message.chat.id, message.message_id)

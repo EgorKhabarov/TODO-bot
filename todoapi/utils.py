@@ -2,12 +2,15 @@ import re
 import random
 import string
 from time import time
-from hashlib import sha256
 from functools import wraps
 from typing import Callable
 
 from cachetools import LRUCache
 from cachetools.keys import hashkey
+# noinspection PyPackageRequirements
+from argon2 import PasswordHasher
+# noinspection PyPackageRequirements
+from argon2.exceptions import VerifyMismatchError, InvalidHashError
 
 import config
 
@@ -15,6 +18,7 @@ import config
 re_username = re.compile("^[a-zA-Z](?!.*__)[a-zA-Z0-9_]{2,29}[a-zA-Z0-9]$")
 re_date = re.compile(r"\A\d{2}\.\d{2}\.\d{4}\Z")
 sql_date_pattern = re.compile(r"\d{4}-\d{2}-\d{2}")
+password_hasher = PasswordHasher()
 
 
 def sqlite_format_date(_column):
@@ -46,13 +50,23 @@ def is_valid_year(year: int) -> bool:
 
 
 def chunks(lst, n):
-    """Yield successive n-sized chunks from lst."""
+    """
+    Yield successive n-sized chunks from lst.
+    """
     for i in range(0, len(lst), n):
         yield lst[i : i + n]
 
 
-def hash_password(password: str):
-    return sha256(password.encode("utf-8")).hexdigest()
+def hash_password(password: str) -> str:
+    return password_hasher.hash(password)
+
+
+def verify_password(hashed_password: str, password: str) -> bool:
+    try:
+        password_hasher.verify(hashed_password, password)
+        return True
+    except (VerifyMismatchError, InvalidHashError):
+        return False
 
 
 def rate_limit(

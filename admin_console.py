@@ -77,6 +77,7 @@ def execute(
             max_height=max_height,
             maximize_height=maximize_height,
             theme=theme,
+            line_break_symbol="\\",
         )
     elif mode == "raw":
         if return_data:
