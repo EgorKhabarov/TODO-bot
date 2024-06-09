@@ -2,7 +2,7 @@ from tests.chat import Chat, setup_request
 
 with Chat():
     from tgbot.request import request
-    from tests.mocks import callback_mock
+    from tests.mocks import callback_mock, message_mock
     from tgbot.handlers import callback_handler
     from todoapi.exceptions import NotEnoughPermissions
 
@@ -578,3 +578,337 @@ def test_bot_callback_esds():
 #                 and k["params"]["reply_markup"]
 #             ),
 #         )
+"""
+sal_or_sbal
+son_or_sbon
+"""
+
+
+def test_bot_callback_pd():
+    with Chat() as chat:
+        setup_request(callback_mock("pd 01.01.2000 0"))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("editMessageText")
+                and k["params"]["text"]
+                and k["params"]["chat_id"] == 1
+                and k["params"]["message_id"] == 1
+                and k["params"]["reply_markup"]
+            ),
+        )
+
+
+def test_bot_callback_pr():
+    with Chat() as chat:
+        setup_request(callback_mock("pr 01.01.2000 0"))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("editMessageText")
+                and k["params"]["text"]
+                and k["params"]["chat_id"] == 1
+                and k["params"]["message_id"] == 1
+                and k["params"]["reply_markup"]
+            ),
+        )
+
+
+def test_bot_callback_ps():
+    with Chat() as chat:
+        setup_request(callback_mock("ps 1"))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("editMessageText")
+                and k["params"]["text"]
+                and k["params"]["chat_id"] == 1
+                and k["params"]["message_id"] == 1
+                and k["params"]["reply_markup"]
+            ),
+        )
+
+
+def test_bot_callback_pw():
+    with Chat() as chat:
+        setup_request(callback_mock("pw 0"))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("editMessageText")
+                and k["params"]["text"]
+                and k["params"]["chat_id"] == 1
+                and k["params"]["message_id"] == 1
+                and k["params"]["reply_markup"]
+            ),
+        )
+
+
+def test_bot_callback_pb():
+    with Chat() as chat:
+        setup_request(callback_mock("pb 0"))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("editMessageText")
+                and k["params"]["text"]
+                and k["params"]["chat_id"] == 1
+                and k["params"]["message_id"] == 1
+                and k["params"]["reply_markup"]
+            ),
+        )
+
+
+def test_bot_callback_pn():
+    with Chat() as chat:
+        setup_request(callback_mock("pn 01.01.2000 0"))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("editMessageText")
+                and k["params"]["text"]
+                and k["params"]["chat_id"] == 1
+                and k["params"]["message_id"] == 1
+                and k["params"]["reply_markup"]
+            ),
+        )
+
+
+def test_bot_callback_cm():
+    pass  # eval_=True
+
+
+def test_bot_callback_cy():
+    pass  # eval_=True
+
+
+def test_bot_callback_ct():
+    pass  # eval_=True
+
+
+def test_bot_callback_us():
+    with Chat() as chat:
+        setup_request(callback_mock("us"))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("editMessageText")
+                and k["params"]["text"]
+                and k["params"]["chat_id"] == 1
+                and k["params"]["message_id"] == 1
+                and k["params"]["reply_markup"]
+            ),
+        )
+
+
+def test_bot_callback_sfs():
+    with Chat() as chat:
+        setup_request(callback_mock("sfs", message_mock(1, "🔍 message: text")))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("editMessageText")
+                and k["params"]["text"]
+                and k["params"]["chat_id"] == 1
+                and k["params"]["message_id"] == 1
+                and k["params"]["reply_markup"]
+            ),
+        )
+
+
+def test_bot_callback_sf():
+    with Chat() as chat:
+        setup_request(callback_mock("sf", message_mock(1, "🔍⚙️ message: text")))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("editMessageText")
+                and k["params"]["text"]
+                and k["params"]["chat_id"] == 1
+                and k["params"]["message_id"] == 1
+                and k["params"]["reply_markup"]
+            ),
+        )
+
+
+def test_bot_callback_sfe():
+    with Chat() as chat:
+        setup_request(callback_mock("sfe", message_mock(1, "🔍 message: text")))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("sendChatAction")
+                and k["params"]["chat_id"] == 1
+                and k["params"]["action"] == "upload_document"
+            ),
+            lambda m, u, k: (
+                u.endswith("sendDocument") and k["params"]["chat_id"] == 1
+            ),
+        )
+
+
+def test_bot_callback_md():
+    with Chat() as chat:
+        setup_request(callback_mock("md"))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("deleteMessage")
+                and k["params"]["chat_id"] == 1
+                and k["params"]["message_id"] == 1
+            ),
+        )
+
+
+def test_bot_callback_std():
+    with Chat() as chat:
+        setup_request(callback_mock("std"))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("answerCallbackQuery")
+                and k["params"]["callback_query_id"] == 100
+                and k["params"]["text"]
+            ),
+            lambda m, u, k: (
+                u.endswith("editMessageText")
+                and k["params"]["text"]
+                and k["params"]["chat_id"] == 1
+                and k["params"]["message_id"] == 1
+                and k["params"]["reply_markup"]
+            ),
+        )
+
+
+def test_bot_callback_ste():
+    with Chat() as chat:
+        setup_request(callback_mock("ste lang ru"))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (u.endswith("setMyCommands") and k["params"]["commands"]),
+            lambda m, u, k: (
+                u.endswith("editMessageText")
+                and k["params"]["text"]
+                and k["params"]["chat_id"] == 1
+                and k["params"]["message_id"] == 1
+                and k["params"]["reply_markup"]
+            ),
+        )
+
+
+def test_bot_callback_bcl():
+    with Chat() as chat:
+        setup_request(callback_mock("bcl"))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("editMessageText")
+                and k["params"]["text"]
+                and k["params"]["chat_id"] == 1
+                and k["params"]["message_id"] == 1
+                and k["params"]["reply_markup"]
+            ),
+        )
+
+
+def test_bot_callback_bem():
+    with Chat() as chat:
+        setup_request(callback_mock("bem 1"))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("answerCallbackQuery")
+                and k["params"]["text"]
+                and k["params"]["callback_query_id"] == 100
+                and k["params"]["show_alert"]
+            ),
+        )
+
+
+def test_bot_callback_bed():
+    with Chat() as chat:
+        setup_request(callback_mock("bed 1"))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("answerCallbackQuery")
+                and k["params"]["text"]
+                and k["params"]["callback_query_id"] == 100
+            ),
+            lambda m, u, k: (
+                u.endswith("editMessageText")
+                and k["params"]["text"]
+                and k["params"]["chat_id"] == 1
+                and k["params"]["message_id"] == 1
+                and k["params"]["reply_markup"]
+            ),
+        )
+
+
+def test_bot_callback_ber():
+    with Chat() as chat:
+        setup_request(callback_mock("ber 1 01.01.2000"))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("answerCallbackQuery")
+                and k["params"]["text"]
+                and k["params"]["callback_query_id"] == 100
+                and k["params"]["show_alert"]
+            ),
+        )
+
+
+def test_bot_callback_bsm():
+    pass  # {"id_list": "str"}
+
+
+def test_bot_callback_bsd():
+    pass  # {"id_list": "str"}
+
+
+def test_bot_callback_bsr():
+    pass  # {"id_list": "str", "date": "date"}
+
+
+def test_bot_callback_logout():
+    with Chat() as chat:
+        setup_request(callback_mock("logout"))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (u.endswith("setMyCommands") and k["params"]["commands"]),
+            lambda m, u, k: (
+                u.endswith("editMessageText")
+                and k["params"]["text"]
+                and k["params"]["chat_id"] == 1
+                and k["params"]["message_id"] == 1
+            ),
+        )
+
+
+def test_bot_callback_lm():
+    pass  # {"date": "date"}
+
+
+def test_bot_callback_grcr():
+    pass
+
+
+def test_bot_callback_gre():
+    pass  # {"group_id": "str", "file_format": ("str", "csv")}
+
+
+def test_bot_callback_grd():
+    pass  # {"group_id": "str", "mode": ("str", "al")}
+
+
+def test_bot_callback_grlv():
+    pass  # {"group_id": "str", "mode": ("str", "al")}
+
+
+def test_bot_callback_grrgr():
+    pass  # {"group_id": "str", "mode": ("str", "al")}
+
+
+def test_bot_callback_get_premium():
+    pass

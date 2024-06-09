@@ -109,6 +109,11 @@ def custom_sender(method, url, **kwargs):
                 '{"ok":true,"result":{"text":"ok","message_id":1,"date":1,'
                 '"chat":{"id":1,"type":"private"}}}'
             )
+        case "deleteMessage":
+            result = util.CustomRequestResponse(
+                '{"ok":true,"result":{"message_id":1,"date":1,'
+                '"chat":{"id":1,"type":"private"}}}'
+            )
         case _:
             result = ""
 

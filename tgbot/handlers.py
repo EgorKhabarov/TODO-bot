@@ -522,7 +522,7 @@ class CallBackHandler:
         return monthly_calendar_message(
             (date.year, date.month) if date else None,
             "mnn",
-            "mnm",
+            "mnn",
             get_translate("select.notification_date"),
         ).edit()
 
@@ -923,13 +923,13 @@ class CallBackHandler:
 
     @prefix("pn", {"date": "date", "page": ("int", 0), "id_list": ("str", ())})
     def page_notification(
-        self, n_date: datetime, page: int, id_list: str, message: Message
+        self, date: datetime, page: int, id_list: str, message: Message
     ):
         markup = message.reply_markup if page else None
         if markup:
-            edit_button_data(markup, 0, -1, f"se o {id_list} mnn {n_date:%d.%m.%Y}")
+            edit_button_data(markup, 0, -1, f"se o {id_list} mnn {date:%d.%m.%Y}")
         try:
-            generated = notification_message(n_date, decode_id(id_list), page, True)
+            generated = notification_message(date, decode_id(id_list), page, True)
             generated.edit(markup=markup)
         except ApiTelegramException:
             text = get_translate("errors.already_on_this_page")

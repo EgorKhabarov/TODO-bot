@@ -30,7 +30,9 @@ def message_mock(message_id: int, text: str, html_text=None) -> Message:
     )
 
 
-def callback_mock(data: str) -> CallbackQuery:
+def callback_mock(
+    data: str, message: Message = message_mock(1, "message text")
+) -> CallbackQuery:
     return CallbackQuery(
         id=100,
         from_user=User(
@@ -44,6 +46,6 @@ def callback_mock(data: str) -> CallbackQuery:
         data=data,
         chat_instance="",
         json_string="",
-        message=message_mock(1, "message text"),
+        message=message,
         inline_message_id=100,
     )

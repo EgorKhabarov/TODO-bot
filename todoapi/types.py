@@ -849,12 +849,11 @@ SELECT 1
         except Error as e:
             raise ApiError(e)
 
-    def create_event(self, date: str, text: str, statuses: str = '["⬜"]') -> int:
+    def create_event(self, date: str, text: str) -> int:
         """
 
         :param date:
         :param text:
-        :param statuses:
         :return: event_id
         :raise TextIsTooBig: if len(text) >= 3800
         :raise WrongDate:
@@ -911,7 +910,7 @@ VALUES (
                     "group_id": self.group_id,
                     "date": date,
                     "text": text,
-                    "statuses": statuses,
+                    "statuses": '["⬜"]',
                 },
                 commit=True,
             )
