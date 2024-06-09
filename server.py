@@ -75,7 +75,7 @@ if (
             if secret_token != config.TELEGRAM_WEBHOOK_SECRET_TOKEN:
                 return abort(403)
 
-        bot.process_new_updates([Update.de_json(request.json())])
+        bot.process_new_updates([Update.de_json(request.json)])
         return "ok", 200
 
     if bot_webhook_info.url != config.TELEGRAM_WEBHOOK_URL:
