@@ -7,8 +7,10 @@ from typing import Callable
 
 from cachetools import LRUCache
 from cachetools.keys import hashkey
+
 # noinspection PyPackageRequirements
 from argon2 import PasswordHasher
+
 # noinspection PyPackageRequirements
 from argon2.exceptions import VerifyMismatchError, InvalidHashError
 
