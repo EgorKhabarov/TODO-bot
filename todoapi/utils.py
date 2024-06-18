@@ -23,19 +23,6 @@ sql_date_pattern = re.compile(r"\d{4}-\d{2}-\d{2}")
 password_hasher = PasswordHasher()
 
 
-def sqlite_format_date(_column):
-    """
-    Database sql column converts from format
-    dd.mm.yyyy to yyyy.mm.dd for sql expression
-
-    :param _column: Column for transformation.
-    :return: SQL expression
-    """
-    return f"""
-SUBSTR({_column}, 7, 4) || '-' || SUBSTR({_column}, 4, 2) || '-' || SUBSTR({_column}, 1, 2)
-""".strip()
-
-
 def is_admin_id(chat_id: int) -> bool:
     """
     Check for admin

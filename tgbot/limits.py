@@ -30,7 +30,7 @@ colors = {
 
 def get_limit_link(date: str = "now") -> str:
     if not date or date == "now":
-        date = f"{request.entity.now_time():%d.%m.%Y}"
+        date = f"{request.entity.now_time():YYYY-MM-DD}"
 
     limits = zip(
         request.entity.limit.get_event_limits(date),

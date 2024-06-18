@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS users_settings (
     sub_urls           INT  CHECK (sub_urls IN (0, 1)) DEFAULT (1),
     city               TEXT DEFAULT 'Moscow',
     timezone           INT  CHECK (-13 < timezone < 13) DEFAULT (3),
-    direction          TEXT CHECK (direction IN ('DESC', 'ASC')) DEFAULT 'DESC',
+    direction          TEXT CHECK (direction IN ('DESC', 'ASC')) DEFAULT 'ASC',
     notifications      INT  CHECK (notifications IN (0, 1, 2)) DEFAULT (0),
     notifications_time TEXT DEFAULT '08:00',
     theme              INT  DEFAULT (0),
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS tg_settings (
     sub_urls           INT  CHECK (sub_urls IN (0, 1)) DEFAULT (1),
     city               TEXT DEFAULT 'Moscow',
     timezone           INT  CHECK (-13 < timezone < 13) DEFAULT (3),
-    direction          TEXT CHECK (direction IN ('DESC', 'ASC')) DEFAULT 'DESC',
+    direction          TEXT CHECK (direction IN ('DESC', 'ASC')) DEFAULT 'ASC',
     notifications      INT  CHECK (notifications IN (0, 1, 2)) DEFAULT (0),
     notifications_time TEXT DEFAULT '08:00',
     theme              INT  DEFAULT (0),
@@ -70,9 +70,11 @@ CREATE TABLE IF NOT EXISTS events (
     user_id             INT,
     group_id            TEXT,
     event_id            INT  NOT NULL,
-    date                TEXT NOT NULL,
     text                TEXT NOT NULL,
-    statuses            TEXT DEFAULT '["⬜"]',
+    datetime            TEXT DEFAULT (DATETIME()),
+    statuses            TEXT DEFAULT '["\u2b1c"]',
+    repetition          TEXT DEFAULT 'repeat never',
+    reference_event_id  INT  DEFAULT NULL,
     adding_time         TEXT DEFAULT (DATETIME()),
     recent_changes_time TEXT DEFAULT NULL,
     removal_time        TEXT DEFAULT NULL,
@@ -149,19 +151,22 @@ END;
 
 -- Trigger for updating the last change time of an event
 CREATE TRIGGER IF NOT EXISTS trigger_recent_changes_time_event
-AFTER UPDATE OF date, text, statuses, removal_time ON events FOR EACH ROW
+AFTER UPDATE OF text, datetime, statuses, repetition, removal_time ON events FOR EACH ROW
 BEGIN
     UPDATE events
        SET recent_changes_time = DATETIME(),
            history = CASE
-               WHEN OLD.date != NEW.date
-               THEN JSON_INSERT(history, '$[#]', JSON_ARRAY('date', JSON_ARRAY(OLD.date, NEW.date), DATETIME()))
-
                WHEN OLD.text != NEW.text
                THEN JSON_INSERT(history, '$[#]', JSON_ARRAY('text', JSON_ARRAY(OLD.text, NEW.text), DATETIME()))
 
+               WHEN OLD.datetime != NEW.datetime
+               THEN JSON_INSERT(history, '$[#]', JSON_ARRAY('datetime', JSON_ARRAY(OLD.datetime, NEW.datetime), DATETIME()))
+
                WHEN OLD.statuses != NEW.statuses
                THEN JSON_INSERT(history, '$[#]', JSON_ARRAY('statuses', JSON_ARRAY(JSON(OLD.statuses), NEW.statuses), DATETIME()))
+
+               WHEN OLD.repetition != NEW.repetition
+               THEN JSON_INSERT(history, '$[#]', JSON_ARRAY('repetition', JSON_ARRAY(OLD.repetition, NEW.repetition), DATETIME()))
 
                WHEN OLD.removal_time IS NOT NEW.removal_time AND NEW.removal_time IS NOT NULL
                THEN JSON_INSERT(history, '$[#]', JSON_ARRAY('delete', JSON_ARRAY(OLD.removal_time, NEW.removal_time), DATETIME()))
@@ -249,4 +254,4 @@ BEGIN
 END;
 
 -- index
-CREATE INDEX IF NOT EXISTS index_event_search ON events (user_id, group_id, event_id, date);
+CREATE INDEX IF NOT EXISTS index_event_search ON events (user_id, group_id, event_id, datetime);

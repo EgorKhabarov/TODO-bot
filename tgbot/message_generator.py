@@ -1,6 +1,6 @@
+from arrow import Arrow
 from copy import deepcopy
 from sqlite3 import Error
-from datetime import datetime
 from typing import Literal, Any
 
 # noinspection PyPackageRequirements
@@ -18,12 +18,12 @@ from todoapi.exceptions import EventNotFound
 
 
 event_formats = {
-    "dl": "<b>{numd}.{event_id}.</b>{statuses}\n{markdown_text}\n",
-    "dt": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
-    "b": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> ({days_before_delete})\n{markdown_text}\n",
-    "r": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
-    "s": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u>\n{markdown_text}\n",
-    "a": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{text}\n",
+    "dl": "<b>{time}</b>.{statuses}.{repetition}\n{markdown_text}\n",
+    "dt": "<b>{date}.{time}</b>.{statuses}.{repetition} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
+    "b": "<b>{date}.{time}</b>.{statuses}.{repetition} <u><i>{strdate}  {weekday}</i></u> ({days_before_delete})\n{markdown_text}\n",
+    "r": "<b>{date}.{time}</b>.{statuses}.{repetition} <u><i>{strdate}  {weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
+    "s": "<b>{date}.{time}</b>.{statuses}.{repetition} <u><i>{strdate}  {weekday}</i></u>\n{markdown_text}\n",
+    "a": "<b>{date}.{time}</b>.{statuses}.{repetition} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{text}\n",
 }
 """
 "dl" - Template for events for one day
@@ -36,8 +36,8 @@ event_formats = {
 """
 
 
-def calculate_days_before_event(date, statuses):
-    return Event(0, "", 0, date, "", statuses, "", "", "").days_before_event(
+def calculate_days_before_event(date: str, repetition: str):
+    return Event(0, "", 0, "", date, "", repetition, None, "", "", "").days_before_event(
         request.entity.settings.timezone
     )
 
@@ -63,11 +63,12 @@ def pagination(
     data = db.execute(
         f"""
 SELECT event_id,
-       LENGTH(text) 
+       LENGTH(text)
   FROM events
  WHERE {sql_where}
- ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) {direction},
-          DAYS_BEFORE_EVENT(date, statuses) DESC
+ ORDER BY ABS(DAYS_BEFORE_EVENT(datetime, repetition)) {direction},
+          DAYS_BEFORE_EVENT(datetime, repetition) DESC,
+          STRFTIME('%H:%M:%S', datetime, '{request.entity.settings.timezone} HOURS')
  LIMIT 400;
 """,
         params=params,
@@ -275,12 +276,14 @@ class EventMessage(TextMessage):
             )
 
         event_date_representation = event_date_representation.format(
-            date=self.event.date,
+            date=f"{self.event.datetime:DD.MM.YYYY}",
+            time=f"{self.event.datetime.shift(hours=request.entity.settings.timezone):HH:mm}",
             strdate=str_date,
             weekday=week_date,
             reldate=rel_date,
             event_id=f"{self.event.event_id}",
             statuses=self.event.string_statuses,
+            repetition=self.event.string_repetition,
             markdown_text=markdown_text,
             days_before=days_before,
             days_before_delete=days_before_delete,
@@ -298,7 +301,7 @@ class EventsMessage(TextMessage):
 
     def __init__(
         self,
-        date: str = "now",
+        date: Arrow | None = None,
         event_list: tuple | list[Event, ...] = tuple(),
         markup: InlineKeyboardMarkup = None,
         page: int = 0,
@@ -306,9 +309,11 @@ class EventsMessage(TextMessage):
     ):
         if markup is ...:
             markup = InlineKeyboardMarkup()
+
         super().__init__("", deepcopy(markup))
-        if date == "now":
-            date = f"{request.entity.now_time():%d.%m.%Y}"
+
+        if date is None:
+            date = request.entity.now_time()
 
         self.event_list = event_list
         self._date = date
@@ -328,26 +333,18 @@ class EventsMessage(TextMessage):
                 Event(*event)
                 for event in db.execute(
                     f"""
-SELECT user_id,
-       group_id,
-       event_id,
-       date,
-       text,
-       statuses,
-       adding_time,
-       recent_changes_time,
-       removal_time
+SELECT *
   FROM events
  WHERE event_id IN ({data[0]})
-       AND ({sql_where}) 
- ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) {direction},
-          DAYS_BEFORE_EVENT(date, statuses) DESC,
-          statuses LIKE '%📬%',
-          statuses LIKE '%🗞%',
-          statuses LIKE '%📅%',
-          statuses LIKE '%📆%',
-          statuses LIKE '%🎉%',
-          statuses LIKE '%🎊%';
+       AND ({sql_where})
+ ORDER BY ABS(DAYS_BEFORE_EVENT(datetime, repetition)) {direction},
+          DAYS_BEFORE_EVENT(datetime, repetition) DESC,
+          STRFTIME('%H:%M:%S', datetime, '{request.entity.settings.timezone} HOURS'),
+          repetition = 'repeat every day',
+          repetition = 'repeat every weekdays',
+          repetition = 'repeat every week',
+          repetition = 'repeat every month',
+          repetition = 'repeat every year';
 """,
                     params=params,
                     functions=(("DAYS_BEFORE_EVENT", calculate_days_before_event),),
@@ -403,28 +400,20 @@ SELECT user_id,
                 Event(*event)
                 for event in db.execute(
                     f"""
-SELECT user_id,
-       group_id,
-       event_id,
-       date,
-       text,
-       statuses,
-       adding_time,
-       recent_changes_time,
-       removal_time
+SELECT *
   FROM events
  WHERE user_id IS ?
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in id_list)})
-       AND ({sql_where}) 
- ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) {direction},
-          DAYS_BEFORE_EVENT(date, statuses) DESC,
-          statuses LIKE '%📬%',
-          statuses LIKE '%🗞%',
-          statuses LIKE '%📅%',
-          statuses LIKE '%📆%',
-          statuses LIKE '%🎉%',
-          statuses LIKE '%🎊%';
+       AND ({sql_where})
+ ORDER BY ABS(DAYS_BEFORE_EVENT(datetime, repetition)) {direction},
+          DAYS_BEFORE_EVENT(datetime, repetition) DESC,
+          STRFTIME('%H:%M:%S', datetime, '{request.entity.settings.timezone} HOURS'),
+          repetition = 'repeat every day',
+          repetition = 'repeat every weekdays',
+          repetition = 'repeat every week',
+          repetition = 'repeat every month',
+          repetition = 'repeat every year';
 """,
                     params=(
                         request.entity.safe_user_id,
@@ -473,14 +462,13 @@ SELECT user_id,
         :param if_empty: If the query result is empty
         :return: message.text
         """
-        dt_date = datetime.strptime(self._date, "%d.%m.%Y")
-        n_time = request.entity.now_time()
-        n_time = datetime(n_time.year, n_time.month, n_time.day)
+        dt_date = self._date.date()
+        n_time = request.entity.now_time().date()
         str_date, rel_date, week_date = relatively_string_date((dt_date - n_time).days)
 
         format_string = (
             title.format(
-                date=self._date,
+                date=f"{self._date:DD.MM.YYYY}",
                 strdate=str_date,
                 weekday=week_date,
                 reldate=rel_date,
@@ -502,7 +490,7 @@ SELECT user_id,
         else:
             for num, event in enumerate(self.event_list):
                 str_date, rel_date, week_date = relatively_string_date(
-                    (event.datetime - n_time).days
+                    (event.datetime.date() - n_time).days
                 )
 
                 days_before = ""
@@ -525,13 +513,15 @@ SELECT user_id,
 
                 format_string += (
                     args.format(
-                        date=event.date,
+                        date=f"{event.datetime:DD.MM.YYYY}",
+                        time=f"{event.datetime.shift(hours=request.entity.settings.timezone):HH:mm}",
                         strdate=str_date,
                         weekday=week_date,
                         reldate=rel_date,
                         numd=f"{num + 1}",
                         event_id=f"{event.event_id}",
                         statuses=event.string_statuses,
+                        repetition=event.string_repetition,
                         markdown_text=markdown_text,
                         days_before=days_before,
                         days_before_delete=days_before_delete,

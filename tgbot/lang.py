@@ -283,15 +283,39 @@ Call up new messages using bot commands.</b>
         "event_about_info": {
             "ru": (
                 "Информация о событии",
+                "идентификатор события",
                 "длинна текста",
                 "время добавления",
                 "время последних изменений",
+                "идентификатор оригинального события (если событие повторяется)",
             ),
             "en": (
                 "Information about event",
+                "event id",
                 "text length",
                 "time added",
                 "time of last changes",
+                "reference event id (if the event repeats)",
+            ),
+        },
+        "repetition_menu": {
+            "ru": (
+                "🔕Никогда",
+                "📬Каждый день",
+                "🗞Каждую неделю",
+                "📅Каждый месяц",
+                "📆Каждый год",
+                "👨‍💻Рабочие дни",
+                # "Другое",
+            ),
+            "en": (
+                "🔕Never",
+                "📬Every day",
+                "🗞Every week",
+                "📅Every month",
+                "📆Every year",
+                "👨‍💻Every weekdays",
+                # "Other",
             ),
         },
         "clean_bin": {
@@ -383,9 +407,10 @@ Call up new messages using bot commands.</b>
                 {
                     "text": "Изменение текста",
                     "statuses": "Изменение статуса",
-                    "date": "Изменение даты",
+                    "datetime": "Изменение даты",
                     "delete": "Удаление",
                     "recover": "Восстановление",
+                    "repetition": "Повторение",
                 },
             ),
             "en": (
@@ -394,9 +419,10 @@ Call up new messages using bot commands.</b>
                 {
                     "text": "Change text",
                     "statuses": "Status change",
-                    "date": "Date change",
+                    "datetime": "Date change",
                     "delete": "Delete",
                     "recover": "Recovery",
+                    "repetition": "Repetition",
                 },
             ),
         },
@@ -729,6 +755,8 @@ Select a topic button to read more.
             },
             "Events": {
                 "ru": """
+<b>УСТАРЕЛО</b>
+
 <u><b>События</b></u>
 
 Событие - это текстовая заметка на определенную дату. Каждое событие помечается уникальным номером (id) и может иметь свой статус. По умолчанию статус устанавливается как "⬜". Статус можно изменить с помощью кнопки "🏷" в сообщении на день.
@@ -740,13 +768,15 @@ Select a topic button to read more.
 🏷 - Изменить теги
 🗑 - Удалить
 📋 - Просмотр в аккуратном виде
-*️⃣ - 
+*️⃣ -
 📅 - Изменить дату
 ℹ️ - Просмотр информации
 🗄 - Просмотр истории изменений
-🖼 - 
+🖼 -
 """,
                 "en": """
+<b>OUTDATED</b>
+
 <u><b>Events</b></u>
 
 An event is a textual note for a specific date. Each event is marked with a unique identifier (id) and can have its own status. By default, the status is set to "⬜". The status can be changed using the "🏷" button in the message for a day.
@@ -762,11 +792,13 @@ Here are the button labels in the message for one event:
 📅 - Change date
 ℹ️ - View information
 🗄 - View change history
-🖼 - 
+🖼 -
 """,
             },
             "Statuses": {
                 "ru": """
+<b>УСТАРЕЛО</b>
+
 <u><b>Статусы</b></u>
 
 Статус - это один или несколько эмодзи для пометки события или добавления разных эффектов.
@@ -790,6 +822,8 @@ Here are the button labels in the message for one event:
 <b>Эффекты на статусах применяются только на отображении событий в сообщении.</b> Сам текст события не меняется.
 """,
                 "en": """
+<b>OUTDATED</b>
+
 <u><b>Statuses</b></u>
 
 Status - this is one or several emojis used to mark an event or add different effects.

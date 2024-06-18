@@ -8,7 +8,7 @@ from tgbot.request import request
 from tgbot.lang import get_translate, get_theme_emoji
 from tgbot.time_utils import now_time_calendar, year_info, get_week_number
 from todoapi.types import db
-from todoapi.utils import is_valid_year, chunks, sqlite_format_date
+from todoapi.utils import is_valid_year, chunks
 from telegram_utils.buttons_generator import generate_buttons
 
 
@@ -44,19 +44,19 @@ def create_monthly_calendar_keyboard(
         for x in db.execute(
             """
 -- Days with events
-SELECT CAST (SUBSTR(date, 1, 2) AS INT) AS day_number,
+SELECT STRFTIME('%d', datetime) AS day_number,
        COUNT(event_id) AS event_count
   FROM events
  WHERE user_id IS :user_id
        AND group_id IS :group_id
        AND removal_time IS NULL
-       AND date LIKE :date
+       AND DATE(datetime) LIKE :datetime
  GROUP BY day_number;
 """,
             params={
                 "user_id": request.entity.safe_user_id,
                 "group_id": request.entity.group_id,
-                "date": f"__.{month:0>2}.{year}",
+                "datetime": f"{year}-{month:0>2}-__",
             },
         )
     }
@@ -67,27 +67,23 @@ SELECT CAST (SUBSTR(date, 1, 2) AS INT) AS day_number,
         for x in db.execute(
             """
 -- Numbers of birthdays in a specific month
-SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT) 
+SELECT DISTINCT STRFTIME('%d', datetime)
   FROM events
  WHERE user_id IS :user_id
-       AND group_id IS :group_id 
+       AND group_id IS :group_id
        AND removal_time IS NULL
        AND (
-           statuses LIKE '%📅%'
+           repetition = 'repeat every month'
            OR (
-               (
-                   statuses LIKE '%🎉%'
-                   OR statuses LIKE '%🎊%'
-                   OR statuses LIKE '%📆%'
-               )
-               AND SUBSTR(date, 4, 2) = :date
+               repetition = 'repeat every year'
+               AND STRFTIME('%m', datetime) = :month
            )
        );
 """,
             params={
                 "user_id": request.entity.safe_user_id,
                 "group_id": request.entity.group_id,
-                "date": f"{month:0>2}",
+                "month": f"{month:0>2}",
             },
         )
     )
@@ -96,14 +92,14 @@ SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT)
     every_week = tuple(
         6 if x[0] == -1 else x[0]
         for x in db.execute(
-            f"""
+            """
 -- Number of days of the week in which there are events that repeat every week
-SELECT DISTINCT CAST (STRFTIME('%w', {sqlite_format_date('date')}) - 1 AS INT) 
+SELECT DISTINCT STRFTIME('%w', datetime) - 1
   FROM events
  WHERE user_id IS :user_id
        AND group_id IS :group_id
        AND removal_time IS NULL
-       AND statuses LIKE '%🗞%';
+       AND repetition = 'repeat every week';
 """,
             params={
                 "user_id": request.entity.safe_user_id,
@@ -112,8 +108,32 @@ SELECT DISTINCT CAST (STRFTIME('%w', {sqlite_format_date('date')}) - 1 AS INT)
         )
     )
 
+    every_weekdays = (
+        (0, 1, 2, 3, 4)
+        if bool(
+            tuple(
+                db.execute(
+                    """
+SELECT 1
+  FROM events
+ WHERE user_id IS :user_id
+       AND group_id IS :group_id
+       AND removal_time IS NULL
+       AND repetition = 'repeat every weekdays'
+       AND STRFTIME('%w', datetime) BETWEEN '1' AND '5';
+""",
+                    params={
+                        "user_id": request.entity.safe_user_id,
+                        "group_id": request.entity.group_id,
+                    },
+                )
+            )
+        )
+        else ()
+    )
+
     second_line = [
-        {(week_day + ("!" if wd in every_week else "")): "None"}
+        {(week_day + ("!" if wd in (*every_week, *every_weekdays) else "")): "None"}
         for wd, week_day in enumerate(get_translate("arrays.week_days_list"))
     ]
 
@@ -135,10 +155,10 @@ SELECT DISTINCT CAST (STRFTIME('%w', {sqlite_format_date('date')}) - 1 AS INT)
                 week_buttons.append({"  ": "None"})
             else:
                 tag_today = "#" if day == today else ""
-                x = has_events.get(day)
+                x = has_events.get(f"{day:0>2}")
                 tag_event = (number_to_power(x) if x < 10 else "*") if x else ""
-                tag_birthday = "!" if (day in every_year_or_month) else ""
-                date = f"{day:0>2}.{month:0>2}.{year}"
+                tag_birthday = "!" if (f"{day:0>2}" in every_year_or_month) else ""
+                date = f"{year}-{month:0>2}-{day:0>2}"
                 week_buttons.append(
                     {
                         f"{tag_today}{day}{tag_event}{tag_birthday}": (
@@ -208,19 +228,19 @@ def create_yearly_calendar_keyboard(
         for x in db.execute(
             """
 -- Months with events
-SELECT CAST (SUBSTR(date, 4, 2) AS INT) AS month_number,
+SELECT STRFTIME('%m', datetime) AS month_number,
        COUNT(event_id) AS event_count
   FROM events
  WHERE user_id IS :user_id
        AND group_id IS :group_id
        AND removal_time IS NULL
-       AND date LIKE :date
+       AND DATE(datetime) LIKE :datetime
  GROUP BY month_number;
 """,
             params={
                 "user_id": request.entity.safe_user_id,
                 "group_id": request.entity.group_id,
-                "date": f"__.__.{year}",
+                "datetime": f"{year}-__-__",
             },
         )
     }
@@ -231,16 +251,12 @@ SELECT CAST (SUBSTR(date, 4, 2) AS INT) AS month_number,
         for x in db.execute(
             """
 -- Month numbers of birthdays in a specific month
-SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT) 
+SELECT DISTINCT STRFTIME('%m', datetime)
   FROM events
  WHERE user_id IS :user_id
        AND group_id IS :group_id
        AND removal_time IS NULL
-       AND (
-           statuses LIKE '%🎉%'
-           OR statuses LIKE '%🎊%'
-           OR statuses LIKE '%📆%'
-       );
+       AND repetition = 'repeat every year';
 """,
             params={
                 "user_id": request.entity.safe_user_id,
@@ -255,12 +271,12 @@ SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT)
         for x in db.execute(
             """
 -- Is there an event that repeats every month?
-SELECT date
+SELECT DATE(datetime)
   FROM events
  WHERE user_id IS :user_id
        AND group_id IS :group_id
        AND removal_time IS NULL
-       AND statuses LIKE '%📅%'
+       AND repetition = 'repeat every month'
  LIMIT 1;
 """,
             params={
@@ -277,9 +293,9 @@ SELECT date
         month_buttons.append([])
         for nameM, numm in row:
             tag_today = "#" if numm == now_month else ""
-            x = month_list.get(numm)
+            x = month_list.get(f"{numm:0>2}")
             tag_event = (number_to_power(x) if x < 1000 else "*") if x else ""
-            tag_birthday = "!" if (numm in every_year or every_month) else ""
+            tag_birthday = "!" if (f"{numm:0>2}" in every_year or every_month) else ""
             month_buttons[-1].append(
                 {
                     f"{tag_today}{nameM}{tag_event}{tag_birthday}": (
@@ -303,7 +319,7 @@ SELECT date
             [
                 {
                     get_theme_emoji("back"): (
-                        f"{back[1:-1]}" f"{f' {arguments[1:-1]}' if arguments else ''}"
+                        f"{back[1:-1]}{f' {arguments[1:-1]}' if arguments else ''}"
                     )
                 }
             ]
@@ -340,7 +356,7 @@ def create_twenty_year_calendar_keyboard(
         for x in db.execute(
             """
 -- Years with events
-SELECT CAST (SUBSTR(date, 7, 4) AS INT) AS year_number,
+SELECT STRFTIME('%Y', datetime) AS year_number,
        COUNT(event_id) AS event_count
   FROM events
  WHERE user_id IS :user_id
@@ -364,11 +380,7 @@ SELECT 1
  WHERE user_id IS :user_id
        AND group_id IS :group_id
        AND removal_time IS NULL
-       AND (
-           statuses LIKE '%🎉%'
-           OR statuses LIKE '%🎊%'
-           OR statuses LIKE '%📆%'
-       );
+       AND repetition = 'repeat every year';
 """,
         params={
             "user_id": request.entity.safe_user_id,
@@ -388,7 +400,7 @@ SELECT 1
                 continue
 
             tag_today = "#" if numY == now_year else ""
-            x = year_list.get(numY)
+            x = year_list.get(f"{numY}")
             tag_event = (number_to_power(x) if x < 1000 else "*") if x else ""
             tag_birthday = "!" if every_year else ""
             years_buttons[-1].append(
@@ -528,6 +540,36 @@ def create_select_status_keyboard(
         )
 
     return markup
+
+
+def create_time_hour_keyboard(next_data: str, back: str = None):
+    keyboard = [
+        [
+            {f"{column:0>2}": f"{next_data} {column}"}
+            for column in range(row, row + 6)
+        ]
+        for row in range(1, 24, 6)
+    ]
+    del keyboard[-1][-1]["24"]
+    keyboard[-1][-1]["00"] = f"{next_data} 0"
+    if back:
+        keyboard.append([{get_theme_emoji("back"): back}])
+    return generate_buttons(keyboard)
+
+
+def create_time_minute_keyboard(next_data: str, back: str = None):
+    keyboard = [
+        [
+            {f"{column:0>2}": f"{next_data} {column}"}
+            for column in range(row, row + 5)
+        ]
+        for row in range(1, 60, 5)
+    ]
+    del keyboard[-1][-1]["60"]
+    keyboard[-1][-1]["00"] = f"{next_data} 0"
+    if back:
+        keyboard.append([{get_theme_emoji("back"): back}])
+    return generate_buttons(keyboard)
 
 
 def edit_button_attrs(

@@ -1,7 +1,7 @@
 import os
 import csv
+import arrow
 import subprocess
-from datetime import datetime
 from pprint import pprint, pformat
 from typing import Literal, Any, Callable
 
@@ -90,7 +90,7 @@ def execute(
 
 
 def export(query: str = "SELECT * FROM events;", params: dict | tuple = ()) -> str:
-    path = f"data/exports/{datetime.utcnow():%Y-%m-%d_%H-%M-%S}.csv"
+    path = f"data/exports/{arrow.utcnow():YYYY-MM-DD_HH-mm-ss}.csv"
 
     try:
         os.mkdir("data/exports")

@@ -1,8 +1,9 @@
 import html
 import traceback
+import arrow
+from arrow import Arrow
 from time import sleep
 from ast import literal_eval
-from datetime import datetime
 from typing import Callable, Literal
 
 # noinspection PyPackageRequirements
@@ -61,6 +62,9 @@ from tgbot.bot_messages import (
     edit_events_date_message,
     before_event_delete_message,
     before_events_delete_message,
+    edit_event_time_hour_message,
+    event_repetition_menu_message,
+    edit_event_time_minute_message,
 )
 from tgbot.types import (
     TelegramAccount,
@@ -157,10 +161,10 @@ def not_login_handler(x: CallbackQuery | Message) -> None:
             except ApiError:
                 TextMessage(get_translate("errors.error")).reply()
             else:
-                TextMessage(get_translate("errors.success")).send()
+                msg = TextMessage(get_translate("errors.success")).send()
                 bot.delete_message(message.chat.id, message.message_id)
                 request.entity = get_telegram_account_from_password(username, password)
-                start_message().send()
+                menu_message().edit(message_id=msg.id)
                 set_bot_commands()
 
     def signup(email: str, username: str, password: str) -> None:
@@ -190,12 +194,12 @@ def not_login_handler(x: CallbackQuery | Message) -> None:
                 except UserNotFound:
                     TextMessage(get_translate("errors.error")).reply()
                 else:
-                    TextMessage(get_translate("errors.success")).send(message.chat.id)
+                    msg = TextMessage(get_translate("errors.success")).send(message.chat.id)
                     bot.delete_message(message.chat.id, message.message_id)
                     request.entity = get_telegram_account_from_password(
                         username, password
                     )
-                    start_message().send(message.chat.id)
+                    start_message().edit(chat_id=message.chat.id, message_id=msg.message_id)
                     set_bot_commands()
 
     if match := add_group_pattern.match(message.text):
@@ -510,15 +514,15 @@ class CallBackHandler:
         else:
             CallBackAnswer(get_translate("errors.error")).answer(show_alert=True)
 
-    @prefix("mnn", {"date": "str"})
-    def notification(self, date: datetime):
+    @prefix("mnn", {"date": "date"})
+    def notification(self, date: Arrow):
         try:
             notification_message(date, from_command=True).edit()
         except ApiTelegramException:
             CallBackAnswer("ok").answer(show_alert=True)
 
     @prefix("mnnc", {"date": "date"})
-    def notification_calendar(self, date: datetime):
+    def notification_calendar(self, date: Arrow):
         return monthly_calendar_message(
             (date.year, date.month) if date else None,
             "mnn",
@@ -533,7 +537,7 @@ class CallBackHandler:
         ).edit()
 
     @prefix("dl", {"date": "date"})
-    def daily_message(self, date: datetime):
+    def daily_message(self, date: Arrow):
         cache_add_event_date("")
         try:
             daily_message(date).edit()
@@ -552,8 +556,8 @@ class CallBackHandler:
             text = get_translate("errors.no_events_to_interact")
             CallBackAnswer(text).answer(show_alert=True)
 
-    @prefix("ea", {"date": "str"})
-    def event_add(self, date: str, message_id: int, message: Message):
+    @prefix("ea", {"date": "date"})
+    def event_add(self, date: Arrow, message_id: int, message: Message):
         cache_add_event_date("")
 
         # Check whether the limit for the user will be exceeded if we add 1 event with 1 character
@@ -561,24 +565,24 @@ class CallBackHandler:
             call_answer = CallBackAnswer(get_translate("errors.exceeded_limit"))
             return call_answer.answer(show_alert=True)
 
-        cache_add_event_date(f"{date},{message_id}")
+        cache_add_event_date(f"{date:YYYY-MM-DD},{message_id}")
         send_event_text = get_translate("text.send_event_text")
         CallBackAnswer(send_event_text).answer()
         text = f"{message.html_text}\n\n<b>?.?.</b>⬜\n{send_event_text}"
-        markup = generate_buttons([[{get_theme_emoji("back"): f"dl {date}"}]])
+        markup = generate_buttons([[{get_theme_emoji("back"): f"dl {date:YYYY-MM-DD}"}]])
         TextMessage(text, markup).edit()
 
     @prefix(
-        "es", {"statuses": "str", "folder": "str", "event_id": "int", "date": "str"}
+        "es", {"statuses": "str", "folder": "str", "event_id": "int", "date": "date"}
     )
-    def event_status_page(self, statuses: str, folder: str, event_id: int, date: str):
+    def event_status_page(self, statuses: str, folder: str, event_id: int, date: Arrow):
         event_status_message(statuses, folder, event_id, date).edit()
 
-    @prefix("ess", {"event_id": "int", "date": "str", "new_status": "str"})
+    @prefix("ess", {"event_id": "int", "date": "date", "new_status": "str"})
     def event_status_set(
         self,
         event_id: int,
-        date: str,
+        date: Arrow,
         new_status: str,
         message_id: int,
     ):
@@ -601,7 +605,7 @@ class CallBackHandler:
 
     @prefix("eet", {"event_id": "int", "date": "date"})
     def event_edit_text(
-        self, event_id: int, date: datetime, message_id: int, message: Message
+        self, event_id: int, date: Arrow, message_id: int, message: Message
     ):
         text = message.text.split("\n", maxsplit=2)[-1]
 
@@ -622,9 +626,15 @@ class CallBackHandler:
         CallBackAnswer(text).answer(show_alert=True)
 
     @prefix("eds", {"event_id": "int", "date": "date"})
-    def event_new_date_set(self, event_id: int, date: datetime, message_id: int):
+    def event_new_date_set(self, event_id: int, date: Arrow, message_id: int):
         try:
-            request.entity.edit_event_date(event_id, f"{date:%d.%m.%Y}")
+            event = request.entity.get_event(event_id)
+        except EventNotFound:
+            return daily_message(date).edit()
+
+        try:
+            date = event.datetime.replace(year=date.year, month=date.month, day=date.day)
+            request.entity.edit_event_datetime(event_id, date)
         except (ApiError, WrongDate):
             CallBackAnswer(get_translate("errors.error")).answer()
         except LimitExceeded:
@@ -635,7 +645,7 @@ class CallBackHandler:
             event_message(event_id, False, message_id).edit()
 
     @prefix("ed", {"event_id": "int", "date": "date"})
-    def event_delete(self, event_id: int, date: datetime):
+    def event_delete(self, event_id: int, date: Arrow):
         try:
             request.entity.delete_event(event_id)
         except EventNotFound:
@@ -643,7 +653,7 @@ class CallBackHandler:
         daily_message(date).edit()
 
     @prefix("edb", {"event_id": "int", "date": "date"})
-    def event_delete_to_bin(self, event_id: int, date: datetime):
+    def event_delete_to_bin(self, event_id: int, date: Arrow):
         try:
             request.entity.delete_event_to_bin(event_id)
         except NotEnoughPermissions:
@@ -655,39 +665,58 @@ class CallBackHandler:
         daily_message(date).edit()
 
     @prefix("esdt", {"event_id": "int", "date": "date"})
-    def event_select_new_date(self, event_id: int, date: datetime):
+    def event_select_new_date(self, event_id: int, date: Arrow):
         generated = edit_event_date_message(event_id, date)
         if generated is None:
             generated = daily_message(date)
         generated.edit()
 
     @prefix("ebd", {"event_id": "int", "date": "date"})
-    def event_before_delete(self, event_id: int, date: datetime):
+    def event_before_delete(self, event_id: int, date: Arrow):
         generated = before_event_delete_message(event_id)
         if generated is None:
             generated = daily_message(date)
         generated.edit()
 
     @prefix("eab", {"event_id": "int", "date": "date"})
-    def event_about_event(self, event_id: int, date: datetime):
+    def event_about_event(self, event_id: int, date: Arrow):
         generated = about_event_message(event_id)
         if generated is None:
             generated = daily_message(date)
         generated.edit()
 
     @prefix("esh", {"event_id": "int", "date": "date"})
-    def event_show_mode(self, event_id: int, date: datetime):
+    def event_show_mode(self, event_id: int, date: Arrow):
         generated = event_show_mode_message(event_id)
         if generated is None:
             generated = daily_message(date)
         generated.edit()
 
     @prefix("eh", {"event_id": "int", "date": "date", "page": ("int", 1)})
-    def event_history(self, event_id: int, date: datetime, page: int):
+    def event_history(self, event_id: int, date: Arrow, page: int):
         generated = event_history_message(event_id, date, page)
         if generated is None:
             generated = daily_message(date)
-        generated.edit()
+
+        try:
+            generated.edit()
+        except ApiTelegramException:
+            return CallBackAnswer("ok").answer(show_alert=True)
+
+    @prefix("ehc", {"event_id": "int", "date": "date"})
+    def event_history_clear(self, event_id: int, date: Arrow):
+        try:
+            request.entity.event_history_clear(event_id)
+        except EventNotFound:
+            return daily_message(date)
+
+        generated = event_history_message(event_id, date)
+        if generated is None:
+            generated = daily_message(date)
+        try:
+            generated.edit()
+        except ApiTelegramException:
+            return CallBackAnswer("ok").answer(show_alert=True)
 
     @prefix("esm", {"id_list": "str"})
     def events_message(self, id_list: str, message: Message):
@@ -721,7 +750,7 @@ class CallBackHandler:
         generated.edit()
 
     @prefix("esd", {"id_list": "str", "date": "date"})
-    def events_delete(self, id_list: str, date: datetime):
+    def events_delete(self, id_list: str, date: Arrow):
         not_deleted: list[int] = []
         for event_id in decode_id(id_list):
             try:
@@ -736,7 +765,7 @@ class CallBackHandler:
         daily_message(date).edit()
 
     @prefix("esdb", {"id_list": "str", "date": "date"})
-    def events_delete_to_bin(self, id_list: str, date: datetime):
+    def events_delete_to_bin(self, id_list: str, date: Arrow):
         not_deleted: list[int] = []
         for event_id in decode_id(id_list):
             try:
@@ -752,12 +781,17 @@ class CallBackHandler:
         daily_message(date).edit()
 
     @prefix("esds", {"id_list": "str", "date": "date"})
-    def events_new_date_set(self, id_list: str, date: datetime):
+    def events_new_date_set(self, id_list: str, date: Arrow):
         id_list = decode_id(id_list)
         not_edit: list[int] = []
+        events = {event.event_id: event for event in request.entity.get_events(id_list)}
+
         for event_id in id_list:
             try:
-                request.entity.edit_event_date(event_id, f"{date:%d.%m.%Y}")
+                if event := events.get(event_id):
+                    date = event.datetime.replace(year=date.year, month=date.month, day=date.day)
+
+                request.entity.edit_event_datetime(event_id, date)
             except (WrongDate, EventNotFound, LimitExceeded, ApiError):
                 not_edit.append(event_id)
 
@@ -856,23 +890,23 @@ class CallBackHandler:
         generated = TextMessage(markup=message.reply_markup)
         generated.edit(chat_id, message_id, only_markup=True)
 
-    @prefix("pd", {"date": "str", "page": ("int", 0), "id_list": ("str", "")})
-    def page_daily(self, date: str, page: int, id_list: str, message: Message):
+    @prefix("pd", {"date": "date", "page": ("int", 0), "id_list": ("str", "")})
+    def page_daily(self, date: Arrow, page: int, id_list: str, message: Message):
         markup = message.reply_markup if page else None
         if markup:
-            edit_button_data(markup, 0, 1, f"se _ {id_list} pd {date}")
-            edit_button_data(markup, 0, 2, f"ses _ {id_list} pd {date}")
+            edit_button_data(markup, 0, 1, f"se _ {id_list} pd {date:YYYY-MM-DD}")
+            edit_button_data(markup, 0, 2, f"ses _ {id_list} pd {date:YYYY-MM-DD}")
         try:
             daily_message(date, decode_id(id_list), page).edit(markup=markup)
         except ApiTelegramException:
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer()
 
-    @prefix("pr", {"date": "str", "page": ("int", 0), "id_list": ("str", "")})
-    def page_recurring(self, date: str, page: int, id_list: str, message: Message):
+    @prefix("pr", {"date": "date", "page": ("int", 0), "id_list": ("str", "")})
+    def page_recurring(self, date: Arrow, page: int, id_list: str, message: Message):
         markup = message.reply_markup if page else None
         if markup:
-            edit_button_data(markup, 0, -1, f"se o {id_list} pr {date}")
+            edit_button_data(markup, 0, -1, f"se o {id_list} pr {date:YYYY-MM-DD}")
         try:
             recurring_events_message(date, decode_id(id_list), page).edit(markup=markup)
         except ApiTelegramException:
@@ -923,11 +957,11 @@ class CallBackHandler:
 
     @prefix("pn", {"date": "date", "page": ("int", 0), "id_list": ("str", ())})
     def page_notification(
-        self, date: datetime, page: int, id_list: str, message: Message
+        self, date: Arrow, page: int, id_list: str, message: Message
     ):
         markup = message.reply_markup if page else None
         if markup:
-            edit_button_data(markup, 0, -1, f"se o {id_list} mnn {date:%d.%m.%Y}")
+            edit_button_data(markup, 0, -1, f"se o {id_list} mnn {date:YYYY-MM-DD}")
         try:
             generated = notification_message(date, decode_id(id_list), page, True)
             generated.edit(markup=markup)
@@ -949,7 +983,7 @@ class CallBackHandler:
                 now_date = request.entity.now_time()
 
                 if command is not None and back is not None:
-                    call.data = f"{command}{f' {arguments}' if arguments else ''} {now_date:%d.%m.%Y}"
+                    call.data = f"{command}{f' {arguments}' if arguments else ''} {now_date:YYYY-MM-DD}"
                     return callback_handler(call)
 
                 daily_message(now_date).edit()
@@ -1045,7 +1079,7 @@ class CallBackHandler:
             sub_urls=1,
             city="Moscow",
             timezone=3,
-            direction="DESC",
+            direction="ASC",
             notifications=0,
             notifications_time="08:00",
             theme=0,
@@ -1186,7 +1220,7 @@ class CallBackHandler:
             TextMessage(get_translate("errors.success")).edit()
 
     @prefix("lm", {"date": "date"})
-    def limits_message(self, date: datetime):
+    def limits_message(self, date: Arrow):
         if not date:
             generated = monthly_calendar_message(None, "lm", "mna")
             return generated.edit()
@@ -1272,6 +1306,81 @@ class CallBackHandler:
             request.entity.user.user_status = 1
             account_message(message_id).edit()
 
+    @prefix("erm", {"event_id": "int", "date": "date"})
+    def event_repetition_menu(self, event_id: int, date: Arrow):
+        generated = event_repetition_menu_message(event_id, date)
+
+        if generated is None:
+            generated = daily_message(date)
+
+        generated.edit()
+
+    @prefix("ers", {"event_id": "int", "date": "date", "repetition_type": "str"})
+    def edit_event_repetition(self, event_id: int, date: Arrow, repetition_type: str, message_id: int):
+        if not request.entity.check_event_exists(event_id):
+            return daily_message(date).edit()
+
+        match repetition_type:
+            case "nv":
+                event_repetition = "repeat never"
+            case "ed":
+                event_repetition = "repeat every day"
+            case "ewk":
+                event_repetition = "repeat every week"
+            case "em":
+                event_repetition = "repeat every month"
+            case "ey":
+                event_repetition = "repeat every year"
+            case "ewd":
+                event_repetition = "repeat every weekdays"
+            case _:
+                raise ValueError(repetition_type)
+
+        request.entity.edit_event_repetition(event_id, event_repetition)
+        generated = event_message(event_id, message_id=message_id)
+
+        if generated is None:
+            generated = daily_message(date)
+
+        generated.edit()
+
+    @prefix("eth", {"event_id": "int", "date": "date"})
+    def event_time_hour(self, event_id: int, date: Arrow):
+        generated = edit_event_time_hour_message(event_id, date)
+        if generated is None:
+            generated = daily_message(date)
+        generated.edit()
+
+    @prefix("etm", {"event_id": "int", "date": "date", "hour": "int"})
+    def event_time_minute(self, event_id: int, date: Arrow, hour: int):
+        generated = edit_event_time_minute_message(event_id, date, hour)
+        if generated is None:
+            generated = daily_message(date)
+        generated.edit()
+
+    @prefix("etset", {"event_id": "int", "date": "date", "hour": "int", "minute": "int"})
+    def event_time_minute(self, event_id: int, date: Arrow, hour: int, minute: int, message_id: int):
+        date = arrow.get(
+            date.year, date.month, date.day, hour, minute
+        ).shift(hours=-request.entity.settings.timezone).replace(
+            year=date.year, month=date.month, day=date.day
+        )
+        try:
+            request.entity.edit_event_datetime(event_id, date)
+        except EventNotFound:
+            return daily_message(date).edit()
+
+        generated = event_message(event_id, message_id=message_id)
+        if generated is None:
+            generated = daily_message(date)
+
+        generated.edit()
+
+    # @prefix("en", {"event_id": "int", "date": "str"})
+    # def event_notification(self, event_id: int, date: str):
+    #     try:
+    #         request.entity.edit_event_notification(event_id, )
+
 
 callback_handler = CallBackHandler()
 
@@ -1331,7 +1440,7 @@ def cache_add_event_date(state: str = None) -> str | bool:
         msg_date, message_id = data.split(",")
         del add_event_cache[request.entity.request_chat_id]
         try:
-            daily_message(msg_date).edit(request.entity.request_chat_id, message_id)
+            daily_message(arrow.get(msg_date)).edit(request.entity.request_chat_id, message_id)
         except ApiTelegramException:
             pass
 

@@ -1,7 +1,8 @@
 import re
 import json
 import html
-from datetime import timedelta, datetime
+import arrow
+from arrow import Arrow
 from typing import Literal
 
 # noinspection PyPackageRequirements
@@ -31,12 +32,13 @@ from tgbot.buttons_utils import (
     encode_id,
     create_monthly_calendar_keyboard,
     create_select_status_keyboard,
+    create_time_hour_keyboard,
+    create_time_minute_keyboard,
 )
 from tgbot.types import TelegramAccount
 from tgbot.utils import (
     re_edit_message,
     html_to_markdown,
-    sqlite_format_date2,
     extract_search_query,
     extract_search_filters,
     highlight_text_difference,
@@ -44,7 +46,7 @@ from tgbot.utils import (
 )
 from todoapi.logger import logger
 from todoapi.types import db, group_limits
-from todoapi.utils import sqlite_format_date, is_valid_year, chunks
+from todoapi.utils import is_valid_year, chunks
 from todoapi.exceptions import EventNotFound, GroupNotFound, UserNotFound
 from telegram_utils.buttons_generator import generate_buttons, edit_button_data
 
@@ -142,15 +144,15 @@ def settings_message() -> TextMessage:
 
     notifications_time = {}
     if settings.notifications != 0:
-        now = datetime(2000, 6, 5, n_hours, n_minutes)
+        now = arrow.get(2000, 6, 5, n_hours, n_minutes)
         notifications_time = {
             k: f"ste notifications_time {v}"
             for k, v in {
-                "-1h": f"{now - timedelta(hours=1):%H:%M}",
-                "-10m": f"{now - timedelta(minutes=10):%H:%M}",
+                "-1h": f"{now.shift(hours=1):HH:mm}",
+                "-10m": f"{now.shift(minutes=10):HH:mm}",
                 f"{n_hours:0>2}:{n_minutes:0>2} ⏰": "08:00",
-                "+10m": f"{now + timedelta(minutes=10):%H:%M}",
-                "+1h": f"{now + timedelta(hours=1):%H:%M}",
+                "+10m": f"{now.shift(minutes=10):HH:mm}",
+                "+1h": f"{now.shift(hours=1):HH:mm}",
             }.items()
         }
 
@@ -159,7 +161,7 @@ def settings_message() -> TextMessage:
         link=bool(settings.sub_urls),
         city=html.escape(settings.city),
         timezone=str_utz,
-        timezone_question=f"{request.entity.now_time():%Y.%m.%d  <u>%H:%M</u>}",
+        timezone_question=f"{request.entity.now_time():YYYY.MM.DD  <u>HH:mm</u>}",
         sorting={"DESC": "⬆️", "ASC": "⬇️"}[settings.direction],
         notification_type=("🔕", "🔔", "📆")[settings.notifications],
         notification_time=(
@@ -213,7 +215,7 @@ def help_message(path: str = "page 1") -> TextMessage:
 
 
 def daily_message(
-    date: datetime | str, id_list: list[int] = (), page: int = 0
+    date: Arrow, id_list: list[int] = (), page: int = 0
 ) -> EventsMessage:
     """
     Generates a message for one day
@@ -222,52 +224,50 @@ def daily_message(
     :param id_list: List of event_id
     :param page: Page number
     """
-    if isinstance(date, str):
-        date = datetime.strptime(date, "%d.%m.%Y")
-
     sql_where = """
 user_id IS ?
 AND group_id IS ?
-AND date = ?
+AND DATE(datetime, ? || ' HOURS') = ?
 AND removal_time IS NULL
 """
     params = (
         request.entity.safe_user_id,
         request.entity.group_id,
-        f"{date:%d.%m.%Y}",
+        request.entity.settings.timezone,
+        f"{date:YYYY-MM-DD}",
     )
 
-    y = date - timedelta(days=1)
-    t = date + timedelta(days=1)
-    yesterday = f"dl {y:%d.%m.%Y}" if is_valid_year(y.year) else "None"
-    tomorrow = f"dl {t:%d.%m.%Y}" if is_valid_year(t.year) else "None"
+    y = date.shift(days=-1)
+    t = date.shift(days=+1)
+    yesterday = f"dl {y:YYYY-MM-DD}" if is_valid_year(y.year) else "None"
+    tomorrow = f"dl {t:YYYY-MM-DD}" if is_valid_year(t.year) else "None"
 
     markup = generate_buttons(
         [
             [
-                {get_theme_emoji("add"): f"ea {date:%d.%m.%Y}"},
+                {get_theme_emoji("add"): f"ea {date:YYYY-MM-DD}"},
                 {"🔼": "None"},
                 {"↕️": "None"},
                 {"Menu": "mnm"},
             ],
             [
-                {get_theme_emoji("back"): f"mnc (({date:%Y},{int(date.month)}),)"},
+                {get_theme_emoji("back"): f"mnc (({date:YYYY},{int(date.month)}),)"},
                 {"<": yesterday},
                 {">": tomorrow},
-                {"🔄": f"dl {date:%d.%m.%Y}"},
+                {"🔄": f"dl {date:YYYY-MM-DD}"},
             ],
         ]
     )
-    generated = EventsMessage(f"{date:%d.%m.%Y}", markup=markup, page=page)
+    generated = EventsMessage(date, markup=markup, page=page)
 
     if id_list:
         generated.get_page_events(sql_where, params, id_list)
     else:
-        generated.get_pages_data(sql_where, params, f"pd {date:%d.%m.%Y}")
+        generated.get_pages_data(sql_where, params, f"pd {date:YYYY-MM-DD}")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
-    edit_button_data(generated.markup, 0, 1, f"se _ {string_id} pd {date:%d.%m.%Y}")
-    edit_button_data(generated.markup, 0, 2, f"ses _ {string_id} pd {date:%d.%m.%Y}")
+    edit_button_data(generated.markup, 0, 1, f"se _ {string_id} pd {date:YYYY-MM-DD}")
+    edit_button_data(generated.markup, 0, 2, f"ses _ {string_id} pd {date:YYYY-MM-DD}")
 
     generated.format(
         title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})",
@@ -281,53 +281,52 @@ AND removal_time IS NULL
         for x in db.execute(
             f"""
 -- If found, then add a repeating events button
-SELECT DISTINCT date
+SELECT DISTINCT DATE(datetime, :timezone || ' HOURS')
   FROM events
  WHERE user_id IS :user_id
        AND group_id IS :group_id
        AND removal_time IS NULL
-       AND date != :date
+       AND DATE(datetime) != :datetime
        AND (
     ( -- Every year
-        (
-            statuses LIKE '%🎉%'
-            OR statuses LIKE '%🎊%'
-            OR statuses LIKE '%📆%'
-        )
-        AND date LIKE :y_date
+        repetition = 'repeat every year'
+        AND DATE(datetime) LIKE :y_date
     )
     OR
     ( -- Every month
-        statuses LIKE '%📅%'
-        AND date LIKE :m_date
+        repetition = 'repeat every month'
+        AND DATE(datetime) LIKE :m_date
     )
     OR
     ( -- Every week
-        statuses LIKE '%🗞%'
-        AND
-        STRFTIME('%w', {sqlite_format_date('date')}) =
-        CAST(STRFTIME('%w', {sqlite_format_date(':date')}) as TEXT)
+        repetition = 'repeat every week'
+        AND STRFTIME('%w', datetime) = STRFTIME('%w', :datetime)
     )
     OR
-    ( -- Every day
-        statuses LIKE '%📬%'
+    ( -- Every weekdays
+        repetition = 'repeat every weekdays'
+        AND STRFTIME('%w', :datetime) BETWEEN '1' AND '5'
+        AND STRFTIME('%w', datetime) BETWEEN '1' AND '5'
     )
+    OR
+    repetition = 'repeat every day' -- Every day
 )
 LIMIT 1;
 """,
             params={
+                "timezone": request.entity.settings.timezone,
                 "user_id": request.entity.safe_user_id,
                 "group_id": request.entity.group_id,
-                "date": f"{date:%d.%m.%Y}",
-                "y_date": f"{date:%d.%m}.____",
-                "m_date": f"{date:%d}.__.____",
+                "datetime": f"{date:YYYY-MM-DD}",
+                "y_date": f"____-{date:MM-DD}",
+                "m_date": f"____-__-{date:DD}",
             },
         )
     ]
 
     if daylist:
         generated.markup.row(
-            InlineKeyboardButton("📅", callback_data=f"pr {date:%d.%m.%Y}")
+            InlineKeyboardButton("📅", callback_data=f"pr {date:YYYY-MM-DD}")
         )
 
     return generated
@@ -359,22 +358,22 @@ def event_message(
                     if message_id
                     else {"📝": "None"}
                 ),
-                {"🏷": f"es {event.string_statuses} folders {event_id} {event.date}"},
+                {"🏷": f"es {event.string_statuses} folders {event_id} {event.datetime:YYYY-MM-DD}"},
                 {"🗑": f"ebd {event_id} {event.date}"},
             ],
             [
                 {"📋": f"esh {event_id} {event.date}"},
-                {" ": "None"},  # {"*️⃣": "None"},
+                {"🔁": f"erm {event_id} {event.date}"},  # {"*️⃣": "None"},
                 {"📅": f"esdt {event_id} {event.date}"},
             ],
             [
                 {"ℹ️": f"eab {event_id} {event.date}"},
                 {"🗄": f"eh {event_id} {event.date}"},
-                {" ": "None"},  # {"🖼": "None"},
+                {"🕛": f"eth {event_id} {event.date}"},  # {"🖼": "None"},
             ],
             [
                 {get_theme_emoji("back"): f"dl {event.date}"},
-                {" ": "None"},
+                {" ": "None"},  # 🔔
                 {"🔄": f"em {event_id}"},
             ],
         ]
@@ -456,15 +455,28 @@ def about_event_message(event_id: int) -> EventMessage | None:
     if not event:
         return None
 
-    title, text_length, time_added, time_last_changes = get_translate(
-        "text.event_about_info"
-    )
+    (
+        title,
+        text_event_id,
+        text_length,
+        time_added,
+        time_last_changes,
+        text_reference_event_id,
+    ) = get_translate("text.event_about_info")
+
+    if event.reference_event_id:
+        text_reference_event_id = f"{event.reference_event_id} - {text_reference_event_id}"
+    else:
+        text_reference_event_id = ""
+
     text = f"""
+{event.event_id} - {text_event_id}
 {len(event.text)} - {text_length}
 {parse_utc_datetime(event.adding_time)} - {time_added}
 {parse_utc_datetime(event.recent_changes_time)} - {time_last_changes}
-"""
-    event.text = formatting.hpre(text.strip(), language="language-event-metadata")
+{text_reference_event_id}
+""".strip()
+    event.text = formatting.hpre(text, language="language-event-metadata")
     generated.format(
         f"{title}:",
         event_formats["a"],
@@ -488,7 +500,7 @@ def event_show_mode_message(event_id: int) -> EventMessage | None:
 
 
 def event_history_message(
-    event_id: int, date: datetime, page: int = 1
+    event_id: int, date: Arrow, page: int = 1
 ) -> EventMessage | None:
     generated = EventMessage(event_id)
     event = generated.event
@@ -511,6 +523,13 @@ def event_history_message(
         def prepare_value(action, val):
             if action == "statuses":
                 return ",".join(map(str, val))
+
+            if action == "datetime":
+                a = arrow.get(val)
+                result = a.shift(hours=request.entity.settings.timezone)
+                result = result.replace(year=a.year, month=a.month, day=a.day)
+                return f"{result:YYYY-MM-DD HH:mm:ss}"
+
             return val
 
         event.text = (
@@ -534,12 +553,12 @@ def event_history_message(
             (
                 [
                     (
-                        {"<": f"eh {event_id} {date:%d.%m.%Y} {page - 1}"}
+                        {"<": f"eh {event_id} {date:YYYY-MM-DD} {page - 1}"}
                         if page > 1 and event.history[::-1][: (page - 1) * 4]
                         else {" ": "None"}
                     ),
                     (
-                        {">": f"eh {event_id} {date:%d.%m.%Y} {page + 1}"}
+                        {">": f"eh {event_id} {date:YYYY-MM-DD} {page + 1}"}
                         if event.history[::-1][(page - 1) * 4 + 4 :]
                         else {" ": "None"}
                     ),
@@ -549,7 +568,8 @@ def event_history_message(
             ),
             [
                 {get_theme_emoji("back"): f"em {event_id}"},
-                {"🔄": f"eh {event_id} {date:%d.%m.%Y}"},
+                {"🧹": f"ehc {event_id} {date:YYYY-MM-DD}"},
+                {"🔄": f"eh {event_id} {date:YYYY-MM-DD}"},
             ],
         ]
     )
@@ -600,7 +620,7 @@ def confirm_changes_message(message: Message) -> None | int:
     added_length = 0 if tag_len_less else new_event_len - len_old_event
 
     tag_limit_exceeded = request.entity.limit.is_exceeded_for_events(
-        date=event.date, symbol_count=added_length
+        date=event.datetime, symbol_count=added_length
     )
 
     if tag_max_len_exceeded or tag_limit_exceeded:
@@ -672,7 +692,7 @@ def confirm_changes_message(message: Message) -> None | int:
 
 
 def recurring_events_message(
-    date: str, id_list: list[int] = (), page: int = 0
+    date: Arrow, id_list: list[int] = (), page: int = 0
 ) -> EventsMessage:
     """
     :param date: message date
@@ -683,36 +703,40 @@ def recurring_events_message(
 user_id IS ?
 AND group_id IS ?
 AND removal_time IS NULL
-AND 
-(
+AND (
     ( -- Every year
-        (
-            statuses LIKE '%🎉%'
-            OR statuses LIKE '%🎊%'
-            OR statuses LIKE '%📆%'
-        )
-        AND date LIKE '{date[:-5]}.____'
+        repetition = 'repeat every year'
+        AND DATE(datetime) LIKE ?
     )
     OR
     ( -- Every month
-        statuses LIKE '%📅%'
-        AND date LIKE '{date[:2]}.__.____'
+        repetition = 'repeat every month'
+        AND DATE(datetime) LIKE ?
     )
     OR
     ( -- Every week
-        statuses LIKE '%🗞%'
-        AND STRFTIME('%w', {sqlite_format_date('date')}) =
-        CAST(STRFTIME('%w', '{sqlite_format_date2(date)}') as TEXT)
+        repetition = 'repeat every week'
+        AND STRFTIME('%w', datetime) = STRFTIME('%w', ?)
+    )
+    OR
+    ( -- Every weekdays
+        repetition = 'repeat every weekdays'
+        AND STRFTIME('%w', ?) BETWEEN '1' AND '5'
+        AND STRFTIME('%w', datetime) BETWEEN '1' AND '5'
     )
     OR
     ( -- Every day
-        statuses LIKE '%📬%'
+        repetition = 'repeat every day'
     )
 )
 """
     params = (
         request.entity.safe_user_id,
         request.entity.group_id,
+        f"____-{date:MM-DD}",
+        f"____-__-{date:DD}",
+        f"{date:YYYY-MM-DD}",
+        f"{date:YYYY-MM-DD}",
     )
 
     back_open_markup = generate_buttons(
@@ -737,7 +761,7 @@ AND
 
 
 def event_status_message(
-    statuses: str, folder_path: str, event_id: int, date: str
+    statuses: str, folder_path: str, event_id: int, date: Arrow
 ) -> EventMessage:
     statuses_list = statuses.split(",")
     markup = create_select_status_keyboard(
@@ -746,7 +770,7 @@ def event_status_message(
         folder_path=folder_path,
         save="ess",
         back="em",
-        arguments=f"{event_id} {date}",
+        arguments=f"{event_id} {date:YYYY-MM-DD}",
     )
     generated = EventMessage(event_id)
     generated.event._status = json.dumps(statuses_list[-5:], ensure_ascii=False)
@@ -756,7 +780,72 @@ def event_status_message(
     return generated
 
 
-def edit_event_date_message(event_id: int, date: datetime) -> EventMessage | None:
+def event_repetition_menu_message(event_id: int, date: Arrow) -> TextMessage | None:
+    generated = EventMessage(event_id)
+    event = generated.event
+    if not event:
+        return None
+
+    (
+        repeat_never,
+        repeat_every_day,
+        repeat_every_week,
+        repeat_every_month,
+        repeat_every_year,
+        repeat_every_weekdays,
+        # other,
+    ) = get_translate("text.repetition_menu")
+
+    markup = [
+        [{repeat_never: f"ers {event_id} {date.date()} nv"}],
+        [{repeat_every_day: f"ers {event_id} {date.date()} ed"}],
+        [{repeat_every_week: f"ers {event_id} {date.date()} ewk"}],
+        [{repeat_every_month: f"ers {event_id} {date.date()} em"}],
+        [{repeat_every_year: f"ers {event_id} {date.date()} ey"}],
+        [{repeat_every_weekdays: f"ers {event_id} {date.date()} ewd"}],
+        # [{other: "None"}],
+        [{get_theme_emoji("back"): f"em {event_id}"}],
+    ]
+
+    generated.format(
+        f"Repetition menu",
+        event_formats["a"],
+        generate_buttons(markup),
+    )
+    return generated
+
+
+def edit_event_time_hour_message(event_id: int, date: Arrow) -> TextMessage | None:
+    generated = EventMessage(event_id)
+    event = generated.event
+
+    if not event:
+        return None
+
+    generated.format(
+        f"Select hour for event:",
+        event_formats["a"],
+        create_time_hour_keyboard(f"etm {event_id} {date.date()}", f"em {event_id}"),
+    )
+    return generated
+
+
+def edit_event_time_minute_message(event_id: int, date: Arrow, hour: int) -> TextMessage | None:
+    generated = EventMessage(event_id)
+    event = generated.event
+
+    if not event:
+        return None
+
+    generated.format(
+        f"Select minute for event:",
+        event_formats["a"],
+        create_time_minute_keyboard(f"etset {event_id} {date.date()} {hour}", f"eth {event_id} {date.date()}"),
+    )
+    return generated
+
+
+def edit_event_date_message(event_id: int, date: Arrow) -> EventMessage | None:
     generated = EventMessage(event_id)
     event = generated.event
     if not event:
@@ -773,7 +862,7 @@ def edit_event_date_message(event_id: int, date: datetime) -> EventMessage | Non
 
 
 def edit_events_date_message(
-    id_list: list[int], date: datetime = None
+    id_list: list[int], date: Arrow | None = None
 ) -> EventsMessage:
     if date is None:
         date = request.entity.now_time()
@@ -1066,41 +1155,32 @@ def week_event_list_message(id_list: list[int] = (), page: int = 0) -> EventsMes
     :param id_list: List of event_id
     :param page: Page number
     """
-    tz = f"'{request.entity.settings.timezone:+} hours'"
+    tz = request.entity.settings.timezone
     sql_where = f"""
 user_id IS ?
 AND group_id IS ?
 AND removal_time IS NULL
-AND statuses NOT LIKE '%🔕%'
 AND (
     (
-        {sqlite_format_date('date')}
-        BETWEEN DATE('now', {tz})
-            AND DATE('now', '+7 day', {tz})
+        DATE(datetime) BETWEEN DATE('now', '{tz} HOURS')
+                           AND DATE('now', '+7 day', '{tz} HOURS')
     )
-    OR
-    ( -- Every year
-        (
-            statuses LIKE '%🎉%'
-            OR statuses LIKE '%🎊%'
-            OR statuses LIKE '%📆%'
-        )
-        AND
-        (
-            STRFTIME('%m-%d', {sqlite_format_date('date')})
-            BETWEEN STRFTIME('%m-%d', 'now', {tz})
-                AND STRFTIME('%m-%d', 'now', '+7 day', {tz})
-        )
+    OR ( -- Every year
+        repetition = 'repeat every year'
+        AND STRFTIME('%m-%d', datetime) BETWEEN STRFTIME('%m-%d', 'now', '{tz} HOURS')
+                                            AND STRFTIME('%m-%d', 'now', '+7 day', '{tz} HOURS')
     )
-    OR
-    ( -- Every month
-        statuses LIKE '%📅%'
-        AND SUBSTR(date, 1, 2) 
-        BETWEEN STRFTIME('%d', 'now', {tz})
-            AND STRFTIME('%d', 'now', '+7 day', {tz})
+    OR ( -- Every month
+        repetition = 'repeat every month'
+        AND STRFTIME('%d', datetime) BETWEEN STRFTIME('%d', 'now', '{tz} HOURS')
+                                         AND STRFTIME('%d', 'now', '+7 day', '{tz} HOURS')
     )
-    OR statuses LIKE '%🗞%' -- Every week
-    OR statuses LIKE '%📬%' -- Every day
+    OR ( -- Every weekdays
+        repetition = 'repeat every weekdays'
+        AND STRFTIME('%w', datetime) BETWEEN '1' AND '5'
+    )
+    OR repetition = 'repeat every week' -- Every week
+    OR repetition = 'repeat every day' -- Every day
 )
     """
     params = (
@@ -1144,8 +1224,8 @@ AND removal_time IS NOT NULL
         """
 -- Deleting events older than 30 days
 DELETE FROM events
-      WHERE removal_time IS NOT NULL AND 
-            (JULIANDAY('now') - JULIANDAY(removal_time) > 30);
+      WHERE removal_time IS NOT NULL
+            AND (JULIANDAY('now') - JULIANDAY(removal_time) > 30);
 """,
         commit=True,
     )
@@ -1181,71 +1261,62 @@ DELETE FROM events
 
 
 def notification_message(
-    n_date: datetime | str = None,
+    n_date: Arrow | None = None,
     id_list: list[int] = (),
     page: int = 0,
     from_command: bool = False,
 ) -> EventsMessage | None:
-    if n_date is None or n_date == "now":
+    if n_date is None:
         n_date = request.entity.now_time()
 
-    if isinstance(n_date, str):
-        n_date = datetime.strptime(n_date, "%d.%m.%Y")
-
-    dates = [n_date + timedelta(days=days) for days in (0, 1, 2, 3, 7)]
+    dates = [n_date.shift(days=days) for days in (0, 1, 2, 3, 7)]
     weekdays = ["0" if (w := date.weekday()) == 6 else f"{w + 1}" for date in dates[:2]]
     sql_where = f"""
 user_id IS ?
 AND group_id IS ?
 AND removal_time IS NULL
-AND statuses NOT LIKE '%🔕%'
 AND (
     ( -- For today and +1 day
-        date IN ('{dates[0]:%d.%m.%Y}', '{dates[1]:%d.%m.%Y}')
+        datetime IN ('{dates[0]:YYYY-MM-DD}', '{dates[1]:YYYY-MM-DD}')
     )
-    OR
-    ( -- Matches on +2, +3 and +7 days
-        date IN ({", ".join(f"'{date:%d.%m.%Y}'" for date in dates[2:])})
-        AND statuses NOT LIKE '%🗞%'
+    OR ( -- Matches on +2, +3 and +7 days
+        repetition = 'repeat every week'
+        AND DATE(datetime) IN ({", ".join(f"'{date:YYYY-MM-DD}'" for date in dates[2:])})
     )
-    OR
-    ( -- Every year
-        (
-            statuses LIKE '%🎉%'
-            OR
-            statuses LIKE '%🎊%'
-            OR
-            statuses LIKE '%📆%'
-        )
-        AND SUBSTR(date, 1, 5) IN ({", ".join(f"'{date:%d.%m}'" for date in dates)})
+    OR ( -- Every year
+        repetition = 'repeat every year'
+        AND STRFTIME('%m-%d', datetime) IN ({", ".join(f"'{date:MM-DD}'" for date in dates)})
     )
-    OR
-    ( -- Every month
-        SUBSTR(date, 1, 2) IN ({", ".join(f"'{date:%d}'" for date in dates)})
-        AND statuses LIKE '%📅%'
+    OR ( -- Every month
+        STRFTIME('%d', datetime) IN ({", ".join(f"'{date:DD}'" for date in dates)})
+        AND repetition = 'repeat every month'
     )
-    OR
-    ( -- Every week
-        STRFTIME('%w', {sqlite_format_date('date')}) IN ({", ".join(f"'{w}'" for w in weekdays)})
-        AND statuses LIKE '%🗞%'
+    OR ( -- Every week
+        repetition = 'repeat every week'
+        AND STRFTIME('%w', datetime) IN ({", ".join(f"'{w}'" for w in weekdays)})
     )
-    OR
-    ( -- Every day
-        statuses LIKE '%📬%'
+    OR ( -- Every weekdays
+        repetition = 'repeat every weekdays'
+        AND STRFTIME('%w', datetime) BETWEEN '1' AND '5'
+        AND STRFTIME('%w', ?) BETWEEN '1' AND '5'
+    )
+    OR ( -- Every day
+        repetition = 'repeat every day'
     )
 )
     """
     params = (
         request.entity.safe_user_id,
         request.entity.group_id,
+        f"{n_date:YYYY-MM-DD}",
     )
 
     markup = generate_buttons(
         [
             [
                 {get_theme_emoji("back"): "mnm"},
-                {"📆": f"mnnc {n_date:%d.%m.%Y}"} if from_command else {},
-                {"🔄": f"mnn {n_date:%d.%m.%Y}"},
+                {"📆": f"mnnc {n_date:YYYY-MM-DD}"} if from_command else {},
+                {"🔄": f"mnn {n_date:YYYY-MM-DD}"},
                 {"↖️": "None"},
             ]
         ]
@@ -1255,16 +1326,16 @@ AND (
     if id_list:
         generated.get_page_events(sql_where, params, id_list)
     else:
-        generated.get_pages_data(sql_where, params, f"pn {n_date:%d.%m.%Y}")
+        generated.get_pages_data(sql_where, params, f"pn {n_date:YYYY-MM-DD}")
         string_id = encode_id([event.event_id for event in generated.event_list])
         edit_button_data(
-            generated.markup, 0, -1, f"se o {string_id} mnn {n_date:%d.%m.%Y}"
+            generated.markup, 0, -1, f"se o {string_id} mnn {n_date:YYYY-MM-DD}"
         )
 
     if generated.event_list or from_command:
         reminder_translate = get_translate("messages.reminder")
         generated.format(
-            title=f"🔔 {reminder_translate} <b>{n_date:%d.%m.%Y}</b>",
+            title=f"🔔 {reminder_translate} <b>{n_date:YYYY-MM-DD}</b>",
             args=event_formats["r"],
             if_empty=get_translate("errors.message_empty"),
         )
@@ -1273,7 +1344,7 @@ AND (
 
 
 def send_notifications_messages() -> None:
-    n_date = datetime.utcnow()
+    n_date = arrow.utcnow()
     with db.connection(), db.cursor():
         result = db.execute(
             """
@@ -1293,7 +1364,7 @@ SELECT CAST(
            ) AS INT
        ),
        CAST(notifications AS INT),
-       CASE 
+       CASE
            WHEN tg_settings.user_id THEN 'user'
            WHEN tg_settings.group_id THEN (
                SELECT 'group:'
@@ -1309,13 +1380,8 @@ SELECT CAST(
        END
   FROM tg_settings
  WHERE notifications != 0
-       AND (
-           (
-               CAST(SUBSTR(notifications_time, 1, 2) AS INT)
-               - timezone + 24
-           ) % 24
-       ) = :hour
-       AND CAST(SUBSTR(notifications_time, 4, 2) AS INT) = :minute;
+       AND (STRFTIME('%H', notifications_time) - timezone + 24) % 24 = :hour
+       AND STRFTIME('%M', notifications_time) = :minute;
 """,
             params={
                 "hour": n_date.hour,
@@ -1366,15 +1432,15 @@ def monthly_calendar_message(
     return TextMessage(text, markup)
 
 
-def limits_message(date: datetime | str = None) -> TextMessage:
-    if date is None or date == "now":
+def limits_message(date: Arrow = None) -> TextMessage:
+    if date is None:
         date = request.entity.now_time()
 
     if not is_valid_year(date.year):
         return TextMessage(get_translate("errors.error"))
 
     return TextMessage(
-        get_limit_link(f"{date:%d.%m.%Y}"),
+        get_limit_link(f"{date:YYYY-MM-DD}"),
         generate_buttons([[{get_theme_emoji("back"): "lm"}]]),
     )
 
@@ -1630,7 +1696,7 @@ def select_one_message(
     if len(events_list) == 1:
         event = events_list[0]
         if is_open:
-            generated = daily_message(event.date)
+            generated = daily_message(event.datetime)
         else:
             generated = event_message(event.event_id, is_in_wastebasket, message_id)
 
@@ -1638,7 +1704,7 @@ def select_one_message(
 
     markup = []
     for event in events_list:
-        button_title = f"{event.event_id}.{event.string_statuses} {event.text}"
+        button_title = f"{event.string_statuses}.{event.string_repetition} {event.text}"
         button_title = button_title.ljust(60, "⠀")[:60]
 
         if is_in_wastebasket or is_in_search or is_open:
@@ -1678,7 +1744,7 @@ def select_events_message(
 
     markup = []
     for n, event in enumerate(events_list):
-        button_title = f"{event.event_id}.{event.string_statuses} {event.text}"
+        button_title = f"{event.string_statuses}.{event.string_repetition} {event.text}"
         button_title = button_title.ljust(60, "⠀")[:60]
         if in_bin or is_in_search:
             button_title = f"{event.date}.{button_title}"[:60]

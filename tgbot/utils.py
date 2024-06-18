@@ -1,10 +1,10 @@
 import re
 import html
 import shlex
+import arrow
 import difflib
 from typing import Literal
 from urllib.parse import urlparse
-from datetime import timedelta, datetime, timezone
 
 import requests
 from cachetools import TTLCache, LRUCache, cached
@@ -21,7 +21,7 @@ from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.time_utils import relatively_string_date
 from todoapi.logger import logger
-from todoapi.utils import is_admin_id, rate_limit, sqlite_format_date
+from todoapi.utils import is_admin_id, rate_limit
 
 
 re_inline_message = re.compile(rf"\A@{re.escape(bot.user.username)} ")
@@ -290,42 +290,34 @@ def fetch_weather(city: str) -> str:
     except KeyError:
         weather_icon = weather["weather"][0]["main"]
 
-    delta = timedelta(hours=weather["timezone"] // 60 // 60)
+    delta = weather["timezone"] // 60 // 60
     city_name = weather["name"].capitalize()
     weather_description = (
         weather["weather"][0]["description"].capitalize().replace(" ", "\u00A0")
     )
 
-    time_in_city = datetime.now(timezone.utc) + delta
-    weather_time = datetime.utcfromtimestamp(weather["dt"]) + delta
-    time_in_city = f"{time_in_city:%Y.%m.%d %H:%M:%S}"
-    weather_time = f"{weather_time:%Y.%m.%d %H:%M:%S}"
+    time_in_city = arrow.utcnow().shift(hours=delta)
+    weather_time = arrow.get(weather["dt"]).shift(hours=delta)
 
-    temp = int(weather["main"]["temp"])
-    feels_like = int(weather["main"]["feels_like"])
-    wind_speed = f"{weather['wind']['speed']:.1f}"
     wind_deg = weather["wind"]["deg"]
     wind_deg_icon = de[0 if (d := round(int(wind_deg) / 45) * 45) == 360 else d]
-    sunrise = str(datetime.utcfromtimestamp(weather["sys"]["sunrise"]) + delta)
-    sunrise = sunrise.split(" ")[-1]
-    sunset = str(datetime.utcfromtimestamp(weather["sys"]["sunset"]) + delta)
-    sunset = sunset.split(" ")[-1]
-    visibility = weather["visibility"]
+    sunrise = arrow.get(weather["sys"]["sunrise"]).shift(hours=delta)
+    sunset = arrow.get(weather["sys"]["sunset"]).shift(hours=delta)
 
     return get_translate("messages.weather").format(
         city_name,
         weather_icon,
         weather_description,
-        time_in_city,
-        weather_time,
-        temp,
-        feels_like,
-        wind_speed,
+        f"{time_in_city:YYYY.MM.DD HH:mm:ss}",
+        f"{weather_time:YYYY.MM.DD HH:mm:ss}",
+        int(weather["main"]["temp"]),
+        int(weather["main"]["feels_like"]),
+        f"{weather['wind']['speed']:.1f}",
         wind_deg_icon,
         wind_deg,
-        sunrise,
-        sunset,
-        visibility,
+        f"{sunrise:YYYY.MM.DD HH:mm:ss}",
+        f"{sunset:YYYY.MM.DD HH:mm:ss}",
+        weather["visibility"],
     )
 
 
@@ -369,10 +361,14 @@ def fetch_forecast(city: str) -> str:
         315: "↖️",
     }
 
-    city_timezone = timedelta(hours=weather["city"]["timezone"] // 60 // 60)
-    sunrise = datetime.utcfromtimestamp(weather["city"]["sunrise"]) + city_timezone
-    sunset = datetime.utcfromtimestamp(weather["city"]["sunset"]) + city_timezone
-    result = f"{weather['city']['name']}\n☀ {sunrise}\n🌑 {sunset}"
+    city_timezone = weather["city"]["timezone"] // 60 // 60
+    sunrise = arrow.get(weather["city"]["sunrise"]).shift(hours=city_timezone)
+    sunset = arrow.get(weather["city"]["sunset"]).shift(hours=city_timezone)
+    result = (
+        f"{weather['city']['name']}\n"
+        f"☀ {sunrise:YYYY-MM-DD HH:mm:ss}\n"
+        f"🌑 {sunset:YYYY-MM-DD HH:mm:ss}"
+    )
 
     for hour in weather["list"]:
         weather_icon = hour["weather"][0]["icon"]
@@ -389,20 +385,21 @@ def fetch_forecast(city: str) -> str:
         wind_speed = hour["wind"]["speed"]
         wind_deg = hour["wind"]["deg"]
         wind_deg_icon = de[0 if (d := round(int(wind_deg) / 45) * 45) == 360 else d]
-        city_time = hour["dt_txt"].replace("-", ".")[:-3]
-        date = ".".join(city_time.split()[0].split(".")[::-1])
-        if date not in result:
-            dt_date = datetime.strptime(date, "%d.%m.%Y")
-            n_time = request.entity.now_time()
-            n_time = datetime(n_time.year, n_time.month, n_time.day)
+        city_datetime = arrow.get(hour["dt_txt"])
+        time = f"{city_datetime:HH:mm}"
+        date = city_datetime.date()
+        s_date = f"{city_datetime:YYYY.MM.DD}"
+
+        if s_date not in result:
+            n_time = request.entity.now_time().date()
             str_date, rel_date, week_date = relatively_string_date(
-                (dt_date - n_time).days
+                (date - n_time).days
             )
-            result += f"\n\n<b>{dt_date:%d.%m.%Y}</b> <u><i>{str_date}  {week_date}</i></u> ({rel_date})"
+            result += f"\n\n<b>{s_date}</b> <u><i>{str_date}  {week_date}</i></u> ({rel_date})"
 
         mps = get_translate("text.meters_per_second")
         result += (
-            f"\n{city_time.split()[-1]} {weather_icon}<b>{temp:{config.ts}>2.0f}°C "
+            f"\n{time} {weather_icon}<b>{temp:{config.ts}>2.0f}°C "
             f"💨{wind_speed:.0f}{mps} {wind_deg_icon}</b> "
             f"<u>{weather_description}</u>."
         )
@@ -503,9 +500,7 @@ def extract_search_filters(message_html_text: str) -> list[list[str]]:
         return []
     raw_search_filters = raw_search_filters[1].split("\n\n", maxsplit=1)[0]
     search_filters = raw_search_filters.splitlines()
-    return [
-        html.unescape(search_filter).split(": ") for search_filter in search_filters
-    ]
+    return [html.unescape(search_filter).split(": ") for search_filter in search_filters]
 
 
 def generate_search_sql_condition(query: str, filters: list[list[str]]):
@@ -516,7 +511,7 @@ def generate_search_sql_condition(query: str, filters: list[list[str]]):
 
     splitquery = " OR ".join(
         """
-date LIKE '%' || ? || '%'
+datetime LIKE '%' || ? || '%'
  OR text LIKE '%' || ? || '%'
  OR statuses LIKE '%' || ? || '%'
  OR event_id LIKE '%' || ? || '%'
@@ -531,19 +526,19 @@ date LIKE '%' || ? || '%'
     filters_params_status = []
 
     for _, f in filters[:6]:
-        if m := re.compile(r"^([<>=])(\d{2}\.\d{2}\.\d{4})$").match(f):
+        if m := re.compile(r"^([<>=])(\d{4}-\d{2}-\d{2})$").match(f):
             condition, date = m.groups()
 
             if condition == "=":
                 filters_conditions_date_e.append(
-                    f"{sqlite_format_date('date')} {condition}= ?"
+                    f"datetime {condition}= ?"
                 )
-                filters_params_date_e.append(sqlite_format_date2(date))
+                filters_params_date_e.append(date)
             else:
                 filters_conditions_date.append(
-                    f"{sqlite_format_date('date')} {condition}= ?"
+                    f"datetime {condition}= ?"
                 )
-                filters_params_date.append(sqlite_format_date2(date))
+                filters_params_date.append(date)
         elif m := re.compile(r"^([≈=≠])([^ \n]+)$").match(f):
             condition, status = m.groups()
             statuses = status.split(",")
@@ -561,7 +556,7 @@ statuses {condition}= JSON_ARRAY({','.join('?' for _ in statuses)})
 (
     NOT EXISTS (
         SELECT value
-          FROM json_each(statuses)
+          FROM JSON_EACH(statuses)
          WHERE value IN ({','.join('?' for _ in statuses)})
     )
 )
@@ -574,7 +569,7 @@ statuses {condition}= JSON_ARRAY({','.join('?' for _ in statuses)})
 (
     EXISTS (
         SELECT value
-          FROM json_each(statuses)
+          FROM JSON_EACH(statuses)
          WHERE value IN ({','.join('?' for _ in statuses)})
     )
 )

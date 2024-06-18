@@ -1,3 +1,4 @@
+import arrow
 # noinspection PyPackageRequirements
 from telebot.apihelper import ApiTelegramException
 
@@ -240,7 +241,10 @@ def add_event_handler(message: Message):
 
     markdown_text = html_to_markdown(html_text.strip())
     telegram_log("send", "add event")
-    new_event_date = cache_add_event_date().split(",")[0]
+    utc = arrow.utcnow()
+    new_event_date = arrow.get(cache_add_event_date().split(",")[0]).replace(
+        hour=utc.hour, minute=utc.minute,
+    )
 
     if len(markdown_text) >= 3800:
         message_is_too_long = get_translate("errors.message_is_too_long")
@@ -255,7 +259,7 @@ def add_event_handler(message: Message):
         return
 
     try:
-        request.entity.create_event(new_event_date, markdown_text)
+        request.entity.create_event(markdown_text, new_event_date)
     except (TextIsTooBig, WrongDate, LimitExceeded):
         error_translate = get_translate("errors.error")
         bot.reply_to(message, error_translate, reply_markup=delmarkup())

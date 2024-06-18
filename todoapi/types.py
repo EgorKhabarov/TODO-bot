@@ -1,13 +1,15 @@
 import csv
 import json
+import arrow
+import datetime
 from uuid import uuid4
+from arrow import Arrow
 from io import StringIO, BytesIO
 from dataclasses import dataclass
 from sqlite3 import Error, connect
 import xml.etree.ElementTree as xml  # noqa
 from functools import cached_property
 from contextlib import contextmanager
-from datetime import datetime, timedelta
 from typing import Callable, Any, Literal
 
 from vedis import Vedis
@@ -100,6 +102,14 @@ group_limits = {
         "max_groups_participate": 200,
         "max_groups_creator": 50,
     },
+}
+repetition_dict = {
+    "repeat never": "🔕",
+    "repeat every day": "📬",
+    "repeat every week": "🗞",
+    "repeat every month": "📅",
+    "repeat every year": "📆",
+    "repeat every weekdays": "👨‍💻",
 }
 
 
@@ -203,62 +213,62 @@ class Limit:
         self.status = status
         self.user_max_limits = event_limits[status]
 
-    def get_event_limits(self, date: str | datetime = None) -> list[tuple[int]]:
-        date = date if date else datetime.now().strftime("%d.%m.%Y")
+    def get_event_limits(self, date: arrow.Arrow | None = None) -> list[tuple[int]]:
+        date = date if date else arrow.utcnow()
 
         try:
             return db.execute(
                 """
 SELECT (
-    SELECT IFNULL(COUNT( * ), 0) 
+    SELECT IFNULL(COUNT( * ), 0)
       FROM events
      WHERE user_id IS :user_id
            AND group_id IS :group_id
-           AND date = :date
+           AND DATE(datetime) = :date
 ) AS count_today,
 (
-    SELECT IFNULL(SUM(LENGTH(text)), 0) 
+    SELECT IFNULL(SUM(LENGTH(text)), 0)
       FROM events
      WHERE user_id IS :user_id
            AND group_id IS :group_id
-           AND date = :date
+           AND DATE(datetime) = :date
 ) AS sum_length_today,
 (
-    SELECT IFNULL(COUNT( * ), 0) 
+    SELECT IFNULL(COUNT( * ), 0)
       FROM events
      WHERE user_id IS :user_id
            AND group_id IS :group_id
-           AND SUBSTR(date, 4, 7) = :date_3
+           AND STRFTIME('%Y-%m', datetime) = :date_Y_M
 ) AS count_month,
 (
-    SELECT IFNULL(SUM(LENGTH(text)), 0) 
+    SELECT IFNULL(SUM(LENGTH(text)), 0)
       FROM events
      WHERE user_id IS :user_id
            AND group_id IS :group_id
-           AND SUBSTR(date, 4, 7) = :date_3
+           AND STRFTIME('%Y-%m', datetime) = :date_Y_M
 ) AS sum_length_month,
 (
-    SELECT IFNULL(COUNT( * ), 0) 
+    SELECT IFNULL(COUNT( * ), 0)
       FROM events
      WHERE user_id IS :user_id
            AND group_id IS :group_id
-           AND SUBSTR(date, 7, 4) = :date_6
+           AND STRFTIME('%Y', datetime) = :date_Y
 ) AS count_year,
 (
-    SELECT IFNULL(SUM(LENGTH(text)), 0) 
+    SELECT IFNULL(SUM(LENGTH(text)), 0)
       FROM events
      WHERE user_id IS :user_id
            AND group_id IS :group_id
-           AND SUBSTR(date, 7, 4) = :date_6
+           AND STRFTIME('%Y', datetime) = :date_Y
 ) AS sum_length_year,
 (
-    SELECT IFNULL(COUNT( * ), 0) 
+    SELECT IFNULL(COUNT( * ), 0)
       FROM events
      WHERE user_id IS :user_id
            AND group_id IS :group_id
 ) AS total_count,
 (
-    SELECT IFNULL(SUM(LENGTH(text)), 0) 
+    SELECT IFNULL(SUM(LENGTH(text)), 0)
       FROM events
      WHERE user_id IS :user_id
            AND group_id IS :group_id
@@ -267,16 +277,19 @@ SELECT (
                 params={
                     "user_id": self.user_id,
                     "group_id": self.group_id,
-                    "date": date,
-                    "date_3": date[3:],
-                    "date_6": date[6:],
+                    "date": f"{date:YYYY-MM-DD}",
+                    "date_Y_M": f"{date:YYYY-MM}",
+                    "date_Y": f"{date:YYYY}",
                 },
             )[0]
         except Error as e:
             raise ApiError(e)
 
     def is_exceeded_for_events(
-        self, date: str | datetime = None, event_count: int = 0, symbol_count: int = 0
+        self,
+        date: Arrow | None = None,
+        event_count: int = 0,
+        symbol_count: int = 0
     ) -> bool:
         inf = float("inf")
         actual_limits = self.get_event_limits(date)
@@ -333,7 +346,7 @@ SELECT (
         )
 
     def now_limit_percent(
-        self, date: str | datetime = None
+        self, date: Arrow | None = None
     ) -> list[int, int, int, int, int, int, int, int]:
         actual_limits = self.get_event_limits(date)
 
@@ -359,9 +372,9 @@ class ExportData:
         self.filename = filename
         self.query = f"""
 SELECT event_id,
-       date,
-       statuses,
        text,
+       datetime,
+       statuses,
        adding_time,
        recent_changes_time,
        history
@@ -475,11 +488,15 @@ class Event:
 
     event_id: int
 
-    date: str
-
     text: str
 
+    _datetime: str
+
     _status: str
+
+    repetition: str
+
+    reference_event_id: int | None
 
     adding_time: str
 
@@ -493,9 +510,11 @@ class Event:
     user_id: int
     group_id: str
     event_id: int
-    date: str
     text: str
+    _datetime: str
     _status: str
+    repetition: str
+    reference_event_id: int | None
     adding_time: str
     recent_changes_time: str
     removal_time: str
@@ -506,8 +525,16 @@ class Event:
         return bool(self.removal_time)
 
     @property
-    def datetime(self) -> datetime:
-        return datetime.strptime(self.date, "%d.%m.%Y")
+    def date(self) -> str:
+        return f"{self.datetime:YYYY-MM-DD}"
+
+    @property
+    def time(self) -> str:
+        return f"{self.datetime:HH:mm:ss}"
+
+    @property
+    def datetime(self) -> Arrow:
+        return arrow.get(self._datetime)
 
     @property
     def history(self) -> list[dict]:
@@ -535,9 +562,11 @@ SELECT media_id,
        url,
        url_create_time
   FROM media
- WHERE event_id = :event_id AND (
-    user_id IS :user_id AND group_id IS :group_id
-);
+ WHERE event_id = :event_id
+       AND (
+           user_id IS :user_id
+           AND group_id IS :group_id
+       );
 """,
                 params={
                     "event_id": self.event_id,
@@ -557,8 +586,8 @@ SELECT media_id,
         If the event should already be deleted, returns -1.
         """
         if sql_date_pattern.match(self.removal_time):
-            _d1 = datetime.utcnow()
-            _d2 = datetime.strptime(self.removal_time, "%Y-%m-%d")
+            _d1 = arrow.utcnow().date()
+            _d2 = arrow.get(self.removal_time).date()
             _days = 30 - (_d1 - _d2).days
             return -1 if _days < 0 else _days
         else:
@@ -566,27 +595,39 @@ SELECT media_id,
 
     def days_before_event(self, timezone: int = 0) -> int:
         _date = self.datetime
-        n_time = datetime.utcnow() + timedelta(hours=timezone)
-        n_time = datetime(n_time.year, n_time.month, n_time.day)
+        n_time = arrow.utcnow().shift(hours=timezone)
+        n_time = arrow.get(n_time.year, n_time.month, n_time.day)
         dates = []
 
-        def prepare_date(date: str) -> tuple[int, datetime]:
-            y = datetime.strptime(date, "%d.%m.%Y")
-            return (y - n_time).days, y
+        def prepare_date(date: datetime) -> int:
+            return (date - n_time).days
 
         # Every day
-        if "📬" in self.statuses:
-            return prepare_date(f"{n_time:%d.%m.%Y}")[0]
+        if self.repetition == "repeat every day":
+            return 0
+
+        if self.repetition == "repeat every weekdays":
+            weekday = _date.weekday()  # Mon == 0
+
+            if 0 <= weekday <= 4:
+                return prepare_date(n_time)
+
+            if weekday == 5:
+                return 2
+
+            if weekday == 6:
+                return 1
 
         # Every week
-        if "🗞" in self.statuses:
+        if self.repetition == "repeat every week":
             now_wd, event_wd = n_time.weekday(), _date.weekday()
-            next_date = n_time + timedelta(days=(event_wd - now_wd + 7) % 7)
+            next_date = n_time.shift(days=(event_wd - now_wd + 7) % 7)
             dates.append(next_date)
 
         # Every month
-        elif "📅" in self.statuses:
-            day_diff, dt = prepare_date(f"{_date:%d}.{n_time:%m.%Y}")
+        elif self.repetition == "repeat every month":
+            dt = arrow.get(n_time.year, n_time.month, _date.day)
+            day_diff = prepare_date(dt)
             month, year = dt.month, dt.year
             if day_diff >= 0:
                 dates.append(dt)
@@ -597,17 +638,17 @@ SELECT media_id,
                     dates.append(dt.replace(year=year + 1, month=1))
 
         # Every year
-        elif {*self.statuses}.intersection({"📆", "🎉", "🎊"}):
-            dt = prepare_date(f"{_date:%d.%m}.{n_time:%Y}")[1]
+        elif self.repetition == "repeat every year":
+            dt = arrow.get(n_time.year, _date.month, _date.day)
             if dt.date() < n_time.date():
                 dates.append(dt.replace(year=n_time.year + 1))
             else:
                 dates.append(dt.replace(year=n_time.year))
 
         else:
-            return prepare_date(self.date)[0]
+            return prepare_date(self.datetime)
 
-        return prepare_date(f"{min(dates):%d.%m.%Y}")[0]
+        return prepare_date(min(dates))
 
     def to_json(self) -> str:
         return json.dumps(
@@ -615,9 +656,11 @@ SELECT media_id,
                 "user_id": self.user_id,
                 "group_id": self.group_id,
                 "event_id": self.event_id,
-                "date": self.date,
                 "text": self.text,
+                "datetime": self._datetime,
                 "statuses": self.statuses,
+                "repetition": self.repetition,
+                "reference_event_id": self.reference_event_id,
                 "adding_time": self.adding_time,
                 "recent_changes_time": self.recent_changes_time,
                 "removal_time": self.removal_time,
@@ -631,9 +674,11 @@ SELECT media_id,
             "user_id": self.user_id,
             "group_id": self.group_id,
             "event_id": self.event_id,
-            "date": self.date,
             "text": self.text,
+            "datetime": self._datetime,
             "statuses": self.statuses,
+            "repetition": self.repetition,
+            "reference_event_id": self.reference_event_id,
             "adding_time": self.adding_time,
             "recent_changes_time": self.recent_changes_time,
             "removal_time": self.removal_time,
@@ -643,6 +688,10 @@ SELECT media_id,
     @staticmethod
     def de_json(json_string) -> "Event":
         return Event(**json.loads(json_string))
+
+    @property
+    def string_repetition(self):
+        return repetition_dict.get(self.repetition, "🔕")
 
 
 @dataclass
@@ -820,11 +869,11 @@ class Account:
         """None if self.group_id else self.user_id"""
         return None if self.group_id else self.user_id
 
-    def now_time(self) -> datetime:
+    def now_time(self) -> Arrow:
         """
-        Returns datetime.utcnow() taking into account the user's time zone
+        Returns arrow.utcnow() taking into account the user's time zone
         """
-        return datetime.utcnow() + timedelta(hours=self.settings.timezone)
+        return arrow.utcnow().shift(hours=self.settings.timezone)
 
     def check_event_exists(self, event_id: int, in_bin: bool = False) -> bool:
         try:
@@ -849,11 +898,11 @@ SELECT 1
         except Error as e:
             raise ApiError(e)
 
-    def create_event(self, date: str, text: str) -> int:
+    def create_event(self, text: str, date: Arrow) -> int:
         """
 
-        :param date:
         :param text:
+        :param date:
         :return: event_id
         :raise TextIsTooBig: if len(text) >= 3800
         :raise WrongDate:
@@ -865,7 +914,8 @@ SELECT 1
         if text_len >= 3800:
             raise TextIsTooBig
 
-        if not re_date.match(date) or not is_valid_year(int(date[-4:])):
+        # TODO
+        if not re_date.match(f"{date:DD.MM.YYYY}") or not is_valid_year(date.year):
             raise WrongDate
 
         if self.limit.is_exceeded_for_events(date, 1, text_len):
@@ -880,8 +930,8 @@ INSERT INTO events (
     event_id,
     user_id,
     group_id,
-    date,
     text,
+    datetime,
     statuses
 )
 VALUES (
@@ -900,15 +950,15 @@ VALUES (
     ),
     :user_id,
     :group_id,
-    :date,
     :text,
+    :datetime,
     :statuses
 );
 """,
                 params={
                     "user_id": self.safe_user_id,
                     "group_id": self.group_id,
-                    "date": date,
+                    "datetime": f"{date:YYYY-MM-DD HH:mm:ss}",
                     "text": text,
                     "statuses": '["⬜"]',
                 },
@@ -975,14 +1025,14 @@ SELECT *
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in event_ids)})
        AND (removal_time IS NOT NULL) = ?
- ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) {self.settings.direction},
-          DAYS_BEFORE_EVENT(date, statuses) DESC,
-          statuses LIKE '%📬%',
-          statuses LIKE '%🗞%',
-          statuses LIKE '%📅%',
-          statuses LIKE '%📆%',
-          statuses LIKE '%🎉%',
-          statuses LIKE '%🎊%';
+ ORDER BY ABS(DAYS_BEFORE_EVENT(datetime, repetition)) {self.settings.direction},
+          DAYS_BEFORE_EVENT(datetime, repetition) DESC,
+          STRFTIME('%H:%M:%S', datetime, '{self.settings.timezone} HOURS'),
+          repetition = 'repeat every day',
+          repetition = 'repeat every weekdays',
+          repetition = 'repeat every week',
+          repetition = 'repeat every month',
+          repetition = 'repeat every year';
 """,
                 params=(
                     self.safe_user_id,
@@ -993,8 +1043,8 @@ SELECT *
                 functions=(
                     (
                         "DAYS_BEFORE_EVENT",
-                        lambda date, statuses: Event(
-                            0, "", 0, date, "", statuses, "", "", ""
+                        lambda date, repetition: Event(
+                            0, "", 0, "", date, "", repetition, None, "", "", "", ""
                         ).days_before_event(self.settings.timezone),
                     ),
                 ),
@@ -1019,7 +1069,7 @@ SELECT *
             0 if new_text_len < old_text_len else new_text_len - old_text_len
         )
 
-        if self.limit.is_exceeded_for_events(event.date, 0, new_symbol_count):
+        if self.limit.is_exceeded_for_events(event.datetime, 0, new_symbol_count):
             raise LimitExceeded
 
         try:
@@ -1042,26 +1092,70 @@ UPDATE events
         except Error as e:
             raise ApiError(e)
 
-    def edit_event_date(self, event_id: int, date: str) -> None:
-        if not re_date.match(date) or not is_valid_year(int(date[-4:])):
+    def edit_event_datetime(self, event_id: int, date: Arrow) -> None:
+        # TODO
+        if not is_valid_year(date.year):
+            print(date.year)
             raise WrongDate
 
         event = self.get_event(event_id)
 
-        if self.limit.is_exceeded_for_events(event.date, 1, len(event.text)):
+        if self.limit.is_exceeded_for_events(event.datetime, 1, len(event.text)):
             raise LimitExceeded
 
         try:
             db.execute(
                 """
 UPDATE events
-   SET date = :date
+   SET datetime = :datetime
  WHERE event_id = :event_id
        AND user_id IS :user_id
        AND group_id IS :group_id;
 """,
                 params={
-                    "date": date,
+                    "datetime": f"{date:YYYY-MM-DD HH:mm:ss}",
+                    "event_id": event_id,
+                    "user_id": self.safe_user_id,
+                    "group_id": self.group_id,
+                },
+                commit=True,
+            )
+        except Error as e:
+            raise ApiError(e)
+
+    def edit_event_repetition(self, event_id: int, repetition: str | None) -> None:
+        try:
+            db.execute(
+                """
+UPDATE events
+   SET repetition = :repetition
+ WHERE event_id = :event_id
+       AND user_id IS :user_id
+       AND group_id IS :group_id;
+""",
+                params={
+                    "repetition": repetition or "repeat never",
+                    "event_id": event_id,
+                    "user_id": self.safe_user_id,
+                    "group_id": self.group_id,
+                },
+                commit=True,
+            )
+        except Error as e:
+            raise ApiError(e)
+
+    def edit_event_notification(self, event_id: int, notifications_list: list[dict[str, str]]) -> None:
+        try:
+            db.execute(
+                """
+UPDATE events
+   SET notifications = :notifications
+ WHERE event_id = :event_id
+       AND user_id IS :user_id
+       AND group_id IS :group_id;
+""",
+                params={
+                    "notifications": json.dumps(notifications_list, ensure_ascii=False),
                     "event_id": event_id,
                     "user_id": self.safe_user_id,
                     "group_id": self.group_id,
@@ -1146,7 +1240,7 @@ DELETE FROM events
             db.execute(
                 """
 UPDATE events
-   SET removal_time = DATE() 
+   SET removal_time = DATE()
  WHERE event_id = :event_id
        AND user_id IS :user_id
        AND group_id IS :group_id;
@@ -1164,7 +1258,7 @@ UPDATE events
     def recover_event(self, event_id: int) -> None:
         event = self.get_event(event_id, in_bin=True)
 
-        if self.limit.is_exceeded_for_events(event.date, 1, len(event.text)):
+        if self.limit.is_exceeded_for_events(event.datetime, 1, len(event.text)):
             raise LimitExceeded
 
         try:
@@ -1172,6 +1266,29 @@ UPDATE events
                 """
 UPDATE events
    SET removal_time = NULL
+ WHERE event_id = :event_id
+       AND user_id IS :user_id
+       AND group_id IS :group_id;
+""",
+                params={
+                    "event_id": event_id,
+                    "user_id": self.safe_user_id,
+                    "group_id": self.group_id,
+                },
+                commit=True,
+            )
+        except Error as e:
+            raise ApiError(e)
+
+    def event_history_clear(self, event_id: int) -> None:
+        if not self.check_event_exists(event_id):
+            raise EventNotFound
+
+        try:
+            db.execute(
+                """
+UPDATE events
+   SET history = '[]'
  WHERE event_id = :event_id
        AND user_id IS :user_id
        AND group_id IS :group_id;

@@ -1,5 +1,6 @@
+import arrow
+from arrow import Arrow
 from typing import Any, Literal, TypeAlias, Callable
-from datetime import datetime
 
 
 _data_types: TypeAlias = (
@@ -12,7 +13,7 @@ _data_types: TypeAlias = (
         "long str",
     ]
 )
-_return_types: TypeAlias = str | int | float | datetime | list[int] | None | Any
+_return_types: TypeAlias = str | int | float | Arrow | list[int] | None | Any
 
 
 def get_arguments(
@@ -66,18 +67,18 @@ def get_arguments(
     {'arg1': 123.456}
 
     >>> arguments_5 = {"arg1": "date"}
-    >>> get_arguments("01012000", arguments_5)
-    {'arg1': None}
+    >>> get_arguments("20000101", arguments_5)
+    {'arg1': <Arrow [2000-01-01T00:00:00+00:00]>}
     >>> get_arguments("text", arguments_5)
     {'arg1': None}
-    >>> get_arguments("01/02/2000", arguments_5)
+    >>> get_arguments("2000/01/02", arguments_5)
+    {'arg1': <Arrow [2000-01-02T00:00:00+00:00]>}
+    >>> get_arguments("2000:01:02", arguments_5)
     {'arg1': None}
-    >>> get_arguments("01:02:2000", arguments_5)
+    >>> get_arguments("2000-02-01", arguments_5)
+    {'arg1': <Arrow [2000-02-01T00:00:00+00:00]>}
+    >>> get_arguments("01-02-2000", arguments_5)
     {'arg1': None}
-    >>> get_arguments("01.02.2000", arguments_5)
-    {'arg1': datetime.datetime(2000, 2, 1, 0, 0)}
-    >>> get_arguments("2000.02.01", arguments_5)
-    {'arg1': datetime.datetime(2000, 2, 1, 0, 0)}
     """
     types = [(t[0] if isinstance(t, tuple) else t) for t in arguments.values()]
 
@@ -128,12 +129,9 @@ def __process_value(
                     return default
         case "date":
             try:
-                return datetime.strptime(value, "%d.%m.%Y")
+                return arrow.get(value)
             except ValueError:
-                try:
-                    return datetime.strptime(value, "%Y.%m.%d")
-                except ValueError:
-                    return default
+                return default
         case "long str":
             return value
 
