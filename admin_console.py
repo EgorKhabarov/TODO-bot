@@ -6,7 +6,7 @@ from pprint import pprint, pformat
 from typing import Literal, Any, Callable
 
 from IPython import embed
-from table2string import print_table, Themes, Theme
+from table2string import Table, Themes, Theme
 
 from config import WSGI_PATH
 from todoapi.types import db, Account  # noqa
@@ -68,10 +68,19 @@ def execute(
         if max_height is min:
             max_height = None
 
-        print_table(
-            table=result or [["ok"]],
-            align=align,
+        if result and len(result) > 1:
+            table = result[1:]
+            column_names = result[0]
+        else:
+            table = result or [["ok"]]
+            column_names = None
+
+        Table(
+            table,
             name=name,
+            column_names=column_names,
+        ).print(
+            align=align,
             name_align=name_align,
             max_width=max_width,
             max_height=max_height,
