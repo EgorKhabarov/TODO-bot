@@ -43,10 +43,14 @@ def get_limit_link(date: str = "now") -> str:
         "data": "n".join(f"{x}s{y}" for x, y in limits),
     }
     if LIMIT_IMAGE_GENERATOR_URL:
-        return (
-            date
-            + hide_link(f"{LIMIT_IMAGE_GENERATOR_URL}?{urlencode(params, doseq=True)}")
-            + hide_link(noimage)
+        return "".join(
+            (
+                date,
+                hide_link(
+                    f"{LIMIT_IMAGE_GENERATOR_URL}?{urlencode(params, doseq=True)}"
+                ),
+                hide_link(noimage),
+            )
         )
     else:
         f, b = "▓", "░"
@@ -67,7 +71,7 @@ def get_limit_link(date: str = "now") -> str:
                 f"[{f * f_count}{b * b_count}] "
                 f"({percent}%)"
             )
-        return f"{date}\n\n" + "\n\n".join(lst)
+        return "{}\n\n{}".format(date, "\n\n".join(lst))
 
 
 def _semicircle(title: str, x: int, y: int, theme: str):

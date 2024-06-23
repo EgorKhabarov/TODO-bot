@@ -540,9 +540,9 @@ def event_history_message(
 {formatting.hpre(text_limiter(f"{prepare_value(action, old_val)}".strip()), language="language-old")}
 {formatting.hpre(text_limiter(f"{prepare_value(action, new_val)}".strip()), language="language-new")}
 """.strip()
-                for action, (old_val, new_val), time in event.history[::-1][
-                    (page - 1) * 4 : (page - 1) * 4 + 4
-                ]
+                for action, (old_val, new_val), time in (
+                    event.history[::-1][(page - 1) * 4 : (page - 1) * 4 + 4]
+                )
             ).strip()
         )
     else:

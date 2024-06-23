@@ -51,25 +51,26 @@ def telegram_log(action: str, text: str):
     text = text.replace("\n", "\\n")
     thread_id = getattr(request.query, "message", request.query).message_thread_id
     if request.entity:
+        entity_type = str(request.entity_type).capitalize()
+        request_id = request.entity.request_id
+        request_chat_id = request.entity.request_chat_id
+        thread_id = f":{thread_id}" if thread_id else ""
+        status = (
+            request.entity.user.user_status
+            if request.is_user
+            else request.entity.group.member_status
+        )
         logger.info(
-            f"[{str(request.entity_type).capitalize()}:{request.entity.request_id}]"
-            + f"[{request.entity.request_chat_id:<10}"
-            + (f":{thread_id}" if thread_id else "")
-            + "]"
-            + (
-                f"[{request.entity.user.user_status}]"
-                if request.is_user
-                else f"[{request.entity.group.member_status}]"
-            )
-            + f".{action} {text}"
+            f"[{entity_type}:{request_id}]"
+            f"[{request_chat_id:<10}{thread_id}]"
+            f"[{status}].{action} {text}"
         )
     else:
+        entity_type = str(request.entity_type).capitalize()
+        chat_id = request.chat_id
+        thread_id = f":{thread_id}" if thread_id else ""
         logger.info(
-            f"[Not Login {str(request.entity_type).capitalize()}]"
-            + f"[{request.chat_id:<10}"
-            + (f":{thread_id}" if thread_id else "")
-            + "]"
-            + f".{action} {text}"
+            f"[Not Login {entity_type}][{chat_id:<10}{thread_id}].{action} {text}"
         )
 
 
