@@ -67,10 +67,10 @@ SELECT CAST (SUBSTR(date, 1, 2) AS INT) AS day_number,
         for x in db.execute(
             """
 -- Numbers of birthdays in a specific month
-SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT) 
+SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT)
   FROM events
  WHERE user_id IS :user_id
-       AND group_id IS :group_id 
+       AND group_id IS :group_id
        AND removal_time IS NULL
        AND (
            statuses LIKE '%📅%'
@@ -98,7 +98,7 @@ SELECT DISTINCT CAST (SUBSTR(date, 1, 2) AS INT)
         for x in db.execute(
             f"""
 -- Number of days of the week in which there are events that repeat every week
-SELECT DISTINCT CAST (STRFTIME('%w', {sqlite_format_date('date')}) - 1 AS INT) 
+SELECT DISTINCT CAST (STRFTIME('%w', {sqlite_format_date('date')}) - 1 AS INT)
   FROM events
  WHERE user_id IS :user_id
        AND group_id IS :group_id
@@ -231,7 +231,7 @@ SELECT CAST (SUBSTR(date, 4, 2) AS INT) AS month_number,
         for x in db.execute(
             """
 -- Month numbers of birthdays in a specific month
-SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT) 
+SELECT DISTINCT CAST (SUBSTR(date, 4, 2) AS INT)
   FROM events
  WHERE user_id IS :user_id
        AND group_id IS :group_id

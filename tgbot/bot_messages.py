@@ -521,9 +521,9 @@ def event_history_message(
 {formatting.hpre(text_limiter(f"{prepare_value(action, old_val)}".strip()), language="language-old")}
 {formatting.hpre(text_limiter(f"{prepare_value(action, new_val)}".strip()), language="language-new")}
 """.strip()
-                for action, (old_val, new_val), time in event.history[::-1][
-                    (page - 1) * 4 : (page - 1) * 4 + 4
-                ]
+                for action, (old_val, new_val), time in (
+                    event.history[::-1][(page - 1) * 4 : (page - 1) * 4 + 4]
+                )
             ).strip()
         )
     else:
@@ -683,8 +683,7 @@ def recurring_events_message(
 user_id IS ?
 AND group_id IS ?
 AND removal_time IS NULL
-AND 
-(
+AND (
     ( -- Every year
         (
             statuses LIKE '%🎉%'
@@ -1095,7 +1094,7 @@ AND (
     OR
     ( -- Every month
         statuses LIKE '%📅%'
-        AND SUBSTR(date, 1, 2) 
+        AND SUBSTR(date, 1, 2)
         BETWEEN STRFTIME('%d', 'now', {tz})
             AND STRFTIME('%d', 'now', '+7 day', {tz})
     )
@@ -1144,8 +1143,8 @@ AND removal_time IS NOT NULL
         """
 -- Deleting events older than 30 days
 DELETE FROM events
-      WHERE removal_time IS NOT NULL AND 
-            (JULIANDAY('now') - JULIANDAY(removal_time) > 30);
+      WHERE removal_time IS NOT NULL
+            AND (JULIANDAY('now') - JULIANDAY(removal_time) > 30);
 """,
         commit=True,
     )
@@ -1293,7 +1292,7 @@ SELECT CAST(
            ) AS INT
        ),
        CAST(notifications AS INT),
-       CASE 
+       CASE
            WHEN tg_settings.user_id THEN 'user'
            WHEN tg_settings.group_id THEN (
                SELECT 'group:'

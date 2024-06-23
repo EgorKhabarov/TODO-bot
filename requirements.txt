@@ -9,4 +9,4 @@ cachetools~=5.3.3
 ipython~=8.25.0
 GitPython~=3.1.43
 argon2-cffi~=23.1.0
-table2string~=1.4.1
+table2string~=1.4.2

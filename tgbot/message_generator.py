@@ -63,7 +63,7 @@ def pagination(
     data = db.execute(
         f"""
 SELECT event_id,
-       LENGTH(text) 
+       LENGTH(text)
   FROM events
  WHERE {sql_where}
  ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) {direction},
@@ -339,7 +339,7 @@ SELECT user_id,
        removal_time
   FROM events
  WHERE event_id IN ({data[0]})
-       AND ({sql_where}) 
+       AND ({sql_where})
  ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) {direction},
           DAYS_BEFORE_EVENT(date, statuses) DESC,
           statuses LIKE '%📬%',
@@ -416,7 +416,7 @@ SELECT user_id,
  WHERE user_id IS ?
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in id_list)})
-       AND ({sql_where}) 
+       AND ({sql_where})
  ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) {direction},
           DAYS_BEFORE_EVENT(date, statuses) DESC,
           statuses LIKE '%📬%',

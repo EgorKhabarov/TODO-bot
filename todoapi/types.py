@@ -210,55 +210,55 @@ class Limit:
             return db.execute(
                 """
 SELECT (
-    SELECT IFNULL(COUNT( * ), 0) 
+    SELECT IFNULL(COUNT( * ), 0)
       FROM events
      WHERE user_id IS :user_id
            AND group_id IS :group_id
            AND date = :date
 ) AS count_today,
 (
-    SELECT IFNULL(SUM(LENGTH(text)), 0) 
+    SELECT IFNULL(SUM(LENGTH(text)), 0)
       FROM events
      WHERE user_id IS :user_id
            AND group_id IS :group_id
            AND date = :date
 ) AS sum_length_today,
 (
-    SELECT IFNULL(COUNT( * ), 0) 
+    SELECT IFNULL(COUNT( * ), 0)
       FROM events
      WHERE user_id IS :user_id
            AND group_id IS :group_id
            AND SUBSTR(date, 4, 7) = :date_3
 ) AS count_month,
 (
-    SELECT IFNULL(SUM(LENGTH(text)), 0) 
+    SELECT IFNULL(SUM(LENGTH(text)), 0)
       FROM events
      WHERE user_id IS :user_id
            AND group_id IS :group_id
            AND SUBSTR(date, 4, 7) = :date_3
 ) AS sum_length_month,
 (
-    SELECT IFNULL(COUNT( * ), 0) 
+    SELECT IFNULL(COUNT( * ), 0)
       FROM events
      WHERE user_id IS :user_id
            AND group_id IS :group_id
            AND SUBSTR(date, 7, 4) = :date_6
 ) AS count_year,
 (
-    SELECT IFNULL(SUM(LENGTH(text)), 0) 
+    SELECT IFNULL(SUM(LENGTH(text)), 0)
       FROM events
      WHERE user_id IS :user_id
            AND group_id IS :group_id
            AND SUBSTR(date, 7, 4) = :date_6
 ) AS sum_length_year,
 (
-    SELECT IFNULL(COUNT( * ), 0) 
+    SELECT IFNULL(COUNT( * ), 0)
       FROM events
      WHERE user_id IS :user_id
            AND group_id IS :group_id
 ) AS total_count,
 (
-    SELECT IFNULL(SUM(LENGTH(text)), 0) 
+    SELECT IFNULL(SUM(LENGTH(text)), 0)
       FROM events
      WHERE user_id IS :user_id
            AND group_id IS :group_id
@@ -1146,7 +1146,7 @@ DELETE FROM events
             db.execute(
                 """
 UPDATE events
-   SET removal_time = DATE() 
+   SET removal_time = DATE()
  WHERE event_id = :event_id
        AND user_id IS :user_id
        AND group_id IS :group_id;

@@ -56,8 +56,10 @@ def bot_log_info():
                 f"{bot_settings.strip()}"
             )
 
-    return "\n" + stringify_table(
-        [(k, v) for k, v in bot_dict.items()],
-        align=(">", "<"),
-        sep=False,
+    return "\n{}".format(
+        stringify_table(
+            [(k, v) for k, v in bot_dict.items()],
+            align=(">", "<"),
+            sep=False,
+        )
     )
