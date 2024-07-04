@@ -1,5 +1,8 @@
+import json
 import traceback
+from sqlite3 import Error
 from functools import wraps
+from ast import literal_eval
 
 # noinspection PyPackageRequirements
 from telebot.types import Message, CallbackQuery
@@ -51,6 +54,49 @@ def process_account(func):
     @wraps(func)
     def check_argument(_x: Message | CallbackQuery):
         request.set(_x)
+
+        if request.is_message:
+            try:
+                db.execute(
+                    """
+INSERT OR IGNORE INTO chats (
+    id,
+    type,
+    title,
+    username,
+    first_name,
+    last_name,
+    bio,
+    is_forum,
+    json
+)
+VALUES (
+    :id,
+    :type,
+    :title,
+    :username,
+    :first_name,
+    :last_name,
+    :bio,
+    :is_forum,
+    :json
+);
+""",
+                    {
+                        "id": request.chat_id,
+                        "type": _x.chat.type,
+                        "title": _x.chat.title,
+                        "username": _x.chat.username,
+                        "first_name": _x.chat.first_name,
+                        "last_name": _x.chat.last_name,
+                        "bio": _x.chat.bio,
+                        "is_forum": bool(_x.chat.is_forum),
+                        "json": json.dumps(literal_eval(str(_x.chat)), ensure_ascii=False),
+                    },
+                    commit=True,
+                )
+            except Error as e:
+                print(type(e), e)  # TODO
 
         if request.is_message:
             if request.query.content_type != "migrate_to_chat_id" and (

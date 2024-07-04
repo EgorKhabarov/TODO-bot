@@ -1,4 +1,17 @@
 
+CREATE TABLE IF NOT EXISTS chats (
+    date       TEXT NOT NULL DEFAULT (DATETIME()),
+    id         INT  PRIMARY KEY NOT NULL,
+    type       TEXT NOT NULL,
+    title      TEXT DEFAULT NULL,
+    username   TEXT UNIQUE NOT NULL,
+    first_name TEXT DEFAULT NULL,
+    last_name  TEXT DEFAULT NULL,
+    bio        TEXT DEFAULT NULL,
+    is_forum   INT  NOT NULL,
+    json       TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS users (
     user_id           INT  PRIMARY KEY NOT NULL,
     token             TEXT UNIQUE NOT NULL,

@@ -16,7 +16,7 @@ buttons_data_types: TypeAlias = (
 return_buttons_types: TypeAlias = (
     ForceReply | ReplyKeyboardMarkup | ReplyKeyboardRemove | InlineKeyboardMarkup | None
 )
-keyboard_types: TypeAlias = Literal["inline", "reply", "force_reply", "reply_remove"]
+keyboard_types: TypeAlias = Literal["inline", "reply", "force_reply", "reply_remove"] | str
 
 
 def generate_buttons(

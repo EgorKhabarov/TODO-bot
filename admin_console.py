@@ -115,7 +115,11 @@ def export(query: str = "SELECT * FROM events;", params: dict | tuple = ()) -> s
 
 
 def terminal_size() -> tuple[int, int]:
-    _terminal_size = os.get_terminal_size()
+    try:
+        _terminal_size = os.get_terminal_size()
+    except OSError:
+        _terminal_size = os.terminal_size((120, 30))
+
     return _terminal_size.columns, _terminal_size.lines
 
 
