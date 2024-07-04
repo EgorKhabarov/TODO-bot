@@ -91,7 +91,9 @@ VALUES (
                         "last_name": _x.chat.last_name,
                         "bio": _x.chat.bio,
                         "is_forum": bool(_x.chat.is_forum),
-                        "json": json.dumps(literal_eval(str(_x.chat)), ensure_ascii=False),
+                        "json": json.dumps(
+                            literal_eval(str(_x.chat)), ensure_ascii=False
+                        ),
                     },
                     commit=True,
                 )
