@@ -393,9 +393,7 @@ def fetch_forecast(city: str) -> str:
 
         if s_date not in result:
             n_time = request.entity.now_time().date()
-            str_date, rel_date, week_date = relatively_string_date(
-                (date - n_time).days
-            )
+            str_date, rel_date, week_date = relatively_string_date((date - n_time).days)
             result += f"\n\n<b>{s_date}</b> <u><i>{str_date}  {week_date}</i></u> ({rel_date})"
 
         mps = get_translate("text.meters_per_second")
@@ -501,7 +499,9 @@ def extract_search_filters(message_html_text: str) -> list[list[str]]:
         return []
     raw_search_filters = raw_search_filters[1].split("\n\n", maxsplit=1)[0]
     search_filters = raw_search_filters.splitlines()
-    return [html.unescape(search_filter).split(": ") for search_filter in search_filters]
+    return [
+        html.unescape(search_filter).split(": ") for search_filter in search_filters
+    ]
 
 
 def generate_search_sql_condition(query: str, filters: list[list[str]]):
@@ -531,14 +531,10 @@ datetime LIKE '%' || ? || '%'
             condition, date = m.groups()
 
             if condition == "=":
-                filters_conditions_date_e.append(
-                    f"datetime {condition}= ?"
-                )
+                filters_conditions_date_e.append(f"datetime {condition}= ?")
                 filters_params_date_e.append(date)
             else:
-                filters_conditions_date.append(
-                    f"datetime {condition}= ?"
-                )
+                filters_conditions_date.append(f"datetime {condition}= ?")
                 filters_params_date.append(date)
         elif m := re.compile(r"^([≈=≠])([^ \n]+)$").match(f):
             condition, status = m.groups()

@@ -286,10 +286,7 @@ SELECT (
             raise ApiError(e)
 
     def is_exceeded_for_events(
-        self,
-        date: Arrow | None = None,
-        event_count: int = 0,
-        symbol_count: int = 0
+        self, date: Arrow | None = None, event_count: int = 0, symbol_count: int = 0
     ) -> bool:
         inf = float("inf")
         actual_limits = self.get_event_limits(date)
@@ -1144,7 +1141,9 @@ UPDATE events
         except Error as e:
             raise ApiError(e)
 
-    def edit_event_notification(self, event_id: int, notifications_list: list[dict[str, str]]) -> None:
+    def edit_event_notification(
+        self, event_id: int, notifications_list: list[dict[str, str]]
+    ) -> None:
         try:
             db.execute(
                 """

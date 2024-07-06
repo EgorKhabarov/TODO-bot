@@ -1,4 +1,5 @@
 import arrow
+
 # noinspection PyPackageRequirements
 from telebot.apihelper import ApiTelegramException
 
@@ -243,7 +244,8 @@ def add_event_handler(message: Message):
     telegram_log("send", "add event")
     utc = arrow.utcnow()
     new_event_date = arrow.get(cache_add_event_date().split(",")[0]).replace(
-        hour=utc.hour, minute=utc.minute,
+        hour=utc.hour,
+        minute=utc.minute,
     )
 
     if len(markdown_text) >= 3800:

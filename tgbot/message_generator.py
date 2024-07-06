@@ -52,9 +52,9 @@ event_formats = {
 
 
 def calculate_days_before_event(date: str, repetition: str):
-    return Event(0, "", 0, "", date, "", repetition, None, "", "", "").days_before_event(
-        request.entity.settings.timezone
-    )
+    return Event(
+        0, "", 0, "", date, "", repetition, None, "", "", ""
+    ).days_before_event(request.entity.settings.timezone)
 
 
 def pagination(

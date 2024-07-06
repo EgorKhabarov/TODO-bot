@@ -544,10 +544,7 @@ def create_select_status_keyboard(
 
 def create_time_hour_keyboard(next_data: str, back: str, now: str):
     keyboard = [
-        [
-            {f"{column:0>2}": f"{next_data} {column}"}
-            for column in range(row, row + 6)
-        ]
+        [{f"{column:0>2}": f"{next_data} {column}"} for column in range(row, row + 6)]
         for row in range(1, 24, 6)
     ]
     del keyboard[-1][-1]["24"]
@@ -558,10 +555,7 @@ def create_time_hour_keyboard(next_data: str, back: str, now: str):
 
 def create_time_minute_keyboard(next_data: str, back: str, now: str):
     keyboard = [
-        [
-            {f"{column:0>2}": f"{next_data} {column}"}
-            for column in range(row, row + 5)
-        ]
+        [{f"{column:0>2}": f"{next_data} {column}"} for column in range(row, row + 5)]
         for row in range(1, 60, 5)
     ]
     del keyboard[-1][-1]["60"]

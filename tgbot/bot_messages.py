@@ -214,9 +214,7 @@ def help_message(path: str = "page 1") -> TextMessage:
     return generated
 
 
-def daily_message(
-    date: Arrow, id_list: list[int] = (), page: int = 0
-) -> EventsMessage:
+def daily_message(date: Arrow, id_list: list[int] = (), page: int = 0) -> EventsMessage:
     """
     Generates a message for one day
 
@@ -358,7 +356,9 @@ def event_message(
                     if message_id
                     else {"📝": "None"}
                 ),
-                {"🏷": f"es {event.string_statuses} folders {event_id} {event.datetime:YYYY-MM-DD}"},
+                {
+                    "🏷": f"es {event.string_statuses} folders {event_id} {event.datetime:YYYY-MM-DD}"
+                },
                 {"🗑": f"ebd {event_id} {event.date}"},
             ],
             [
@@ -465,7 +465,9 @@ def about_event_message(event_id: int) -> EventMessage | None:
     ) = get_translate("text.event_about_info")
 
     if event.reference_event_id:
-        text_reference_event_id = f"{event.reference_event_id} - {text_reference_event_id}"
+        text_reference_event_id = (
+            f"{event.reference_event_id} - {text_reference_event_id}"
+        )
     else:
         text_reference_event_id = ""
 
@@ -834,7 +836,9 @@ def edit_event_time_hour_message(event_id: int, date: Arrow) -> TextMessage | No
     return generated
 
 
-def edit_event_time_minute_message(event_id: int, date: Arrow, hour: int | None) -> TextMessage | None:
+def edit_event_time_minute_message(
+    event_id: int, date: Arrow, hour: int | None
+) -> TextMessage | None:
     generated = EventMessage(event_id)
     event = generated.event
 
