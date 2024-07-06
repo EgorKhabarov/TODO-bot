@@ -19,11 +19,26 @@ from todoapi.exceptions import EventNotFound
 
 event_formats = {
     "dl": "<b>{time}</b>.{statuses}.{repetition}\n{markdown_text}\n",
-    "dt": "<b>{date}.{time}</b>.{statuses}.{repetition} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
-    "b": "<b>{date}.{time}</b>.{statuses}.{repetition} <u><i>{strdate}  {weekday}</i></u> ({days_before_delete})\n{markdown_text}\n",
-    "r": "<b>{date}.{time}</b>.{statuses}.{repetition} <u><i>{strdate}  {weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
-    "s": "<b>{date}.{time}</b>.{statuses}.{repetition} <u><i>{strdate}  {weekday}</i></u>\n{markdown_text}\n",
-    "a": "<b>{date}.{time}</b>.{statuses}.{repetition} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{text}\n",
+    "dt": (
+        "<b>{date} {time}</b>.{statuses}.{repetition} <u><i>{strdate} {weekday}</i></u>"
+        " ({reldate})\n{markdown_text}\n"
+    ),
+    "b": (
+        "<b>{date} {time}</b>.{statuses}.{repetition} <u><i>{strdate} {weekday}</i></u>"
+        " ({days_before_delete})\n{markdown_text}\n"
+    ),
+    "r": (
+        "<b>{date} {time}</b>.{statuses}.{repetition} <u><i>{strdate} {weekday}</i></u>"
+        " ({reldate}){days_before}\n{markdown_text}\n"
+    ),
+    "s": (
+        "<b>{date} {time}</b>.{statuses}.{repetition} <u><i>{strdate} {weekday}</i></u>"
+        "\n{markdown_text}\n"
+    ),
+    "a": (
+        "<b>{date} {time}</b>.{statuses}.{repetition} <u><i>{strdate} {weekday}</i></u>"
+        " ({reldate})\n{text}\n"
+    ),
 }
 """
 "dl" - Template for events for one day
@@ -66,9 +81,9 @@ SELECT event_id,
        LENGTH(text)
   FROM events
  WHERE {sql_where}
- ORDER BY ABS(DAYS_BEFORE_EVENT(datetime, repetition)) {direction},
-          DAYS_BEFORE_EVENT(datetime, repetition) DESC,
-          STRFTIME('%H:%M:%S', datetime, '{request.entity.settings.timezone} HOURS')
+ ORDER BY STRFTIME('%H:%M:%S', datetime),
+          ABS(DAYS_BEFORE_EVENT(datetime, repetition)) {direction},
+          DAYS_BEFORE_EVENT(datetime, repetition) DESC
  LIMIT 400;
 """,
         params=params,
@@ -275,9 +290,10 @@ class EventMessage(TextMessage):
                 self.event.days_before_delete
             )
 
+        date = self.event.datetime.shift(hours=request.entity.settings.timezone)
         event_date_representation = event_date_representation.format(
-            date=f"{self.event.datetime:DD.MM.YYYY}",
-            time=f"{self.event.datetime.shift(hours=request.entity.settings.timezone):HH:mm}",
+            date=f"{date:YYYY.MM.DD}",
+            time=f"{date:HH:mm}",
             strdate=str_date,
             weekday=week_date,
             reldate=rel_date,
@@ -337,9 +353,9 @@ SELECT *
   FROM events
  WHERE event_id IN ({data[0]})
        AND ({sql_where})
- ORDER BY ABS(DAYS_BEFORE_EVENT(datetime, repetition)) {direction},
+ ORDER BY STRFTIME('%H:%M:%S', datetime),
+          ABS(DAYS_BEFORE_EVENT(datetime, repetition)) {direction},
           DAYS_BEFORE_EVENT(datetime, repetition) DESC,
-          STRFTIME('%H:%M:%S', datetime, '{request.entity.settings.timezone} HOURS'),
           repetition = 'repeat every day',
           repetition = 'repeat every weekdays',
           repetition = 'repeat every week',
@@ -406,9 +422,9 @@ SELECT *
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in id_list)})
        AND ({sql_where})
- ORDER BY ABS(DAYS_BEFORE_EVENT(datetime, repetition)) {direction},
+ ORDER BY STRFTIME('%H:%M:%S', datetime),
+          ABS(DAYS_BEFORE_EVENT(datetime, repetition)) {direction},
           DAYS_BEFORE_EVENT(datetime, repetition) DESC,
-          STRFTIME('%H:%M:%S', datetime, '{request.entity.settings.timezone} HOURS'),
           repetition = 'repeat every day',
           repetition = 'repeat every weekdays',
           repetition = 'repeat every week',
@@ -460,7 +476,7 @@ SELECT *
         :param args: Repeating pattern
         :param ending: End of message
         :param if_empty: If the query result is empty
-        :return: message.text
+        :return: message.text.
         """
         dt_date = self._date.date()
         n_time = request.entity.now_time().date()
@@ -468,7 +484,7 @@ SELECT *
 
         format_string = (
             title.format(
-                date=f"{self._date:DD.MM.YYYY}",
+                date=f"{self._date:YYYY.MM.DD}",
                 strdate=str_date,
                 weekday=week_date,
                 reldate=rel_date,
@@ -511,10 +527,11 @@ SELECT *
                         event.days_before_delete
                     )
 
+                date = event.datetime.shift(hours=request.entity.settings.timezone)
                 format_string += (
                     args.format(
-                        date=f"{event.datetime:DD.MM.YYYY}",
-                        time=f"{event.datetime.shift(hours=request.entity.settings.timezone):HH:mm}",
+                        date=f"{date:YYYY.MM.DD}",
+                        time=f"{date:HH:mm}",
                         strdate=str_date,
                         weekday=week_date,
                         reldate=rel_date,

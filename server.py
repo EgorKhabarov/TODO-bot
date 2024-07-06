@@ -35,7 +35,7 @@ def favicon():
 @app.route("/v")
 @app.route("/version")
 def version():
-    return config.__version__
+    return f"{config.__version__}{config.string_branch}"
 
 
 @app.route("/limit")

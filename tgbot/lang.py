@@ -1094,12 +1094,12 @@ The bot notifies about important "🟥" events, events with recurring status ("�
                 "ru": f"""
 <b>Версия бота</b>
 
-<pre><code class='language-версия'>{config.__version__}</code></pre>
+<pre><code class='language-версия'>{config.__version__}{config.string_branch}</code></pre>
 """,
                 "en": f"""
 <b>Bot Version</b>
 
-<pre><code class='language-version'>{config.__version__}</code></pre>
+<pre><code class='language-version'>{config.__version__}{config.string_branch}</code></pre>
 """,
             },
         },

@@ -155,7 +155,7 @@ class DataBase:
         :param column_names: Insert column names into the result.
         :param functions: Window functions. (function name, function)
         :param script: Query consists of several requests
-        :return: Query result
+        :return: Query results.
         """
         self.sqlite_connection = connect(config.DATABASE_PATH)
         self.sqlite_cursor = self.sqlite_connection.cursor()
@@ -530,7 +530,7 @@ class Event:
 
     @property
     def time(self) -> str:
-        return f"{self.datetime:HH:mm:ss}"
+        return f"{self.datetime:HH:mm}"
 
     @property
     def datetime(self) -> Arrow:
@@ -1025,9 +1025,9 @@ SELECT *
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in event_ids)})
        AND (removal_time IS NOT NULL) = ?
- ORDER BY ABS(DAYS_BEFORE_EVENT(datetime, repetition)) {self.settings.direction},
+ ORDER BY STRFTIME('%H:%M:%S', datetime),
+          ABS(DAYS_BEFORE_EVENT(datetime, repetition)) {self.settings.direction},
           DAYS_BEFORE_EVENT(datetime, repetition) DESC,
-          STRFTIME('%H:%M:%S', datetime, '{self.settings.timezone} HOURS'),
           repetition = 'repeat every day',
           repetition = 'repeat every weekdays',
           repetition = 'repeat every week',

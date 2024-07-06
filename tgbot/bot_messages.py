@@ -270,7 +270,7 @@ AND removal_time IS NULL
     edit_button_data(generated.markup, 0, 2, f"ses _ {string_id} pd {date:YYYY-MM-DD}")
 
     generated.format(
-        title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})",
+        title="{date} <u><i>{strdate} {weekday}</i></u> ({reldate})",
         args=event_formats["dl"],
         if_empty=get_translate("errors.nodata"),
     )
@@ -306,7 +306,7 @@ SELECT DISTINCT DATE(datetime, :timezone || ' HOURS')
     ( -- Every weekdays
         repetition = 'repeat every weekdays'
         AND STRFTIME('%w', :datetime) BETWEEN '1' AND '5'
-        AND STRFTIME('%w', datetime) BETWEEN '1' AND '5'
+        -- AND STRFTIME('%w', datetime) BETWEEN '1' AND '5'
     )
     OR
     repetition = 'repeat every day' -- Every day
@@ -722,7 +722,7 @@ AND (
     ( -- Every weekdays
         repetition = 'repeat every weekdays'
         AND STRFTIME('%w', ?) BETWEEN '1' AND '5'
-        AND STRFTIME('%w', datetime) BETWEEN '1' AND '5'
+        -- AND STRFTIME('%w', datetime) BETWEEN '1' AND '5'
     )
     OR
     ( -- Every day
@@ -752,7 +752,7 @@ AND (
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.markup, 0, 1, f"se o {string_id} pr {date}")
     generated.format(
-        title="{date} <u><i>{strdate}  {weekday}</i></u> ({reldate})"
+        title="{date} <u><i>{strdate} {weekday}</i></u> ({reldate})"
         + f'\n📅 {get_translate("text.recurring_events")}',
         args=event_formats["dt"],
         if_empty=get_translate("errors.nothing_found"),
@@ -825,12 +825,16 @@ def edit_event_time_hour_message(event_id: int, date: Arrow) -> TextMessage | No
     generated.format(
         f"Select hour for event:",
         event_formats["a"],
-        create_time_hour_keyboard(f"etm {event_id} {date.date()}", f"em {event_id}"),
+        create_time_hour_keyboard(
+            f"etm {event_id} {date.date()}",
+            f"em {event_id}",
+            f"etm {event_id} {date.date()} None",
+        ),
     )
     return generated
 
 
-def edit_event_time_minute_message(event_id: int, date: Arrow, hour: int) -> TextMessage | None:
+def edit_event_time_minute_message(event_id: int, date: Arrow, hour: int | None) -> TextMessage | None:
     generated = EventMessage(event_id)
     event = generated.event
 
@@ -840,7 +844,11 @@ def edit_event_time_minute_message(event_id: int, date: Arrow, hour: int) -> Tex
     generated.format(
         f"Select minute for event:",
         event_formats["a"],
-        create_time_minute_keyboard(f"etset {event_id} {date.date()} {hour}", f"eth {event_id} {date.date()}"),
+        create_time_minute_keyboard(
+            f"etset {event_id} {date.date()} {hour}",
+            f"eth {event_id} {date.date()}",
+            f"etset {event_id} {date.date()} {hour} None",
+        ),
     )
     return generated
 
@@ -1177,7 +1185,7 @@ AND (
     )
     OR ( -- Every weekdays
         repetition = 'repeat every weekdays'
-        AND STRFTIME('%w', datetime) BETWEEN '1' AND '5'
+        -- AND STRFTIME('%w', datetime) BETWEEN '1' AND '5'
     )
     OR repetition = 'repeat every week' -- Every week
     OR repetition = 'repeat every day' -- Every day
@@ -1297,8 +1305,8 @@ AND (
     )
     OR ( -- Every weekdays
         repetition = 'repeat every weekdays'
-        AND STRFTIME('%w', datetime) BETWEEN '1' AND '5'
         AND STRFTIME('%w', ?) BETWEEN '1' AND '5'
+        -- AND STRFTIME('%w', datetime) BETWEEN '1' AND '5'
     )
     OR ( -- Every day
         repetition = 'repeat every day'
@@ -1704,11 +1712,12 @@ def select_one_message(
 
     markup = []
     for event in events_list:
-        button_title = f"{event.string_statuses}.{event.string_repetition} {event.text}"
+        date = event.datetime.shift(hours=request.entity.settings.timezone)
+        button_title = f"{date:HH:mm}.{event.string_statuses}.{event.string_repetition} {event.text}"
         button_title = button_title.ljust(60, "⠀")[:60]
 
         if is_in_wastebasket or is_in_search or is_open:
-            button_title = f"{event.date}.{button_title}"[:60]
+            button_title = f"{date:YYYY.MM.DD} {button_title}"[:60]
 
         if is_open:
             button_data = f"dl {event.date}"
@@ -1744,10 +1753,12 @@ def select_events_message(
 
     markup = []
     for n, event in enumerate(events_list):
-        button_title = f"{event.string_statuses}.{event.string_repetition} {event.text}"
+        date = event.datetime.shift(hours=request.entity.settings.timezone)
+        button_title = f"{date:HH:mm}.{event.string_statuses}.{event.string_repetition} {event.text}"
         button_title = button_title.ljust(60, "⠀")[:60]
+
         if in_bin or is_in_search:
-            button_title = f"{event.date}.{button_title}"[:60]
+            button_title = f"{date:YYYY.MM.DD} {button_title}"[:60]
 
         if in_bin:
             button_data = f"sbon {n} 0 {event.event_id}"

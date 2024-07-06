@@ -302,7 +302,7 @@ def command_handler(message: Message) -> None:
         settings_message().send()
 
     elif command_text in ("version", "v"):
-        TextMessage(f"Version {config.__version__}").send()
+        TextMessage(f"Version {config.__version__}{config.string_branch}").send()
 
     elif command_text in ("weather", "forecast"):
         now_city = get_command_arguments(
@@ -568,7 +568,7 @@ class CallBackHandler:
         cache_add_event_date(f"{date:YYYY-MM-DD},{message_id}")
         send_event_text = get_translate("text.send_event_text")
         CallBackAnswer(send_event_text).answer()
-        text = f"{message.html_text}\n\n<b>?.?.</b>⬜\n{send_event_text}"
+        text = f"{message.html_text}\n\n<b>??:??</b>.⬜.🔕\n{send_event_text}"
         markup = generate_buttons([[{get_theme_emoji("back"): f"dl {date:YYYY-MM-DD}"}]])
         TextMessage(text, markup).edit()
 
@@ -1352,14 +1352,22 @@ class CallBackHandler:
         generated.edit()
 
     @prefix("etm", {"event_id": "int", "date": "date", "hour": "int"})
-    def event_time_minute(self, event_id: int, date: Arrow, hour: int):
+    def event_time_minute(self, event_id: int, date: Arrow, hour: int | None):
         generated = edit_event_time_minute_message(event_id, date, hour)
         if generated is None:
             generated = daily_message(date)
         generated.edit()
 
     @prefix("etset", {"event_id": "int", "date": "date", "hour": "int", "minute": "int"})
-    def event_time_minute(self, event_id: int, date: Arrow, hour: int, minute: int, message_id: int):
+    def event_time_minute(self, event_id: int, date: Arrow, hour: int | None, minute: int | None, message_id: int):
+        now_time = arrow.utcnow().shift(hours=request.entity.settings.timezone).time()
+
+        if hour is None:
+            hour = now_time.hour
+
+        if minute is None:
+            minute = now_time.minute
+
         date = arrow.get(
             date.year, date.month, date.day, hour, minute
         ).shift(hours=-request.entity.settings.timezone).replace(

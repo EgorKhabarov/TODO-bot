@@ -120,7 +120,7 @@ SELECT 1
        AND group_id IS :group_id
        AND removal_time IS NULL
        AND repetition = 'repeat every weekdays'
-       AND STRFTIME('%w', datetime) BETWEEN '1' AND '5';
+       -- AND STRFTIME('%w', datetime) BETWEEN '1' AND '5';
 """,
                     params={
                         "user_id": request.entity.safe_user_id,
@@ -542,7 +542,7 @@ def create_select_status_keyboard(
     return markup
 
 
-def create_time_hour_keyboard(next_data: str, back: str = None):
+def create_time_hour_keyboard(next_data: str, back: str, now: str):
     keyboard = [
         [
             {f"{column:0>2}": f"{next_data} {column}"}
@@ -552,12 +552,11 @@ def create_time_hour_keyboard(next_data: str, back: str = None):
     ]
     del keyboard[-1][-1]["24"]
     keyboard[-1][-1]["00"] = f"{next_data} 0"
-    if back:
-        keyboard.append([{get_theme_emoji("back"): back}])
+    keyboard.append([{get_theme_emoji("back"): back}, {"🕛": now}])
     return generate_buttons(keyboard)
 
 
-def create_time_minute_keyboard(next_data: str, back: str = None):
+def create_time_minute_keyboard(next_data: str, back: str, now: str):
     keyboard = [
         [
             {f"{column:0>2}": f"{next_data} {column}"}
@@ -567,8 +566,7 @@ def create_time_minute_keyboard(next_data: str, back: str = None):
     ]
     del keyboard[-1][-1]["60"]
     keyboard[-1][-1]["00"] = f"{next_data} 0"
-    if back:
-        keyboard.append([{get_theme_emoji("back"): back}])
+    keyboard.append([{get_theme_emoji("back"): back}, {"🕛": now}])
     return generate_buttons(keyboard)
 
 
@@ -587,7 +585,7 @@ def delmarkup() -> InlineKeyboardMarkup:
 def number_to_power(string: str) -> str:
     """
     Turns a string of numbers into a string of powers.
-    For example "123" in "¹²³".
+    For example, "123" in "¹²³".
     """
     return "".join(calendar_event_count_template[int(ch)] for ch in str(string))
 

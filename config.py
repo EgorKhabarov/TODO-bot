@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import git
 import yaml
 
 
@@ -76,5 +77,8 @@ Special transparent symbol for filling empty space in buttons
 "⠀" or chr(10240) or "\\U00002800"
 """
 
-__version__ = "2024.06.18.0"
+repo = git.Repo()
+string_branch = "" if repo.active_branch == "master" else f":{repo.active_branch}"
+
+__version__ = "2024.07.06.0"
 __author__ = "EgorKhabarov"

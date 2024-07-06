@@ -126,6 +126,7 @@ def test_bot_command_export():
     with Chat() as chat:
         setup_request(message_mock(1, "/export"))
         command_handler(request.query)
+
         assert chat.comparer(
             lambda m, u, k: (
                 u.endswith("sendChatAction")
@@ -137,7 +138,7 @@ def test_bot_command_export():
                 and k["params"]["chat_id"] == 1
                 and (
                     k["files"]["document"].read()
-                    == "event_id,date,statuses,text,adding_time,recent_changes_time,history\r\n"
+                    == "event_id,text,datetime,statuses,adding_time,recent_changes_time,history\r\n"
                 )
             ),
         )

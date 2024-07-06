@@ -1,3 +1,5 @@
+import arrow
+
 from tests.chat import Chat, setup_request
 
 with Chat():
@@ -174,7 +176,7 @@ def test_bot_callback_mnsr():
 
 def test_bot_callback_dl():
     with Chat() as chat:
-        setup_request(callback_mock("dl 01.01.2000"))
+        setup_request(callback_mock("dl 2000-01-01"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
@@ -187,7 +189,7 @@ def test_bot_callback_dl():
         )
 
         chat.clear()
-        request.entity.create_event("01.01.2000", "event text")
+        request.entity.create_event("event text", arrow.get("2000-01-01"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
@@ -213,7 +215,7 @@ def test_bot_callback_em():
         )
 
         chat.clear()
-        event_id = request.entity.create_event("01.01.2000", "event text")
+        event_id = request.entity.create_event("event text", arrow.get("2000-01-01"))
         setup_request(callback_mock(f"em {event_id}"))
         callback_handler(request.query)
         assert chat.comparer(
@@ -229,7 +231,7 @@ def test_bot_callback_em():
 
 def test_bot_callback_ea():
     with Chat() as chat:
-        setup_request(callback_mock("ea 01.01.2000"))
+        setup_request(callback_mock("ea 2000-01-01"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
@@ -254,8 +256,8 @@ def test_bot_callback_es():
         generated.event._status = json.dumps(statuses_list[-5:], ensure_ascii=False)
         'NoneType' object has no attribute '_status'
         """
-        request.entity.create_event("01.01.2000", "event text")
-        setup_request(callback_mock("es ⬜ 1 1 01.01.2000"))
+        request.entity.create_event("event text", arrow.get("2000-01-01"))
+        setup_request(callback_mock("es ⬜ 1 1 2000-01-01"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
@@ -270,7 +272,7 @@ def test_bot_callback_es():
 
 def test_bot_callback_ess():
     with Chat() as chat:
-        setup_request(callback_mock("ess 1 01.01.2000 ✅"))
+        setup_request(callback_mock("ess 1 2000-01-01 ✅"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
@@ -285,7 +287,7 @@ def test_bot_callback_ess():
 
 def test_bot_callback_eet():
     with Chat() as chat:
-        setup_request(callback_mock("eet 1 01.01.2000"))
+        setup_request(callback_mock("eet 1 2000-01-01"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
@@ -306,8 +308,8 @@ def test_bot_callback_eet():
 
 def test_bot_callback_eds():
     with Chat() as chat:
-        request.entity.create_event("01.01.2000", "event text")
-        setup_request(callback_mock("eds 1 01.01.2000"))
+        request.entity.create_event("event text", arrow.get("2000-01-01"))
+        setup_request(callback_mock("eds 1 2000-01-01"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
@@ -327,7 +329,7 @@ def test_bot_callback_eds():
 
 def test_bot_callback_ed():
     with Chat() as chat:
-        setup_request(callback_mock("ed 1 01.01.2000"))
+        setup_request(callback_mock("ed 1 2000-01-01"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
@@ -347,7 +349,7 @@ def test_bot_callback_ed():
 
 def test_bot_callback_edb():
     with Chat() as chat:
-        setup_request(callback_mock("edb 1 01.01.2000"))
+        setup_request(callback_mock("edb 1 2000-01-01"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
@@ -367,7 +369,7 @@ def test_bot_callback_edb():
 
 def test_bot_callback_esdt():
     with Chat() as chat:
-        setup_request(callback_mock("esdt 1 01.01.2000"))
+        setup_request(callback_mock("esdt 1 2000-01-01"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
@@ -382,7 +384,7 @@ def test_bot_callback_esdt():
 
 def test_bot_callback_ebd():
     with Chat() as chat:
-        setup_request(callback_mock("ebd 1 01.01.2000"))
+        setup_request(callback_mock("ebd 1 2000-01-01"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
@@ -397,7 +399,7 @@ def test_bot_callback_ebd():
 
 def test_bot_callback_eab():
     with Chat() as chat:
-        setup_request(callback_mock("eab 1 01.01.2000"))
+        setup_request(callback_mock("eab 1 2000-01-01"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
@@ -412,7 +414,7 @@ def test_bot_callback_eab():
 
 def test_bot_callback_esh():
     with Chat() as chat:
-        setup_request(callback_mock("esh 1 01.01.2000"))
+        setup_request(callback_mock("esh 1 2000-01-01"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
@@ -427,7 +429,7 @@ def test_bot_callback_esh():
 
 def test_bot_callback_eh():
     with Chat() as chat:
-        setup_request(callback_mock("eh 1 01.01.2000 1"))
+        setup_request(callback_mock("eh 1 2000-01-01 1"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
@@ -487,7 +489,7 @@ def test_bot_callback_essd():
 
 def test_bot_callback_esd():
     with Chat() as chat:
-        setup_request(callback_mock("esd 0 01.01.2000"))
+        setup_request(callback_mock("esd 0 2000-01-01"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
@@ -507,7 +509,7 @@ def test_bot_callback_esd():
 
 def test_bot_callback_esdb():
     with Chat() as chat:
-        setup_request(callback_mock("esdb 0 01.01.2000"))
+        setup_request(callback_mock("esdb 0 2000-01-01"))
         try:
             callback_handler(request.query)
         except NotEnoughPermissions:
@@ -531,14 +533,14 @@ def test_bot_callback_esdb():
 
 def test_bot_callback_esds():
     with Chat() as chat:
-        setup_request(callback_mock("esds 0 01.01.2000"))
+        request.entity.create_event("event text", arrow.get("2000-01-01"))
+        setup_request(callback_mock("esds 0 2000-01-01"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
                 u.endswith("answerCallbackQuery")
                 and k["params"]["callback_query_id"] == 100
                 and k["params"]["text"]
-                and k["params"]["show_alert"]
             ),
             lambda m, u, k: (
                 u.endswith("editMessageText")
@@ -586,7 +588,7 @@ son_or_sbon
 
 def test_bot_callback_pd():
     with Chat() as chat:
-        setup_request(callback_mock("pd 01.01.2000 0"))
+        setup_request(callback_mock("pd 2000-01-01 0"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
@@ -601,7 +603,7 @@ def test_bot_callback_pd():
 
 def test_bot_callback_pr():
     with Chat() as chat:
-        setup_request(callback_mock("pr 01.01.2000 0"))
+        setup_request(callback_mock("pr 2000-01-01 0"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
@@ -661,7 +663,7 @@ def test_bot_callback_pb():
 
 def test_bot_callback_pn():
     with Chat() as chat:
-        setup_request(callback_mock("pn 01.01.2000 0"))
+        setup_request(callback_mock("pn 2000-01-01 0"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
@@ -847,7 +849,7 @@ def test_bot_callback_bed():
 
 def test_bot_callback_ber():
     with Chat() as chat:
-        setup_request(callback_mock("ber 1 01.01.2000"))
+        setup_request(callback_mock("ber 1 2000-01-01"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (
