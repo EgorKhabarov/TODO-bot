@@ -1,4 +1,4 @@
-from typing import Literal, Any, TypeAlias
+from typing import Literal, Any, Union
 
 # noinspection PyPackageRequirements
 from telebot.types import (
@@ -10,13 +10,13 @@ from telebot.types import (
 )
 
 
-buttons_data_types: TypeAlias = (
-    list[list[dict[str, str | dict]]] | list[list[str]] | dict[str, Any] | None
-)
-return_buttons_types: TypeAlias = (
-    ForceReply | ReplyKeyboardMarkup | ReplyKeyboardRemove | InlineKeyboardMarkup | None
-)
-keyboard_types: TypeAlias = Literal["inline", "reply", "force_reply", "reply_remove"]
+buttons_data_types = Union[
+    list[list[dict[str, str | dict]]], list[list[str]], dict[str, Any], None
+]
+return_buttons_types = Union[
+    ForceReply, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, None
+]
+keyboard_types = Union[Literal["inline", "reply", "force_reply", "reply_remove"], str]
 
 
 def generate_buttons(
