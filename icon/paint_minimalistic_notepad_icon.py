@@ -115,13 +115,17 @@ def draw_clock(image: Image):
     )
 
     draw.rounded_rectangle(
-        (93-1 + x, 94-1 + y, 109+1 + x, 110+1 + y), 90, fill=COLOR_CLOCK_HANDS_LDARK
+        (93 - 1 + x, 94 - 1 + y, 109 + 1 + x, 110 + 1 + y),
+        90,
+        fill=COLOR_CLOCK_HANDS_LDARK,
     )
     draw.rounded_rectangle(
         (93 + x, 94 + y, 109 + x, 110 + y), 90, fill=COLOR_CLOCK_HANDS
     )
     draw.rounded_rectangle(
-        (93+5 + x, 94+5 + y, 109-5 + x, 110-5 + y), 90, fill=COLOR_CLOCK_HANDS_DARK
+        (93 + 5 + x, 94 + 5 + y, 109 - 5 + x, 110 - 5 + y),
+        90,
+        fill=COLOR_CLOCK_HANDS_DARK,
     )
 
 
