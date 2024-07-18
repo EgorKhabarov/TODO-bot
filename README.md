@@ -271,28 +271,30 @@ There are limits for different user groups
 The bot has a search by events. You can search using the commands `#query` or `/search query`.
 This search attempts to find all matches.<br>
 Query `#1 2` searches for all events that contain the numbers 1 <b>OR</b> 2 (`t1ext`, `tex2t`, `2te1xt`)<br>
-There is also a search for <b>AND</b>. It searches only for those events in which all conditions completely match. You can search with this search using the command `#!query` or `/search! query`.<br>
-The `#!1 2` request will return only those events that contain 1 <b>AND</b> 2 (`text12`, `te2xt1`).
 
-You can use templates in your search query
+[//]: # (There is also a search for <b>AND</b>. It searches only for those events in which all conditions completely match. You can search with this search using the command `#!query` or `/search! query`.<br>)
 
-| What to look for | template/s                                                             |
-|:-----------------|:-----------------------------------------------------------------------|
-| Date             | `date=dd.mm.yyyy`<br>`date=dd.mm`<br>`date=mm.yyyy`<br>`date=dd..yyyy` |
-| Day number       | `day=00`                                                               |
-| Month number     | `mon=0`<br>`month=0`                                                   |
-| Year             | `year=0000`                                                            |
-| Event Status     | `status=⬜️`                                                            |
-| event id         | `id=0`                                                                 |
+[//]: # (The `#!1 2` request will return only those events that contain 1 <b>AND</b> 2 &#40;`text12`, `te2xt1`&#41;.)
 
-For example, `#date=1.2023 status=🎧 youtube.com` to search for all events with music status for January 2023 that have a link to youtube.
+[//]: # ()
+[//]: # (You can use templates in your search query)
 
-# TODO
+[//]: # ()
+[//]: # (| What to look for | template/s                                                             |)
 
-* [ ] Add action when select more
-* [ ] Make a closure for the argument parser
-* [ ] DB schema
-* [ ] Transfer event IDs directly to buttons
-* [ ] Your own condition language parser for effective search
-* [ ] Make webhooks and test so that requests when falling asleep are not repeated twice
-* [ ] Set up custom autodeploy
+[//]: # (|:-----------------|:-----------------------------------------------------------------------|)
+
+[//]: # (| Date             | `date=dd.mm.yyyy`<br>`date=dd.mm`<br>`date=mm.yyyy`<br>`date=dd..yyyy` |)
+
+[//]: # (| Day number       | `day=00`                                                               |)
+
+[//]: # (| Month number     | `mon=0`<br>`month=0`                                                   |)
+
+[//]: # (| Year             | `year=0000`                                                            |)
+
+[//]: # (| Event Status     | `status=⬜️`                                                            |)
+
+[//]: # (| event id         | `id=0`                                                                 |)
+
+[//]: # ()
+[//]: # (For example, `#date=1.2023 status=🎧 youtube.com` to search for all events with music status for January 2023 that have a link to youtube.)
