@@ -16,11 +16,11 @@ def start_bot():
 
 
 def start_notifications_thread():
-    if config.BOT_NOTIFICATIONS:
-        Thread(target=start_background_loop, daemon=True).start()
+    Thread(target=start_background_loop, daemon=True).start()
 
 
 if __name__ == "__main__":
     logger.info(bot_log_info())
-    start_notifications_thread()
+    if config.BOT_NOTIFICATIONS:
+        start_notifications_thread()
     start_bot()

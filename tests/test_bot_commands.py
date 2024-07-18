@@ -137,7 +137,7 @@ def test_bot_command_export():
                 u.endswith("sendDocument")
                 and k["params"]["chat_id"] == 1
                 and (
-                    k["files"]["document"].read()
+                    k["files"]["document"][1].read()
                     == "event_id,text,datetime,statuses,adding_time,recent_changes_time,history\r\n"
                 )
             ),

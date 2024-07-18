@@ -10,6 +10,12 @@ COLOR_LOCK = (240, 168, 26)
 COLOR_LOCK_CYLINDER = (192, 120, 4)
 COLOR_LOCK_SHACKLE = (165, 165, 165)
 
+COLOR_CLOCK = (238, 125, 44)
+COLOR_CLOCK_BACKGROUND = (255, 190, 113)
+COLOR_CLOCK_HANDS = (151, 83, 0)
+COLOR_CLOCK_HANDS_LDARK = (134, 73, 0)
+COLOR_CLOCK_HANDS_DARK = (98, 54, 0)
+
 
 def image_generator(icon_size: int) -> Image:
     _image = Image.new("RGB", (icon_size, icon_size), COLOR_BACKGROUND)
@@ -57,7 +63,70 @@ def draw_lock(image: Image):
     )
 
 
+def draw_clock(image: Image):
+    draw = ImageDraw.Draw(image)
+    x, y = 450, 440
+
+    draw.ellipse((x, y, 203 + x, 203 + y), fill=COLOR_CLOCK)
+    draw.ellipse((20 + x, 20 + y, 183 + x, 183 + y), fill=COLOR_CLOCK_BACKGROUND)
+
+    draw.rounded_rectangle(
+        (96 + x, 43 + y, 106 + x, 107 + y), 7, fill=COLOR_CLOCK_HANDS
+    )
+    draw.rounded_rectangle(
+        (96 + x, 96 + y, 145 + x, 108 + y), 7, fill=COLOR_CLOCK_HANDS
+    )
+
+    draw.rounded_rectangle(  # 12
+        (96 + x, 23 + y, 106 + x, 33 + y), 7, fill=COLOR_CLOCK_HANDS
+    )
+    draw.rounded_rectangle(  # 1
+        (134 + x, 38 + y, 140 + x, 44 + y), 7, fill=COLOR_CLOCK_HANDS
+    )
+    draw.rounded_rectangle(  # 2
+        (158 + x, 63 + y, 164 + x, 69 + y), 7, fill=COLOR_CLOCK_HANDS
+    )
+    draw.rounded_rectangle(  # 3
+        (169 + x, 97 + y, 179 + x, 107 + y), 7, fill=COLOR_CLOCK_HANDS
+    )
+    draw.rounded_rectangle(  # 4
+        (158 + x, 135 + y, 164 + x, 141 + y), 7, fill=COLOR_CLOCK_HANDS
+    )
+    draw.rounded_rectangle(  # 5
+        (134 + x, 159 + y, 140 + x, 165 + y), 7, fill=COLOR_CLOCK_HANDS
+    )
+    draw.rounded_rectangle(  # 6
+        (96 + x, 170 + y, 106 + x, 180 + y), 7, fill=COLOR_CLOCK_HANDS
+    )
+    draw.rounded_rectangle(  # 7
+        (62 + x, 159 + y, 68 + x, 165 + y), 7, fill=COLOR_CLOCK_HANDS
+    )
+    draw.rounded_rectangle(  # 8
+        (36 + x, 63 + y, 42 + x, 69 + y), 7, fill=COLOR_CLOCK_HANDS
+    )
+    draw.rounded_rectangle(  # 9
+        (21 + x, 97 + y, 31 + x, 107 + y), 7, fill=COLOR_CLOCK_HANDS
+    )
+    draw.rounded_rectangle(  # 10
+        (36 + x, 135 + y, 42 + x, 141 + y), 7, fill=COLOR_CLOCK_HANDS
+    )
+    draw.rounded_rectangle(  # 11
+        (62 + x, 38 + y, 68 + x, 44 + y), 7, fill=COLOR_CLOCK_HANDS
+    )
+
+    draw.rounded_rectangle(
+        (93-1 + x, 94-1 + y, 109+1 + x, 110+1 + y), 90, fill=COLOR_CLOCK_HANDS_LDARK
+    )
+    draw.rounded_rectangle(
+        (93 + x, 94 + y, 109 + x, 110 + y), 90, fill=COLOR_CLOCK_HANDS
+    )
+    draw.rounded_rectangle(
+        (93+5 + x, 94+5 + y, 109-5 + x, 110-5 + y), 90, fill=COLOR_CLOCK_HANDS_DARK
+    )
+
+
 if __name__ == "__main__":
     img = image_generator(ICON_SIZE)
     # draw_lock(img)
+    # draw_clock(img)
     img.save(f"{ICON_NAME}.png", "png")
