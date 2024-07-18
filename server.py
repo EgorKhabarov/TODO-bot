@@ -19,26 +19,28 @@ logger.info(bot_log_info())
 if not config.TELEGRAM_WEBHOOK:
     Thread(target=start_bot, daemon=True).start()
 
-start_notifications_thread()
+
+if config.BOT_NOTIFICATIONS:
+    start_notifications_thread()
 
 
-@app.route("/")
+@app.route("/", methods=["GET"])
 def home():
     return "200", 200
 
 
-@app.route("/favicon.ico")
+@app.route("/favicon.ico", methods=["GET"])
 def favicon():
     return send_file("icon/notepad_icon.png")
 
 
-@app.route("/v")
-@app.route("/version")
+@app.route("/v", methods=["GET"])
+@app.route("/version", methods=["GET"])
 def version():
     return config.__version__
 
 
-@app.route("/limit")
+@app.route("/limit", methods=["GET"])
 def limit():
     if len(str(request.args)) > 200:
         return abort(413)
