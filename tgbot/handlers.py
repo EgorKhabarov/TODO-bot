@@ -1390,8 +1390,10 @@ class CallBackHandler:
         date = (
             arrow.get(date.year, date.month, date.day, hour, minute)
             .shift(hours=-request.entity.settings.timezone)
-            .replace(year=date.year, month=date.month, day=date.day)
         )
+        if date.shift(hours=request.entity.settings.timezone).date() < date.date():
+            date = date.replace(year=date.year, month=date.month, day=date.day).shift(days=-1)
+
         try:
             request.entity.edit_event_datetime(event_id, date)
         except EventNotFound:

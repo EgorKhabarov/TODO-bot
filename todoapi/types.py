@@ -1022,9 +1022,9 @@ SELECT *
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in event_ids)})
        AND (removal_time IS NOT NULL) = ?
- ORDER BY STRFTIME('%H:%M:%S', datetime),
-          ABS(DAYS_BEFORE_EVENT(datetime, repetition)) {self.settings.direction},
-          DAYS_BEFORE_EVENT(datetime, repetition) DESC,
+ ORDER BY STRFTIME('%H:%M:%S', datetime, ? || ' HOURS'),
+          ABS(DAYS_BEFORE_EVENT(DATETIME(datetime, ? || ' HOURS'), repetition)) {self.settings.direction},
+          DAYS_BEFORE_EVENT(DATETIME(datetime, ? || ' HOURS'), repetition) DESC,
           repetition = 'repeat every day',
           repetition = 'repeat every weekdays',
           repetition = 'repeat every week',
@@ -1036,6 +1036,9 @@ SELECT *
                     self.group_id,
                     *event_ids,
                     in_bin,
+                    self.settings.timezone,
+                    self.settings.timezone,
+                    self.settings.timezone,
                 ),
                 functions=(
                     (

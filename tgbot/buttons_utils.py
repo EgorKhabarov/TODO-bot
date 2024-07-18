@@ -44,19 +44,20 @@ def create_monthly_calendar_keyboard(
         for x in db.execute(
             """
 -- Days with events
-SELECT STRFTIME('%d', datetime) AS day_number,
+SELECT STRFTIME('%d', datetime, :timezone || ' HOURS') AS day_number,
        COUNT(event_id) AS event_count
   FROM events
  WHERE user_id IS :user_id
        AND group_id IS :group_id
        AND removal_time IS NULL
-       AND DATE(datetime) LIKE :datetime
+       AND DATE(datetime, :timezone || ' HOURS') LIKE :datetime
  GROUP BY day_number;
 """,
             params={
                 "user_id": request.entity.safe_user_id,
                 "group_id": request.entity.group_id,
                 "datetime": f"{year}-{month:0>2}-__",
+                "timezone": request.entity.settings.timezone,
             },
         )
     }
@@ -228,19 +229,20 @@ def create_yearly_calendar_keyboard(
         for x in db.execute(
             """
 -- Months with events
-SELECT STRFTIME('%m', datetime) AS month_number,
+SELECT STRFTIME('%m', datetime, :timezone || ' HOURS') AS month_number,
        COUNT(event_id) AS event_count
   FROM events
  WHERE user_id IS :user_id
        AND group_id IS :group_id
        AND removal_time IS NULL
-       AND DATE(datetime) LIKE :datetime
+       AND DATE(datetime, :timezone || ' HOURS') LIKE :datetime
  GROUP BY month_number;
 """,
             params={
                 "user_id": request.entity.safe_user_id,
                 "group_id": request.entity.group_id,
                 "datetime": f"{year}-__-__",
+                "timezone": request.entity.settings.timezone,
             },
         )
     }
@@ -251,7 +253,7 @@ SELECT STRFTIME('%m', datetime) AS month_number,
         for x in db.execute(
             """
 -- Month numbers of birthdays in a specific month
-SELECT DISTINCT STRFTIME('%m', datetime)
+SELECT DISTINCT STRFTIME('%m', datetime, :timezone || ' HOURS')
   FROM events
  WHERE user_id IS :user_id
        AND group_id IS :group_id
@@ -259,6 +261,7 @@ SELECT DISTINCT STRFTIME('%m', datetime)
        AND repetition = 'repeat every year';
 """,
             params={
+                "timezone": request.entity.settings.timezone,
                 "user_id": request.entity.safe_user_id,
                 "group_id": request.entity.group_id,
             },
@@ -271,7 +274,7 @@ SELECT DISTINCT STRFTIME('%m', datetime)
         for x in db.execute(
             """
 -- Is there an event that repeats every month?
-SELECT DATE(datetime)
+SELECT DATE(datetime, :timezone || ' HOURS')
   FROM events
  WHERE user_id IS :user_id
        AND group_id IS :group_id
@@ -282,6 +285,7 @@ SELECT DATE(datetime)
             params={
                 "user_id": request.entity.safe_user_id,
                 "group_id": request.entity.group_id,
+                "timezone": request.entity.settings.timezone,
             },
         )
     ]
@@ -356,7 +360,7 @@ def create_twenty_year_calendar_keyboard(
         for x in db.execute(
             """
 -- Years with events
-SELECT STRFTIME('%Y', datetime) AS year_number,
+SELECT STRFTIME('%Y', datetime, :timezone || ' HOURS') AS year_number,
        COUNT(event_id) AS event_count
   FROM events
  WHERE user_id IS :user_id
@@ -367,6 +371,7 @@ SELECT STRFTIME('%Y', datetime) AS year_number,
             params={
                 "user_id": request.entity.safe_user_id,
                 "group_id": request.entity.group_id,
+                "timezone": request.entity.settings.timezone,
             },
         )
     }

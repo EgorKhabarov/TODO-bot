@@ -284,27 +284,27 @@ SELECT DISTINCT DATE(datetime, :timezone || ' HOURS')
  WHERE user_id IS :user_id
        AND group_id IS :group_id
        AND removal_time IS NULL
-       AND DATE(datetime) != :datetime
+       AND DATE(datetime, :timezone || ' HOURS') != :datetime
        AND (
     ( -- Every year
         repetition = 'repeat every year'
-        AND DATE(datetime) LIKE :y_date
+        AND DATE(datetime, :timezone || ' HOURS') LIKE :y_date
     )
     OR
     ( -- Every month
         repetition = 'repeat every month'
-        AND DATE(datetime) LIKE :m_date
+        AND DATE(datetime, :timezone || ' HOURS') LIKE :m_date
     )
     OR
     ( -- Every week
         repetition = 'repeat every week'
-        AND STRFTIME('%w', datetime) = STRFTIME('%w', :datetime)
+        AND STRFTIME('%w', datetime, :timezone || ' HOURS') = STRFTIME('%w', :datetime, :timezone || ' HOURS')
     )
     OR
     ( -- Every weekdays
         repetition = 'repeat every weekdays'
-        AND STRFTIME('%w', :datetime) BETWEEN '1' AND '5'
-        -- AND STRFTIME('%w', datetime) BETWEEN '1' AND '5'
+        AND STRFTIME('%w', :datetime, :timezone || ' HOURS') BETWEEN '1' AND '5'
+        -- AND STRFTIME('%w', datetime, :timezone || ' HOURS') BETWEEN '1' AND '5'
     )
     OR
     repetition = 'repeat every day' -- Every day
@@ -528,8 +528,9 @@ def event_history_message(
 
             if action == "datetime":
                 a = arrow.get(val)
-                result = a.shift(hours=request.entity.settings.timezone)
-                result = result.replace(year=a.year, month=a.month, day=a.day)
+                result = a.shift(
+                    hours=request.entity.settings.timezone
+                ).replace(year=a.year, month=a.month, day=a.day)
                 return f"{result:YYYY-MM-DD HH:mm:ss}"
 
             return val
@@ -742,17 +743,17 @@ AND (
     )
 
     back_open_markup = generate_buttons(
-        [[{get_theme_emoji("back"): f"pd {date}"}, {"↖️": "None"}]]
+        [[{get_theme_emoji("back"): f"pd {date:YYYY-MM-DD}"}, {"↖️": "None"}]]
     )
     generated = EventsMessage(date, markup=back_open_markup, page=page)
 
     if id_list:
         generated.get_page_events(sql_where, params, id_list)
     else:
-        generated.get_pages_data(sql_where, params, f"pr {date}")
+        generated.get_pages_data(sql_where, params, f"pr {date:YYYY-MM-DD}")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
-    edit_button_data(generated.markup, 0, 1, f"se o {string_id} pr {date}")
+    edit_button_data(generated.markup, 0, 1, f"se o {string_id} pr {date:YYYY-MM-DD}")
     generated.format(
         title="{date} <u><i>{strdate} {weekday}</i></u> ({reldate})"
         + f'\n📅 {get_translate("text.recurring_events")}',
