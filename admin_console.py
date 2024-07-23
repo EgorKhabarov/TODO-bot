@@ -152,7 +152,7 @@ export(
 )
 Account(user_id: int, group_id: str = None)
 TelegramAccount(chat_id: int, group_chat_id: int = None)
-terminal() -> tuple[int, int]
+terminal_size() -> tuple[int, int]
 restart_server()
 """
 
