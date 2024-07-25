@@ -1086,17 +1086,17 @@ AND (
         )
         AND
         (
-            STRFTIME('%m-%d', {sqlite_format_date('date')})
-            BETWEEN STRFTIME('%m-%d', 'now', {tz})
-                AND STRFTIME('%m-%d', 'now', '+7 day', {tz})
+            STRFTIME('%Y-', 'now', {tz}) || STRFTIME('%m-%d', {sqlite_format_date('date')})
+            BETWEEN STRFTIME('%Y-%m-%d', 'now', {tz})
+                AND STRFTIME('%Y-%m-%d', 'now', '+7 day', {tz})
         )
     )
     OR
     ( -- Every month
         statuses LIKE '%📅%'
-        AND SUBSTR(date, 1, 2)
-        BETWEEN STRFTIME('%d', 'now', {tz})
-            AND STRFTIME('%d', 'now', '+7 day', {tz})
+        AND STRFTIME('%Y-%m-', 'now', {tz}) || SUBSTR(date, 1, 2)
+        BETWEEN STRFTIME('%Y-%m-%d', 'now', {tz})
+            AND STRFTIME('%Y-%m-%d', 'now', '+7 day', {tz})
     )
     OR statuses LIKE '%🗞%' -- Every week
     OR statuses LIKE '%📬%' -- Every day
@@ -1423,7 +1423,7 @@ def group_message(
                         ),
                     ],
                     [
-                        {delete_group: f"grd {group.group_id} {mode}"},
+                        {delete_group: f"grdb {group.group_id} {mode}"},
                         (
                             {remove_bot_from_group: f"grrgr {group.group_id} {mode}"}
                             if group.chat_id
@@ -1489,6 +1489,36 @@ def group_message(
         markup = generate_buttons([[{get_theme_emoji("back"): "mnm"}]])
 
     return TextMessage(text, markup)
+
+
+def delete_group_message(
+    group_id: str, message_id: int = None, mode: str = "al"
+) -> TextMessage | None:
+    try:
+        if request.is_member:
+            group = request.entity.group
+        else:
+            group = request.entity.get_group(group_id)
+    except GroupNotFound:
+        return None
+
+    message = group_message(group_id, message_id, mode)
+
+    if request.is_user and group.member_status == 2:
+        delete_group = "🗑👥 " + get_translate("text.delete_group")
+
+        message.markup = generate_buttons(
+            [
+                [
+                    {get_theme_emoji("back"): f"mngr {group_id} {mode}"},
+                    {delete_group: f"grd {group.group_id} {mode}"},
+                ]
+            ]
+        )
+    else:
+        pass
+
+    return message
 
 
 def groups_message(

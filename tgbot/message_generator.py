@@ -1,3 +1,4 @@
+from io import StringIO
 from copy import deepcopy
 from sqlite3 import Error
 from datetime import datetime
@@ -222,18 +223,22 @@ class ChatAction:
 class DocumentMessage:
     def __init__(
         self,
-        document: Any,
+        document: Any | StringIO,
         caption: str = None,
         markup: InlineKeyboardMarkup = None,
+        file_name: str | None = None,
     ):
-        self.document = document
+        self.__document = document
         self.caption = caption
         self.markup = markup
+        self.file_name = (
+            document.name if hasattr(document, "name") else None
+        ) or file_name
 
     def send(self, chat_id: int = None, **kwargs):
         bot.send_document(
             chat_id=chat_id or request.chat_id,
-            document=InputFile(self.document),
+            document=InputFile(self.__document, self.file_name),
             caption=self.caption,
             message_thread_id=getattr(request.query, "message_thread_id", None),
             **kwargs,

@@ -898,6 +898,10 @@ def test_bot_callback_gre():
     pass  # {"group_id": "str", "file_format": ("str", "csv")}
 
 
+def test_bot_callback_grdb():
+    pass  # {"group_id": "str", "mode": ("str", "al")}
+
+
 def test_bot_callback_grd():
     pass  # {"group_id": "str", "mode": ("str", "al")}
 
