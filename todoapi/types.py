@@ -390,6 +390,8 @@ SELECT event_id,
         except Error as e:
             raise ApiError(e)
 
+        self.row_count = len(self.table)
+
     def csv(self) -> StringIO:
         file = StringIO()
         file.name = self.filename
@@ -444,11 +446,11 @@ SELECT event_id,
         file.seek(0)
         return file
 
-    def export(self, file_format: str = "csv"):
+    def export(self, file_format: str = "csv") -> tuple[StringIO | BytesIO, int]:
         if file_format not in ("csv", "xml", "json", "jsonl"):
             raise ValueError('file_format not in ("csv", "xml", "json", "jsonl")')
 
-        return getattr(self, file_format)()
+        return getattr(self, file_format)(), self.row_count
 
 
 @dataclass
@@ -1329,7 +1331,7 @@ DELETE FROM events
         file_format: str = "csv",
         __sql_where: str = None,
         __sql_params: str = None,
-    ) -> StringIO | BytesIO:
+    ) -> tuple[StringIO | BytesIO, int]:
         if file_format not in ("csv", "xml", "json", "jsonl"):
             raise ValueError("Format Is Not Valid")
 

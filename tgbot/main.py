@@ -117,17 +117,15 @@ def processing_search_message(message: Message):
 @bot.message_handler(func=lambda m: re_inline_message.match(m.text))
 @process_account
 def inline_message_handler(message: Message):
-    is_private = message.chat.type == "private"
-
     if re_edit_message.findall(message.text):
         telegram_log("send", "edit event text")
         if confirm_changes_message(message) is None:
             delete_message_action(message)
 
-    if not is_private:
+    if request.is_member:
         return None
 
-    elif match := re_user_edit_name_message.findall(message.html_text):
+    if match := re_user_edit_name_message.findall(message.html_text):
         telegram_log("send", "user edit name")
         message_id, name = match[0]
 

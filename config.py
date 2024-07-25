@@ -13,6 +13,11 @@ if not Path(config_path).exists():
 with open(config_path, "r", encoding="utf-8") as file:
     config: dict = yaml.safe_load(file.read()) or {}
 
+try:
+    branch = str(git.Repo().active_branch)
+except git.exc.InvalidGitRepositoryError:
+    branch = "master"
+
 DATABASE_PATH = config.get("DATABASE_PATH", "data/database.sqlite3")
 VEDIS_PATH = config.get("VEDIS_PATH", "data/export_cooldown.vedis")
 LOG_FILE_PATH = config.get("LOG_FILE_PATH", "logs/latest.log")
@@ -33,6 +38,9 @@ GITHUB_WEBHOOK_FLASK_PATH = config.get("GITHUB_WEBHOOK_FLASK_PATH", "")
 GITHUB_WEBHOOK_SECRET = config.get("GITHUB_WEBHOOK_SECRET", "")
 
 __wp = config.get("WSGI_PATH")
+
+if isinstance(DATABASE_PATH, dict):
+    DATABASE_PATH = DATABASE_PATH.get(branch, "data/database.sqlite3")
 
 if __wp:
     WSGI_PATH = Path(__wp)
@@ -77,8 +85,6 @@ Special transparent symbol for filling empty space in buttons
 "⠀" or chr(10240) or "\\U00002800"
 """
 
-repo = git.Repo()
-string_branch = "" if repo.active_branch == "master" else f":{repo.active_branch}"
-
+string_branch = "" if branch == "master" else f":{branch}"
 __version__ = "2024.07.06.0"
 __author__ = "EgorKhabarov"

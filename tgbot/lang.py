@@ -1784,6 +1784,10 @@ or create an account
             "ru": "Неверный формат. Выбери из (csv, xml, json, jsonl)",
             "en": "Wrong format. Choose from (csv, xml, json, jsonl)",
         },
+        "export_empty": {
+            "ru": "В этой группе не было ни одного события",
+            "en": "There were no events in this group.",
+        },
         "deleted": {
             "ru": "Извините, вам эта команда не доступна",
             "en": "Sorry, this command is not available for you",

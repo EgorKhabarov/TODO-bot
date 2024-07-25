@@ -49,6 +49,7 @@ from tgbot.bot_messages import (
     about_event_message,
     event_status_message,
     notification_message,
+    delete_group_message,
     event_history_message,
     select_events_message,
     search_filter_message,
@@ -348,7 +349,7 @@ def command_handler(message: Message) -> None:
         file = request.entity.export_data(
             f"events_{request.entity.now_time():%Y-%m-%d_%H-%M-%S}.{file_format}",
             file_format,
-        )
+        )[0]
         ChatAction("upload_document").send()
         try:
             DocumentMessage(file).send()
@@ -1067,7 +1068,7 @@ class CallBackHandler:
                 f"events_{request.entity.now_time():%Y-%m-%d_%H-%M-%S}.csv",
                 "csv",
                 *generate_search_sql_condition(query, filters),
-            )
+            )[0]
             ChatAction("upload_document").send()
             try:
                 DocumentMessage(file).send()
@@ -1253,30 +1254,48 @@ class CallBackHandler:
         CallBackAnswer(get_translate("text.send_group_name")).answer()
 
     @prefix("gre", {"group_id": "str", "file_format": ("str", "csv")})
-    def group_export(self, group_id: str, file_format: str) -> bool:
+    def group_export(
+        self, group_id: str, file_format: str, send_if_empty: bool = True
+    ) -> int:
+        """
+
+        :return: 1 - Удачно, 2 - Ошибка, 3 - Файл пустой
+        """
         # TODO ограничить кол-во взаимодействий
         if file_format not in ("csv", "xml", "json", "jsonl"):
             return TextMessage(get_translate("errors.export_format")).reply()
 
-        file = Account(request.entity.user_id, group_id).export_data(
+        file, row_count = Account(request.entity.user_id, group_id).export_data(
             f"events_{request.entity.now_time():%Y-%m-%d_%H-%M-%S}.{file_format}",
             file_format,
         )
-        ChatAction("upload_document").send()
-        try:
-            DocumentMessage(file).send()
-        except ApiTelegramException:
-            logger.error(traceback.format_exc())
-            TextMessage(get_translate("errors.file_is_too_big")).send()
-            return False
-        else:
-            return True
+        if row_count > 1 or send_if_empty:
+            ChatAction("upload_document").send()
+            try:
+                DocumentMessage(file).send()
+            except ApiTelegramException:
+                logger.error(traceback.format_exc())
+                TextMessage(get_translate("errors.file_is_too_big")).send()
+                return 2
+            else:
+                return 1
+
+        return 3
+
+    @prefix("grdb", {"group_id": "str", "mode": ("str", "al")})
+    def group_delete(self, group_id: str, mode: str, message_id: int):
+        export_status = self.group_export(group_id, "csv", False)
+
+        if export_status == 2:
+            return None
+
+        if export_status == 3:
+            TextMessage(get_translate("errors.export_empty"), delmarkup()).send()
+
+        delete_group_message(group_id, message_id, mode).edit()
 
     @prefix("grd", {"group_id": "str", "mode": ("str", "al")})
     def group_delete(self, group_id: str, mode: str):
-        if not self.group_export(group_id, "csv"):
-            return None
-
         try:
             request.entity.delete_group(group_id)
         except (NotGroupMember, NotEnoughPermissions):
