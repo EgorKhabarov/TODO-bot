@@ -14,7 +14,7 @@ with open(config_path, "r", encoding="utf-8") as file:
     config: dict = yaml.safe_load(file.read()) or {}
 
 try:
-    branch = str(git.Repo().active_branch)
+    branch = git.Repo().active_branch.name
 except git.exc.InvalidGitRepositoryError:
     branch = "master"
 
@@ -86,5 +86,5 @@ Special transparent symbol for filling empty space in buttons
 """
 
 string_branch = "" if branch == "master" else f":{branch}"
-__version__ = "2024.07.26.0"
+__version__ = "2024.07.26.1"
 __author__ = "EgorKhabarov"

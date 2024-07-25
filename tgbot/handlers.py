@@ -1241,7 +1241,7 @@ class CallBackHandler:
         return 3
 
     @prefix("grdb", {"group_id": "str", "mode": ("str", "al")})
-    def group_delete(self, group_id: str, mode: str, message_id: int):
+    def group_delete_before(self, group_id: str, mode: str, message_id: int):
         export_status = self.group_export(group_id, "csv", False)
 
         if export_status == 2:
