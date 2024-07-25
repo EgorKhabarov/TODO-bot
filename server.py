@@ -149,10 +149,13 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
                 print("Deploy payload is empty: {payload}".format(payload=payload))
                 abort(abort_code)
 
-            if payload["ref"] != "refs/heads/master":
-                return json.dumps({"msg": "Not master; ignoring"})
+            update_type, branch = payload["ref"].split("/", maxsplit=2)[1:]
+            repo = git.Repo()
 
-            pull_info = git.Repo().remotes.origin.pull()
+            if update_type != "heads" or branch != repo.active_branch.name:
+                return json.dumps({"msg": f"Not {repo.active_branch.name}, ignoring"})
+
+            pull_info = repo.remotes.origin.pull()
 
             if len(pull_info) == 0:
                 return json.dumps({"msg": "Didn't pull any information from remote!"})

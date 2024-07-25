@@ -14,7 +14,7 @@ with open(config_path, "r", encoding="utf-8") as file:
     config: dict = yaml.safe_load(file.read()) or {}
 
 try:
-    branch = str(git.Repo().active_branch)
+    branch = git.Repo().active_branch.name
 except git.exc.InvalidGitRepositoryError:
     branch = "master"
 
