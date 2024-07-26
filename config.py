@@ -86,5 +86,5 @@ Special transparent symbol for filling empty space in buttons
 """
 
 string_branch = "" if branch == "master" else f":{branch}"
-__version__ = "2024.07.06.0"
+__version__ = "2024.07.26.2"
 __author__ = "EgorKhabarov"
