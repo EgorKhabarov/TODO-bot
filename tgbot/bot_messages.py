@@ -1,8 +1,8 @@
 import re
 import json
 import html
-from datetime import timedelta, datetime
 from typing import Literal
+from datetime import timedelta, datetime
 
 # noinspection PyPackageRequirements
 from telebot.apihelper import ApiTelegramException
@@ -17,9 +17,10 @@ import config
 from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.limits import get_limit_link
+from tgbot.time_utils import parse_utc_datetime
 from tgbot.bot_actions import delete_message_action
 from tgbot.lang import get_translate, get_theme_emoji
-from tgbot.time_utils import parse_utc_datetime
+from tgbot.types import TelegramAccount, TelegramSettings
 from tgbot.message_generator import (
     TextMessage,
     EventMessage,
@@ -32,8 +33,8 @@ from tgbot.buttons_utils import (
     create_monthly_calendar_keyboard,
     create_select_status_keyboard,
 )
-from tgbot.types import TelegramAccount
 from tgbot.utils import (
+    Cycle,
     re_edit_message,
     html_to_markdown,
     sqlite_format_date2,
@@ -50,8 +51,8 @@ from telegram_utils.buttons_generator import generate_buttons, edit_button_data
 
 
 def start_message() -> TextMessage:
-    markup = generate_buttons([[{"/menu": "mnm"}], [{"/calendar": "mnc ('now',)"}]])
     text = get_translate("messages.start")
+    markup = generate_buttons([[{"/menu": "mnm"}], [{"/calendar": "mnc ('now',)"}]])
     return TextMessage(text, markup)
 
 
@@ -107,84 +108,133 @@ def menu_message() -> TextMessage:
     return TextMessage(text, generate_buttons(markup))
 
 
-def settings_message() -> TextMessage:
+def settings_message(
+    lang: str = ...,
+    sub_urls: bool = ...,
+    city: str = ...,
+    timezone: int = ...,
+    notifications: int = ...,
+    notifications_time: str = ...,
+    theme: int = ...,
+) -> TextMessage:
     """
     Sets settings for user chat_id
     """
-    settings = request.entity.settings
-    not_lang = "ru" if settings.lang == "en" else "en"
-    not_sub_urls = 1 if settings.sub_urls == 0 else 0
-    not_direction_smile = {"DESC": "⬇️", "ASC": "⬆️"}[settings.direction]
-    not_direction_sql = {"DESC": "ASC", "ASC": "DESC"}[settings.direction]
-    not_notifications_ = (("🔕", 1), ("🔔", 2), ("📆", 0))[settings.notifications]
-    n_hours, n_minutes = [int(i) for i in settings.notifications_time.split(":")]
-    not_theme = ("⬜", 0, "⬛️") if settings.theme else ("⬛️", 1, "⬜")
+    def format_call_data(
+        lang_: str | None = None,
+        sub_urls_: bool | None = None,
+        timezone_: int | None = None,
+        notifications_: int | None = None,
+        notifications_time_: str | None = None,
+        theme_: int | None = None,
+        prefix: str = "stu",
+    ) -> str:
+        t = (
+            settings.lang if lang_ is None else lang_,
+            int(settings.sub_urls if sub_urls_ is None else sub_urls_),
+            settings.timezone if timezone_ is None else timezone_,
+            int(settings.notifications if notifications_ is None else notifications_),
+            settings.notifications_time if notifications_time_ is None else notifications_time_,
+            settings.theme if theme_ is None else theme_,
+        )
+        return f"{prefix} {t}"
 
-    utz = settings.timezone
-    str_utz = (
-        f"{utz} {'🌍' if -2 < int(utz) < 5 else ('🌏' if 4 < int(utz) < 12 else '🌎')}"
+    entity_settings = request.entity.settings
+    settings = TelegramSettings(
+        lang=entity_settings.lang if lang is ... else lang,
+        sub_urls=entity_settings.sub_urls if sub_urls is ... else sub_urls,
+        city=entity_settings.city if city is ... else city,
+        timezone=entity_settings.timezone if timezone is ... else timezone,
+        notifications=entity_settings.notifications if notifications is ... else notifications,
+        notifications_time=entity_settings.notifications_time if notifications_time is ... else notifications_time,
+        theme=entity_settings.theme if theme is ... else theme,
     )
 
-    time_zone_dict = {}
-    time_zone_dict.__setitem__(
-        *("-3", f"ste timezone {utz - 3}") if utz > -10 else ("    ", "None")
-    )
-    time_zone_dict.__setitem__(
-        *("-1", f"ste timezone {utz - 1}") if utz > -12 else ("   ", "None")
-    )
-    time_zone_dict[str_utz] = "ste timezone 3"
-    time_zone_dict.__setitem__(
-        *("+1", f"ste timezone {utz + 1}") if utz < 12 else ("   ", "None")
-    )
-    time_zone_dict.__setitem__(
-        *("+3", f"ste timezone {utz + 3}") if utz < 10 else ("    ", "None")
-    )
+    languages = ("en", "ru")
+    notifications_types = (0, 1, 2)
+    notifications_emoji = ("🔕", "🔔", "📆")
+    theme_ids = (0, 1)
+    theme_emojis = ("⬜", "⬛️")
+    sub_urls = (0, 1)
 
-    notifications_time = {}
-    if settings.notifications != 0:
-        now = datetime(2000, 6, 5, n_hours, n_minutes)
-        notifications_time = {
-            k: f"ste notifications_time {v}"
-            for k, v in {
-                "-1h": f"{now - timedelta(hours=1):%H:%M}",
-                "-10m": f"{now - timedelta(minutes=10):%H:%M}",
-                f"{n_hours:0>2}:{n_minutes:0>2} ⏰": "08:00",
-                "+10m": f"{now + timedelta(minutes=10):%H:%M}",
-                "+1h": f"{now + timedelta(hours=1):%H:%M}",
-            }.items()
-        }
+    old_sub_urls = get_translate(f"text.bool.{'yes' if settings.sub_urls else 'no'}")
+    old_notification_type = notifications_emoji[settings.notifications]
+    old_theme_emoji = theme_emojis[settings.theme]
+
+    new_lang = next(Cycle(languages, languages.index(settings.lang)))
+    new_sub_urls = next(Cycle(sub_urls, int(bool(settings.sub_urls))))
+    new_sub_urls_string = get_translate(f"text.bool.{'yes' if not settings.sub_urls else 'no'}")
+    new_notifications_type = next(Cycle(notifications_types, settings.notifications))
+    new_notifications_emoji = next(Cycle(notifications_emoji, settings.notifications))
+    new_theme_id = next(Cycle(theme_ids, settings.theme))
+    new_theme_emoji = next(Cycle(theme_emojis, settings.theme))
+
+    if -2 < int(settings.timezone) < 5:
+        str_timezone = f"{settings.timezone} 🌍"
+    elif 4 < int(settings.timezone) < 12:
+        str_timezone = f"{settings.timezone} 🌏"
+    else:
+        str_timezone = f"{settings.timezone} 🌎"
 
     text = get_translate("messages.settings").format(
-        lang=settings.lang,
-        link=bool(settings.sub_urls),
+        lang=f"{settings.lang} {get_translate('text.lang_flag')}",
+        sub_urls=old_sub_urls,
         city=html.escape(settings.city),
-        timezone=str_utz,
+        timezone=str_timezone,
         timezone_question=f"{request.entity.now_time():%Y.%m.%d  <u>%H:%M</u>}",
-        sorting={"DESC": "⬆️", "ASC": "⬇️"}[settings.direction],
-        notification_type=("🔕", "🔔", "📆")[settings.notifications],
-        notification_time=(
-            f"{n_hours:0>2}:{n_minutes:0>2}" if settings.notifications else ""
-        ),
-        theme=not_theme[2],
+        notification_type=old_notification_type,
+        notification_time=settings.notifications_time if settings.notifications else "",
+        theme=old_theme_emoji,
     )
+
+    blank_timezone = {" ": "None"}
+    timezone_row = [
+        {"-3": format_call_data(timezone_=settings.timezone - 3)}
+        if settings.timezone > -10
+        else blank_timezone,
+        {"-1": format_call_data(timezone_=settings.timezone - 1)}
+        if settings.timezone > -12
+        else blank_timezone,
+        {str_timezone: format_call_data(timezone_=0)},
+        {"+1": format_call_data(timezone_=settings.timezone + 1)}
+        if settings.timezone < 12
+        else blank_timezone,
+        {"+3": format_call_data(timezone_=settings.timezone + 3)}
+        if settings.timezone < 10
+        else blank_timezone,
+    ]
+
+    if settings.notifications:
+        n_hours, n_minutes = [int(i) for i in settings.notifications_time.split(":")]
+        now = datetime(2000, 6, 5, n_hours, n_minutes)
+        format_call_data(notifications_time_=f"{now - timedelta(hours=1):%H:%M}")
+        notifications_time_row = [
+            {"-1h": format_call_data(notifications_time_=f"{now - timedelta(hours=1):%H:%M}")},
+            {"-10m": format_call_data(notifications_time_=f"{now - timedelta(minutes=10):%H:%M}")},
+            {f"{settings.notifications_time} ⏰": format_call_data(notifications_time_="08:00")},
+            {"+10m": format_call_data(notifications_time_=f"{now + timedelta(minutes=10):%H:%M}")},
+            {"+1h": format_call_data(notifications_time_=f"{now + timedelta(hours=1):%H:%M}")},
+        ]
+    else:
+        notifications_time_row = []
+
     markup = generate_buttons(
         [
             [
-                {f"🗣 {settings.lang}": f"ste lang {not_lang}"},
-                {f"🔗 {bool(settings.sub_urls)}": f"ste sub_urls {not_sub_urls}"},
-                {not_direction_smile: f"ste direction {not_direction_sql}"},
-                {
-                    f"{not_notifications_[0]}": f"ste notifications {not_notifications_[1]}"
-                },
-                {f"{not_theme[0]}": f"ste theme {not_theme[1]}"},
+                {f"🗣 {new_lang}": format_call_data(lang_=new_lang)},
+                {f"🔗 {new_sub_urls_string}": format_call_data(sub_urls_=new_sub_urls)},
+                {new_notifications_emoji: format_call_data(notifications_=new_notifications_type)},
+                {new_theme_emoji: format_call_data(theme_=new_theme_id)},
             ],
-            [{k: v} for k, v in time_zone_dict.items()],
-            [{k: v} for k, v in notifications_time.items()],
+            timezone_row,
+            notifications_time_row,
             [{get_translate("text.restore_to_default"): "std"}],
-            [{get_theme_emoji("back"): "mnm"}],
+            [
+                {get_theme_emoji("back"): "mnm"},
+                {"💾": format_call_data(prefix="sts")}
+            ],
         ]
     )
-
     return TextMessage(text, markup)
 
 

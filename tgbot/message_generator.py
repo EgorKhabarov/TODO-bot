@@ -46,7 +46,6 @@ def calculate_days_before_event(date, statuses):
 def pagination(
     sql_where: str,
     params: dict,
-    direction: Literal["ASC", "DESC"] = "DESC",
     max_group_len: int = 10,
     max_group_symbols_count: int = 2500,
     max_group_id_len: int = 39,
@@ -54,7 +53,6 @@ def pagination(
     """
     :param sql_where: SQL condition
     :param params: options
-    :param direction: Sorting direction
     :param max_group_len: Maximum number of elements per page
     :param max_group_symbols_count: Maximum number of characters per page
     :param max_group_id_len: Maximum length of shortened id
@@ -67,7 +65,7 @@ SELECT event_id,
        LENGTH(text)
   FROM events
  WHERE {sql_where}
- ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) {direction},
+ ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) DESC,
           DAYS_BEFORE_EVENT(date, statuses) DESC
  LIMIT 400;
 """,
@@ -325,8 +323,7 @@ class EventsMessage(TextMessage):
         """
         Get a list of row id tuples by page
         """
-        direction = request.entity.settings.direction
-        data = pagination(sql_where, params, direction)
+        data = pagination(sql_where, params)
 
         if data:
             first_message = [
@@ -345,7 +342,7 @@ SELECT user_id,
   FROM events
  WHERE event_id IN ({data[0]})
        AND ({sql_where})
- ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) {direction},
+ ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) DESC,
           DAYS_BEFORE_EVENT(date, statuses) DESC,
           statuses LIKE '%📬%',
           statuses LIKE '%🗞%',
@@ -401,8 +398,6 @@ SELECT user_id,
         """
         Returns events included in values with the WHERE condition
         """
-        direction = request.entity.settings.direction
-
         try:
             res = [
                 Event(*event)
@@ -422,7 +417,7 @@ SELECT user_id,
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in id_list)})
        AND ({sql_where})
- ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) {direction},
+ ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) DESC,
           DAYS_BEFORE_EVENT(date, statuses) DESC,
           statuses LIKE '%📬%',
           statuses LIKE '%🗞%',

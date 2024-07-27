@@ -40,7 +40,7 @@ GITHUB_WEBHOOK_SECRET = config.get("GITHUB_WEBHOOK_SECRET", "")
 __wp = config.get("WSGI_PATH")
 
 if isinstance(DATABASE_PATH, dict):
-    DATABASE_PATH = DATABASE_PATH.get(branch, "data/database.sqlite3")
+    DATABASE_PATH = DATABASE_PATH[branch]
 
 if __wp:
     WSGI_PATH = Path(__wp)
@@ -86,5 +86,5 @@ Special transparent symbol for filling empty space in buttons
 """
 
 string_branch = "" if branch == "master" else f":{branch}"
-__version__ = "2024.07.26.1"
+__version__ = "2024.07.28.0"
 __author__ = "EgorKhabarov"

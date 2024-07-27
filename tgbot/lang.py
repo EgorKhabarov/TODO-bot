@@ -450,6 +450,24 @@ Reply to this message with a new search query.
                 "Select status for filter",
             ),
         },
+        "bool": {
+            "yes": {
+                "ru": "Да",
+                "en": "Yes",
+            },
+            "no": {
+                "ru": "Нет",
+                "en": "No",
+            },
+        },
+        "lang_flag": {
+            "ru": "",
+            "en": "",
+        },
+        "saved": {
+            "ru": "Сохранено",
+            "en": "Saved",
+        },
     },
     "messages": {
         "start": {
@@ -493,16 +511,13 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 <b>{lang}</b>
 
 [<u>Уменьшать ссылки</u>]*
-<b>{link}</b> <i>(True рекомендуется)</i>
+<b>{sub_urls}</b> <i>(Да рекомендуется)</i>
 
 [<u>Город</u>]**
-<b>{city}</b> <i>(Москва по умолчанию)</i>
+<b>{city}</b> <i>(London по умолчанию)</i>
 
 [<u>Часовой пояс</u>]
-<b>{timezone}</b> <i>(3 по умолчанию)</i> У вас сейчас <b>{timezone_question}</b>?
-
-[<u>Порядок событий в сообщении</u>]
-<b>{sorting}</b> <i>(⬇️ по умолчанию)</i>
+<b>{timezone}</b> <i>(0 по умолчанию)</i> У вас сейчас <b>{timezone_question}</b>?
 
 [<u>Уведомления</u>](🔕→🔔→📆)
 <b>{notification_type} {notification_time}</b> <i>(🔕 по умолчанию)</i>
@@ -520,16 +535,13 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 <b>{lang}</b>
 
 [<u>Minify links</u>]
-<b>{link}</b> <i>(True recommended)</i>
+<b>{sub_urls}</b> <i>(Yes recommended)</i>
 
 [<u>City</u>]
-<b>{city}</b> <i>(Moscow by default)</i>
+<b>{city}</b> <i>(London by default)</i>
 
 [<u>Timezone</u>]
-<b>{timezone}</b> <i>(3 by default)</i> Do you have <b>{timezone_question}</b> now?
-
-[<u>Order of events in a message</u>]
-<b>{sorting}</b> <i>(⬇️ by default)</i>
+<b>{timezone}</b> <i>(0 by default)</i> Do you have <b>{timezone_question}</b> now?
 
 [<u>Notifications</u>](🔕→🔔→📆)
 <b>{notification_type} {notification_time}</b> <i>(🔕 by default)</i>

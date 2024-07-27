@@ -410,13 +410,13 @@ def command_handler(message: Message) -> None:
 _handlers = {}
 
 
-def prefix(prefix_: str | tuple[str, ...], arguments: dict = None, eval_: bool = None):
+def prefix(prefix_: str | tuple[str, ...], arguments: dict = None, eval_: bool = None, eval_star: bool = None):
     if isinstance(prefix_, str):
         prefix_: tuple[str] = (prefix_,)
 
     def decorator(func: Callable):
         for p in prefix_:
-            _handlers[p] = func, arguments if arguments is not None else {}, eval_
+            _handlers[p] = func, arguments if arguments is not None else {}, eval_, eval_star
         return func
 
     return decorator
@@ -425,18 +425,19 @@ def prefix(prefix_: str | tuple[str, ...], arguments: dict = None, eval_: bool =
 class CallBackHandler:
     def __call__(self, call: CallbackQuery):
         call_prefix = call.data.strip().split(maxsplit=1)[0]
-        method: tuple[Callable, dict, bool] | None = _handlers.get(call_prefix)
+        method: tuple[Callable, dict, bool, bool] | None = _handlers.get(call_prefix)
 
         if method is None:
             return
 
-        func, arguments, eval_ = method
+        func, arguments, eval_, eval_star = method
         call_data = call.data.removeprefix(call_prefix).strip()
 
         # noinspection PyUnresolvedReferences
         return func(
             self,
-            *literal_eval(call_data) if eval_ else (),
+            *((literal_eval(call_data),) if eval_ else ()),
+            *literal_eval(call_data) if eval_star else (),
             **{
                 k: v
                 for k, v in {
@@ -486,7 +487,7 @@ class CallBackHandler:
     def account_message(self, message_id: int):
         account_message(message_id).edit()
 
-    @prefix("mnc", eval_=True)
+    @prefix("mnc", eval_star=True)
     def calendar(self, date: str):
         date = now_time_calendar() if date == "now" else date
         monthly_calendar_message(date, "dl", "mnm").edit()
@@ -936,7 +937,7 @@ class CallBackHandler:
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer()
 
-    @prefix("cm", eval_=True)
+    @prefix("cm", eval_star=True)
     def calendar_month(self, command, back, date, arguments, call: CallbackQuery):
         if date == "now":
             date = now_time_calendar()
@@ -957,7 +958,7 @@ class CallBackHandler:
         else:
             CallBackAnswer(get_translate("errors.invalid_date")).answer()
 
-    @prefix("cy", eval_=True)
+    @prefix("cy", eval_star=True)
     def calendar_year(self, command, back, year, arguments):
         if year == "now":
             year = request.entity.now_time().year
@@ -976,7 +977,7 @@ class CallBackHandler:
         else:
             CallBackAnswer(get_translate("errors.invalid_date")).answer()
 
-    @prefix("ct", eval_=True)
+    @prefix("ct", eval_star=True)
     def calendar_twenty_year(self, command, back, decade, arguments):
         if decade == "now":
             decade = int(str(request.entity.now_time().year)[:3])
@@ -1040,53 +1041,67 @@ class CallBackHandler:
 
     @prefix("std")
     def settings_restore_to_default(self):
-        old_lang = request.entity.settings.lang
-        request.entity.set_telegram_user_settings(
-            lang="ru",
-            sub_urls=1,
-            city="Moscow",
-            timezone=3,
-            direction="DESC",
-            notifications=0,
-            notifications_time="08:00",
-            theme=0,
-        )
-
-        if old_lang != "ru":
-            set_bot_commands()
-
         CallBackAnswer("ok").answer()
-
         try:
-            settings_message().edit()
+            settings_message(
+                lang="ru",
+                sub_urls=True,
+                timezone=0,
+                notifications=0,
+                notifications_time="08:00",
+                theme=0,
+            ).edit()
         except ApiTelegramException:
             pass
 
-    @prefix("ste", {"par_name": "str", "par_val": "str"})
-    def settings_set(self, par_name: str, par_val: str):
-        if par_name not in (
+    @prefix("stu", eval_=True)
+    def settings_update(self, data: tuple):
+        if len(data) != 6:
+            raise ApiError
+
+        params_names = (
             "lang",
             "sub_urls",
-            "city",
             "timezone",
-            "direction",
-            "user_status",
             "notifications",
             "notifications_time",
             "theme",
-        ):
-            return
+        )
+        params = dict(zip(params_names, data))
 
         try:
-            request.entity.set_telegram_user_settings(**{par_name: par_val})
+            settings_message(**params).edit()
+        except ApiTelegramException:
+            pass
+
+    @prefix("sts", eval_=True)
+    def settings_save(self, data: tuple):
+        if len(data) != 6:
+            raise ApiError
+
+        params_names = (
+            "lang",
+            "sub_urls",
+            "timezone",
+            "notifications",
+            "notifications_time",
+            "theme",
+        )
+        params = dict(zip(params_names, data))
+
+        try:
+            request.entity.set_telegram_user_settings(**params)
         except ValueError:
             return CallBackAnswer(get_translate("errors.error")).answer()
 
         try:
             set_bot_commands()
             settings_message().edit()
-        except ApiTelegramException:
-            pass
+        except ApiTelegramException as e:
+            if "message is not modified" not in str(e):
+                return CallBackAnswer(get_translate("errors.error")).answer()
+
+        CallBackAnswer(get_translate("text.saved")).answer()
 
     @prefix("bcl")
     def bin_clear(self):
@@ -1306,21 +1321,22 @@ def reply_handler(message: Message, reply_to_message: Message) -> None:
                 city=html_to_markdown(message.html_text)[:50]
             )
         except ValueError:
-            TextMessage(get_translate("errors.error")).reply(message)
-        else:
-            try:
-                settings_message().edit(request.chat_id, reply_to_message.message_id)
-            except ApiTelegramException:
-                return
-            else:
-                delete_message_action(message)
+            return TextMessage(get_translate("errors.error")).reply(message)
+
+        try:
+            settings_message().edit(message_id=reply_to_message.message_id)
+        except ApiTelegramException as e:
+            if "message is not modified" not in str(e):
+                return TextMessage(get_translate("errors.error")).reply(message)
+
+        delete_message_action(message)
 
     elif reply_to_message.text.startswith("🔍 "):
         query = html_to_markdown(message.html_text)
         filters = extract_search_filters(reply_to_message.html_text)
         try:
             search_results_message(query, filters).edit(
-                request.chat_id, reply_to_message.message_id
+                message_id=reply_to_message.message_id
             )
         except ApiTelegramException:
             pass

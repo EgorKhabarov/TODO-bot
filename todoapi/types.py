@@ -458,12 +458,11 @@ class Media:
 
 @dataclass
 class Settings:
-    lang: str = "ru"
+    lang: str = "en"
     sub_urls: bool = True
-    city: str = "Moscow"
-    timezone: int = 3
-    direction: str = "DESC"
-    notifications: bool = False
+    city: str = "London"
+    timezone: int = 0
+    notifications: bool = 0
     notifications_time: str = "08:00"
     theme: int = 0
 
@@ -555,7 +554,7 @@ SELECT media_id,
     @property
     def days_before_delete(self) -> int:
         """
-        Calculates the number of days until an event is removed from the trash.MoscowInfinity
+        Calculates the number of days until an event is removed from the trash.
         If the event should already be deleted, returns -1.
         """
         if sql_date_pattern.match(self.removal_time):
@@ -789,7 +788,7 @@ class Account:
             user_id,
             self.group.group_id if group_id else None,
         )
-        self.settings = self.get_settings()
+        self.settings: Settings = self.get_settings()
 
     def __str__(self):
         d = {
@@ -977,7 +976,7 @@ SELECT *
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in event_ids)})
        AND (removal_time IS NOT NULL) = ?
- ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) {self.settings.direction},
+ ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) DESC,
           DAYS_BEFORE_EVENT(date, statuses) DESC,
           statuses LIKE '%📬%',
           statuses LIKE '%🗞%',
@@ -1806,7 +1805,6 @@ SELECT lang,
        sub_urls,
        city,
        timezone,
-       direction,
        notifications,
        notifications_time,
        theme
@@ -1828,18 +1826,16 @@ SELECT lang,
         sub_urls: Literal[0, 1] = None,
         city: str = None,
         timezone: int = None,
-        direction: Literal["DESC", "ASC"] = None,
         notifications: Literal[0, 1, 2] | bool = None,
         notifications_time: str = None,
         theme: int = None,
     ) -> None:
         """
         user_id            INT  UNIQUE NOT NULL,
-        lang               TEXT DEFAULT 'ru',
+        lang               TEXT DEFAULT 'en',
         sub_urls           INT  CHECK (sub_urls IN (0, 1)) DEFAULT (1),
-        city               TEXT DEFAULT 'Moscow',
-        timezone           INT  CHECK (-13 < timezone < 13) DEFAULT (3),
-        direction          TEXT CHECK (direction IN ('DESC', 'ASC')) DEFAULT 'DESC',
+        city               TEXT DEFAULT 'London',
+        timezone           INT  CHECK (-13 < timezone < 13) DEFAULT (0),
         notifications      INT  CHECK (notifications IN (0, 1, 2)) DEFAULT (0),
         notifications_time TEXT DEFAULT "08:00",
         theme              INT  DEFAULT (0),
@@ -1873,13 +1869,6 @@ SELECT lang,
 
             update_list.append("timezone")
             self.settings.timezone = int(timezone)
-
-        if direction is not None:
-            if direction not in ("DESC", "ASC"):
-                raise ValueError('direction must be in ["DESC", "ASC"]')
-
-            update_list.append("direction")
-            self.settings.direction = direction
 
         if notifications is not None:
             if notifications not in (0, 1, 2, "0", "1", "2", True, False):
@@ -1920,7 +1909,6 @@ UPDATE users_settings
                     "sub_urls": sub_urls,
                     "city": city,
                     "timezone": timezone,
-                    "direction": direction,
                     "notifications": notifications,
                     "notifications_time": notifications_time,
                     "theme": theme,
