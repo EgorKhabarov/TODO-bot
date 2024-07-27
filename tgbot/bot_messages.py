@@ -120,6 +120,7 @@ def settings_message(
     """
     Sets settings for user chat_id
     """
+
     def format_call_data(
         lang_: str | None = None,
         sub_urls_: bool | None = None,
@@ -134,7 +135,11 @@ def settings_message(
             int(settings.sub_urls if sub_urls_ is None else sub_urls_),
             settings.timezone if timezone_ is None else timezone_,
             int(settings.notifications if notifications_ is None else notifications_),
-            settings.notifications_time if notifications_time_ is None else notifications_time_,
+            (
+                settings.notifications_time
+                if notifications_time_ is None
+                else notifications_time_
+            ),
             settings.theme if theme_ is None else theme_,
         )
         return f"{prefix} {t}"
@@ -145,8 +150,14 @@ def settings_message(
         sub_urls=entity_settings.sub_urls if sub_urls is ... else sub_urls,
         city=entity_settings.city if city is ... else city,
         timezone=entity_settings.timezone if timezone is ... else timezone,
-        notifications=entity_settings.notifications if notifications is ... else notifications,
-        notifications_time=entity_settings.notifications_time if notifications_time is ... else notifications_time,
+        notifications=(
+            entity_settings.notifications if notifications is ... else notifications
+        ),
+        notifications_time=(
+            entity_settings.notifications_time
+            if notifications_time is ...
+            else notifications_time
+        ),
         theme=entity_settings.theme if theme is ... else theme,
     )
 
@@ -163,7 +174,9 @@ def settings_message(
 
     new_lang = next(Cycle(languages, languages.index(settings.lang)))
     new_sub_urls = next(Cycle(sub_urls, int(bool(settings.sub_urls))))
-    new_sub_urls_string = get_translate(f"text.bool.{'yes' if not settings.sub_urls else 'no'}")
+    new_sub_urls_string = get_translate(
+        f"text.bool.{'yes' if not settings.sub_urls else 'no'}"
+    )
     new_notifications_type = next(Cycle(notifications_types, settings.notifications))
     new_notifications_emoji = next(Cycle(notifications_emoji, settings.notifications))
     new_theme_id = next(Cycle(theme_ids, settings.theme))
@@ -189,19 +202,27 @@ def settings_message(
 
     blank_timezone = {" ": "None"}
     timezone_row = [
-        {"-3": format_call_data(timezone_=settings.timezone - 3)}
-        if settings.timezone > -10
-        else blank_timezone,
-        {"-1": format_call_data(timezone_=settings.timezone - 1)}
-        if settings.timezone > -12
-        else blank_timezone,
+        (
+            {"-3": format_call_data(timezone_=settings.timezone - 3)}
+            if settings.timezone > -10
+            else blank_timezone
+        ),
+        (
+            {"-1": format_call_data(timezone_=settings.timezone - 1)}
+            if settings.timezone > -12
+            else blank_timezone
+        ),
         {str_timezone: format_call_data(timezone_=0)},
-        {"+1": format_call_data(timezone_=settings.timezone + 1)}
-        if settings.timezone < 12
-        else blank_timezone,
-        {"+3": format_call_data(timezone_=settings.timezone + 3)}
-        if settings.timezone < 10
-        else blank_timezone,
+        (
+            {"+1": format_call_data(timezone_=settings.timezone + 1)}
+            if settings.timezone < 12
+            else blank_timezone
+        ),
+        (
+            {"+3": format_call_data(timezone_=settings.timezone + 3)}
+            if settings.timezone < 10
+            else blank_timezone
+        ),
     ]
 
     if settings.notifications:
@@ -209,11 +230,31 @@ def settings_message(
         now = datetime(2000, 6, 5, n_hours, n_minutes)
         format_call_data(notifications_time_=f"{now - timedelta(hours=1):%H:%M}")
         notifications_time_row = [
-            {"-1h": format_call_data(notifications_time_=f"{now - timedelta(hours=1):%H:%M}")},
-            {"-10m": format_call_data(notifications_time_=f"{now - timedelta(minutes=10):%H:%M}")},
-            {f"{settings.notifications_time} ⏰": format_call_data(notifications_time_="08:00")},
-            {"+10m": format_call_data(notifications_time_=f"{now + timedelta(minutes=10):%H:%M}")},
-            {"+1h": format_call_data(notifications_time_=f"{now + timedelta(hours=1):%H:%M}")},
+            {
+                "-1h": format_call_data(
+                    notifications_time_=f"{now - timedelta(hours=1):%H:%M}"
+                )
+            },
+            {
+                "-10m": format_call_data(
+                    notifications_time_=f"{now - timedelta(minutes=10):%H:%M}"
+                )
+            },
+            {
+                f"{settings.notifications_time} ⏰": format_call_data(
+                    notifications_time_="08:00"
+                )
+            },
+            {
+                "+10m": format_call_data(
+                    notifications_time_=f"{now + timedelta(minutes=10):%H:%M}"
+                )
+            },
+            {
+                "+1h": format_call_data(
+                    notifications_time_=f"{now + timedelta(hours=1):%H:%M}"
+                )
+            },
         ]
     else:
         notifications_time_row = []
@@ -223,16 +264,17 @@ def settings_message(
             [
                 {f"🗣 {new_lang}": format_call_data(lang_=new_lang)},
                 {f"🔗 {new_sub_urls_string}": format_call_data(sub_urls_=new_sub_urls)},
-                {new_notifications_emoji: format_call_data(notifications_=new_notifications_type)},
+                {
+                    new_notifications_emoji: format_call_data(
+                        notifications_=new_notifications_type
+                    )
+                },
                 {new_theme_emoji: format_call_data(theme_=new_theme_id)},
             ],
             timezone_row,
             notifications_time_row,
             [{get_translate("text.restore_to_default"): "std"}],
-            [
-                {get_theme_emoji("back"): "mnm"},
-                {"💾": format_call_data(prefix="sts")}
-            ],
+            [{get_theme_emoji("back"): "mnm"}, {"💾": format_call_data(prefix="sts")}],
         ]
     )
     return TextMessage(text, markup)

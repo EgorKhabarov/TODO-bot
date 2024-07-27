@@ -677,6 +677,7 @@ class Cycle:
     """
     like itertools but added param init_index
     """
+
     def __init__(self, data, init_index: int = 0):
         self.data = data
         self.index = init_index

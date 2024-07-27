@@ -410,13 +410,23 @@ def command_handler(message: Message) -> None:
 _handlers = {}
 
 
-def prefix(prefix_: str | tuple[str, ...], arguments: dict = None, eval_: bool = None, eval_star: bool = None):
+def prefix(
+    prefix_: str | tuple[str, ...],
+    arguments: dict = None,
+    eval_: bool = None,
+    eval_star: bool = None,
+):
     if isinstance(prefix_, str):
         prefix_: tuple[str] = (prefix_,)
 
     def decorator(func: Callable):
         for p in prefix_:
-            _handlers[p] = func, arguments if arguments is not None else {}, eval_, eval_star
+            _handlers[p] = (
+                func,
+                arguments if arguments is not None else {},
+                eval_,
+                eval_star,
+            )
         return func
 
     return decorator
