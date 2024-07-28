@@ -236,7 +236,6 @@ SELECT lang,
        sub_urls,
        city,
        timezone,
-       direction,
        notifications,
        notifications_time,
        theme
@@ -262,7 +261,6 @@ SELECT lang,
         sub_urls: Literal[0, 1] = None,
         city: str = None,
         timezone: int = None,
-        direction: Literal["DESC", "ASC"] = None,
         notifications: Literal[0, 1, 2] | bool = None,
         notifications_time: str = None,
         theme: int = None,
@@ -271,9 +269,8 @@ SELECT lang,
         user_id            INT  UNIQUE NOT NULL,
         lang               TEXT DEFAULT 'ru',
         sub_urls           INT  CHECK (sub_urls IN (0, 1)) DEFAULT (1),
-        city               TEXT DEFAULT 'Moscow',
+        city               TEXT DEFAULT 'London',
         timezone           INT  CHECK (-13 < timezone < 13) DEFAULT (3),
-        direction          TEXT CHECK (direction IN ('DESC', 'ASC')) DEFAULT 'DESC',
         notifications      INT  CHECK (notifications IN (0, 1, 2)) DEFAULT (0),
         notifications_time TEXT DEFAULT "08:00",
         theme              INT  DEFAULT (0),
@@ -307,13 +304,6 @@ SELECT lang,
 
             update_list.append("timezone")
             self.settings.timezone = int(timezone)
-
-        if direction is not None:
-            if direction not in ("DESC", "ASC"):
-                raise ValueError('direction must be in ["DESC", "ASC"]')
-
-            update_list.append("direction")
-            self.settings.direction = direction
 
         if notifications is not None:
             if notifications not in (0, 1, 2, "0", "1", "2", True, False):
@@ -355,7 +345,6 @@ UPDATE tg_settings
                     "sub_urls": sub_urls,
                     "city": city,
                     "timezone": timezone,
-                    "direction": direction,
                     "notifications": notifications,
                     "notifications_time": notifications_time,
                     "theme": theme,

@@ -14,7 +14,11 @@ with open(config_path, "r", encoding="utf-8") as file:
     config: dict = yaml.safe_load(file.read()) or {}
 
 try:
-    branch = git.Repo().active_branch.name
+    repo = git.Repo()
+    try:
+        branch = repo.active_branch.name
+    except TypeError:
+        branch = repo.head.commit.hexsha[:8]
 except git.exc.InvalidGitRepositoryError:
     branch = "master"
 
@@ -40,7 +44,7 @@ GITHUB_WEBHOOK_SECRET = config.get("GITHUB_WEBHOOK_SECRET", "")
 __wp = config.get("WSGI_PATH")
 
 if isinstance(DATABASE_PATH, dict):
-    DATABASE_PATH = DATABASE_PATH.get(branch, "data/database.sqlite3")
+    DATABASE_PATH = DATABASE_PATH[branch]
 
 if __wp:
     WSGI_PATH = Path(__wp)
@@ -86,5 +90,5 @@ Special transparent symbol for filling empty space in buttons
 """
 
 string_branch = "" if branch == "master" else f":{branch}"
-__version__ = "2024.07.26.2"
+__version__ = "2024.07.28.2"
 __author__ = "EgorKhabarov"

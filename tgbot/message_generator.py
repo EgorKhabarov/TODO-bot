@@ -61,7 +61,6 @@ def calculate_days_before_event(date: str, repetition: str):
 def pagination(
     sql_where: str,
     params: dict,
-    direction: Literal["ASC", "DESC"] = "DESC",
     max_group_len: int = 10,
     max_group_symbols_count: int = 2500,
     max_group_id_len: int = 39,
@@ -69,7 +68,6 @@ def pagination(
     """
     :param sql_where: SQL condition
     :param params: options
-    :param direction: Sorting direction
     :param max_group_len: Maximum number of elements per page
     :param max_group_symbols_count: Maximum number of characters per page
     :param max_group_id_len: Maximum length of shortened id
@@ -88,7 +86,7 @@ SELECT event_id,
                   DATETIME(datetime, {request.entity.settings.timezone} || ' HOURS'),
                   repetition
               )
-          ) {direction},
+          ) DESC,
           DAYS_BEFORE_EVENT(
               DATETIME(datetime, {request.entity.settings.timezone} || ' HOURS'),
               repetition
@@ -354,8 +352,7 @@ class EventsMessage(TextMessage):
         """
         Get a list of row id tuples by page
         """
-        direction = request.entity.settings.direction
-        data = pagination(sql_where, params, direction)
+        data = pagination(sql_where, params)
 
         if data:
             first_message = [
@@ -367,7 +364,7 @@ SELECT *
  WHERE event_id IN ({data[0]})
        AND ({sql_where})
  ORDER BY STRFTIME('%H:%M:%S', datetime, {request.entity.settings.timezone} || ' HOURS'),
-          ABS(DAYS_BEFORE_EVENT(DATETIME(datetime, {request.entity.settings.timezone} || ' HOURS'), repetition)) {direction},
+          ABS(DAYS_BEFORE_EVENT(DATETIME(datetime, {request.entity.settings.timezone} || ' HOURS'), repetition)) DESC,
           DAYS_BEFORE_EVENT(DATETIME(datetime, {request.entity.settings.timezone} || ' HOURS'), repetition) DESC,
           repetition = 'repeat every day',
           repetition = 'repeat every weekdays',
@@ -422,8 +419,6 @@ SELECT *
         """
         Returns events included in values with the WHERE condition
         """
-        direction = request.entity.settings.direction
-
         try:
             res = [
                 Event(*event)
@@ -436,7 +431,7 @@ SELECT *
        AND event_id IN ({','.join('?' for _ in id_list)})
        AND ({sql_where})
  ORDER BY STRFTIME('%H:%M:%S', datetime, ? || ' HOURS'),
-          ABS(DAYS_BEFORE_EVENT(DATETIME(datetime, ? || ' HOURS'), repetition)) {direction},
+          ABS(DAYS_BEFORE_EVENT(DATETIME(datetime, ? || ' HOURS'), repetition)) DESC,
           DAYS_BEFORE_EVENT(DATETIME(datetime, ? || ' HOURS'), repetition) DESC,
           repetition = 'repeat every day',
           repetition = 'repeat every weekdays',
