@@ -241,7 +241,7 @@ def settings_message(
                 )
             },
             {
-                f"{settings.notifications_time} ⏰": format_call_data(
+                settings.notifications_time: format_call_data(
                     notifications_time_="08:00"
                 )
             },

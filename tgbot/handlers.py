@@ -299,7 +299,7 @@ def command_handler(message: Message) -> None:
         settings_message().send()
 
     elif command_text in ("version", "v"):
-        TextMessage(f"Version {config.__version__}").send()
+        TextMessage(f"Version {config.__version__}{config.string_branch}").send()
 
     elif command_text in ("weather", "forecast"):
         now_city = get_command_arguments(
