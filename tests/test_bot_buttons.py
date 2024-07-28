@@ -782,9 +782,24 @@ def test_bot_callback_std():
         )
 
 
-def test_bot_callback_ste():
+def test_bot_callback_stu():
     with Chat() as chat:
-        setup_request(callback_mock("ste lang ru"))
+        setup_request(callback_mock("stu ('en', 1, 4, 0, '08:00', 0)"))
+        callback_handler(request.query)
+        assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("editMessageText")
+                and k["params"]["text"]
+                and k["params"]["chat_id"] == 1
+                and k["params"]["message_id"] == 1
+                and k["params"]["reply_markup"]
+            ),
+        )
+
+
+def test_bot_callback_sts():
+    with Chat() as chat:
+        setup_request(callback_mock("sts ('en', 1, 4, 0, '08:00', 0)"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (u.endswith("setMyCommands") and k["params"]["commands"]),
@@ -794,6 +809,11 @@ def test_bot_callback_ste():
                 and k["params"]["chat_id"] == 1
                 and k["params"]["message_id"] == 1
                 and k["params"]["reply_markup"]
+            ),
+            lambda m, u, k: (
+                u.endswith("answerCallbackQuery")
+                and k["params"]["callback_query_id"] == 100
+                and k["params"]["text"]
             ),
         )
 
