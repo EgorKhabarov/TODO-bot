@@ -230,7 +230,6 @@ def settings_message(
     if settings.notifications:
         n_hours, n_minutes = [int(i) for i in settings.notifications_time.split(":")]
         now = arrow.get(2000, 6, 5, n_hours, n_minutes)
-        format_call_data(notifications_time_=f"{now - timedelta(hours=1):%H:%M}")
         notifications_time_row = [
             {
                 "-1h": format_call_data(
