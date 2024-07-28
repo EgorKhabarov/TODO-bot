@@ -1415,7 +1415,7 @@ class CallBackHandler:
     @prefix(
         "etset", {"event_id": "int", "date": "date", "hour": "int", "minute": "int"}
     )
-    def event_time_minute(
+    def event_time_set(
         self,
         event_id: int,
         date: Arrow,
@@ -1431,12 +1431,13 @@ class CallBackHandler:
         if minute is None:
             minute = now_time.minute
 
-        date = (
-            arrow.get(date.year, date.month, date.day, hour, minute)
-            .shift(hours=-request.entity.settings.timezone)
+        date = arrow.get(date.year, date.month, date.day, hour, minute).shift(
+            hours=-request.entity.settings.timezone
         )
         if date.shift(hours=request.entity.settings.timezone).date() < date.date():
-            date = date.replace(year=date.year, month=date.month, day=date.day).shift(days=-1)
+            date = date.replace(year=date.year, month=date.month, day=date.day).shift(
+                days=-1
+            )
 
         try:
             request.entity.edit_event_datetime(event_id, date)

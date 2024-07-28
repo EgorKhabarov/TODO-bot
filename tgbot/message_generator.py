@@ -2,7 +2,7 @@ from io import StringIO
 from arrow import Arrow
 from copy import deepcopy
 from sqlite3 import Error
-from typing import Literal, Any
+from typing import Any
 
 # noinspection PyPackageRequirements
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, InputFile

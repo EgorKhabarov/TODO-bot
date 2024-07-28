@@ -368,7 +368,7 @@ AND removal_time IS NULL
     daylist = [
         x[0]
         for x in db.execute(
-            f"""
+            """
 -- If found, then add a repeating events button
 SELECT DISTINCT DATE(datetime, :timezone || ' HOURS')
   FROM events
@@ -619,9 +619,9 @@ def event_history_message(
 
             if action == "datetime":
                 a = arrow.get(val)
-                result = a.shift(
-                    hours=request.entity.settings.timezone
-                ).replace(year=a.year, month=a.month, day=a.day)
+                result = a.shift(hours=request.entity.settings.timezone).replace(
+                    year=a.year, month=a.month, day=a.day
+                )
                 return f"{result:YYYY-MM-DD HH:mm:ss}"
 
             return val
@@ -793,7 +793,7 @@ def recurring_events_message(
     :param id_list: List of event_id
     :param page: Page number
     """
-    sql_where = f"""
+    sql_where = """
 user_id IS ?
 AND group_id IS ?
 AND removal_time IS NULL
@@ -902,7 +902,7 @@ def event_repetition_menu_message(event_id: int, date: Arrow) -> TextMessage | N
     ]
 
     generated.format(
-        f"Repetition menu",
+        "Repetition menu",
         event_formats["a"],
         generate_buttons(markup),
     )
@@ -917,7 +917,7 @@ def edit_event_time_hour_message(event_id: int, date: Arrow) -> TextMessage | No
         return None
 
     generated.format(
-        f"Select hour for event:",
+        "Select hour for event:",
         event_formats["a"],
         create_time_hour_keyboard(
             f"etm {event_id} {date.date()}",
@@ -938,7 +938,7 @@ def edit_event_time_minute_message(
         return None
 
     generated.format(
-        f"Select minute for event:",
+        "Select minute for event:",
         event_formats["a"],
         create_time_minute_keyboard(
             f"etset {event_id} {date.date()} {hour}",
