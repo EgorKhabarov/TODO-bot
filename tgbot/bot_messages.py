@@ -196,7 +196,7 @@ def settings_message(
         sub_urls=old_sub_urls,
         city=html.escape(settings.city),
         timezone=str_timezone,
-        timezone_question=f"{request.entity.now_time():%Y.%m.%d  <u>%H:%M</u>}",
+        timezone_question=f"{request.entity.now_time():YYYY.MM.DD <u>HH:mm</u>}",
         notification_type=old_notification_type,
         notification_time=settings.notifications_time if settings.notifications else "",
         theme=old_theme_emoji,
@@ -233,12 +233,12 @@ def settings_message(
         notifications_time_row = [
             {
                 "-1h": format_call_data(
-                    notifications_time_=f"{now.shift(hours=1):HH:mm}"
+                    notifications_time_=f"{now.shift(hours=-1):HH:mm}"
                 )
             },
             {
                 "-10m": format_call_data(
-                    notifications_time_=f"{now.shift(minutes=10):HH:mm}"
+                    notifications_time_=f"{now.shift(minutes=-10):HH:mm}"
                 )
             },
             {

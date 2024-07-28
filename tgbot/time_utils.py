@@ -1,5 +1,6 @@
 from calendar import isleap
-from datetime import datetime, timedelta
+
+import arrow
 
 from tgbot.request import request
 from tgbot.lang import get_translate
@@ -33,7 +34,7 @@ def get_week_number(year, month, day) -> int:
     """
     Week number by date
     """
-    return datetime(year, month, day).isocalendar()[1]
+    return arrow.get(year, month, day).isocalendar()[1]
 
 
 def relatively_string_date(day_diff: int) -> tuple[str, str, str]:
@@ -70,7 +71,7 @@ def relatively_string_date(day_diff: int) -> tuple[str, str, str]:
         case _ as n:
             rel_date = f"{-n} {func_rel_day(n)} {ago}"
 
-    date = request.entity.now_time() + timedelta(days=day_diff)
+    date = request.entity.now_time().shift(days=day_diff)
     str_date = f"{date.day} {month_list[date.month - 1]}"
     week_date = week_days[date.weekday()]
     return str_date, rel_date, week_date
@@ -83,12 +84,11 @@ def parse_utc_datetime(
     if time is None:
         return "NEVER"
 
-    time = datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
-    time += timedelta(hours=request.entity.settings.timezone)
+    time = arrow.get(time).shift(hours=request.entity.settings.timezone)
 
     if relatively_date:
         n_time = request.entity.now_time()
         rel_date = relatively_string_date((time - n_time).days)[1]
-        return f"{time:%Y.%m.%d %H:%M:%S}", rel_date
+        return f"{time:YYYY.MM.DD HH:mm:ss}", rel_date
     else:
-        return f"{time:%Y.%m.%d %H:%M:%S}"
+        return f"{time:YYYY.MM.DD HH:mm:ss}"

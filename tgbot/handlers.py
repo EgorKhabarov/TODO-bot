@@ -347,7 +347,7 @@ def command_handler(message: Message) -> None:
             return TextMessage(get_translate("errors.export_format")).reply(message)
 
         file = request.entity.export_data(
-            f"events_{request.entity.now_time():%Y-%m-%d_%H-%M-%S}.{file_format}",
+            f"events_{request.entity.now_time():YYYY-MM-DD_HH-mm-ss}.{file_format}",
             file_format,
         )[0]
         ChatAction("upload_document").send()
@@ -1076,7 +1076,7 @@ class CallBackHandler:
             query = extract_search_query(message.html_text)
             filters = extract_search_filters(message.html_text)
             file = request.entity.export_data(
-                f"events_{request.entity.now_time():%Y-%m-%d_%H-%M-%S}.csv",
+                f"events_{request.entity.now_time():YYYY-MM-DD_HH-mm-ss}.csv",
                 "csv",
                 *generate_search_sql_condition(query, filters),
             )[0]
@@ -1291,7 +1291,7 @@ class CallBackHandler:
             return TextMessage(get_translate("errors.export_format")).reply()
 
         file, row_count = Account(request.entity.user_id, group_id).export_data(
-            f"events_{request.entity.now_time():%Y-%m-%d_%H-%M-%S}.{file_format}",
+            f"events_{request.entity.now_time():YYYY-MM-DD_HH-mm-ss}.{file_format}",
             file_format,
         )
         if row_count > 1 or send_if_empty:
