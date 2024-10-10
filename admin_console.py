@@ -80,8 +80,8 @@ def execute(
             name=name,
             column_names=column_names,
         ).print(
-            align=align,
-            name_align=name_align,
+            h_align=align,
+            name_h_align=name_align,
             max_width=max_width,
             max_height=max_height,
             maximize_height=maximize_height,

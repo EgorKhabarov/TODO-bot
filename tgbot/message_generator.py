@@ -81,16 +81,8 @@ SELECT event_id,
   FROM events
  WHERE {sql_where}
  ORDER BY STRFTIME('%H:%M:%S', datetime, {request.entity.settings.timezone} || ' HOURS'),
-          ABS(
-              DAYS_BEFORE_EVENT(
-                  DATETIME(datetime, {request.entity.settings.timezone} || ' HOURS'),
-                  repetition
-              )
-          ) DESC,
-          DAYS_BEFORE_EVENT(
-              DATETIME(datetime, {request.entity.settings.timezone} || ' HOURS'),
-              repetition
-          ) DESC
+          ABS(DAYS_BEFORE_EVENT(DATETIME(datetime, {request.entity.settings.timezone} || ' HOURS'), repetition)) DESC,
+          DAYS_BEFORE_EVENT(DATETIME(datetime, {request.entity.settings.timezone} || ' HOURS'), repetition) DESC
  LIMIT 400;
 """,
         params=params,
@@ -430,9 +422,9 @@ SELECT *
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in id_list)})
        AND ({sql_where})
- ORDER BY STRFTIME('%H:%M:%S', datetime, ? || ' HOURS'),
-          ABS(DAYS_BEFORE_EVENT(DATETIME(datetime, ? || ' HOURS'), repetition)) DESC,
-          DAYS_BEFORE_EVENT(DATETIME(datetime, ? || ' HOURS'), repetition) DESC,
+ ORDER BY STRFTIME('%H:%M:%S', datetime, {request.entity.settings.timezone} || ' HOURS'),
+          ABS(DAYS_BEFORE_EVENT(DATETIME(datetime, {request.entity.settings.timezone} || ' HOURS'), repetition)) DESC,
+          DAYS_BEFORE_EVENT(DATETIME(datetime, {request.entity.settings.timezone} || ' HOURS'), repetition) DESC,
           repetition = 'repeat every day',
           repetition = 'repeat every weekdays',
           repetition = 'repeat every week',
@@ -444,9 +436,6 @@ SELECT *
                         request.entity.group_id,
                         *id_list,
                         *params,
-                        request.entity.settings.timezone,
-                        request.entity.settings.timezone,
-                        request.entity.settings.timezone,
                     ),
                     functions=(("DAYS_BEFORE_EVENT", calculate_days_before_event),),
                 )

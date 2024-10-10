@@ -326,8 +326,7 @@ AND removal_time IS NULL
         f"{date:YYYY-MM-DD}",
     )
 
-    y = date.shift(days=-1)
-    t = date.shift(days=+1)
+    y, t = date.shift(days=-1), date.shift(days=+1)
     yesterday = f"dl {y:YYYY-MM-DD}" if is_valid_year(y.year) else "None"
     tomorrow = f"dl {t:YYYY-MM-DD}" if is_valid_year(t.year) else "None"
 
@@ -454,7 +453,7 @@ def event_message(
             ],
             [
                 {"📋": f"esh {event_id} {event.date}"},
-                {"🔁": f"erm {event_id} {event.date}"},  # {"*️⃣": "None"},
+                {"🔁": f"erm {event_id} {event.date}"},
                 {"📅": f"esdt {event_id} {event.date}"},
             ],
             [
@@ -524,7 +523,6 @@ AND removal_time IS {'NOT' if is_in_wastebasket else ''} NULL
         args_key = "r"
         markup = [
             [
-                # {"➕🏷": f"essa {string_id}"},  # events status
                 {"📅": f"essd {string_id}"},  # events edit date
                 {"🗑": f"esbd {string_id}"},  # events before delete
             ],
