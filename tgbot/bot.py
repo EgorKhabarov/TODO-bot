@@ -60,7 +60,7 @@ def bot_log_info():
             )
 
     return "\n{}".format(
-        Table([(k, v) for k, v in bot_dict.items()]).print(
+        Table([(k, v) for k, v in bot_dict.items()]).stringify(
             h_align=(">", "<"),
             sep=False,
         )

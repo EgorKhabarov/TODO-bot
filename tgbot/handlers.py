@@ -434,6 +434,7 @@ def prefix(
                 arguments if arguments is not None else {},
                 eval_,
                 eval_star,
+                p,
             )
         return func
 
@@ -443,12 +444,12 @@ def prefix(
 class CallBackHandler:
     def __call__(self, call: CallbackQuery):
         call_prefix = call.data.strip().split(maxsplit=1)[0]
-        method: tuple[Callable, dict, bool, bool] | None = _handlers.get(call_prefix)
+        method: tuple[Callable, dict, bool, bool, str] | None = _handlers.get(call_prefix)
 
         if method is None:
             return
 
-        func, arguments, eval_, eval_star = method
+        func, arguments, eval_, eval_star, str_prefix = method
         call_data = call.data.removeprefix(call_prefix).strip()
 
         # noinspection PyUnresolvedReferences
@@ -465,6 +466,7 @@ class CallBackHandler:
                     "call_id": call.id,
                     "call_data": call_data,
                     "call": call,
+                    "str_prefix": str_prefix,
                     **getargs(call_data)(arguments),
                 }.items()
                 if k in func.__code__.co_varnames
@@ -1107,7 +1109,8 @@ class CallBackHandler:
             pass
 
     @prefix("stu", eval_=True)
-    def settings_update(self, data: tuple):
+    @prefix("stuc", eval_=True)
+    def settings_update(self, data: tuple, str_prefix: str = "stu"):
         if len(data) != 6:
             raise ApiError
 
@@ -1122,9 +1125,15 @@ class CallBackHandler:
         params = dict(zip(params_names, data))
 
         try:
-            settings_message(**params).edit()
+            settings_message(**params, updated=str_prefix == "stu").edit()
         except ApiTelegramException:
             pass
+
+        if str_prefix == "stuc":
+            try:
+                CallBackAnswer(get_translate("errors.settings.commit_changes")).answer(show_alert=True)
+            except ApiTelegramException:
+                pass
 
     @prefix("sts", eval_=True)
     def settings_save(self, data: tuple):

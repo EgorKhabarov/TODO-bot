@@ -1872,6 +1872,12 @@ or create an account
             "ru": "Недействительная дата!",
             "en": "Invalid date!",
         },
+        "settings": {
+            "commit_changes": {
+                "ru": "Вы не сохранили настройки! Нажмите 💾 чтобы сохранить",
+                "en": "You have not saved your settings! Click 💾 to save",
+            },
+        },
     },
     "select": {
         "status_to_event": {
