@@ -436,7 +436,9 @@ def prefix(
 class CallBackHandler:
     def __call__(self, call: CallbackQuery):
         call_prefix = call.data.strip().split(maxsplit=1)[0]
-        method: tuple[Callable, dict, bool, bool, str] | None = _handlers.get(call_prefix)
+        method: tuple[Callable, dict, bool, bool, str] | None = _handlers.get(
+            call_prefix
+        )
 
         if method is None:
             return
@@ -1089,7 +1091,9 @@ class CallBackHandler:
 
         if str_prefix == "stuc":
             try:
-                CallBackAnswer(get_translate("errors.settings.commit_changes")).answer(show_alert=True)
+                CallBackAnswer(get_translate("errors.settings.commit_changes")).answer(
+                    show_alert=True
+                )
             except ApiTelegramException:
                 pass
 

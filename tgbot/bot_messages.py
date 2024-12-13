@@ -276,7 +276,10 @@ def settings_message(
             timezone_row,
             notifications_time_row,
             [{get_translate("text.restore_to_default"): "std"}],
-            [{get_theme_emoji("back"): commit_changes}, {"💾": format_call_data(prefix="sts")}],
+            [
+                {get_theme_emoji("back"): commit_changes},
+                {"💾": format_call_data(prefix="sts")},
+            ],
         ]
     )
     return TextMessage(text, markup)

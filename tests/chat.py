@@ -132,7 +132,7 @@ def setup_request(x: Message | CallbackQuery):
 apihelper.CUSTOM_REQUEST_SENDER = custom_sender
 
 
-config.BOT_TOKEN = "TEST_TOKEN"
+config.BOT_TOKEN = "0:TEST_TOKEN"
 test_vedis = Path("tests/data/test_vedis.vedis")
 test_database_path = Path("tests/data/test_database.sqlite3")
 test_database_copy_path = Path("tests/data/test_database_copy.sqlite3")
