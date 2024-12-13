@@ -116,6 +116,7 @@ def settings_message(
     notifications: int = ...,
     notifications_time: str = ...,
     theme: int = ...,
+    updated: bool = False,
 ) -> TextMessage:
     """
     Sets settings for user chat_id
@@ -166,14 +167,14 @@ def settings_message(
     notifications_emoji = ("🔕", "🔔", "📆")
     theme_ids = (0, 1)
     theme_emojis = ("⬜", "⬛️")
-    sub_urls = (0, 1)
+    sub_urls_v = (0, 1)
 
     old_sub_urls = get_translate(f"text.bool.{'yes' if settings.sub_urls else 'no'}")
     old_notification_type = notifications_emoji[settings.notifications]
     old_theme_emoji = theme_emojis[settings.theme]
 
     new_lang = next(Cycle(languages, languages.index(settings.lang)))
-    new_sub_urls = next(Cycle(sub_urls, int(bool(settings.sub_urls))))
+    new_sub_urls = next(Cycle(sub_urls_v, int(bool(settings.sub_urls))))
     new_sub_urls_string = get_translate(
         f"text.bool.{'yes' if not settings.sub_urls else 'no'}"
     )
@@ -258,6 +259,8 @@ def settings_message(
     else:
         notifications_time_row = []
 
+    commit_changes = format_call_data(prefix="stuc") if updated else "mnm"
+
     markup = generate_buttons(
         [
             [
@@ -273,7 +276,7 @@ def settings_message(
             timezone_row,
             notifications_time_row,
             [{get_translate("text.restore_to_default"): "std"}],
-            [{get_theme_emoji("back"): "mnm"}, {"💾": format_call_data(prefix="sts")}],
+            [{get_theme_emoji("back"): commit_changes}, {"💾": format_call_data(prefix="sts")}],
         ]
     )
     return TextMessage(text, markup)

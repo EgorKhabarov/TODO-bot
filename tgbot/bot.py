@@ -1,6 +1,6 @@
 # noinspection PyPackageRequirements
 from telebot import TeleBot
-from table2string import stringify_table
+from table2string import Table
 
 import config
 from telegram_utils.command_parser import command_regex
@@ -57,9 +57,8 @@ def bot_log_info():
             )
 
     return "\n{}".format(
-        stringify_table(
-            [(k, v) for k, v in bot_dict.items()],
-            align=(">", "<"),
+        Table([(k, v) for k, v in bot_dict.items()]).stringify(
+            h_align=(">", "<"),
             sep=False,
         )
     )
