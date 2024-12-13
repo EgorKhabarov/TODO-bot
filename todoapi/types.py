@@ -591,9 +591,9 @@ SELECT media_id,
         else:
             return 30
 
-    def days_before_event(self, timezone: int = 0) -> int:
+    def days_before_event(self, timezone_: int = 0) -> int:
         _date = self.datetime
-        n_time = arrow.utcnow().shift(hours=timezone)
+        n_time = arrow.utcnow().shift(hours=timezone_)
         n_time = arrow.get(n_time.year, n_time.month, n_time.day)
         dates = []
 
@@ -1944,7 +1944,7 @@ SELECT lang,
         lang: Literal["ru", "en"] = None,
         sub_urls: Literal[0, 1] = None,
         city: str = None,
-        timezone: int = None,
+        timezone_: int = None,
         notifications: Literal[0, 1, 2] | bool = None,
         notifications_time: str = None,
         theme: int = None,
@@ -1982,12 +1982,12 @@ SELECT lang,
             update_list.append("city")
             self.settings.city = city
 
-        if timezone is not None:
-            if timezone not in [j for i in range(-11, 12) for j in (i, str(i))]:
+        if timezone_ is not None:
+            if timezone_ not in [j for i in range(-11, 12) for j in (i, str(i))]:
                 raise ValueError("timezone must be -12 and less 12")
 
             update_list.append("timezone")
-            self.settings.timezone = int(timezone)
+            self.settings.timezone = int(timezone_)
 
         if notifications is not None:
             if notifications not in (0, 1, 2, "0", "1", "2", True, False):
@@ -2027,7 +2027,7 @@ UPDATE users_settings
                     "lang": lang,
                     "sub_urls": sub_urls,
                     "city": city,
-                    "timezone": timezone,
+                    "timezone": timezone_,
                     "notifications": notifications,
                     "notifications_time": notifications_time,
                     "theme": theme,

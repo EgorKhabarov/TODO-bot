@@ -72,7 +72,7 @@ def test_bot_command_today():
 #         setup_request(message_mock(1, "/weather"))
 #         command_handler(request.query)
 #         assert chat.comparer(
-#             lambda  m, u, k: (
+#             lambda m, u, k: (
 #                 u.endswith("sendMessage")
 #                 and k["params"]["chat_id"] == "1"
 #                 and k["params"]["text"]
@@ -85,7 +85,7 @@ def test_bot_command_today():
 #         setup_request(message_mock(1, "/forecast"))
 #         command_handler(request.query)
 #         assert chat.comparer(
-#             lambda  m, u, k: (
+#             lambda m, u, k: (
 #                 u.endswith("sendMessage")
 #                 and k["params"]["chat_id"] == "1"
 #                 and k["params"]["text"]
