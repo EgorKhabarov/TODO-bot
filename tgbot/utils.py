@@ -307,7 +307,9 @@ def fetch_weather(city: str) -> str:
     wind_speed = f"{weather['wind']['speed']:.1f}"
     wind_deg = weather["wind"]["deg"]
     wind_deg_icon = de[0 if (d := round(int(wind_deg) / 45) * 45) == 360 else d]
-    sunrise = f"{datetime.fromtimestamp(weather['sys']['sunrise'], UTC) + delta:%H:%M:%S}"
+    sunrise = (
+        f"{datetime.fromtimestamp(weather['sys']['sunrise'], UTC) + delta:%H:%M:%S}"
+    )
     sunrise = sunrise.split(" ")[-1]
     sunset = f"{datetime.fromtimestamp(weather['sys']['sunset'], UTC) + delta:%H:%M:%S}"
     sunset = sunset.split(" ")[-1]
