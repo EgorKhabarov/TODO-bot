@@ -400,7 +400,7 @@ def fetch_forecast(city: str) -> str:
         result += (
             f"\n{time} {weather_icon}<b>{temp:{config.ts}>2.0f}°C "
             f"💨{wind_speed:.0f}{mps} {wind_deg_icon}</b> "
-            f"<u>{weather_description}</u>."
+            f"<u>{weather_description}</u>"
         )
     return result
 
