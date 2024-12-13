@@ -307,9 +307,7 @@ def fetch_weather(city: str) -> str:
     wind_speed = f"{weather['wind']['speed']:.1f}"
     wind_deg = weather["wind"]["deg"]
     wind_deg_icon = de[0 if (d := round(int(wind_deg) / 45) * 45) == 360 else d]
-    sunrise = (
-        f"{datetime.fromtimestamp(weather['sys']['sunrise'], timezone.utc) + delta:%H:%M:%S}"
-    )
+    sunrise = f"{datetime.fromtimestamp(weather['sys']['sunrise'], timezone.utc) + delta:%H:%M:%S}"
     sunrise = sunrise.split(" ")[-1]
     sunset = f"{datetime.fromtimestamp(weather['sys']['sunset'], timezone.utc) + delta:%H:%M:%S}"
     sunset = sunset.split(" ")[-1]
@@ -373,8 +371,12 @@ def fetch_forecast(city: str) -> str:
     }
 
     city_timezone = timedelta(hours=weather["city"]["timezone"] // 60 // 60)
-    sunrise = datetime.fromtimestamp(weather["city"]["sunrise"], timezone.utc) + city_timezone
-    sunset = datetime.fromtimestamp(weather["city"]["sunset"], timezone.utc) + city_timezone
+    sunrise = (
+        datetime.fromtimestamp(weather["city"]["sunrise"], timezone.utc) + city_timezone
+    )
+    sunset = (
+        datetime.fromtimestamp(weather["city"]["sunset"], timezone.utc) + city_timezone
+    )
     result = f"{weather['city']['name']}\n☀ {sunrise:%Y.%m.%d %H:%M:%S}\n🌑 {sunset:%Y.%m.%d %H:%M:%S}"
 
     for hour in weather["list"]:

@@ -6,41 +6,51 @@ from telebot.types import Update
 from flask import Flask, request, abort, send_file
 
 import config
-from start_bot import start_bot, start_notifications_thread
-from tgbot.main import bot
-from tgbot.limits import create_image_from_link
-from tgbot.bot import bot_webhook_info, bot_log_info
-from todoapi.logger import logger
 
 
 app = Flask(__name__)
-logger.info(bot_log_info())
 
-if not config.TELEGRAM_WEBHOOK:
-    Thread(target=start_bot, daemon=True).start()
+# noinspection PyBroadException
+try:
+    from start_bot import start_bot, start_notifications_thread
+    from tgbot.main import bot
+    from tgbot.limits import create_image_from_link
+    from tgbot.bot import bot_webhook_info, bot_log_info
+    from todoapi.logger import logger
+
+    logger.info(bot_log_info())
+
+    if not config.TELEGRAM_WEBHOOK:
+        Thread(target=start_bot, daemon=True).start()
+
+    if config.BOT_NOTIFICATIONS:
+        start_notifications_thread()
+except Exception:
+    code = 503
+else:
+    code = 200
 
 
-if config.BOT_NOTIFICATIONS:
-    start_notifications_thread()
-
-
-@app.route("/", methods=["GET"])
+@app.get("/")
 def home():
-    return "200", 200
+    if code != 200:
+        return abort(code)
+
+    return "ok"
 
 
-@app.route("/favicon.ico", methods=["GET"])
+@app.get("/favicon.ico")
 def favicon():
     return send_file("icon/notepad_icon.png")
 
 
-@app.route("/v", methods=["GET"])
-@app.route("/version", methods=["GET"])
+@app.get("/v")
+@app.get("/version")
 def version():
     return f"{config.__version__}{config.string_branch}"
 
 
-@app.route("/limit", methods=["GET"])
+@app.get("/limit")
 def limit():
     if len(str(request.args)) > 200:
         return abort(413)
@@ -68,7 +78,7 @@ if (
     and config.TELEGRAM_WEBHOOK_FLASK_PATH
 ):
 
-    @app.route(config.TELEGRAM_WEBHOOK_FLASK_PATH, methods=["POST"])
+    @app.post(config.TELEGRAM_WEBHOOK_FLASK_PATH)
     def process_updates():
         if request.headers.get("content-type") != "application/json":
             return abort(403)
@@ -106,7 +116,7 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
         mac = hmac.new(encoded_key, msg=data, digestmod=algorithm)
         return hmac.compare_digest(mac.hexdigest(), github_signature)
 
-    @app.route(config.GITHUB_WEBHOOK_FLASK_PATH, methods=["POST"])
+    @app.post(config.GITHUB_WEBHOOK_FLASK_PATH)
     def webhook():
         if request.method != "POST":
             return 'request.method != "POST"'
