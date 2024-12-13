@@ -2,7 +2,7 @@ import re
 import json
 import html
 from typing import Literal
-from datetime import timedelta, datetime, UTC
+from datetime import timedelta, datetime, timezone
 
 # noinspection PyPackageRequirements
 from telebot.apihelper import ApiTelegramException
@@ -112,7 +112,7 @@ def settings_message(
     lang: str = ...,
     sub_urls: bool = ...,
     city: str = ...,
-    timezone: int = ...,
+    timezone_: int = ...,
     notifications: int = ...,
     notifications_time: str = ...,
     theme: int = ...,
@@ -125,7 +125,7 @@ def settings_message(
     def format_call_data(
         lang_: str | None = None,
         sub_urls_: bool | None = None,
-        timezone_: int | None = None,
+        timezone__: int | None = None,
         notifications_: int | None = None,
         notifications_time_: str | None = None,
         theme_: int | None = None,
@@ -134,7 +134,7 @@ def settings_message(
         t = (
             settings.lang if lang_ is None else lang_,
             int(settings.sub_urls if sub_urls_ is None else sub_urls_),
-            settings.timezone if timezone_ is None else timezone_,
+            settings.timezone if timezone__ is None else timezone__,
             int(settings.notifications if notifications_ is None else notifications_),
             (
                 settings.notifications_time
@@ -150,7 +150,7 @@ def settings_message(
         lang=entity_settings.lang if lang is ... else lang,
         sub_urls=entity_settings.sub_urls if sub_urls is ... else sub_urls,
         city=entity_settings.city if city is ... else city,
-        timezone=entity_settings.timezone if timezone is ... else timezone,
+        timezone=entity_settings.timezone if timezone_ is ... else timezone_,
         notifications=(
             entity_settings.notifications if notifications is ... else notifications
         ),
@@ -204,23 +204,23 @@ def settings_message(
     blank_timezone = {" ": "None"}
     timezone_row = [
         (
-            {"-3": format_call_data(timezone_=settings.timezone - 3)}
+            {"-3": format_call_data(timezone__=settings.timezone - 3)}
             if settings.timezone > -10
             else blank_timezone
         ),
         (
-            {"-1": format_call_data(timezone_=settings.timezone - 1)}
+            {"-1": format_call_data(timezone__=settings.timezone - 1)}
             if settings.timezone > -12
             else blank_timezone
         ),
-        {str_timezone: format_call_data(timezone_=0)},
+        {str_timezone: format_call_data(timezone__=0)},
         (
-            {"+1": format_call_data(timezone_=settings.timezone + 1)}
+            {"+1": format_call_data(timezone__=settings.timezone + 1)}
             if settings.timezone < 12
             else blank_timezone
         ),
         (
-            {"+3": format_call_data(timezone_=settings.timezone + 3)}
+            {"+3": format_call_data(timezone__=settings.timezone + 3)}
             if settings.timezone < 10
             else blank_timezone
         ),
@@ -1369,7 +1369,7 @@ AND (
 
 
 def send_notifications_messages() -> None:
-    n_date = datetime.now(UTC)
+    n_date = datetime.now(timezone.utc)
     with db.connection(), db.cursor():
         result = db.execute(
             """

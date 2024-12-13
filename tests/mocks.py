@@ -1,3 +1,4 @@
+# noinspection PyPackageRequirements
 from telebot.types import Message, CallbackQuery, User, Chat
 
 

@@ -4,7 +4,7 @@ import shlex
 import difflib
 from typing import Literal
 from urllib.parse import urlparse
-from datetime import timedelta, datetime, timezone, UTC
+from datetime import timedelta, datetime, timezone
 
 import requests
 from cachetools import TTLCache, LRUCache, cached
@@ -298,7 +298,7 @@ def fetch_weather(city: str) -> str:
     )
 
     time_in_city = datetime.now(timezone.utc) + delta
-    weather_time = datetime.fromtimestamp(weather["dt"], UTC) + delta
+    weather_time = datetime.fromtimestamp(weather["dt"], timezone.utc) + delta
     time_in_city = f"{time_in_city:%Y.%m.%d %H:%M:%S}"
     weather_time = f"{weather_time:%Y.%m.%d %H:%M:%S}"
 
@@ -308,10 +308,10 @@ def fetch_weather(city: str) -> str:
     wind_deg = weather["wind"]["deg"]
     wind_deg_icon = de[0 if (d := round(int(wind_deg) / 45) * 45) == 360 else d]
     sunrise = (
-        f"{datetime.fromtimestamp(weather['sys']['sunrise'], UTC) + delta:%H:%M:%S}"
+        f"{datetime.fromtimestamp(weather['sys']['sunrise'], timezone.utc) + delta:%H:%M:%S}"
     )
     sunrise = sunrise.split(" ")[-1]
-    sunset = f"{datetime.fromtimestamp(weather['sys']['sunset'], UTC) + delta:%H:%M:%S}"
+    sunset = f"{datetime.fromtimestamp(weather['sys']['sunset'], timezone.utc) + delta:%H:%M:%S}"
     sunset = sunset.split(" ")[-1]
     visibility = weather["visibility"]
 
@@ -373,8 +373,8 @@ def fetch_forecast(city: str) -> str:
     }
 
     city_timezone = timedelta(hours=weather["city"]["timezone"] // 60 // 60)
-    sunrise = datetime.fromtimestamp(weather["city"]["sunrise"], UTC) + city_timezone
-    sunset = datetime.fromtimestamp(weather["city"]["sunset"], UTC) + city_timezone
+    sunrise = datetime.fromtimestamp(weather["city"]["sunrise"], timezone.utc) + city_timezone
+    sunset = datetime.fromtimestamp(weather["city"]["sunset"], timezone.utc) + city_timezone
     result = f"{weather['city']['name']}\n☀ {sunrise:%Y.%m.%d %H:%M:%S}\n🌑 {sunset:%Y.%m.%d %H:%M:%S}"
 
     for hour in weather["list"]:

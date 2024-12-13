@@ -7,7 +7,7 @@ from sqlite3 import Error, connect
 import xml.etree.ElementTree as xml  # noqa
 from functools import cached_property
 from contextlib import contextmanager
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta, timezone
 from typing import Callable, Any, Literal
 
 from vedis import Vedis
@@ -558,16 +558,16 @@ SELECT media_id,
         If the event should already be deleted, returns -1.
         """
         if sql_date_pattern.match(self.removal_time):
-            _d1 = datetime.now(UTC)
+            _d1 = datetime.now(timezone.utc)
             _d2 = datetime.strptime(self.removal_time, "%Y-%m-%d")
             _days = 30 - (_d1 - _d2).days
             return -1 if _days < 0 else _days
         else:
             return 30
 
-    def days_before_event(self, timezone: int = 0) -> int:
+    def days_before_event(self, timezone_: int = 0) -> int:
         _date = self.datetime
-        n_time = datetime.now(UTC) + timedelta(hours=timezone)
+        n_time = datetime.now(timezone.utc) + timedelta(hours=timezone_)
         n_time = datetime(n_time.year, n_time.month, n_time.day)
         dates = []
 
@@ -823,9 +823,9 @@ class Account:
 
     def now_time(self) -> datetime:
         """
-        Returns datetime.now(UTC) taking into account the user's time zone
+        Returns datetime.now(timezone.utc) taking into account the user's time zone
         """
-        return datetime.now(UTC) + timedelta(hours=self.settings.timezone)
+        return datetime.now(timezone.utc) + timedelta(hours=self.settings.timezone)
 
     def check_event_exists(self, event_id: int, in_bin: bool = False) -> bool:
         try:
@@ -1825,7 +1825,7 @@ SELECT lang,
         lang: Literal["ru", "en"] = None,
         sub_urls: Literal[0, 1] = None,
         city: str = None,
-        timezone: int = None,
+        timezone_: int = None,
         notifications: Literal[0, 1, 2] | bool = None,
         notifications_time: str = None,
         theme: int = None,
@@ -1863,12 +1863,12 @@ SELECT lang,
             update_list.append("city")
             self.settings.city = city
 
-        if timezone is not None:
-            if timezone not in [j for i in range(-11, 12) for j in (i, str(i))]:
+        if timezone_ is not None:
+            if timezone_ not in [j for i in range(-11, 12) for j in (i, str(i))]:
                 raise ValueError("timezone must be -12 and less 12")
 
             update_list.append("timezone")
-            self.settings.timezone = int(timezone)
+            self.settings.timezone = int(timezone_)
 
         if notifications is not None:
             if notifications not in (0, 1, 2, "0", "1", "2", True, False):
@@ -1908,7 +1908,7 @@ UPDATE users_settings
                     "lang": lang,
                     "sub_urls": sub_urls,
                     "city": city,
-                    "timezone": timezone,
+                    "timezone": timezone_,
                     "notifications": notifications,
                     "notifications_time": notifications_time,
                     "theme": theme,

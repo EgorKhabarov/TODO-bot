@@ -1060,10 +1060,11 @@ class CallBackHandler:
             settings_message(
                 lang="ru",
                 sub_urls=True,
-                timezone=0,
+                timezone_=0,
                 notifications=0,
                 notifications_time="08:00",
                 theme=0,
+                updated=True,
             ).edit()
         except ApiTelegramException:
             pass
@@ -1077,7 +1078,7 @@ class CallBackHandler:
         params_names = (
             "lang",
             "sub_urls",
-            "timezone",
+            "timezone_",
             "notifications",
             "notifications_time",
             "theme",

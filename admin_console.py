@@ -2,7 +2,7 @@ import os
 import csv
 import subprocess
 from pprint import pprint, pformat
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from typing import Literal, Any, Callable
 
 from IPython import embed
@@ -99,7 +99,7 @@ def execute(
 
 
 def export(query: str = "SELECT * FROM events;", params: dict | tuple = ()) -> str:
-    path = f"data/exports/{datetime.now(UTC):%Y-%m-%d_%H-%M-%S}.csv"
+    path = f"data/exports/{datetime.now(timezone.utc):%Y-%m-%d_%H-%M-%S}.csv"
 
     try:
         os.mkdir("data/exports")
