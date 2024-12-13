@@ -1,6 +1,6 @@
-from datetime import datetime
-from threading import Thread
 from time import sleep
+from threading import Thread
+from datetime import datetime, UTC
 
 import config
 from tgbot.bot_messages import send_notifications_messages
@@ -9,7 +9,7 @@ from todoapi.log_cleaner import clear_logs
 
 def start_background_loop():
     def process():
-        while_time = datetime.utcnow()
+        while_time = datetime.now(UTC)
         weekday = while_time.weekday()
         hour = while_time.hour
         minute = while_time.minute
@@ -22,7 +22,7 @@ def start_background_loop():
 
     process()
     # wait for the notification cycle to start
-    sleep(60 - datetime.utcnow().second)
+    sleep(60 - datetime.now(UTC).second)
     while True:
         process()
         sleep(60)

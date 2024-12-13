@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, UTC
 
 from config import LOG_FILE_PATH
 
@@ -28,7 +28,7 @@ def filter_function(test_line: str) -> bool:
 
 
 def clear_logs():
-    log_folder, utc_time = Path(LOG_FILE_PATH).parent, datetime.utcnow()
+    log_folder, utc_time = Path(LOG_FILE_PATH).parent, datetime.now(UTC)
     output_file_path = os.path.join(
         log_folder, "old_logs", f"{utc_time:%Y%m%d%H%M%S}.log"
     )

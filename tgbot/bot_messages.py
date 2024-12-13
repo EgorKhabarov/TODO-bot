@@ -2,7 +2,7 @@ import re
 import json
 import html
 from typing import Literal
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, UTC
 
 # noinspection PyPackageRequirements
 from telebot.apihelper import ApiTelegramException
@@ -1369,7 +1369,7 @@ AND (
 
 
 def send_notifications_messages() -> None:
-    n_date = datetime.utcnow()
+    n_date = datetime.now(UTC)
     with db.connection(), db.cursor():
         result = db.execute(
             """

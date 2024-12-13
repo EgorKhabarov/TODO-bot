@@ -7,7 +7,7 @@ from sqlite3 import Error, connect
 import xml.etree.ElementTree as xml  # noqa
 from functools import cached_property
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Callable, Any, Literal
 
 from vedis import Vedis
@@ -558,7 +558,7 @@ SELECT media_id,
         If the event should already be deleted, returns -1.
         """
         if sql_date_pattern.match(self.removal_time):
-            _d1 = datetime.utcnow()
+            _d1 = datetime.now(UTC)
             _d2 = datetime.strptime(self.removal_time, "%Y-%m-%d")
             _days = 30 - (_d1 - _d2).days
             return -1 if _days < 0 else _days
@@ -567,7 +567,7 @@ SELECT media_id,
 
     def days_before_event(self, timezone: int = 0) -> int:
         _date = self.datetime
-        n_time = datetime.utcnow() + timedelta(hours=timezone)
+        n_time = datetime.now(UTC) + timedelta(hours=timezone)
         n_time = datetime(n_time.year, n_time.month, n_time.day)
         dates = []
 
@@ -823,9 +823,9 @@ class Account:
 
     def now_time(self) -> datetime:
         """
-        Returns datetime.utcnow() taking into account the user's time zone
+        Returns datetime.now(UTC) taking into account the user's time zone
         """
-        return datetime.utcnow() + timedelta(hours=self.settings.timezone)
+        return datetime.now(UTC) + timedelta(hours=self.settings.timezone)
 
     def check_event_exists(self, event_id: int, in_bin: bool = False) -> bool:
         try:

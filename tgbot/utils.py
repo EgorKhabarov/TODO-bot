@@ -4,7 +4,7 @@ import shlex
 import difflib
 from typing import Literal
 from urllib.parse import urlparse
-from datetime import timedelta, datetime, timezone
+from datetime import timedelta, datetime, timezone, UTC
 
 import requests
 from cachetools import TTLCache, LRUCache, cached
@@ -298,7 +298,7 @@ def fetch_weather(city: str) -> str:
     )
 
     time_in_city = datetime.now(timezone.utc) + delta
-    weather_time = datetime.utcfromtimestamp(weather["dt"]) + delta
+    weather_time = datetime.fromtimestamp(weather["dt"], UTC) + delta
     time_in_city = f"{time_in_city:%Y.%m.%d %H:%M:%S}"
     weather_time = f"{weather_time:%Y.%m.%d %H:%M:%S}"
 
@@ -307,9 +307,9 @@ def fetch_weather(city: str) -> str:
     wind_speed = f"{weather['wind']['speed']:.1f}"
     wind_deg = weather["wind"]["deg"]
     wind_deg_icon = de[0 if (d := round(int(wind_deg) / 45) * 45) == 360 else d]
-    sunrise = str(datetime.utcfromtimestamp(weather["sys"]["sunrise"]) + delta)
+    sunrise = f"{datetime.fromtimestamp(weather['sys']['sunrise'], UTC) + delta:%H:%M:%S}"
     sunrise = sunrise.split(" ")[-1]
-    sunset = str(datetime.utcfromtimestamp(weather["sys"]["sunset"]) + delta)
+    sunset = f"{datetime.fromtimestamp(weather['sys']['sunset'], UTC) + delta:%H:%M:%S}"
     sunset = sunset.split(" ")[-1]
     visibility = weather["visibility"]
 
@@ -371,9 +371,9 @@ def fetch_forecast(city: str) -> str:
     }
 
     city_timezone = timedelta(hours=weather["city"]["timezone"] // 60 // 60)
-    sunrise = datetime.utcfromtimestamp(weather["city"]["sunrise"]) + city_timezone
-    sunset = datetime.utcfromtimestamp(weather["city"]["sunset"]) + city_timezone
-    result = f"{weather['city']['name']}\n☀ {sunrise}\n🌑 {sunset}"
+    sunrise = datetime.fromtimestamp(weather["city"]["sunrise"], UTC) + city_timezone
+    sunset = datetime.fromtimestamp(weather["city"]["sunset"], UTC) + city_timezone
+    result = f"{weather['city']['name']}\n☀ {sunrise:%Y.%m.%d %H:%M:%S}\n🌑 {sunset:%Y.%m.%d %H:%M:%S}"
 
     for hour in weather["list"]:
         weather_icon = hour["weather"][0]["icon"]
@@ -405,7 +405,7 @@ def fetch_forecast(city: str) -> str:
         result += (
             f"\n{city_time.split()[-1]} {weather_icon}<b>{temp:{config.ts}>2.0f}°C "
             f"💨{wind_speed:.0f}{mps} {wind_deg_icon}</b> "
-            f"<u>{weather_description}</u>."
+            f"<u>{weather_description}</u>"
         )
     return result
 
