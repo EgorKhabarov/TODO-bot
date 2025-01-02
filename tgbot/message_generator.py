@@ -251,10 +251,11 @@ class EventMessage(TextMessage):
     def __init__(self, event_id: int, in_wastebasket: bool = False):
         super().__init__()
         self.event_id = event_id
+        self.event: Event | None = None
         try:
-            self.event: Event = request.entity.get_event(event_id, in_wastebasket)
+            self.event = request.entity.get_event(event_id, in_wastebasket)
         except EventNotFound:
-            self.event: None = None
+            pass
 
     def format(
         self,

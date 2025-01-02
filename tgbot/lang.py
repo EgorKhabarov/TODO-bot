@@ -527,7 +527,7 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 
 *(<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 >www.youtube.com</a> <i>вместо полной ссылки</i>)
-**<i>Ответьте на это сообщение с названием города</i>
+**<i>Ответьте на это сообщение с названием города</i> <b>(Несохраненные настройки будут сброшены.)</b>
 ***<i>Изменяет тёмные эмодзи на светлые</i>""",
             "en": """⚙️ Settings ⚙️
 
@@ -551,7 +551,7 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 
 *(<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 >www.youtube.com</a> <i>instead of full link</i>)
-**<i>Reply to this message with a city name</i>
+**<i>Reply to this message with a city name</i> <b>(Unsaved settings will be reset)</b>
 ***<i>Changes dark emojis to light ones</i>""",
         },
         "group": {
@@ -1790,6 +1790,10 @@ or create an account
             "ru": "Сообщение слишком большое",
             "en": "Message is too long",
         },
+        "change_information_is_too_long": {
+            "ru": "Информация об изменениях слишком длинная",
+            "en": "The change information is too long",
+        },
         "exceeded_limit": {
             "ru": "Вы превысили дневной лимит.\n"
             "Уменьшите количество символов или удалите не нужные события.",
@@ -1842,6 +1846,12 @@ or create an account
             "commit_changes": {
                 "ru": "Вы не сохранили настройки! Нажмите 💾 чтобы сохранить",
                 "en": "You have not saved your settings! Click 💾 to save",
+            },
+        },
+        "event": {
+            "commit_clear_history": {
+                "ru": "Вы действительно хотите удалить историю изменений события? Нажмите повторно для удаления истории изменений",
+                "en": "Are you sure you want to clear the event's change history? Click again to clear change history",
             },
         },
     },

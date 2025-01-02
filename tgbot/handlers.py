@@ -698,12 +698,49 @@ class CallBackHandler:
             generated = daily_message(date)
         generated.edit()
 
-    @prefix("eh", {"event_id": "int", "date": "date", "page": ("int", 1)})
-    def event_history(self, event_id: int, date: datetime, page: int):
-        generated = event_history_message(event_id, date, page)
+    @prefix(
+        "eh",
+        {"event_id": "int", "date": "date", "page": ("int", 1), "offset": ("int", 0)},
+    )
+    def event_history(self, event_id: int, date: datetime, page: int, offset: int):
+        generated = event_history_message(event_id, date, page, offset)
         if generated is None:
             generated = daily_message(date)
-        generated.edit()
+        try:
+            generated.edit()
+        except ApiTelegramException:
+            text = get_translate("errors.already_on_this_page")
+            CallBackAnswer(text).answer()
+
+    @prefix("ehc", {"event_id": "int", "date": "date"})
+    def clear_event_history_commit(self, event_id: int, date: datetime):
+        generated = event_history_message(event_id, date, 1, 0, True)
+        try:
+            generated.edit()
+        except ApiTelegramException:
+            pass
+        try:
+            text = get_translate("errors.event.commit_clear_history")
+            CallBackAnswer(text).answer(show_alert=True)
+        except ApiTelegramException:
+            pass
+
+    @prefix("ehcc", {"event_id": "int", "date": "date"})
+    def clear_event_history(self, event_id: int, date: datetime):
+        try:
+            request.entity.clear_event_history(event_id)
+        except EventNotFound:
+            generated = daily_message(date)
+            generated.edit()
+            CallBackAnswer(get_translate("errors.error")).answer()
+            return None
+
+        generated = event_history_message(event_id, date, 1, 0)
+        try:
+            generated.edit()
+        except ApiTelegramException:
+            pass
+        CallBackAnswer("ok").answer()
 
     @prefix("esm", {"id_list": "str"})
     def events_message(self, id_list: str, message: Message):
@@ -1072,6 +1109,11 @@ class CallBackHandler:
     @prefix("stu", eval_=True)
     @prefix("stuc", eval_=True)
     def settings_update(self, data: tuple, str_prefix: str = "stu"):
+        """
+        stu:  Normal change of settings
+        stuc: Trying to return to the menu with unsaved settings
+        stu_: If all settings are the same as saved
+        """
         if len(data) != 6:
             raise ApiError
 
@@ -1084,6 +1126,14 @@ class CallBackHandler:
             "theme",
         )
         params = dict(zip(params_names, data))
+        settings = request.entity.settings
+
+        if str_prefix == "stu":
+            str_prefix = "stu_"
+            for param in params_names:
+                if settings.get(param.strip("_")) != params.get(param):
+                    str_prefix = "stu"
+                    break
 
         try:
             settings_message(**params, updated=str_prefix == "stu").edit()

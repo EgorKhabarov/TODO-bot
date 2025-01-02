@@ -466,6 +466,9 @@ class Settings:
     notifications_time: str = "08:00"
     theme: int = 0
 
+    def get(self, param: str):
+        return self.__dict__[param]
+
 
 @dataclass
 class Event:
@@ -511,7 +514,7 @@ class Event:
         return datetime.strptime(self.date, "%d.%m.%Y")
 
     @property
-    def history(self) -> list[dict]:
+    def history(self) -> list[list[str, list[str, str], str]]:
         return json.loads(self._history)
 
     @property
@@ -1197,6 +1200,29 @@ DELETE FROM events
             AND group_id IS :group_id;
 """,
                 params={
+                    "user_id": self.safe_user_id,
+                    "group_id": self.group_id,
+                },
+                commit=True,
+            )
+        except Error as e:
+            raise ApiError(e)
+
+    def clear_event_history(self, event_id: int) -> None:
+        if not self.check_event_exists(event_id):
+            raise EventNotFound
+
+        try:
+            db.execute(
+                """
+UPDATE events
+   SET history = '[]'
+ WHERE event_id = :event_id
+       AND user_id IS :user_id
+       AND group_id IS :group_id;
+""",
+                params={
+                    "event_id": event_id,
                     "user_id": self.safe_user_id,
                     "group_id": self.group_id,
                 },
