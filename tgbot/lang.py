@@ -1615,6 +1615,10 @@ Visibility <b>{}</b>m""",
                         "💻ini INI",
                         "💻csv CSV",
                     ),
+                    (
+                        "💻ebnf EBNF",
+                        "💻diff GIT DIFF",
+                    ),
                 ),
                 "en": (
                     (
@@ -1653,6 +1657,10 @@ Visibility <b>{}</b>m""",
                         "💻toml TOML",
                         "💻ini INI",
                         "💻csv CSV",
+                    ),
+                    (
+                        "💻ebnf EBNF",
+                        "💻diff GIT DIFF",
                     ),
                 ),
             },

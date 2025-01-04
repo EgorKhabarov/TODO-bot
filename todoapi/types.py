@@ -561,8 +561,8 @@ SELECT media_id,
         If the event should already be deleted, returns -1.
         """
         if sql_date_pattern.match(self.removal_time):
-            _d1 = datetime.now(timezone.utc)
-            _d2 = datetime.strptime(self.removal_time, "%Y-%m-%d")
+            _d1 = datetime.now(timezone.utc).date()
+            _d2 = datetime.strptime(self.removal_time, "%Y-%m-%d").date()
             _days = 30 - (_d1 - _d2).days
             return -1 if _days < 0 else _days
         else:
