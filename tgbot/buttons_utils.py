@@ -434,6 +434,7 @@ def create_select_status_keyboard(
     save: str,
     back: str,
     arguments: str = "",
+    updated: bool = False,
 ) -> InlineKeyboardMarkup:
     """
 
@@ -443,6 +444,7 @@ def create_select_status_keyboard(
     :param save:
     :param back:
     :param arguments:
+    :param updated:
     :return:
     """
     status_list = status_list[-5:]
@@ -483,7 +485,13 @@ def create_select_status_keyboard(
                     else ({" ": "None"},) * 5
                 ),
                 [
-                    {get_theme_emoji("back"): f"{back} {arguments}"},
+                    {
+                        get_theme_emoji("back"): (
+                            f"{back} {arguments}"
+                            if updated
+                            else f"{back} {string_statuses} folders {arguments}"
+                        )
+                    },
                     {"💾": f"{save} {arguments} {string_statuses}"},
                 ],
             ]

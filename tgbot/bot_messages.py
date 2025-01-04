@@ -870,18 +870,21 @@ AND (
 
 
 def event_status_message(
-    statuses: str, folder_path: str, event_id: int, date: str
+    statuses: str, folder_path: str, event_id: int, date: str, updated: bool = False
 ) -> EventMessage:
     statuses_list = statuses.split(",")
+    generated = EventMessage(event_id)
+    if generated.event.string_statuses == statuses:
+        updated = True
     markup = create_select_status_keyboard(
         prefix="es",
         status_list=statuses_list,
         folder_path=folder_path,
         save="ess",
-        back="em",
+        back="em" if updated else "esc",
         arguments=f"{event_id} {date}",
+        updated=updated,
     )
-    generated = EventMessage(event_id)
     generated.event._status = json.dumps(statuses_list[-5:], ensure_ascii=False)
     generated.format(
         get_translate("select.status_to_event"), event_formats["dt"], markup

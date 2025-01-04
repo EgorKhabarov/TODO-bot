@@ -587,8 +587,30 @@ class CallBackHandler:
     @prefix(
         "es", {"statuses": "str", "folder": "str", "event_id": "int", "date": "str"}
     )
-    def event_status_page(self, statuses: str, folder: str, event_id: int, date: str):
-        event_status_message(statuses, folder, event_id, date).edit()
+    @prefix(
+        "esc", {"statuses": "str", "folder": "str", "event_id": "int", "date": "str"}
+    )
+    def event_status_page(
+        self,
+        statuses: str,
+        folder: str,
+        event_id: int,
+        date: str,
+        str_prefix: str = "es",
+    ):
+        updated = str_prefix == "esc"
+        if updated:
+            try:
+                CallBackAnswer(get_translate("errors.settings.commit_changes")).answer(
+                    show_alert=True
+                )
+            except ApiTelegramException:
+                pass
+        generated = event_status_message(statuses, folder, event_id, date, updated)
+        try:
+            generated.edit()
+        except ApiTelegramException:
+            pass
 
     @prefix("ess", {"event_id": "int", "date": "str", "new_status": "str"})
     def event_status_set(
