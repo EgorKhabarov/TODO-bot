@@ -1,3 +1,4 @@
+import re
 import html
 import traceback
 from time import sleep
@@ -34,6 +35,7 @@ from tgbot.buttons_utils import (
 from tgbot.bot_messages import (
     menu_message,
     help_message,
+    open_message,
     start_message,
     event_message,
     group_message,
@@ -270,7 +272,7 @@ def command_handler(message: Message) -> None:
     """
     chat_id, message_text = request.chat_id, message.text
     parsed_command = parse_command(message_text, {"arg": "long str"})
-    command_text = parsed_command["command"]
+    command_text: str = parsed_command["command"]
 
     if command_text == "start":
         if add_group_pattern.match(message.text) and request.is_member:
@@ -405,6 +407,50 @@ def command_handler(message: Message) -> None:
 
     elif command_text in ("login", "signup"):
         TextMessage(get_translate("errors.failure")).reply(message)
+
+    elif command_text.startswith(("open_", "open ")):
+        regex = re.compile(r"_+")
+
+        def open_split(text_: str) -> str:
+            """
+
+            >>> open_split("")
+            ''
+            >>> open_split("text")
+            'text'
+            >>> open_split("text_text")
+            'text text'
+            >>> open_split("text__text")
+            'text_text'
+            >>> open_split("text_text__text")
+            'text text_text'
+            >>> open_split("__")
+            '_'
+            >>> open_split("text_____text")
+            'text__ text'
+            >>> open_split("text______text")
+            'text___text'
+            >>> open_split("text_____")
+            'text__'
+            >>> open_split("text_text___text__text_11__9___0______4_____6")
+            'text text_ text_text 11_9_ 0___4__ 6'
+            """
+            return " ".join(
+                regex.sub(
+                    lambda m: m[0][::2] if len(m[0]) % 2 == 0 else f"{m[0][1::2]}\n",
+                    text_,
+                ).splitlines()
+            )
+
+        generated = open_message(
+            " ".join(
+                (
+                    open_split(parsed_command["command"].split("_", maxsplit=1)[1]),
+                    parsed_command["arguments"]["arg"] or ""
+                )
+            ).strip()
+        )
+        generated.send()
 
 
 _handlers = {}

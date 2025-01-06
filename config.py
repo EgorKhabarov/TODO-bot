@@ -81,6 +81,7 @@ COMMANDS = (
     "login",
     "signup",
     "logout",
+    "open",
 )
 
 ts = "\U00002800"
@@ -90,5 +91,5 @@ Special transparent symbol for filling empty space in buttons
 """
 
 string_branch = "" if branch == "master" else f":{branch}"
-__version__ = "2025.01.05.2"
+__version__ = "2025.01.06.1"
 __author__ = "EgorKhabarov"

@@ -31,8 +31,9 @@ from tgbot.message_generator import (
 from tgbot.buttons_utils import (
     delmarkup,
     encode_id,
-    create_monthly_calendar_keyboard,
     create_select_status_keyboard,
+    create_yearly_calendar_keyboard,
+    create_monthly_calendar_keyboard,
 )
 from tgbot.utils import (
     Cycle,
@@ -1491,7 +1492,7 @@ SELECT CAST(
 
 
 def monthly_calendar_message(
-    yy_mm: list | tuple[int, int] = None,
+    yy_mm: list[int] | tuple[int, int] = None,
     command: str = None,
     back: str = None,
     custom_text: str = None,
@@ -1499,6 +1500,18 @@ def monthly_calendar_message(
 ) -> TextMessage:
     text = custom_text if custom_text else get_translate("select.date")
     markup = create_monthly_calendar_keyboard(yy_mm, command, back, arguments)
+    return TextMessage(text, markup)
+
+
+def yearly_calendar_message(
+    year: int | None = None,
+    command: str = None,
+    back: str = None,
+    custom_text: str = None,
+    arguments: str = None,
+) -> TextMessage:
+    text = custom_text if custom_text else get_translate("select.date")
+    markup = create_yearly_calendar_keyboard(year, command, back, arguments)
     return TextMessage(text, markup)
 
 
@@ -1865,3 +1878,36 @@ def select_events_message(
     )
     generated = TextMessage(get_translate("select.events"), generate_buttons(markup))
     return generated
+
+
+def open_message(arguments: str) -> TextMessage | None:
+    regex_year = re.compile(r"^(?P<year>\d{4})$")
+    regex_year_month = re.compile(r"^(?P<year>\d{4}) (?P<month>\d{1,2})$")
+    regex_year_month_day = re.compile(r"^(?P<year>\d{4}) (?P<month>\d{1,2}) (?P<day>\d{1,2})$")
+
+    if arguments in ("calendar today", "calendar now", "today", "now"):
+        return daily_message(request.entity.now_time())
+
+    elif arguments == "calendar":
+        return monthly_calendar_message(None, "dl", "mnm")
+
+    elif arguments == "calendar year":
+        return yearly_calendar_message(None, "dl", "mnm")
+
+    elif arguments.startswith("help"):
+        return help_message(arguments.removeprefix("help").strip() or "page 1")
+
+    elif m := regex_year.match(arguments.removeprefix("calendar ")):
+        year = int(m.group("year"))
+        return yearly_calendar_message(year, "dl", "mnm")
+
+    elif m := regex_year_month.match(arguments.removeprefix("calendar ")):
+        year, month = int(m.group("year")), int(m.group("month"))
+        return monthly_calendar_message((year, month), "dl", "mnm")
+
+    elif m := regex_year_month_day.match(arguments.removeprefix("calendar ")):
+        year, month, day = int(m.group("year")), int(m.group("month")), int(m.group("day"))
+        return daily_message(datetime(year, month, day))
+
+    else:
+        return TextMessage(get_translate("errors.error"))

@@ -190,7 +190,7 @@ SELECT DISTINCT CAST (STRFTIME('%w', {sqlite_format_date('date')}) - 1 AS INT)
 
 
 def create_yearly_calendar_keyboard(
-    year: int,
+    year: int | None,
     command: str = None,
     back: str = None,
     arguments: str = None,
@@ -198,6 +198,9 @@ def create_yearly_calendar_keyboard(
     """
     Creates a calendar of months for a specific year and returns an inline keyboard
     """
+    if not year:
+        year = now_time_calendar()[0]
+
     command = f"'{command.strip()}'" if command else None
     back = f"'{back.strip()}'" if back else None
     arguments = f"'{arguments.strip()}'" if arguments else None
