@@ -300,6 +300,13 @@ def command_handler(message: Message) -> None:
     elif command_text == "settings":
         settings_message().send()
 
+    elif command_text == "account":
+        message_id = account_message().send().message_id
+        account_message(message_id).edit(message_id=message_id)
+
+    elif command_text == "groups":
+        groups_message().send()
+
     elif command_text in ("version", "v"):
         TextMessage(f"Version {config.__version__}{config.string_branch}").send()
 
@@ -446,7 +453,7 @@ def command_handler(message: Message) -> None:
             " ".join(
                 (
                     open_split(parsed_command["command"].split("_", maxsplit=1)[1]),
-                    parsed_command["arguments"]["arg"] or ""
+                    parsed_command["arguments"]["arg"] or "",
                 )
             ).strip()
         )

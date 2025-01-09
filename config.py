@@ -72,6 +72,8 @@ COMMANDS = (
     "export",
     "help",
     "settings",
+    "account",
+    "groups",
     "commands",
     "search",
     "id",
@@ -91,5 +93,5 @@ Special transparent symbol for filling empty space in buttons
 """
 
 string_branch = "" if branch == "master" else f":{branch}"
-__version__ = "2025.01.06.1"
+__version__ = "2025.01.09.1"
 __author__ = "EgorKhabarov"

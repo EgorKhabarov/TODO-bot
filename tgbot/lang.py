@@ -224,6 +224,7 @@ Call up new messages using bot commands.</b>
 /export - Сохранить мои события в csv
 /help - Помощь
 /settings - Настройки
+/logout - Выйти из аккаунта
 /search {...} - Поиск
 /id - Получить свой Telegram id
 /commands - Этот список
@@ -246,6 +247,7 @@ Call up new messages using bot commands.</b>
 /export - Save my events to csv
 /help - Help
 /settings - Settings
+/logout - Logout
 /search {...} - Search
 /id - Get your Telegram id
 /commands - This list
@@ -1199,7 +1201,9 @@ Visibility <b>{}</b>m""",
                         ),
                         BotCommand("help", "Помощь"),
                         BotCommand("settings", "Настройки"),
-                        BotCommand("logout", "Выйти"),
+                        BotCommand("account", "Аккаунт"),
+                        BotCommand("groups", "Группы"),
+                        BotCommand("logout", "Выйти из аккаунта"),
                     ],
                     "en": [
                         BotCommand("start", "Start"),
@@ -1216,6 +1220,8 @@ Visibility <b>{}</b>m""",
                         ),
                         BotCommand("help", "Help"),
                         BotCommand("settings", "Settings"),
+                        BotCommand("account", "Account"),
+                        BotCommand("groups", "Groups"),
                         BotCommand("logout", "Logout"),
                     ],
                 },
@@ -1271,7 +1277,9 @@ Visibility <b>{}</b>m""",
                         ),
                         BotCommand("help", "Помощь"),
                         BotCommand("settings", "Настройки"),
-                        BotCommand("logout", "Выйти"),
+                        BotCommand("account", "Аккаунт"),
+                        BotCommand("groups", "Группы"),
+                        BotCommand("logout", "Выйти из аккаунта"),
                     ],
                     "en": [
                         BotCommand("start", "Start"),
@@ -1288,6 +1296,8 @@ Visibility <b>{}</b>m""",
                         ),
                         BotCommand("help", "Help"),
                         BotCommand("settings", "Settings"),
+                        BotCommand("account", "Account"),
+                        BotCommand("groups", "Groups"),
                         BotCommand("logout", "Logout"),
                     ],
                 },
@@ -1343,8 +1353,10 @@ Visibility <b>{}</b>m""",
                         ),
                         BotCommand("help", "Помощь"),
                         BotCommand("settings", "Настройки"),
+                        BotCommand("account", "Аккаунт"),
+                        BotCommand("groups", "Группы"),
                         BotCommand("commands", "Список команд"),
-                        BotCommand("logout", "Выйти"),
+                        BotCommand("logout", "Выйти из аккаунта"),
                     ],
                     "en": [
                         BotCommand("start", "Start"),
@@ -1361,6 +1373,8 @@ Visibility <b>{}</b>m""",
                         ),
                         BotCommand("help", "Help"),
                         BotCommand("settings", "Settings"),
+                        BotCommand("account", "Account"),
+                        BotCommand("groups", "Groups"),
                         BotCommand("commands", "Command list"),
                         BotCommand("logout", "Logout"),
                     ],

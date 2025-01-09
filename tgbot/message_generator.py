@@ -20,11 +20,11 @@ from todoapi.exceptions import EventNotFound
 
 event_formats = {
     "dl": "<b>{numd}.{event_id}.</b>{statuses}\n{markdown_text}\n",
-    "dt": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{markdown_text}\n",
+    "dt": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> {reldate}\n{markdown_text}\n",
     "b": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> ({days_before_delete})\n{markdown_text}\n",
-    "r": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> ({reldate}){days_before}\n{markdown_text}\n",
+    "r": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> {reldate}{days_before}\n{markdown_text}\n",
     "s": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u>\n{markdown_text}\n",
-    "a": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> ({reldate})\n{text}\n",
+    "a": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> {reldate}\n{text}\n",
 }
 """
 "dl" - Template for events for one day
@@ -65,8 +65,16 @@ SELECT event_id,
        LENGTH(text)
   FROM events
  WHERE {sql_where}
- ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) DESC,
-          DAYS_BEFORE_EVENT(date, statuses) DESC
+ ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)),
+          DAYS_BEFORE_EVENT(date, statuses),
+          statuses LIKE '%📬%',
+          statuses LIKE '%🗞%',
+          statuses LIKE '%📅%',
+          statuses LIKE '%📆%',
+          statuses LIKE '%🎉%',
+          statuses LIKE '%🎊%',
+          statuses LIKE '%🟥%',
+          event_id DESC
  LIMIT 400;
 """,
         params=params,
@@ -343,14 +351,16 @@ SELECT user_id,
   FROM events
  WHERE event_id IN ({data[0]})
        AND ({sql_where})
- ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) DESC,
-          DAYS_BEFORE_EVENT(date, statuses) DESC,
+ ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)),
+          DAYS_BEFORE_EVENT(date, statuses),
           statuses LIKE '%📬%',
           statuses LIKE '%🗞%',
           statuses LIKE '%📅%',
           statuses LIKE '%📆%',
           statuses LIKE '%🎉%',
-          statuses LIKE '%🎊%';
+          statuses LIKE '%🎊%',
+          statuses LIKE '%🟥%',
+          event_id DESC;
 """,
                     params=params,
                     functions=(("DAYS_BEFORE_EVENT", calculate_days_before_event),),
@@ -418,14 +428,16 @@ SELECT user_id,
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in id_list)})
        AND ({sql_where})
- ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) DESC,
-          DAYS_BEFORE_EVENT(date, statuses) DESC,
+ ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)),
+          DAYS_BEFORE_EVENT(date, statuses),
           statuses LIKE '%📬%',
           statuses LIKE '%🗞%',
           statuses LIKE '%📅%',
           statuses LIKE '%📆%',
           statuses LIKE '%🎉%',
-          statuses LIKE '%🎊%';
+          statuses LIKE '%🎊%',
+          statuses LIKE '%🟥%',
+          event_id DESC;
 """,
                     params=(
                         request.entity.safe_user_id,
@@ -529,7 +541,11 @@ SELECT user_id,
                         date=event.date,
                         strdate=str_date,
                         weekday=week_date,
-                        reldate=rel_date,
+                        reldate=(
+                            f"<i><s>({rel_date})</s></i>"
+                            if days_before
+                            else f"({rel_date})"
+                        ),
                         numd=f"{num + 1}",
                         event_id=f"{event.event_id}",
                         statuses=event.string_statuses,

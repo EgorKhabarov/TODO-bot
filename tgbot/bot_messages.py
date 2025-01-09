@@ -192,12 +192,17 @@ def settings_message(
     else:
         str_timezone = f"{settings.timezone} 🌎"
 
+    timezone_question_datetime = (
+        request.entity.now_time()
+        - timedelta(hours=entity_settings.timezone)
+        + timedelta(hours=settings.timezone)
+    )
     text = get_translate("messages.settings").format(
         lang=f"{settings.lang} {get_translate('text.lang_flag')}",
         sub_urls=old_sub_urls,
         city=html.escape(settings.city),
         timezone=str_timezone,
-        timezone_question=f"{request.entity.now_time() + timedelta(hours=settings.timezone):%Y.%m.%d  <u>%H:%M</u>}",
+        timezone_question=f"{timezone_question_datetime:%Y.%m.%d  <u>%H:%M</u>}",
         notification_type=old_notification_type,
         notification_time=settings.notifications_time if settings.notifications else "",
         theme=old_theme_emoji,
@@ -1747,7 +1752,7 @@ def groups_message(
     return TextMessage(text, generate_buttons(markup))
 
 
-def account_message(message_id: int) -> TextMessage:
+def account_message(message_id: int | None = None) -> TextMessage:
     text = get_translate("messages.account").format(
         request.entity.user_id,
         request.entity.request_chat_id,
@@ -1761,16 +1766,20 @@ def account_message(message_id: int) -> TextMessage:
                 if request.entity.user.user_status == 0
                 else []
             ),
-            [
-                {
-                    f"{get_translate('text.edit_username')}👤": {
-                        "switch_inline_query_current_chat": (
-                            f"user({message_id}).name\n"
-                            f"{html.unescape(request.entity.user.username)}"
-                        )
+            (
+                [
+                    {
+                        f"{get_translate('text.edit_username')}👤": {
+                            "switch_inline_query_current_chat": (
+                                f"user({message_id}).name\n"
+                                f"{html.unescape(request.entity.user.username)}"
+                            )
+                        }
                     }
-                }
-            ],
+                ]
+                if message_id
+                else ()
+            ),
             [
                 {
                     f"{get_translate('text.edit_password')}🤫🔑": {
@@ -1883,7 +1892,9 @@ def select_events_message(
 def open_message(arguments: str) -> TextMessage | None:
     regex_year = re.compile(r"^(?P<year>\d{4})$")
     regex_year_month = re.compile(r"^(?P<year>\d{4}) (?P<month>\d{1,2})$")
-    regex_year_month_day = re.compile(r"^(?P<year>\d{4}) (?P<month>\d{1,2}) (?P<day>\d{1,2})$")
+    regex_year_month_day = re.compile(
+        r"^(?P<year>\d{4}) (?P<month>\d{1,2}) (?P<day>\d{1,2})$"
+    )
 
     if arguments in ("calendar today", "calendar now", "today", "now"):
         return daily_message(request.entity.now_time())
@@ -1906,7 +1917,11 @@ def open_message(arguments: str) -> TextMessage | None:
         return monthly_calendar_message((year, month), "dl", "mnm")
 
     elif m := regex_year_month_day.match(arguments.removeprefix("calendar ")):
-        year, month, day = int(m.group("year")), int(m.group("month")), int(m.group("day"))
+        year, month, day = (
+            int(m.group("year")),
+            int(m.group("month")),
+            int(m.group("day")),
+        )
         return daily_message(datetime(year, month, day))
 
     else:
