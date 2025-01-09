@@ -366,8 +366,8 @@ SELECT event_id,
        recent_changes_time,
        history
   FROM events
- WHERE user_id IS :user_id
-       AND group_id IS :group_id
+ WHERE user_id IS ?
+       AND group_id IS ?
        AND removal_time IS NULL{f" AND ({__sql_where}) LIMIT 400" if __sql_where else ""};
 """
         self.params = (
