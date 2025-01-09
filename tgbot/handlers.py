@@ -902,13 +902,20 @@ class CallBackHandler:
     ):
         back_data = call_data.removeprefix(f"{info} {id_list}").strip()
         # TODO Добавить если поставить кавычки " или ', то можно внутри юзать пробел
+
+        is_in_wastebasket = "b" in info
+        is_in_search = "s" in info
+        is_open = "o" in info
+        order = "day" if info == "_" else "usual"
+
         generated = select_one_message(
             decode_id(id_list),
             back_data,
-            is_in_wastebasket="b" in info,
-            is_in_search="s" in info,
-            is_open="o" in info,
+            is_in_wastebasket=is_in_wastebasket,
+            is_in_search=is_in_search,
+            is_open=is_open,
             message_id=message_id,
+            order=order,
         )
         if generated:
             if "s" in info:

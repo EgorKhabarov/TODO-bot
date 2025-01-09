@@ -966,7 +966,7 @@ UPDATE users
     def get_event(self, event_id: int, in_bin: bool = False) -> Event:
         return self.get_events([event_id], in_bin)[0]
 
-    def get_events(self, event_ids: list[int], in_bin: bool = False) -> list[Event]:
+    def get_events(self, event_ids: list[int], in_bin: bool = False, order: str = "usual") -> list[Event]:
         if len(event_ids) > 400:
             raise ApiError
 
@@ -979,14 +979,7 @@ SELECT *
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in event_ids)})
        AND (removal_time IS NOT NULL) = ?
- ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)) DESC,
-          DAYS_BEFORE_EVENT(date, statuses) DESC,
-          statuses LIKE '%📬%',
-          statuses LIKE '%🗞%',
-          statuses LIKE '%📅%',
-          statuses LIKE '%📆%',
-          statuses LIKE '%🎉%',
-          statuses LIKE '%🎊%';
+ ORDER BY {config.sql_order_dict[order]};
 """,
                 params=(
                     self.safe_user_id,

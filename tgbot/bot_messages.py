@@ -365,9 +365,9 @@ AND removal_time IS NULL
     generated = EventsMessage(f"{date:%d.%m.%Y}", markup=markup, page=page)
 
     if id_list:
-        generated.get_page_events(sql_where, params, id_list)
+        generated.get_page_events(sql_where, params, id_list, "day")
     else:
-        generated.get_pages_data(sql_where, params, f"pd {date:%d.%m.%Y}")
+        generated.get_pages_data(sql_where, params, f"pd {date:%d.%m.%Y}", "day")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.markup, 0, 1, f"se _ {string_id} pd {date:%d.%m.%Y}")
@@ -1806,12 +1806,13 @@ def select_one_message(
     is_in_search: bool = False,
     is_open: bool = False,
     message_id: int = None,
+    order: str = "usual",
 ) -> TextMessage | None:
     if len(id_list) == 0:
         return None
 
     try:
-        events_list = request.entity.get_events(id_list, is_in_wastebasket)
+        events_list = request.entity.get_events(id_list, is_in_wastebasket, order)
     except EventNotFound:
         return None
 

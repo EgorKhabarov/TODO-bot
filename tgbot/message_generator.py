@@ -7,6 +7,7 @@ from typing import Any
 # noinspection PyPackageRequirements
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, InputFile
 
+import config
 from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.lang import get_translate
@@ -45,10 +46,11 @@ def calculate_days_before_event(date, statuses):
 
 def pagination(
     sql_where: str,
-    params: dict,
+    params: dict | tuple,
     max_group_len: int = 10,
     max_group_symbols_count: int = 2500,
     max_group_id_len: int = 39,
+    order: str = "usual",
 ) -> list[str]:
     """
     :param sql_where: SQL condition
@@ -56,6 +58,7 @@ def pagination(
     :param max_group_len: Maximum number of elements per page
     :param max_group_symbols_count: Maximum number of characters per page
     :param max_group_id_len: Maximum length of shortened id
+    :param order:
     The amount of data in a button is limited to 64 characters
     """
 
@@ -65,16 +68,7 @@ SELECT event_id,
        LENGTH(text)
   FROM events
  WHERE {sql_where}
- ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)),
-          DAYS_BEFORE_EVENT(date, statuses),
-          statuses LIKE '%📬%',
-          statuses LIKE '%🗞%',
-          statuses LIKE '%📅%',
-          statuses LIKE '%📆%',
-          statuses LIKE '%🎉%',
-          statuses LIKE '%🎊%',
-          statuses LIKE '%🟥%',
-          event_id DESC
+ ORDER BY {config.sql_order_dict[order]}
  LIMIT 400;
 """,
         params=params,
@@ -328,7 +322,7 @@ class EventsMessage(TextMessage):
         self.page_indent = page_indent
         self.page_signature_needed = True if page else False
 
-    def get_pages_data(self, sql_where: str, params: dict | tuple, callback_data: str):
+    def get_pages_data(self, sql_where: str, params: dict | tuple, callback_data: str, order: str = "usual"):
         """
         Get a list of row id tuples by page
         """
@@ -351,16 +345,7 @@ SELECT user_id,
   FROM events
  WHERE event_id IN ({data[0]})
        AND ({sql_where})
- ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)),
-          DAYS_BEFORE_EVENT(date, statuses),
-          statuses LIKE '%📬%',
-          statuses LIKE '%🗞%',
-          statuses LIKE '%📅%',
-          statuses LIKE '%📆%',
-          statuses LIKE '%🎉%',
-          statuses LIKE '%🎊%',
-          statuses LIKE '%🟥%',
-          event_id DESC;
+ ORDER BY {config.sql_order_dict[order]};
 """,
                     params=params,
                     functions=(("DAYS_BEFORE_EVENT", calculate_days_before_event),),
@@ -405,7 +390,7 @@ SELECT user_id,
                 self.page_signature_needed = False
         return self
 
-    def get_page_events(self, sql_where: str, params: tuple, id_list: list[int]):
+    def get_page_events(self, sql_where: str, params: tuple, id_list: list[int], order: str = "usual"):
         """
         Returns events included in values with the WHERE condition
         """
@@ -428,16 +413,7 @@ SELECT user_id,
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in id_list)})
        AND ({sql_where})
- ORDER BY ABS(DAYS_BEFORE_EVENT(date, statuses)),
-          DAYS_BEFORE_EVENT(date, statuses),
-          statuses LIKE '%📬%',
-          statuses LIKE '%🗞%',
-          statuses LIKE '%📅%',
-          statuses LIKE '%📆%',
-          statuses LIKE '%🎉%',
-          statuses LIKE '%🎊%',
-          statuses LIKE '%🟥%',
-          event_id DESC;
+ ORDER BY {config.sql_order_dict[order]};
 """,
                     params=(
                         request.entity.safe_user_id,
