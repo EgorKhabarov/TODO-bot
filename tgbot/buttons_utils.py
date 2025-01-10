@@ -211,7 +211,7 @@ SELECT 1
 
 
 def create_yearly_calendar_keyboard(
-    year: int,
+    year: int | None,
     command: str = None,
     back: str = None,
     arguments: str = None,
@@ -219,6 +219,9 @@ def create_yearly_calendar_keyboard(
     """
     Creates a calendar of months for a specific year and returns an inline keyboard
     """
+    if not year:
+        year = now_time_calendar()[0]
+
     command = f"'{command.strip()}'" if command else None
     back = f"'{back.strip()}'" if back else None
     arguments = f"'{arguments.strip()}'" if arguments else None
@@ -451,6 +454,7 @@ def create_select_status_keyboard(
     save: str,
     back: str,
     arguments: str = "",
+    updated: bool = False,
 ) -> InlineKeyboardMarkup:
     """
 
@@ -460,6 +464,7 @@ def create_select_status_keyboard(
     :param save:
     :param back:
     :param arguments:
+    :param updated:
     :return:
     """
     status_list = status_list[-5:]
@@ -500,7 +505,13 @@ def create_select_status_keyboard(
                     else ({" ": "None"},) * 5
                 ),
                 [
-                    {get_theme_emoji("back"): f"{back} {arguments}"},
+                    {
+                        get_theme_emoji("back"): (
+                            f"{back} {arguments}"
+                            if updated
+                            else f"{back} {string_statuses} folders {arguments}"
+                        )
+                    },
                     {"💾": f"{save} {arguments} {string_statuses}"},
                 ],
             ]

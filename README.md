@@ -60,7 +60,6 @@ Navigation through bot functions
 | 🔔 Notifications | View events that will be included in the notification |
 | ⚙️Settings       | Same as /settings                                     |
 | 🗑 Cart          | Recycle bin with deleted events (premium)             |
-| 😎 Admin         | Admin panel (admin)                                   |
 
 ## help
 
@@ -188,8 +187,6 @@ List of deleted events.
 | ↕️   | Select multiple events |
 | 🧹   | Empty Trash            |
 | 🔄   | Update cart            |
-
-## admin
 
 ## today
 

@@ -155,7 +155,7 @@ class DataBase:
         :param column_names: Insert column names into the result.
         :param functions: Window functions. (function name, function)
         :param script: Query consists of several requests
-        :return: Query results.
+        :return: Query result
         """
         self.sqlite_connection = connect(config.DATABASE_PATH)
         self.sqlite_cursor = self.sqlite_connection.cursor()
@@ -376,8 +376,8 @@ SELECT event_id,
        recent_changes_time,
        history
   FROM events
- WHERE user_id IS :user_id
-       AND group_id IS :group_id
+ WHERE user_id IS ?
+       AND group_id IS ?
        AND removal_time IS NULL{f" AND ({__sql_where}) LIMIT 400" if __sql_where else ""};
 """
         self.params = (
@@ -476,6 +476,9 @@ class Settings:
     notifications_time: str = "08:00"
     theme: int = 0
 
+    def get(self, param: str):
+        return self.__dict__[param]
+
 
 @dataclass
 class Event:
@@ -535,7 +538,7 @@ class Event:
         return arrow.get(self._datetime)
 
     @property
-    def history(self) -> list[dict]:
+    def history(self) -> list[list[str, list[str, str], str]]:
         return json.loads(self._history)
 
     @property
@@ -1010,7 +1013,9 @@ UPDATE users
     def get_event(self, event_id: int, in_bin: bool = False) -> Event:
         return self.get_events([event_id], in_bin)[0]
 
-    def get_events(self, event_ids: list[int], in_bin: bool = False) -> list[Event]:
+    def get_events(
+        self, event_ids: list[int], in_bin: bool = False, order: str = "usual"
+    ) -> list[Event]:
         if len(event_ids) > 400:
             raise ApiError
 
@@ -1023,14 +1028,7 @@ SELECT *
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in event_ids)})
        AND (removal_time IS NOT NULL) = ?
- ORDER BY STRFTIME('%H:%M:%S', datetime, ? || ' HOURS'),
-          ABS(DAYS_BEFORE_EVENT(DATETIME(datetime, ? || ' HOURS'), repetition)) DESC,
-          DAYS_BEFORE_EVENT(DATETIME(datetime, ? || ' HOURS'), repetition) DESC,
-          repetition = 'repeat every day',
-          repetition = 'repeat every weekdays',
-          repetition = 'repeat every week',
-          repetition = 'repeat every month',
-          repetition = 'repeat every year';
+ ORDER BY {config.sql_order_dict[order]};
 """,
                 params=(
                     self.safe_user_id,
@@ -1283,7 +1281,7 @@ UPDATE events
         except Error as e:
             raise ApiError(e)
 
-    def event_history_clear(self, event_id: int) -> None:
+    def event_history_clear(self, event_id: int) -> None:  # add_time
         if not self.check_event_exists(event_id):
             raise EventNotFound
 
@@ -1316,6 +1314,29 @@ DELETE FROM events
             AND group_id IS :group_id;
 """,
                 params={
+                    "user_id": self.safe_user_id,
+                    "group_id": self.group_id,
+                },
+                commit=True,
+            )
+        except Error as e:
+            raise ApiError(e)
+
+    def clear_event_history(self, event_id: int) -> None:  # master
+        if not self.check_event_exists(event_id):
+            raise EventNotFound
+
+        try:
+            db.execute(
+                """
+UPDATE events
+   SET history = '[]'
+ WHERE event_id = :event_id
+       AND user_id IS :user_id
+       AND group_id IS :group_id;
+""",
+                params={
+                    "event_id": event_id,
                     "user_id": self.safe_user_id,
                     "group_id": self.group_id,
                 },

@@ -585,7 +585,7 @@ statuses {condition}= JSON_ARRAY({','.join('?' for _ in statuses)})
     else:
         string_sql_filters_date_e = ""
 
-    if filters_params_date:
+    if filters_conditions_date:
         string_sql_filters_date = (
             f"    AND\n    (\n        "
             f"{f'{n}        AND '.join(filters_conditions_date)}"
@@ -596,6 +596,12 @@ statuses {condition}= JSON_ARRAY({','.join('?' for _ in statuses)})
                 f"AND (\n    {string_sql_filters_date_e[4:]}\n"
                 f"OR {string_sql_filters_date[7:]}\n)"
             )
+    elif filters_conditions_date_e:
+        string_sql_filters_date = (
+            f"    AND\n    (\n        "
+            f"{f'{n}        AND '.join(filters_conditions_date_e)}"
+            f"\n    )"
+        )
     else:
         string_sql_filters_date = ""
 

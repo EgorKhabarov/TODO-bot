@@ -2,6 +2,7 @@ import re
 import json
 import html
 import arrow
+import difflib
 from arrow import Arrow
 from typing import Literal
 
@@ -31,10 +32,11 @@ from tgbot.message_generator import (
 from tgbot.buttons_utils import (
     delmarkup,
     encode_id,
-    create_monthly_calendar_keyboard,
     create_select_status_keyboard,
     create_time_hour_keyboard,
     create_time_minute_keyboard,
+    create_yearly_calendar_keyboard,
+    create_monthly_calendar_keyboard,
 )
 from tgbot.utils import (
     Cycle,
@@ -192,12 +194,19 @@ def settings_message(
     else:
         str_timezone = f"{settings.timezone} 🌎"
 
+    timezone_question_datetime = (
+        request.entity.now_time().shift(
+            hours=-entity_settings.timezone,
+        ).shift(
+            hours=settings.timezone,
+        )
+    )
     text = get_translate("messages.settings").format(
         lang=f"{settings.lang} {get_translate('text.lang_flag')}",
         sub_urls=old_sub_urls,
         city=html.escape(settings.city),
         timezone=str_timezone,
-        timezone_question=f"{request.entity.now_time():YYYY.MM.DD <u>HH:mm</u>}",
+        timezone_question=f"{timezone_question_datetime:YYYY.MM.DD <u>HH:mm</u>}",
         notification_type=old_notification_type,
         notification_time=settings.notifications_time if settings.notifications else "",
         theme=old_theme_emoji,
@@ -355,9 +364,9 @@ AND removal_time IS NULL
     generated = EventsMessage(date, markup=markup, page=page)
 
     if id_list:
-        generated.get_page_events(sql_where, params, id_list)
+        generated.get_page_events(sql_where, params, id_list, "day")
     else:
-        generated.get_pages_data(sql_where, params, f"pd {date:YYYY-MM-DD}")
+        generated.get_pages_data(sql_where, params, f"pd {date:YYYY-MM-DD}", "day")
 
     string_id = encode_id([event.event_id for event in generated.event_list])
     edit_button_data(generated.markup, 0, 1, f"se _ {string_id} pd {date:YYYY-MM-DD}")
@@ -597,7 +606,11 @@ def event_show_mode_message(event_id: int) -> EventMessage | None:
 
 
 def event_history_message(
-    event_id: int, date: Arrow, page: int = 1
+    event_id: int,
+    date: Arrow,
+    page: int = 1,
+    offset: int = 0,
+    commit_clear_history: bool = False,
 ) -> EventMessage | None:
     generated = EventMessage(event_id)
     event = generated.event
@@ -610,15 +623,13 @@ def event_history_message(
         history_action_dict,
     ) = get_translate("text.event_history")
 
-    if event.history:
+    index = 0
+    if event.history and event.history[offset:]:
+        limit_text_length = 4000
+        changes = []
 
-        def text_limiter(text: str, length: int = 50) -> str:
-            if len(text) > length:
-                text = text[:length] + chr(8230)
-            return text
-
-        def prepare_value(action, val):
-            if action == "statuses":
+        def prepare_value(action_, val):
+            if action_ == "statuses":
                 return ",".join(map(str, val))
 
             if action == "datetime":
@@ -630,51 +641,84 @@ def event_history_message(
 
             return val
 
-        event.text = (
-            "\n"
-            + "\n\n".join(
-                f"""
-[<u>{parse_utc_datetime(time)}] <b>{history_action_dict.get(action, "?")}</b></u>
-{formatting.hpre(text_limiter(f"{prepare_value(action, old_val)}".strip()), language="language-old")}
-{formatting.hpre(text_limiter(f"{prepare_value(action, new_val)}".strip()), language="language-new")}
+        def format_diff(action_, old_val_, new_val_, time_) -> tuple[str, int]:
+            change_raw = "\n".join(
+                list(
+                    difflib.unified_diff(
+                        prepare_value(action_, old_val_).splitlines(),
+                        prepare_value(action_, new_val_).splitlines(),
+                    )
+                )[3:]
+            )
+            change_ = f"""
+[{parse_utc_datetime(time_)}] <b>{history_action_dict.get(action_, "?")}</b>
+{formatting.hpre(change_raw, language="language-diff")}
 """.strip()
-                for action, (old_val, new_val), time in (
-                    event.history[::-1][(page - 1) * 4 : (page - 1) * 4 + 4]
-                )
-            ).strip()
-        )
-    else:
-        event.text = translate_no_event_history
+            change_len_ = len(change_)
+            return change_, change_len_
 
-    markup = generate_buttons(
-        [
-            (
-                [
-                    (
-                        {"<": f"eh {event_id} {date:YYYY-MM-DD} {page - 1}"}
-                        if page > 1 and event.history[::-1][: (page - 1) * 4]
-                        else {" ": "None"}
-                    ),
-                    (
-                        {">": f"eh {event_id} {date:YYYY-MM-DD} {page + 1}"}
-                        if event.history[::-1][(page - 1) * 4 + 4 :]
-                        else {" ": "None"}
-                    ),
-                ]
-                if event.history
-                else []
-            ),
+        history = event.history[::-1][offset:]
+
+        for action, (old_val, new_val), time in history:
+            change, change_len = format_diff(action, old_val, new_val, time)
+
+            if limit_text_length <= change_len:
+                break
+
+            changes.append(change)
+            index += 1
+            limit_text_length -= len(change)
+
+        if not changes:
+            index += 1
+            changes.append(
+                f"<i><b><u>{get_translate('errors.change_information_is_too_long')}</u></b></i>"
+            )
+
+        event.text = "\n" + "\n\n".join(changes).strip()
+    elif event.history:
+        event.text = f"\n{get_translate('errors.message_empty')}"
+    else:
+        event.text = f"\n{translate_no_event_history}"
+
+    markup = [
+        (
             [
-                {get_theme_emoji("back"): f"em {event_id}"},
-                {"🧹": f"ehc {event_id} {date:YYYY-MM-DD}"},
-                {"🔄": f"eh {event_id} {date:YYYY-MM-DD}"},
-            ],
-        ]
-    )
+                (
+                    {"<<": f"eh {event_id} {date:YYYY-MM-DD} {page - 1}"}
+                    if page > 1 and event.history[: offset + index]
+                    else {" ": "None"}
+                ),
+                (
+                    {">": f"eh {event_id} {date:YYYY-MM-DD} {page + 1} {offset + index}"}
+                    if event.history[offset + index :]
+                    else {" ": "None"}
+                ),
+            ]
+            if event.history
+            and (
+                (page > 1 and event.history[: offset + index])
+                or event.history[offset + index :]
+            )
+            else []
+        ),
+        [
+            {get_theme_emoji("back"): f"em {event_id}"},
+            (
+                {
+                    "🗄🗑": f"{'ehcc' if commit_clear_history else 'ehc'} {event_id} {date:YYYY-MM-DD}"
+                }
+                if event.history
+                else {}
+            ),
+            {"🔄": f"eh {event_id} {date:YYYY-MM-DD}"},
+        ],
+    ]
+
     generated.format(
         f"{translate_event_history}:",
         event_formats["a"],
-        markup,
+        generate_buttons(markup),
     )
     return generated
 
@@ -859,18 +903,21 @@ AND (
 
 
 def event_status_message(
-    statuses: str, folder_path: str, event_id: int, date: Arrow
+    statuses: str, folder_path: str, event_id: int, date: Arrow, updated: bool = False
 ) -> EventMessage:
     statuses_list = statuses.split(",")
+    generated = EventMessage(event_id)
+    if generated.event.string_statuses == statuses:
+        updated = True
     markup = create_select_status_keyboard(
         prefix="es",
         status_list=statuses_list,
         folder_path=folder_path,
         save="ess",
-        back="em",
+        back="em" if updated else "esc",
         arguments=f"{event_id} {date:YYYY-MM-DD}",
+        updated=updated,
     )
-    generated = EventMessage(event_id)
     generated.event._status = json.dumps(statuses_list[-5:], ensure_ascii=False)
     generated.format(
         get_translate("select.status_to_event"), event_formats["dt"], markup
@@ -1531,7 +1578,7 @@ SELECT CAST(
 
 
 def monthly_calendar_message(
-    yy_mm: list | tuple[int, int] = None,
+    yy_mm: list[int] | tuple[int, int] = None,
     command: str = None,
     back: str = None,
     custom_text: str = None,
@@ -1539,6 +1586,18 @@ def monthly_calendar_message(
 ) -> TextMessage:
     text = custom_text if custom_text else get_translate("select.date")
     markup = create_monthly_calendar_keyboard(yy_mm, command, back, arguments)
+    return TextMessage(text, markup)
+
+
+def yearly_calendar_message(
+    year: int | None = None,
+    command: str = None,
+    back: str = None,
+    custom_text: str = None,
+    arguments: str = None,
+) -> TextMessage:
+    text = custom_text if custom_text else get_translate("select.date")
+    markup = create_yearly_calendar_keyboard(year, command, back, arguments)
     return TextMessage(text, markup)
 
 
@@ -1774,7 +1833,7 @@ def groups_message(
     return TextMessage(text, generate_buttons(markup))
 
 
-def account_message(message_id: int) -> TextMessage:
+def account_message(message_id: int | None = None) -> TextMessage:
     text = get_translate("messages.account").format(
         request.entity.user_id,
         request.entity.request_chat_id,
@@ -1788,16 +1847,20 @@ def account_message(message_id: int) -> TextMessage:
                 if request.entity.user.user_status == 0
                 else []
             ),
-            [
-                {
-                    f"{get_translate('text.edit_username')}👤": {
-                        "switch_inline_query_current_chat": (
-                            f"user({message_id}).name\n"
-                            f"{html.unescape(request.entity.user.username)}"
-                        )
+            (
+                [
+                    {
+                        f"{get_translate('text.edit_username')}👤": {
+                            "switch_inline_query_current_chat": (
+                                f"user({message_id}).name\n"
+                                f"{html.unescape(request.entity.user.username)}"
+                            )
+                        }
                     }
-                }
-            ],
+                ]
+                if message_id
+                else ()
+            ),
             [
                 {
                     f"{get_translate('text.edit_password')}🤫🔑": {
@@ -1824,12 +1887,13 @@ def select_one_message(
     is_in_search: bool = False,
     is_open: bool = False,
     message_id: int = None,
+    order: str = "usual",
 ) -> TextMessage | None:
     if len(id_list) == 0:
         return None
 
     try:
-        events_list = request.entity.get_events(id_list, is_in_wastebasket)
+        events_list = request.entity.get_events(id_list, is_in_wastebasket, order)
     except EventNotFound:
         return None
 
@@ -1908,3 +1972,42 @@ def select_events_message(
     )
     generated = TextMessage(get_translate("select.events"), generate_buttons(markup))
     return generated
+
+
+def open_message(arguments: str) -> TextMessage | None:
+    regex_year = re.compile(r"^(?P<year>\d{4})$")
+    regex_year_month = re.compile(r"^(?P<year>\d{4}) (?P<month>\d{1,2})$")
+    regex_year_month_day = re.compile(
+        r"^(?P<year>\d{4}) (?P<month>\d{1,2}) (?P<day>\d{1,2})$"
+    )
+
+    if arguments in ("calendar today", "calendar now", "today", "now"):
+        return daily_message(request.entity.now_time())
+
+    elif arguments == "calendar":
+        return monthly_calendar_message(None, "dl", "mnm")
+
+    elif arguments == "calendar year":
+        return yearly_calendar_message(None, "dl", "mnm")
+
+    elif arguments.startswith("help"):
+        return help_message(arguments.removeprefix("help").strip() or "page 1")
+
+    elif m := regex_year.match(arguments.removeprefix("calendar ")):
+        year = int(m.group("year"))
+        return yearly_calendar_message(year, "dl", "mnm")
+
+    elif m := regex_year_month.match(arguments.removeprefix("calendar ")):
+        year, month = int(m.group("year")), int(m.group("month"))
+        return monthly_calendar_message((year, month), "dl", "mnm")
+
+    elif m := regex_year_month_day.match(arguments.removeprefix("calendar ")):
+        year, month, day = (
+            int(m.group("year")),
+            int(m.group("month")),
+            int(m.group("day")),
+        )
+        return daily_message(datetime(year, month, day))
+
+    else:
+        return TextMessage(get_translate("errors.error"))

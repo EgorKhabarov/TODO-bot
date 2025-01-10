@@ -82,6 +82,7 @@ UPDATE groups
 
 
 @bot.message_handler(commands=[*config.COMMANDS])
+@bot.message_handler(func=lambda m: m.text.startswith("/open_"))
 @process_account
 def bot_command_handler(message: Message):
     """

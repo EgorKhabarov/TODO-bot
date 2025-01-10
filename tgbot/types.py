@@ -416,7 +416,7 @@ SELECT entry_date,
        member_status
   FROM members
  WHERE group_id IN ({','.join('?' for _ in group_ids)})
-       AND user_id = :user_id;
+       AND user_id = ?;
 """,
                 params=(
                     *group_ids,
@@ -457,8 +457,9 @@ SELECT groups.group_id,
   FROM groups
   JOIN members ON groups.group_id = members.group_id
  WHERE members.user_id = :user_id
-ORDER BY name ASC
-LIMIT :limit OFFSET :offset;
+ ORDER BY name ASC
+ LIMIT :limit
+OFFSET :offset;
 """,
                 params={
                     "user_id": self.user_id,
@@ -487,8 +488,9 @@ SELECT groups.group_id,
   JOIN members ON groups.group_id = members.group_id
  WHERE members.user_id = :user_id
        AND members.member_status < 1
-ORDER BY name ASC
-LIMIT :limit OFFSET :offset;
+ ORDER BY name ASC
+ LIMIT :limit
+OFFSET :offset;
 """,
                 params={
                     "user_id": self.user_id,
@@ -520,8 +522,9 @@ SELECT groups.group_id,
   JOIN members ON groups.group_id = members.group_id
  WHERE members.user_id = :user_id
        AND members.member_status >= 1
-ORDER BY name ASC
-LIMIT :limit OFFSET :offset;
+ ORDER BY name ASC
+ LIMIT :limit
+OFFSET :offset;
 """,
                 params={
                     "user_id": self.user_id,
@@ -553,8 +556,9 @@ SELECT groups.group_id,
   JOIN members ON groups.group_id = members.group_id
  WHERE members.user_id = :user_id
        AND members.member_status >= 1
-ORDER BY name ASC
-LIMIT :limit OFFSET :offset;
+ ORDER BY name ASC
+ LIMIT :limit
+OFFSET :offset;
 """,
                 params={
                     "user_id": self.user_id,

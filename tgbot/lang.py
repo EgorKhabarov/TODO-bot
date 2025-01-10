@@ -224,6 +224,7 @@ Call up new messages using bot commands.</b>
 /export - Сохранить мои события в csv
 /help - Помощь
 /settings - Настройки
+/logout - Выйти из аккаунта
 /search {...} - Поиск
 /id - Получить свой Telegram id
 /commands - Этот список
@@ -246,6 +247,7 @@ Call up new messages using bot commands.</b>
 /export - Save my events to csv
 /help - Help
 /settings - Settings
+/logout - Logout
 /search {...} - Search
 /id - Get your Telegram id
 /commands - This list
@@ -553,7 +555,7 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 
 *(<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 >www.youtube.com</a> <i>вместо полной ссылки</i>)
-**<i>Ответьте на это сообщение с названием города</i>
+**<i>Ответьте на это сообщение с названием города</i> <b>(Несохраненные настройки будут сброшены.)</b>
 ***<i>Изменяет тёмные эмодзи на светлые</i>""",
             "en": """⚙️ Settings ⚙️
 
@@ -577,7 +579,7 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 
 *(<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 >www.youtube.com</a> <i>instead of full link</i>)
-**<i>Reply to this message with a city name</i>
+**<i>Reply to this message with a city name</i> <b>(Unsaved settings will be reset)</b>
 ***<i>Changes dark emojis to light ones</i>""",
         },
         "group": {
@@ -1233,7 +1235,9 @@ Visibility <b>{}</b>m""",
                         ),
                         BotCommand("help", "Помощь"),
                         BotCommand("settings", "Настройки"),
-                        BotCommand("logout", "Выйти"),
+                        BotCommand("account", "Аккаунт"),
+                        BotCommand("groups", "Группы"),
+                        BotCommand("logout", "Выйти из аккаунта"),
                     ],
                     "en": [
                         BotCommand("start", "Start"),
@@ -1250,6 +1254,8 @@ Visibility <b>{}</b>m""",
                         ),
                         BotCommand("help", "Help"),
                         BotCommand("settings", "Settings"),
+                        BotCommand("account", "Account"),
+                        BotCommand("groups", "Groups"),
                         BotCommand("logout", "Logout"),
                     ],
                 },
@@ -1305,7 +1311,9 @@ Visibility <b>{}</b>m""",
                         ),
                         BotCommand("help", "Помощь"),
                         BotCommand("settings", "Настройки"),
-                        BotCommand("logout", "Выйти"),
+                        BotCommand("account", "Аккаунт"),
+                        BotCommand("groups", "Группы"),
+                        BotCommand("logout", "Выйти из аккаунта"),
                     ],
                     "en": [
                         BotCommand("start", "Start"),
@@ -1322,6 +1330,8 @@ Visibility <b>{}</b>m""",
                         ),
                         BotCommand("help", "Help"),
                         BotCommand("settings", "Settings"),
+                        BotCommand("account", "Account"),
+                        BotCommand("groups", "Groups"),
                         BotCommand("logout", "Logout"),
                     ],
                 },
@@ -1377,8 +1387,10 @@ Visibility <b>{}</b>m""",
                         ),
                         BotCommand("help", "Помощь"),
                         BotCommand("settings", "Настройки"),
+                        BotCommand("account", "Аккаунт"),
+                        BotCommand("groups", "Группы"),
                         BotCommand("commands", "Список команд"),
-                        BotCommand("logout", "Выйти"),
+                        BotCommand("logout", "Выйти из аккаунта"),
                     ],
                     "en": [
                         BotCommand("start", "Start"),
@@ -1395,6 +1407,8 @@ Visibility <b>{}</b>m""",
                         ),
                         BotCommand("help", "Help"),
                         BotCommand("settings", "Settings"),
+                        BotCommand("account", "Account"),
+                        BotCommand("groups", "Groups"),
                         BotCommand("commands", "Command list"),
                         BotCommand("logout", "Logout"),
                     ],
@@ -1649,6 +1663,10 @@ Visibility <b>{}</b>m""",
                         "💻ini INI",
                         "💻csv CSV",
                     ),
+                    (
+                        "💻ebnf EBNF",
+                        "💻diff GIT DIFF",
+                    ),
                 ),
                 "en": (
                     (
@@ -1687,6 +1705,10 @@ Visibility <b>{}</b>m""",
                         "💻toml TOML",
                         "💻ini INI",
                         "💻csv CSV",
+                    ),
+                    (
+                        "💻ebnf EBNF",
+                        "💻diff GIT DIFF",
                     ),
                 ),
             },
@@ -1824,6 +1846,10 @@ or create an account
             "ru": "Сообщение слишком большое",
             "en": "Message is too long",
         },
+        "change_information_is_too_long": {
+            "ru": "Информация об изменениях слишком длинная",
+            "en": "The change information is too long",
+        },
         "exceeded_limit": {
             "ru": "Вы превысили дневной лимит.\n"
             "Уменьшите количество символов или удалите не нужные события.",
@@ -1876,6 +1902,12 @@ or create an account
             "commit_changes": {
                 "ru": "Вы не сохранили настройки! Нажмите 💾 чтобы сохранить",
                 "en": "You have not saved your settings! Click 💾 to save",
+            },
+        },
+        "event": {
+            "commit_clear_history": {
+                "ru": "Вы действительно хотите удалить историю изменений события? Нажмите повторно для удаления истории изменений",
+                "en": "Are you sure you want to clear the event's change history? Click again to clear change history",
             },
         },
     },

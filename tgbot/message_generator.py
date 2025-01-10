@@ -7,6 +7,7 @@ from typing import Any
 # noinspection PyPackageRequirements
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, InputFile
 
+import config
 from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.lang import get_translate
@@ -22,7 +23,7 @@ event_formats = {
     "dl": "<b>{time}</b>.{statuses}.{repetition}\n{markdown_text}\n",
     "dt": (
         "<b>{date} {time}</b>.{statuses}.{repetition} <u><i>{strdate} {weekday}</i></u>"
-        " ({reldate})\n{markdown_text}\n"
+        " {reldate}\n{markdown_text}\n"
     ),
     "b": (
         "<b>{date} {time}</b>.{statuses}.{repetition} <u><i>{strdate} {weekday}</i></u>"
@@ -30,7 +31,7 @@ event_formats = {
     ),
     "r": (
         "<b>{date} {time}</b>.{statuses}.{repetition} <u><i>{strdate} {weekday}</i></u>"
-        " ({reldate}){days_before}\n{markdown_text}\n"
+        " {reldate}{days_before}\n{markdown_text}\n"
     ),
     "s": (
         "<b>{date} {time}</b>.{statuses}.{repetition} <u><i>{strdate} {weekday}</i></u>"
@@ -38,7 +39,7 @@ event_formats = {
     ),
     "a": (
         "<b>{date} {time}</b>.{statuses}.{repetition} <u><i>{strdate} {weekday}</i></u>"
-        " ({reldate})\n{text}\n"
+        " {reldate}\n{text}\n"
     ),
 }
 """
@@ -60,10 +61,11 @@ def calculate_days_before_event(date: str, repetition: str):
 
 def pagination(
     sql_where: str,
-    params: dict,
+    params: dict | tuple,
     max_group_len: int = 10,
     max_group_symbols_count: int = 2500,
     max_group_id_len: int = 39,
+    order: str = "usual",
 ) -> list[str]:
     """
     :param sql_where: SQL condition
@@ -71,6 +73,7 @@ def pagination(
     :param max_group_len: Maximum number of elements per page
     :param max_group_symbols_count: Maximum number of characters per page
     :param max_group_id_len: Maximum length of shortened id
+    :param order:
     The amount of data in a button is limited to 64 characters
     """
 
@@ -80,9 +83,7 @@ SELECT event_id,
        LENGTH(text)
   FROM events
  WHERE {sql_where}
- ORDER BY STRFTIME('%H:%M:%S', datetime, {request.entity.settings.timezone} || ' HOURS'),
-          ABS(DAYS_BEFORE_EVENT(DATETIME(datetime, {request.entity.settings.timezone} || ' HOURS'), repetition)) DESC,
-          DAYS_BEFORE_EVENT(DATETIME(datetime, {request.entity.settings.timezone} || ' HOURS'), repetition) DESC
+ ORDER BY {config.sql_order_dict[order]}
  LIMIT 400;
 """,
         params=params,
@@ -267,10 +268,11 @@ class EventMessage(TextMessage):
     def __init__(self, event_id: int, in_wastebasket: bool = False):
         super().__init__()
         self.event_id = event_id
+        self.event: Event | None = None
         try:
-            self.event: Event = request.entity.get_event(event_id, in_wastebasket)
+            self.event = request.entity.get_event(event_id, in_wastebasket)
         except EventNotFound:
-            self.event: None = None
+            pass
 
     def format(
         self,
@@ -340,7 +342,13 @@ class EventsMessage(TextMessage):
         self.page_indent = page_indent
         self.page_signature_needed = True if page else False
 
-    def get_pages_data(self, sql_where: str, params: dict | tuple, callback_data: str):
+    def get_pages_data(
+        self,
+        sql_where: str,
+        params: dict | tuple,
+        callback_data: str,
+        order: str = "usual",
+    ):
         """
         Get a list of row id tuples by page
         """
@@ -355,14 +363,7 @@ SELECT *
   FROM events
  WHERE event_id IN ({data[0]})
        AND ({sql_where})
- ORDER BY STRFTIME('%H:%M:%S', datetime, {request.entity.settings.timezone} || ' HOURS'),
-          ABS(DAYS_BEFORE_EVENT(DATETIME(datetime, {request.entity.settings.timezone} || ' HOURS'), repetition)) DESC,
-          DAYS_BEFORE_EVENT(DATETIME(datetime, {request.entity.settings.timezone} || ' HOURS'), repetition) DESC,
-          repetition = 'repeat every day',
-          repetition = 'repeat every weekdays',
-          repetition = 'repeat every week',
-          repetition = 'repeat every month',
-          repetition = 'repeat every year';
+ ORDER BY {config.sql_order_dict[order]};
 """,
                     params=params,
                     functions=(("DAYS_BEFORE_EVENT", calculate_days_before_event),),
@@ -407,7 +408,9 @@ SELECT *
                 self.page_signature_needed = False
         return self
 
-    def get_page_events(self, sql_where: str, params: tuple, id_list: list[int]):
+    def get_page_events(
+        self, sql_where: str, params: tuple, id_list: list[int], order: str = "usual"
+    ):
         """
         Returns events included in values with the WHERE condition
         """
@@ -422,14 +425,7 @@ SELECT *
        AND group_id IS ?
        AND event_id IN ({','.join('?' for _ in id_list)})
        AND ({sql_where})
- ORDER BY STRFTIME('%H:%M:%S', datetime, {request.entity.settings.timezone} || ' HOURS'),
-          ABS(DAYS_BEFORE_EVENT(DATETIME(datetime, {request.entity.settings.timezone} || ' HOURS'), repetition)) DESC,
-          DAYS_BEFORE_EVENT(DATETIME(datetime, {request.entity.settings.timezone} || ' HOURS'), repetition) DESC,
-          repetition = 'repeat every day',
-          repetition = 'repeat every weekdays',
-          repetition = 'repeat every week',
-          repetition = 'repeat every month',
-          repetition = 'repeat every year';
+ ORDER BY {config.sql_order_dict[order]};
 """,
                     params=(
                         request.entity.safe_user_id,
@@ -534,7 +530,11 @@ SELECT *
                         time=f"{date:HH:mm}",
                         strdate=str_date,
                         weekday=week_date,
-                        reldate=rel_date,
+                        reldate=(
+                            f"<i><s>({rel_date})</s></i>"
+                            if days_before
+                            else f"({rel_date})"
+                        ),
                         numd=f"{num + 1}",
                         event_id=f"{event.event_id}",
                         statuses=event.string_statuses,

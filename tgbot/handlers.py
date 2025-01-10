@@ -1,3 +1,4 @@
+import re
 import html
 import traceback
 import arrow
@@ -35,6 +36,7 @@ from tgbot.buttons_utils import (
 from tgbot.bot_messages import (
     menu_message,
     help_message,
+    open_message,
     start_message,
     event_message,
     group_message,
@@ -278,7 +280,7 @@ def command_handler(message: Message) -> None:
     """
     chat_id, message_text = request.chat_id, message.text
     parsed_command = parse_command(message_text, {"arg": "long str"})
-    command_text = parsed_command["command"]
+    command_text: str = parsed_command["command"]
 
     if command_text == "start":
         if add_group_pattern.match(message.text) and request.is_member:
@@ -305,6 +307,13 @@ def command_handler(message: Message) -> None:
 
     elif command_text == "settings":
         settings_message().send()
+
+    elif command_text == "account":
+        message_id = account_message().send().message_id
+        account_message(message_id).edit(message_id=message_id)
+
+    elif command_text == "groups":
+        groups_message().send()
 
     elif command_text in ("version", "v"):
         TextMessage(f"Version {config.__version__}{config.string_branch}").send()
@@ -413,6 +422,50 @@ def command_handler(message: Message) -> None:
 
     elif command_text in ("login", "signup"):
         TextMessage(get_translate("errors.failure")).reply(message)
+
+    elif command_text.startswith(("open_", "open ")):
+        regex = re.compile(r"_+")
+
+        def open_split(text_: str) -> str:
+            """
+
+            >>> open_split("")
+            ''
+            >>> open_split("text")
+            'text'
+            >>> open_split("text_text")
+            'text text'
+            >>> open_split("text__text")
+            'text_text'
+            >>> open_split("text_text__text")
+            'text text_text'
+            >>> open_split("__")
+            '_'
+            >>> open_split("text_____text")
+            'text__ text'
+            >>> open_split("text______text")
+            'text___text'
+            >>> open_split("text_____")
+            'text__'
+            >>> open_split("text_text___text__text_11__9___0______4_____6")
+            'text text_ text_text 11_9_ 0___4__ 6'
+            """
+            return " ".join(
+                regex.sub(
+                    lambda m: m[0][::2] if len(m[0]) % 2 == 0 else f"{m[0][1::2]}\n",
+                    text_,
+                ).splitlines()
+            )
+
+        generated = open_message(
+            " ".join(
+                (
+                    open_split(parsed_command["command"].split("_", maxsplit=1)[1]),
+                    parsed_command["arguments"]["arg"] or "",
+                )
+            ).strip()
+        )
+        generated.send()
 
 
 _handlers = {}
@@ -597,8 +650,30 @@ class CallBackHandler:
     @prefix(
         "es", {"statuses": "str", "folder": "str", "event_id": "int", "date": "date"}
     )
-    def event_status_page(self, statuses: str, folder: str, event_id: int, date: Arrow):
-        event_status_message(statuses, folder, event_id, date).edit()
+    @prefix(
+        "esc", {"statuses": "str", "folder": "str", "event_id": "int", "date": "str"}
+    )
+    def event_status_page(
+        self,
+        statuses: str,
+        folder: str,
+        event_id: int,
+        date: Arrow,
+        str_prefix: str = "es",
+    ):
+        updated = str_prefix == "esc"
+        if updated:
+            try:
+                CallBackAnswer(get_translate("errors.settings.commit_changes")).answer(
+                    show_alert=True
+                )
+            except ApiTelegramException:
+                pass
+        generated = event_status_message(statuses, folder, event_id, date, updated)
+        try:
+            generated.edit()
+        except ApiTelegramException:
+            pass
 
     @prefix("ess", {"event_id": "int", "date": "date", "new_status": "str"})
     def event_status_set(
@@ -716,18 +791,21 @@ class CallBackHandler:
             generated = daily_message(date)
         generated.edit()
 
-    @prefix("eh", {"event_id": "int", "date": "date", "page": ("int", 1)})
-    def event_history(self, event_id: int, date: Arrow, page: int):
-        generated = event_history_message(event_id, date, page)
+    @prefix(
+        "eh",
+        {"event_id": "int", "date": "date", "page": ("int", 1), "offset": ("int", 0)},
+    )
+    def event_history(self, event_id: int, date: Arrow, page: int, offset: int):
+        generated = event_history_message(event_id, date, page, offset)
         if generated is None:
             generated = daily_message(date)
-
         try:
             generated.edit()
         except ApiTelegramException:
-            return CallBackAnswer("ok").answer(show_alert=True)
+            text = get_translate("errors.already_on_this_page")
+            CallBackAnswer(text).answer()
 
-    @prefix("ehc", {"event_id": "int", "date": "date"})
+    @prefix("ehc", {"event_id": "int", "date": "date"})  # add_time
     def event_history_clear(self, event_id: int, date: Arrow):
         try:
             request.entity.event_history_clear(event_id)
@@ -741,6 +819,36 @@ class CallBackHandler:
             generated.edit()
         except ApiTelegramException:
             return CallBackAnswer("ok").answer(show_alert=True)
+
+    @prefix("ehc", {"event_id": "int", "date": "date"})  # master
+    def clear_event_history_commit(self, event_id: int, date: Arrow):
+        generated = event_history_message(event_id, date, 1, 0, True)
+        try:
+            generated.edit()
+        except ApiTelegramException:
+            pass
+        try:
+            text = get_translate("errors.event.commit_clear_history")
+            CallBackAnswer(text).answer(show_alert=True)
+        except ApiTelegramException:
+            pass
+
+    @prefix("ehcc", {"event_id": "int", "date": "date"})  # master
+    def clear_event_history(self, event_id: int, date: Arrow):
+        try:
+            request.entity.clear_event_history(event_id)
+        except EventNotFound:
+            generated = daily_message(date)
+            generated.edit()
+            CallBackAnswer(get_translate("errors.error")).answer()
+            return None
+
+        generated = event_history_message(event_id, date, 1, 0)
+        try:
+            generated.edit()
+        except ApiTelegramException:
+            pass
+        CallBackAnswer("ok").answer()
 
     @prefix("esm", {"id_list": "str"})
     def events_message(self, id_list: str, message: Message):
@@ -834,13 +942,20 @@ class CallBackHandler:
     ):
         back_data = call_data.removeprefix(f"{info} {id_list}").strip()
         # TODO Добавить если поставить кавычки " или ', то можно внутри юзать пробел
+
+        is_in_wastebasket = "b" in info
+        is_in_search = "s" in info
+        is_open = "o" in info
+        order = "day" if info == "_" else "usual"
+
         generated = select_one_message(
             decode_id(id_list),
             back_data,
-            is_in_wastebasket="b" in info,
-            is_in_search="s" in info,
-            is_open="o" in info,
+            is_in_wastebasket=is_in_wastebasket,
+            is_in_search=is_in_search,
+            is_open=is_open,
             message_id=message_id,
+            order=order,
         )
         if generated:
             if "s" in info:
@@ -1114,6 +1229,11 @@ class CallBackHandler:
     @prefix("stu", eval_=True)
     @prefix("stuc", eval_=True)
     def settings_update(self, data: tuple, str_prefix: str = "stu"):
+        """
+        stu:  Normal change of settings
+        stuc: Trying to return to the menu with unsaved settings
+        stu_: If all settings are the same as saved
+        """
         if len(data) != 6:
             raise ApiError
 
@@ -1126,6 +1246,14 @@ class CallBackHandler:
             "theme",
         )
         params = dict(zip(params_names, data))
+        settings = request.entity.settings
+
+        if str_prefix == "stu":
+            str_prefix = "stu_"
+            for param in params_names:
+                if settings.get(param.strip("_")) != params.get(param):
+                    str_prefix = "stu"
+                    break
 
         try:
             settings_message(**params, updated=str_prefix == "stu").edit()

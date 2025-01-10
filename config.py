@@ -72,6 +72,8 @@ COMMANDS = (
     "export",
     "help",
     "settings",
+    "account",
+    "groups",
     "commands",
     "search",
     "id",
@@ -81,14 +83,48 @@ COMMANDS = (
     "login",
     "signup",
     "logout",
+    "open",
 )
 
-ts = "\U00002800"
+ts = "\u2800"
 """
 Special transparent symbol for filling empty space in buttons
-"⠀" or chr(10240) or "\\U00002800"
+"⠀" or chr(10240) or "\\u2800"
 """
 
+sql_order_dict = {
+    "usual": """
+ABS(DAYS_BEFORE_EVENT(date, statuses)) ASC, -- Близость к текущему дню
+DAYS_BEFORE_EVENT(date, statuses) DESC,    -- Будущие события перед прошедшими
+CASE
+    WHEN statuses LIKE '%🟥%' THEN 1
+    WHEN statuses LIKE '%📬%' THEN 2
+    WHEN statuses LIKE '%🗞%' THEN 3
+    WHEN statuses LIKE '%📅%' THEN 4
+    WHEN statuses LIKE '%📆%' THEN 5
+    WHEN statuses LIKE '%🎉%' THEN 6
+    WHEN statuses LIKE '%🎊%' THEN 7
+    ELSE 8
+END ASC, -- Приоритет статусов
+IFNULL(recent_changes_time, adding_time) DESC,
+event_id DESC -- Если параметры совпадают, сортировать по большему event_id
+""",
+    "day": """
+CASE
+    WHEN statuses LIKE '%🟥%' THEN 1
+    WHEN statuses LIKE '%📬%' THEN 2
+    WHEN statuses LIKE '%🗞%' THEN 3
+    WHEN statuses LIKE '%📅%' THEN 4
+    WHEN statuses LIKE '%📆%' THEN 5
+    WHEN statuses LIKE '%🎉%' THEN 6
+    WHEN statuses LIKE '%🎊%' THEN 7
+    ELSE 8
+END ASC, -- Приоритет статусов
+IFNULL(recent_changes_time, adding_time) DESC,
+event_id DESC -- Если параметры совпадают, сортировать по большему event_id
+""",
+}
+
 string_branch = "" if branch == "master" else f":{branch}"
-__version__ = "2024.12.14.4"
+__version__ = "2025.01.10.1"
 __author__ = "EgorKhabarov"
