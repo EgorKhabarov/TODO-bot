@@ -684,7 +684,7 @@ def event_history_message(
             {get_theme_emoji("back"): f"em {event_id}"},
             (
                 {
-                    "🗄🗑": f"{'ehcc' if commit_clear_history else 'ehc'} {event_id} {date:%d.%m.%Y}"
+                    "🧹": f"{'ehcc' if commit_clear_history else 'ehc'} {event_id} {date:%d.%m.%Y}"
                 }
                 if event.history
                 else {}

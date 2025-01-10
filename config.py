@@ -126,5 +126,5 @@ event_id DESC -- Если параметры совпадают, сортиро�
 }
 
 string_branch = "" if branch == "master" else f":{branch}"
-__version__ = "2025.01.10.1"
+__version__ = "2025.01.10.2"
 __author__ = "EgorKhabarov"
