@@ -195,9 +195,11 @@ def settings_message(
         str_timezone = f"{settings.timezone} 🌎"
 
     timezone_question_datetime = (
-        request.entity.now_time().shift(
+        request.entity.now_time()
+        .shift(
             hours=-entity_settings.timezone,
-        ).shift(
+        )
+        .shift(
             hours=settings.timezone,
         )
     )
@@ -690,7 +692,9 @@ def event_history_message(
                     else {" ": "None"}
                 ),
                 (
-                    {">": f"eh {event_id} {date:YYYY-MM-DD} {page + 1} {offset + index}"}
+                    {
+                        ">": f"eh {event_id} {date:YYYY-MM-DD} {page + 1} {offset + index}"
+                    }
                     if event.history[offset + index :]
                     else {" ": "None"}
                 ),
