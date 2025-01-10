@@ -86,7 +86,12 @@ SELECT event_id,
  ORDER BY {config.sql_order_dict[order]}
  LIMIT 400;
 """,
-        params=params,
+        params=[
+            *params,
+            request.entity.settings.timezone,
+            request.entity.settings.timezone,
+            request.entity.settings.timezone,
+        ],
         functions=(("DAYS_BEFORE_EVENT", calculate_days_before_event),),
     )
     _result = []
@@ -365,7 +370,12 @@ SELECT *
        AND ({sql_where})
  ORDER BY {config.sql_order_dict[order]};
 """,
-                    params=params,
+                    params=[
+                        *params,
+                        request.entity.settings.timezone,
+                        request.entity.settings.timezone,
+                        request.entity.settings.timezone,
+                    ],
                     functions=(("DAYS_BEFORE_EVENT", calculate_days_before_event),),
                 )
             ]
@@ -432,6 +442,9 @@ SELECT *
                         request.entity.group_id,
                         *id_list,
                         *params,
+                        request.entity.settings.timezone,
+                        request.entity.settings.timezone,
+                        request.entity.settings.timezone,
                     ),
                     functions=(("DAYS_BEFORE_EVENT", calculate_days_before_event),),
                 )

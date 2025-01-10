@@ -805,22 +805,7 @@ class CallBackHandler:
             text = get_translate("errors.already_on_this_page")
             CallBackAnswer(text).answer()
 
-    @prefix("ehc", {"event_id": "int", "date": "date"})  # add_time
-    def event_history_clear(self, event_id: int, date: Arrow):
-        try:
-            request.entity.event_history_clear(event_id)
-        except EventNotFound:
-            return daily_message(date)
-
-        generated = event_history_message(event_id, date)
-        if generated is None:
-            generated = daily_message(date)
-        try:
-            generated.edit()
-        except ApiTelegramException:
-            return CallBackAnswer("ok").answer(show_alert=True)
-
-    @prefix("ehc", {"event_id": "int", "date": "date"})  # master
+    @prefix("ehc", {"event_id": "int", "date": "date"})
     def clear_event_history_commit(self, event_id: int, date: Arrow):
         generated = event_history_message(event_id, date, 1, 0, True)
         try:
@@ -833,7 +818,7 @@ class CallBackHandler:
         except ApiTelegramException:
             pass
 
-    @prefix("ehcc", {"event_id": "int", "date": "date"})  # master
+    @prefix("ehcc", {"event_id": "int", "date": "date"})
     def clear_event_history(self, event_id: int, date: Arrow):
         try:
             request.entity.clear_event_history(event_id)
@@ -843,7 +828,7 @@ class CallBackHandler:
             CallBackAnswer(get_translate("errors.error")).answer()
             return None
 
-        generated = event_history_message(event_id, date, 1, 0)
+        generated = event_history_message(event_id, date)
         try:
             generated.edit()
         except ApiTelegramException:

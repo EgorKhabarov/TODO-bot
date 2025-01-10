@@ -1281,29 +1281,6 @@ UPDATE events
         except Error as e:
             raise ApiError(e)
 
-    def event_history_clear(self, event_id: int) -> None:  # add_time
-        if not self.check_event_exists(event_id):
-            raise EventNotFound
-
-        try:
-            db.execute(
-                """
-UPDATE events
-   SET history = '[]'
- WHERE event_id = :event_id
-       AND user_id IS :user_id
-       AND group_id IS :group_id;
-""",
-                params={
-                    "event_id": event_id,
-                    "user_id": self.safe_user_id,
-                    "group_id": self.group_id,
-                },
-                commit=True,
-            )
-        except Error as e:
-            raise ApiError(e)
-
     def clear_basket(self) -> None:
         try:
             db.execute(
@@ -1322,7 +1299,7 @@ DELETE FROM events
         except Error as e:
             raise ApiError(e)
 
-    def clear_event_history(self, event_id: int) -> None:  # master
+    def clear_event_history(self, event_id: int) -> None:
         if not self.check_event_exists(event_id):
             raise EventNotFound
 

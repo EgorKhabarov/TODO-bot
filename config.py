@@ -94,34 +94,24 @@ Special transparent symbol for filling empty space in buttons
 
 sql_order_dict = {
     "usual": """
-ABS(DAYS_BEFORE_EVENT(date, statuses)) ASC, -- Близость к текущему дню
-DAYS_BEFORE_EVENT(date, statuses) DESC,    -- Будущие события перед прошедшими
-CASE
-    WHEN statuses LIKE '%🟥%' THEN 1
-    WHEN statuses LIKE '%📬%' THEN 2
-    WHEN statuses LIKE '%🗞%' THEN 3
-    WHEN statuses LIKE '%📅%' THEN 4
-    WHEN statuses LIKE '%📆%' THEN 5
-    WHEN statuses LIKE '%🎉%' THEN 6
-    WHEN statuses LIKE '%🎊%' THEN 7
-    ELSE 8
-END ASC, -- Приоритет статусов
-IFNULL(recent_changes_time, adding_time) DESC,
-event_id DESC -- Если параметры совпадают, сортировать по большему event_id
+STRFTIME('%H:%M:%S', datetime, ? || ' HOURS'),
+ABS(DAYS_BEFORE_EVENT(DATETIME(datetime, ? || ' HOURS'), repetition)) DESC,
+DAYS_BEFORE_EVENT(DATETIME(datetime, ? || ' HOURS'), repetition) DESC,
+repetition = 'repeat every day',
+repetition = 'repeat every weekdays',
+repetition = 'repeat every week',
+repetition = 'repeat every month',
+repetition = 'repeat every year'
 """,
     "day": """
-CASE
-    WHEN statuses LIKE '%🟥%' THEN 1
-    WHEN statuses LIKE '%📬%' THEN 2
-    WHEN statuses LIKE '%🗞%' THEN 3
-    WHEN statuses LIKE '%📅%' THEN 4
-    WHEN statuses LIKE '%📆%' THEN 5
-    WHEN statuses LIKE '%🎉%' THEN 6
-    WHEN statuses LIKE '%🎊%' THEN 7
-    ELSE 8
-END ASC, -- Приоритет статусов
-IFNULL(recent_changes_time, adding_time) DESC,
-event_id DESC -- Если параметры совпадают, сортировать по большему event_id
+STRFTIME('%H:%M:%S', datetime, ? || ' HOURS'),
+ABS(DAYS_BEFORE_EVENT(DATETIME(datetime, ? || ' HOURS'), repetition)) DESC,
+DAYS_BEFORE_EVENT(DATETIME(datetime, ? || ' HOURS'), repetition) DESC,
+repetition = 'repeat every day',
+repetition = 'repeat every weekdays',
+repetition = 'repeat every week',
+repetition = 'repeat every month',
+repetition = 'repeat every year'
 """,
 }
 
