@@ -322,7 +322,13 @@ class EventsMessage(TextMessage):
         self.page_indent = page_indent
         self.page_signature_needed = True if page else False
 
-    def get_pages_data(self, sql_where: str, params: dict | tuple, callback_data: str, order: str = "usual"):
+    def get_pages_data(
+        self,
+        sql_where: str,
+        params: dict | tuple,
+        callback_data: str,
+        order: str = "usual",
+    ):
         """
         Get a list of row id tuples by page
         """
@@ -390,7 +396,9 @@ SELECT user_id,
                 self.page_signature_needed = False
         return self
 
-    def get_page_events(self, sql_where: str, params: tuple, id_list: list[int], order: str = "usual"):
+    def get_page_events(
+        self, sql_where: str, params: tuple, id_list: list[int], order: str = "usual"
+    ):
         """
         Returns events included in values with the WHERE condition
         """

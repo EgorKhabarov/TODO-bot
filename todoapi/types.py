@@ -966,7 +966,9 @@ UPDATE users
     def get_event(self, event_id: int, in_bin: bool = False) -> Event:
         return self.get_events([event_id], in_bin)[0]
 
-    def get_events(self, event_ids: list[int], in_bin: bool = False, order: str = "usual") -> list[Event]:
+    def get_events(
+        self, event_ids: list[int], in_bin: bool = False, order: str = "usual"
+    ) -> list[Event]:
         if len(event_ids) > 400:
             raise ApiError
 
