@@ -3,15 +3,20 @@ from typing import Literal, Any, Union
 # noinspection PyPackageRequirements
 from telebot.types import (
     ForceReply,
+    CopyTextButton,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
+    SwitchInlineQueryChosenChat,
 )
 
 
 buttons_data_types = Union[
-    list[list[dict[str, str | dict]]], list[list[str]], dict[str, Any], None
+    list[list[dict[str, str | dict | CopyTextButton | SwitchInlineQueryChosenChat]]],
+    list[list[str]],
+    dict[str, Any],
+    None,
 ]
 return_buttons_types = Union[
     ForceReply, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, None
@@ -46,8 +51,10 @@ def generate_buttons(
     ...                         "web_app": None,
     ...                         "switch_inline_query": None,
     ...                         "switch_inline_query_current_chat": None,
+    ...                         "switch_inline_query_chosen_chat": None,
     ...                         "callback_game": None,
     ...                         "pay": None,
+    ...                         "copy_text": None,
     ...                         "login_url": None,
     ...                         "**kwargs": {},
     ...                     }
@@ -59,8 +66,10 @@ def generate_buttons(
     ...                     "web_app": None,
     ...                     "switch_inline_query": None,
     ...                     "switch_inline_query_current_chat": None,
+    ...                     "switch_inline_query_chosen_chat": None,
     ...                     "callback_game": None,
     ...                     "pay": None,
+    ...                     "copy_text": None,
     ...                     "login_url": None,
     ...                     "**kwargs": {},
     ...                 },
@@ -98,6 +107,25 @@ def generate_buttons(
                             )
                         elif isinstance(data, dict):
                             [(text, data)] = button.items()
+
+                            if data.get("switch_inline_query_chosen_chat"):
+                                if isinstance(data["switch_inline_query_chosen_chat"], str):
+                                    new_data = SwitchInlineQueryChosenChat(data["switch_inline_query_chosen_chat"])
+                                    data["switch_inline_query_chosen_chat"] = new_data
+                                elif isinstance(data["switch_inline_query_chosen_chat"], dict):
+                                    new_data = SwitchInlineQueryChosenChat(**data["switch_inline_query_chosen_chat"])
+                                    data["switch_inline_query_chosen_chat"] = new_data
+                                else:
+                                    return None
+
+                            if data.get("copy_text"):
+                                if isinstance(data["copy_text"], str):
+                                    data["copy_text"] = CopyTextButton(data["copy_text"])
+                                elif isinstance(data["copy_text"], dict):
+                                    data["copy_text"] = CopyTextButton(**data["copy_text"])
+                                else:
+                                    return None
+
                             keyboard[-1].append(InlineKeyboardButton(text=text, **data))
                         else:
                             return None

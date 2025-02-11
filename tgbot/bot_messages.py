@@ -1315,7 +1315,7 @@ DELETE FROM events
     edit_button_data(generated.markup, 0, 1, f"ses b {string_id} mnb")
 
     generated.format(
-        title=f"🗑 {basket_translate} 🗑",
+        title=f"🗑 {basket_translate}",
         args=event_formats["b"],
         if_empty=message_empty_translate,
     )
