@@ -123,6 +123,12 @@ END ASC, -- Приоритет статусов
 IFNULL(recent_changes_time, adding_time) DESC,
 event_id DESC -- Если параметры совпадают, сортировать по большему event_id
 """,
+    "event_id": """
+event_id ASC
+""",
+    "recent_changes_time": """
+recent_changes_time ASC
+""",
 }
 
 string_branch = "" if branch == "master" else f":{branch}"
