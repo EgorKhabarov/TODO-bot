@@ -12,7 +12,8 @@ from todoapi.utils import is_valid_year, chunks, sqlite_format_date
 from telegram_utils.buttons_generator import generate_buttons
 
 
-alphabet = "0123456789aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
+# alphabet = "0123456789aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
+alphabet = "".join(chr(i) for i in range(33, 126)).replace(",", "")
 calendar_event_count_template = ("⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹")
 
 
