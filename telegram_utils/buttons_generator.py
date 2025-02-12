@@ -109,20 +109,34 @@ def generate_buttons(
                             [(text, data)] = button.items()
 
                             if data.get("switch_inline_query_chosen_chat"):
-                                if isinstance(data["switch_inline_query_chosen_chat"], str):
-                                    new_data = SwitchInlineQueryChosenChat(data["switch_inline_query_chosen_chat"])
+                                if isinstance(
+                                    data["switch_inline_query_chosen_chat"],
+                                    str,
+                                ):
+                                    new_data = SwitchInlineQueryChosenChat(
+                                        data["switch_inline_query_chosen_chat"]
+                                    )
                                     data["switch_inline_query_chosen_chat"] = new_data
-                                elif isinstance(data["switch_inline_query_chosen_chat"], dict):
-                                    new_data = SwitchInlineQueryChosenChat(**data["switch_inline_query_chosen_chat"])
+                                elif isinstance(
+                                    data["switch_inline_query_chosen_chat"],
+                                    dict,
+                                ):
+                                    new_data = SwitchInlineQueryChosenChat(
+                                        **data["switch_inline_query_chosen_chat"]
+                                    )
                                     data["switch_inline_query_chosen_chat"] = new_data
                                 else:
                                     return None
 
                             if data.get("copy_text"):
                                 if isinstance(data["copy_text"], str):
-                                    data["copy_text"] = CopyTextButton(data["copy_text"])
+                                    data["copy_text"] = CopyTextButton(
+                                        data["copy_text"]
+                                    )
                                 elif isinstance(data["copy_text"], dict):
-                                    data["copy_text"] = CopyTextButton(**data["copy_text"])
+                                    data["copy_text"] = CopyTextButton(
+                                        **data["copy_text"]
+                                    )
                                 else:
                                     return None
 

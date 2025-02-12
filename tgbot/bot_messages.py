@@ -1442,7 +1442,7 @@ SELECT CAST(
                       || (
                           SELECT chat_id
                             FROM users
-                           WHERE user_id = owner_id
+                           WHERE users.user_id = groups.owner_id
                       )
                  FROM groups
                 WHERE groups.group_id = tg_settings.group_id

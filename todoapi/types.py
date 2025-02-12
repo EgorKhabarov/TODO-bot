@@ -654,10 +654,7 @@ SELECT media_id,
 class EventsList[Event](UserList):
     def to_json(self) -> str:
         return json.dumps(
-            [
-                event.to_dict()
-                for event in self.data
-            ],
+            [event.to_dict() for event in self.data],
             ensure_ascii=False,
         )
 
