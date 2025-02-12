@@ -144,7 +144,7 @@ def getargs(
     [dict[str, _data_types | tuple[_data_types, Any]]], dict[str, _return_types]
 ]:
     def closure(
-        arg: dict[str, _data_types | tuple[_data_types, Any]]
+        arg: dict[str, _data_types | tuple[_data_types, Any]],
     ) -> dict[str, _return_types]:
         return get_arguments(text, arg)
 
