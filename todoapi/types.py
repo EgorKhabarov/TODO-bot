@@ -651,7 +651,7 @@ SELECT media_id,
         return Event(**json.loads(json_string))
 
 
-class EventsList[Event](UserList):
+class EventsList(UserList[Event]):
     def to_json(self) -> str:
         return json.dumps(
             [event.to_dict() for event in self.data],
