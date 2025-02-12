@@ -2,6 +2,7 @@ import csv
 import json
 import arrow
 import datetime
+from collections import UserList
 from uuid import uuid4
 from arrow import Arrow
 from io import StringIO, BytesIO
@@ -40,6 +41,7 @@ from todoapi.utils import (
     generate_token,
     verify_password,
     sql_date_pattern,
+    sql_datetime_pattern,
 )
 
 
@@ -695,6 +697,14 @@ SELECT media_id,
         return repetition_dict.get(self.repetition, "🔕")
 
 
+class EventsList(UserList[Event]):
+    def to_json(self) -> str:
+        return json.dumps(
+            [event.to_dict() for event in self.data],
+            ensure_ascii=False,
+        )
+
+
 @dataclass
 class Group:
     group_id: str
@@ -1015,7 +1025,7 @@ UPDATE users
 
     def get_events(
         self, event_ids: list[int], in_bin: bool = False, order: str = "usual"
-    ) -> list[Event]:
+    ) -> EventsList[Event]:
         if len(event_ids) > 400:
             raise ApiError
 
@@ -1054,7 +1064,49 @@ SELECT *
         if not events:
             raise EventNotFound
 
-        return [Event(*event) for event in events]
+        return EventsList(Event(*event) for event in events)
+
+    def get_events_updated_after(
+        self, updated_after: str | None = None, order: str = "event_id"
+    ) -> EventsList[Event]:
+        """
+        :param updated_after:
+        :param order:
+        :return:
+        :raise ApiError:
+        """
+        if updated_after is None:
+            updated_after = "0"
+        else:
+            if not sql_datetime_pattern.match(updated_after):
+                raise ApiError("wrong datetime format")
+            try:
+                dt = datetime.strptime(updated_after, "%Y-%m-%d %H:%M:%S")
+                if not datetime(2020, 1, 1) < dt < datetime(2100, 1, 1):
+                    raise ApiError("wrong datetime format")
+            except ValueError:
+                raise ApiError("wrong datetime format")
+
+        try:
+            events = db.execute(
+                f"""
+SELECT *
+  FROM events
+ WHERE user_id IS ?
+       AND group_id IS ?
+       AND IFNULL(recent_changes_time, adding_time) > ?
+ ORDER BY {config.sql_order_dict[order]};
+""",
+                params=(
+                    self.safe_user_id,
+                    self.group_id,
+                    updated_after,
+                ),
+            )
+        except Error as e:
+            raise ApiError(e)
+
+        return EventsList(Event(*event) for event in events)
 
     def edit_event_text(self, event_id: int, text: str) -> None:
         if len(text) >= 3800:

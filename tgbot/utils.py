@@ -294,7 +294,7 @@ def fetch_weather(city: str) -> str:
     delta = weather["timezone"] // 60 // 60
     city_name = weather["name"].capitalize()
     weather_description = (
-        weather["weather"][0]["description"].capitalize().replace(" ", "\u00A0")
+        weather["weather"][0]["description"].capitalize().replace(" ", "\u00a0")
     )
 
     time_in_city = arrow.utcnow().shift(hours=delta)
@@ -380,7 +380,7 @@ def fetch_forecast(city: str) -> str:
             weather_icon = hour["weather"][0]["main"]
 
         weather_description = (
-            hour["weather"][0]["description"].capitalize().replace(" ", "\u00A0")
+            hour["weather"][0]["description"].capitalize().replace(" ", "\u00a0")
         )
         temp = hour["main"]["temp"]
         wind_speed = hour["wind"]["speed"]

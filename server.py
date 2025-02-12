@@ -123,20 +123,18 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
         else:
             abort_code = 418
             # Do initial validations on required headers
-            if "X-Github-Event" not in request.headers:
-                abort(abort_code)
-            if "X-Github-Delivery" not in request.headers:
-                abort(abort_code)
-            if "X-Hub-Signature" not in request.headers:
-                abort(abort_code)
-            if "User-Agent" not in request.headers:
-                abort(abort_code)
-            if not request.headers.get("User-Agent").startswith("GitHub-Hookshot/"):
+            if (
+                "X-Github-Event" not in request.headers
+                or "X-Github-Delivery" not in request.headers
+                or "X-Hub-Signature" not in request.headers
+                or "User-Agent" not in request.headers
+                or not request.headers.get("User-Agent").startswith("GitHub-Hookshot/")
+            ):
                 abort(abort_code)
 
             event = request.headers.get("X-GitHub-Event")
             if event == "ping":
-                return json.dumps({"msg": "Hi!"})
+                return json.dumps({"msg": "pong"})
             if event != "push":
                 return json.dumps({"msg": "Wrong event type"})
 

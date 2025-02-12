@@ -1395,12 +1395,7 @@ class CallBackHandler:
             return CallBackAnswer(text).answer()
 
         cache_create_group(str(message_id))
-        # TODO перевод
-        text = """
-👥 Группы 👥
-
-Отправьте имя группы
-"""
+        text = get_translate("text.create_group")
         markup = generate_buttons([[{get_theme_emoji("back"): "mngrs"}]])
         TextMessage(text, markup).edit()
         CallBackAnswer(get_translate("text.send_group_name")).answer()

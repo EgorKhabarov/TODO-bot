@@ -1414,7 +1414,7 @@ DELETE FROM events
     edit_button_data(generated.markup, 0, 1, f"ses b {string_id} mnb")
 
     generated.format(
-        title=f"🗑 {basket_translate} 🗑",
+        title=f"🗑 {basket_translate}",
         args=event_formats["b"],
         if_empty=message_empty_translate,
     )
@@ -1532,7 +1532,7 @@ SELECT CAST(
                       || (
                           SELECT chat_id
                             FROM users
-                           WHERE user_id = owner_id
+                           WHERE users.user_id = groups.owner_id
                       )
                  FROM groups
                 WHERE groups.group_id = tg_settings.group_id

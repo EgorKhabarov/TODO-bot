@@ -42,8 +42,10 @@ def get_limit_link(date: str = "now") -> str:
         "lang": request.entity.settings.lang,
         "data": "n".join(f"{x}s{y}" for x, y in limits),
     }
+    prefix = f"📄 {get_translate('messages.limit')} "
+
     if LIMIT_IMAGE_GENERATOR_URL:
-        return "".join(
+        return prefix + "".join(
             (
                 date,
                 hide_link(
@@ -71,7 +73,7 @@ def get_limit_link(date: str = "now") -> str:
                 f"[{f * f_count}{b * b_count}] "
                 f"({percent}%)"
             )
-        return "{}\n\n{}".format(date, "\n\n".join(lst))
+        return prefix + "{}\n\n{}".format(date, "\n\n".join(lst))
 
 
 def _semicircle(title: str, x: int, y: int, theme: str):

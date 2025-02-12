@@ -360,6 +360,18 @@ Call up new messages using bot commands.</b>
             "ru": "Выйти из группы",
             "en": "Leave the group",
         },
+        "create_group": {
+            "ru": """
+👥 Группы
+
+Отправьте имя группы
+""",
+            "en": """
+👥 Groups
+
+Send group name
+""",
+        },
         "change_group_name": {
             "ru": "Изменить название группы",
             "en": "Change group name",
@@ -533,7 +545,7 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 """,
         },
         "settings": {
-            "ru": """⚙️ Настройки ⚙️
+            "ru": """⚙️ Настройки
 
 [<u>Язык</u>]
 <b>{lang}</b>
@@ -555,9 +567,9 @@ Use all the advantages of the bot to streamline your life and not miss a single 
 
 *(<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 >www.youtube.com</a> <i>вместо полной ссылки</i>)
-**<i>Ответьте на это сообщение с названием города</i> <b>(Несохраненные настройки будут сброшены.)</b>
+**<i>Ответьте на это сообщение с названием города</i> <b>(Несохраненные настройки будут сброшены)</b>
 ***<i>Изменяет тёмные эмодзи на светлые</i>""",
-            "en": """⚙️ Settings ⚙️
+            "en": """⚙️ Settings
 
 [<u>Language</u>]
 <b>{lang}</b>
@@ -584,13 +596,13 @@ Use all the advantages of the bot to streamline your life and not miss a single 
         },
         "group": {
             "ru": """
-👥 Группа 👥
+👥 Группа
 
 id: `<code>{}</code>`
 name: `<code>{}</code>`
 """,
             "en": """
-👥 Group 👥
+👥 Group
 
 id: `<code>{}</code>`
 name: `<code>{}</code>`
@@ -600,7 +612,7 @@ name: `<code>{}</code>`
             "ru": (
                 "Создать группу",
                 """
-👥 Группы 👥
+👥 Группы
 
 У вас групп: {}
 
@@ -618,7 +630,7 @@ name: `<code>{}</code>`
             "en": (
                 "Create group",
                 """
-👥 Groups 👥
+👥 Groups
 
 You have groups: {}
 
@@ -636,7 +648,7 @@ You have groups: {}
         },
         "account": {
             "ru": """
-👤 Аккаунт 👤
+👤 Аккаунт
 
 <pre><code class='language-yaml'>id:       {}
 chat_id:  {}
@@ -644,7 +656,7 @@ username: {}
 reg_date: {}</code></pre>
 """,
             "en": """
-👤 Account 👤
+👤 Account
 
 <pre><code class='language-yaml'>id:       {}
 chat_id:  {}
@@ -654,8 +666,8 @@ reg_date: {}</code></pre>
         },
         "help": {
             "title": {
-                "ru": "📚 Помощь 📚",
-                "en": "📚 Help 📚",
+                "ru": "📚 Помощь",
+                "en": "📚 Help",
             },
             "page 1": {
                 "ru": [
@@ -1174,6 +1186,10 @@ Visibility <b>{}</b>m""",
                 "Bin",
                 "Group",
             ),
+        },
+        "limit": {
+            "ru": "Лимит на",
+            "en": "Limit for",
         },
     },
     "buttons": {
