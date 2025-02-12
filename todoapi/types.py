@@ -1,10 +1,10 @@
 import csv
 import json
 import arrow
-import datetime
-from collections import UserList
 from uuid import uuid4
 from arrow import Arrow
+from datetime import datetime
+from collections import UserList
 from io import StringIO, BytesIO
 from dataclasses import dataclass
 from sqlite3 import Error, connect
@@ -602,7 +602,7 @@ SELECT media_id,
         n_time = arrow.get(n_time.year, n_time.month, n_time.day)
         dates = []
 
-        def prepare_date(date: datetime) -> int:
+        def prepare_date(date: Arrow) -> int:
             return (date - n_time).days
 
         # Every day
