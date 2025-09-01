@@ -1930,6 +1930,10 @@ or create an account
             "ru": "Выберите, что сделать с событиями",
             "en": "Choose what to do with the events",
         },
+        "events_new_date": {
+            "ru": "Выберите новую дату для этих событий",
+            "en": "Please select a new date for these events",
+        },
     },
 }
 

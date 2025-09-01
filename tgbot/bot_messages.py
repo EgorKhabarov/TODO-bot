@@ -931,7 +931,7 @@ AND group_id IS ?
     generated = EventsMessage()
     generated.get_page_events(sql_where, params, id_list)
     generated.format(
-        title=f"<b>{get_translate('select.what_do_with_events')}:</b>",
+        title=f"<b>{get_translate('select.events_new_date')}:</b>",
         args=event_formats["r"],
         if_empty=get_translate("errors.message_empty"),
     )
