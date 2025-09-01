@@ -131,12 +131,17 @@ def add_status_effect(text: str, statuses: list[str]) -> str:
         return "\n".join(
             (
                 (
-                    (
-                        "0️⃣" * (width - len(str(num := num + 1)))
-                    )  # Put zeros in front of the base number
-                    + "⃣".join(str(num))  # The number itself
-                    + "⃣"
-                    + line
+                    "".join(
+                        (
+                            (
+                                "0️⃣" * (width - len(str(num := num + 1)))
+                            ),  # Put zeros in front of the base number
+                            chr(8419).join(str(num)),  # The number itself
+                            chr(8419),
+                            " ",
+                            line,
+                        )
+                    )
                     if not is_comment_line(line)
                     else remove_comment_prefix(line)
                 )
@@ -148,8 +153,8 @@ def add_status_effect(text: str, statuses: list[str]) -> str:
 
     def format_list(_text: str) -> str:
         """Replaces \n to :black_small_square: (emoji Telegram)"""
-        point = "▫️" if request.entity.settings.theme == 1 else "▪️"
-        big_point = "◻️" if request.entity.settings.theme == 1 else "◼️"
+        point = "▫️ " if request.entity.settings.theme == 1 else "▪️ "
+        big_point = "◻️ " if request.entity.settings.theme == 1 else "◼️ "
         lst = _text.splitlines()
 
         return "\n".join(
