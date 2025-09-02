@@ -25,7 +25,8 @@ try:
 
     if config.BOT_NOTIFICATIONS:
         start_notifications_thread()
-except Exception:
+except Exception as e:
+    logger.exception(e)
     code = 503
 else:
     code = 200
@@ -90,7 +91,7 @@ if (
         bot.process_new_updates([Update.de_json(request.json)])
         return "ok", 200
 
-    if bot_webhook_info.url != config.TELEGRAM_WEBHOOK_URL:
+    if code != 200 or bot_webhook_info.url != config.TELEGRAM_WEBHOOK_URL:
         bot.remove_webhook()
         bot.set_webhook(
             url=config.TELEGRAM_WEBHOOK_URL,
