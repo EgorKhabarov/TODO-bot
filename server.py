@@ -26,7 +26,7 @@ try:
     if config.BOT_NOTIFICATIONS:
         start_notifications_thread()
 except Exception as e:
-    logger.exception(e)
+    print(e)
     code = 503
 else:
     code = 200
