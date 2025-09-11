@@ -1357,10 +1357,16 @@ class CallBackHandler:
             set_bot_commands(True)
             TextMessage(get_translate("errors.success")).edit()
 
-    @prefix("lm", {"date": "date"})
-    def limits_message(self, date: datetime):
+    @prefix("lm", {"calendar_date": "date", "date": "date"})
+    def limits_message(self, calendar_date: datetime | None, date: datetime):
+        if calendar_date is None:
+            calendar_date = request.entity.now_time()
         if not date:
-            generated = monthly_calendar_message(None, "lm", "mna")
+            generated = monthly_calendar_message(
+                (calendar_date.year, calendar_date.month),
+                f"lm {calendar_date:%d.%m.%Y}",
+                "mna",
+            )
             return generated.edit()
         limits_message(date).edit(disable_web_page_preview=False)
 

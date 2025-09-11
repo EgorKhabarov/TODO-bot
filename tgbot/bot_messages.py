@@ -1529,7 +1529,7 @@ def limits_message(date: datetime | str = None) -> TextMessage:
 
     return TextMessage(
         get_limit_link(f"{date:%d.%m.%Y}"),
-        generate_buttons([[{get_theme_emoji("back"): "lm"}]]),
+        generate_buttons([[{get_theme_emoji("back"): f"lm {date:%d.%m.%Y}"}]]),
     )
 
 
@@ -1791,7 +1791,7 @@ def account_message(message_id: int | None = None) -> TextMessage:
             ],
             [
                 {get_theme_emoji("back"): "mnm"},
-                {"📊": "lm"},
+                {"📊": "lm now"},
                 {f"{get_translate('text.logout')}🚪👈": "logout"},
             ],
         ]
