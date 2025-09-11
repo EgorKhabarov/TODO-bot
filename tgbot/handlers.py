@@ -507,7 +507,10 @@ class CallBackHandler:
 
     @prefix("mnm")
     def menu(self) -> None:
-        menu_message().edit()
+        try:
+            menu_message().edit()
+        except ApiTelegramException:
+            pass
 
     @prefix("mns")
     def settings(self) -> None:
@@ -831,7 +834,10 @@ class CallBackHandler:
     @prefix("essd", {"id_list": "str"})
     def events_select_new_date(self, id_list: str):
         generated = edit_events_date_message(decode_id(id_list))
-        generated.edit()
+        try:
+            generated.edit()
+        except ApiTelegramException:
+            CallBackAnswer("ok").answer(show_alert=True)
 
     @prefix("esd", {"id_list": "str", "date": "date"})
     def events_delete(self, id_list: str, date: datetime):
