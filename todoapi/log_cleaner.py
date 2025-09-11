@@ -28,7 +28,8 @@ def filter_function(test_line: str) -> bool:
 
 
 def clear_logs():
-    log_folder, utc_time = Path(LOG_FILE_PATH).parent, datetime.now(timezone.utc)
+    log_folder = Path(LOG_FILE_PATH).parent
+    utc_time = datetime.now(timezone.utc)
     output_file_path = os.path.join(
         log_folder, "old_logs", f"{utc_time:%Y%m%d%H%M%S}.log"
     )
@@ -36,9 +37,9 @@ def clear_logs():
     Path(output_file_path).parent.mkdir(parents=True, exist_ok=True)
 
     with (
-        open(LOG_FILE_PATH, "r") as input_file,
-        open(output_file_path, "w") as output_file,
-        open(output_errors_file_path, "w") as output_error_file,
+        open(LOG_FILE_PATH, "r", encoding="UTF-8") as input_file,
+        open(output_file_path, "w", encoding="UTF-8") as output_file,
+        open(output_errors_file_path, "w", encoding="UTF-8") as output_error_file,
     ):
         for line in input_file:
             (output_file if filter_function(line) else output_error_file).write(line)

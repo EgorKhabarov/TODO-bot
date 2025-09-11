@@ -372,25 +372,10 @@ def command_handler(message: Message) -> None:
         if not is_secure_chat(message):
             return
 
+        # noinspection PyBroadException
         try:
             clear_logs()
-        except BaseException as e:
-            text = (
-                f"<b>{e.__class__.__name__}:</b> <i>{e}</i>\n"
-                f"<pre>{traceback.format_exc()}</pre>"
-            )
-        else:
-            text = "Ok"
-
-        TextMessage(text).reply(message)
-
-    elif command_text == "clear_logs":
-        if not is_secure_chat(message):
-            return
-
-        try:
-            clear_logs()
-        except BaseException as e:
+        except Exception as e:
             text = (
                 f"<b>{e.__class__.__name__}:</b> <i>{e}</i>\n"
                 f"<pre>{traceback.format_exc()}</pre>"
