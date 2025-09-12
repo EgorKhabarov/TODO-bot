@@ -6,6 +6,7 @@ from telebot.types import Update
 from flask import Flask, request, abort, send_file
 
 import config
+from todoapi.logger import logger
 
 
 app = Flask(__name__)
@@ -16,7 +17,6 @@ try:
     from tgbot.main import bot
     from tgbot.limits import create_image_from_link
     from tgbot.bot import bot_webhook_info, bot_log_info
-    from todoapi.logger import logger
 
     logger.info(bot_log_info())
 
@@ -26,7 +26,7 @@ try:
     if config.BOT_NOTIFICATIONS:
         start_notifications_thread()
 except Exception as e:
-    print(e)
+    logger.exception(e)
     code = 503
 else:
     code = 200
