@@ -1099,7 +1099,7 @@ UPDATE events
 
         event = self.get_event(event_id)
 
-        if self.limit.is_exceeded_for_events(event.date, 1, len(event.text)):
+        if self.limit.is_exceeded_for_events(date, 1, len(event.text)):
             raise LimitExceeded
 
         try:
