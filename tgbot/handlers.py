@@ -831,9 +831,9 @@ class CallBackHandler:
         generated = before_events_delete_message(decode_id(id_list))
         generated.edit()
 
-    @prefix("essd", {"id_list": "str"})
-    def events_select_new_date(self, id_list: str):
-        generated = edit_events_date_message(decode_id(id_list))
+    @prefix("essd", {"id_list": "str", "date": "date"})
+    def events_select_new_date(self, id_list: str, date: datetime):
+        generated = edit_events_date_message(decode_id(id_list), date)
         try:
             generated.edit()
         except ApiTelegramException:

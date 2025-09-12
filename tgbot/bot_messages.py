@@ -539,7 +539,7 @@ AND removal_time IS {'NOT' if is_in_wastebasket else ''} NULL
         markup = [
             [
                 # {"➕🏷": f"essa {string_id}"},  # events status
-                {"📅": f"essd {string_id}"},  # events edit date
+                {"📅": f"essd {string_id} {date}"},  # events edit date
                 {"🗑": f"esbd {string_id}"},  # events before delete
             ],
             [{get_theme_emoji("back"): f"dl {date}"}],
