@@ -74,7 +74,8 @@ def limit():
 
 
 if (
-    config.TELEGRAM_WEBHOOK
+    locals().get("bot")
+    and config.TELEGRAM_WEBHOOK
     and config.TELEGRAM_WEBHOOK_URL
     and config.TELEGRAM_WEBHOOK_FLASK_PATH
 ):
@@ -91,7 +92,7 @@ if (
         bot.process_new_updates([Update.de_json(request.json)])
         return "ok", 200
 
-    if code != 200 or bot_webhook_info.url != config.TELEGRAM_WEBHOOK_URL:
+    if bot_webhook_info.url != config.TELEGRAM_WEBHOOK_URL:
         bot.remove_webhook()
         bot.set_webhook(
             url=config.TELEGRAM_WEBHOOK_URL,
