@@ -1219,6 +1219,10 @@ Visibility <b>{}</b>m""",
             "ru": "Лимит на",
             "en": "Limit for",
         },
+        "frequently_used_dates": {
+            "ru": "Нажмите чтобы закрепить",
+            "en": "Press for pin",
+        },
     },
     "buttons": {
         "commands": {

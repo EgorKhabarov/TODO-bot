@@ -277,7 +277,8 @@ def settings_message(
     else:
         notifications_time_row = []
 
-    commit_changes = format_call_data(prefix="stuc") if updated else "mnm"
+    def commit_changes(command):
+        return format_call_data(prefix="stuc") if updated else command
 
     markup = generate_buttons(
         [
@@ -295,12 +296,44 @@ def settings_message(
             notifications_time_row,
             [{get_translate("text.restore_to_default"): "std"}],
             [
-                {get_theme_emoji("back"): commit_changes},
+                {get_theme_emoji("back"): commit_changes("mnm")},
+                {"🗂": commit_changes("frd")},
                 {"💾": format_call_data(prefix="sts")},
             ],
         ]
     )
     return TextMessage(text, markup)
+
+
+def frequently_used_dates_settings_message(mode: str = "d", date: datetime | None = None) -> TextMessage | None:
+    if mode == "p" and not date:
+        return
+
+    if mode == "p" and date:
+        request.entity.toggle_frequently_used_date_pin(date)
+
+    frequently_used_dates = request.entity.get_frequently_used_dates()
+    buttons_data = []
+    for frequently_used_date, count, pinned, last_visited in frequently_used_dates:
+        button_title = f"{'📌' if pinned else '⠀⠀'} {frequently_used_date} {count}".ljust(60, config.ts)
+        button_data = f"frd p {frequently_used_date}"
+        buttons_data.append([{button_title: button_data}])
+
+    if len(buttons_data) == 0:
+        buttons_data.append([{get_translate("errors.message_empty"): "None"}])
+
+    return TextMessage(
+        get_translate("messages.frequently_used_dates"),
+        markup=generate_buttons(
+            [
+                *buttons_data,
+                [
+                    {get_theme_emoji("back"): "mns"},
+                    {"🔄": "frd"},
+                ],
+            ]
+        ),
+    )
 
 
 def help_message(path: str = "page main") -> TextMessage:

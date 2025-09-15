@@ -176,17 +176,14 @@ SELECT DISTINCT CAST (STRFTIME('%w', {sqlite_format_date('date')}) - 1 AS INT)
         second_line,
         *buttons_lines,
         arrows_buttons,
-        (
-            [
-                {
-                    get_theme_emoji("back"): (
-                        f"{back[1:-1]}{f' {arguments[1:-1]}' if arguments else ''}"
-                    )
-                }
-            ]
-            if back
-            else []
-        ),
+        [
+            {
+                get_theme_emoji("back"): (
+                    f"{back[1:-1]}{f' {arguments[1:-1]}' if arguments else ''}"
+                )
+            } if back else {},
+            {"🗂": f"cmf ({command},{back},{year},{month},{arguments})"},
+        ]
     ]
     return generate_buttons(markup)
 
@@ -304,17 +301,14 @@ SELECT date
             {text: f"cy ({command},{back},{y},{arguments})"}
             for text, y in {"<<": year - 1, "⟳": "'now'", ">>": year + 1}.items()
         ],
-        (
-            [
-                {
-                    get_theme_emoji("back"): (
-                        f"{back[1:-1]}" f"{f' {arguments[1:-1]}' if arguments else ''}"
-                    )
-                }
-            ]
-            if back
-            else []
-        ),
+        [
+            {
+                get_theme_emoji("back"): (
+                    f"{back[1:-1]}" f"{f' {arguments[1:-1]}' if arguments else ''}"
+                )
+            } if back else {},
+            {"🗂": f"cyf ({command},{back},{year},{arguments})"},
+        ]
     ]
     return generate_buttons(markup)
 
@@ -415,19 +409,48 @@ SELECT 1
                 }.items()
             ],
             [
-                (
-                    {
-                        get_theme_emoji("back"): (
-                            f"{back[1:-1]}{f' {arguments[1:-1]}' if arguments else ''}"
-                        )
-                    }
-                    if back
-                    else {}
-                )
+                {
+                    get_theme_emoji("back"): (
+                        f"{back[1:-1]}{f' {arguments[1:-1]}' if arguments else ''}"
+                    )
+                } if back else {},
+                {"🗂": f"ctf ({command},{back},{millennium}{decade},{arguments})"},
             ],
         ]
     )
     return markup
+
+
+def create_frequently_used_dates_keyboard(
+    prefix: str,
+    command: str | None,
+    back: str | None,
+    arguments: str | None,
+    *data: int | tuple[int, ...],
+) -> InlineKeyboardMarkup:
+    command = f"'{command.strip()}'" if command else None
+    back = f"'{back.strip()}'" if back else None
+    arguments = f"'{arguments.strip()}'" if arguments else None
+
+    frequently_used_dates = request.entity.get_frequently_used_dates()
+
+    markup = []
+    for frequently_used_date, count, pinned, last_visited in frequently_used_dates:
+        button_title = f"{'📌' if pinned else '⠀⠀'} {frequently_used_date} {count}".ljust(60, config.ts)
+        button_data = f"{command[1:-1]} {frequently_used_date}"
+        markup.append([{button_title: button_data}])
+
+    if len(markup) == 0:
+        markup.append([{get_translate("errors.message_empty"): "None"}])
+
+    if isinstance(data, (tuple, list)) and len(data) > 1:
+        string_data = f"({','.join(map(str, data))})"
+    else:
+        string_data = data[0]
+
+    back_data = f"{prefix} ({command},{back},{string_data},{arguments})"
+    markup.append([{get_theme_emoji("back"): back_data}])
+    return generate_buttons(markup)
 
 
 def create_select_status_keyboard(

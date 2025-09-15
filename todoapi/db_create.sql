@@ -127,6 +127,23 @@ CREATE TABLE IF NOT EXISTS errors (
     FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
 
+CREATE TABLE IF NOT EXISTS frequently_used_dates (
+    user_id      INT,
+    group_id     TEXT,
+    date         TEXT      NOT NULL,
+    count        INT       NOT NULL DEFAULT 1,
+    pinned       INT       NOT NULL DEFAULT 0,
+    last_visited TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (
+        (user_id IS NOT NULL AND group_id IS NULL) OR
+        (user_id IS NULL AND group_id IS NOT NULL)
+    ),
+    UNIQUE (user_id, date),
+    UNIQUE (group_id, date),
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (group_id) REFERENCES groups(group_id)
+);
+
 ------------------------------------------------------------------------------------------------------------------------
 
 -- When deleting a user, we delete all rows associated with it.

@@ -1,7 +1,9 @@
 import re
 import html
+import inspect
 import traceback
 from time import sleep
+from functools import wraps
 from ast import literal_eval
 from datetime import datetime
 from typing import Callable, Literal
@@ -31,6 +33,7 @@ from tgbot.buttons_utils import (
     create_yearly_calendar_keyboard,
     create_monthly_calendar_keyboard,
     create_twenty_year_calendar_keyboard,
+    create_frequently_used_dates_keyboard,
 )
 from tgbot.bot_messages import (
     menu_message,
@@ -64,6 +67,7 @@ from tgbot.bot_messages import (
     edit_events_date_message,
     before_event_delete_message,
     before_events_delete_message,
+    frequently_used_dates_settings_message,
 )
 from tgbot.types import (
     TelegramAccount,
@@ -460,7 +464,7 @@ def prefix(
     def decorator(func: Callable):
         for p in prefix_:
             _handlers[p] = (
-                func,
+                func.__name__,
                 arguments if arguments is not None else {},
                 eval_,
                 eval_star,
@@ -471,23 +475,38 @@ def prefix(
     return decorator
 
 
+def stats(func: Callable):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if "date" in kwargs and (date := kwargs["date"]):
+            if isinstance(date, datetime):
+                date = date.strftime("%d.%m.%Y")
+
+            try:
+                request.entity.increment_date_usage(date)
+            except ApiError as e:
+                logger.exception(e)
+        return func(*args, **kwargs)
+    return wrapper
+
+
 class CallBackHandler:
     def __call__(self, call: CallbackQuery):
         call_prefix = call.data.strip().split(maxsplit=1)[0]
-        method: tuple[Callable, dict, bool, bool, str] | None = _handlers.get(
+        method: tuple[str, dict, bool, bool, str] | None = _handlers.get(
             call_prefix
         )
 
         if method is None:
             return
 
-        func, arguments, eval_, eval_star, str_prefix = method
+        func_name, arguments, eval_, eval_star, str_prefix = method
+        func = getattr(self, func_name)
         call_data = call.data.removeprefix(call_prefix).strip()
+        func_argument_names = list(inspect.signature(func).parameters.keys())
 
-        # noinspection PyUnresolvedReferences
         return func(
-            self,
-            *((literal_eval(call_data),) if eval_ else ()),
+            *(literal_eval(call_data),) if eval_ else (),
             *literal_eval(call_data) if eval_star else (),
             **{
                 k: v
@@ -501,7 +520,7 @@ class CallBackHandler:
                     "str_prefix": str_prefix,
                     **getargs(call_data)(arguments),
                 }.items()
-                if k in func.__code__.co_varnames
+                if k in func_argument_names
             },
         )
 
@@ -568,6 +587,7 @@ class CallBackHandler:
             CallBackAnswer(get_translate("errors.error")).answer(show_alert=True)
 
     @prefix("mnn", {"date": "str"})
+    @stats
     def notification(self, date: datetime):
         try:
             notification_message(date, from_command=True).edit()
@@ -590,6 +610,7 @@ class CallBackHandler:
         ).edit()
 
     @prefix("dl", {"date": "date"})
+    @stats
     def daily_message(self, date: datetime):
         cache_add_event_date("")
         try:
@@ -701,6 +722,7 @@ class CallBackHandler:
         CallBackAnswer(text).answer(show_alert=True)
 
     @prefix("eds", {"event_id": "int", "date": "date"})
+    @stats
     def event_new_date_set(self, event_id: int, date: datetime, message_id: int):
         try:
             request.entity.edit_event_date(event_id, f"{date:%d.%m.%Y}")
@@ -871,6 +893,7 @@ class CallBackHandler:
         daily_message(date).edit()
 
     @prefix("esds", {"id_list": "str", "date": "date"})
+    @stats
     def events_new_date_set(self, id_list: str, date: datetime):
         id_list = decode_id(id_list)
         not_edit: list[int] = []
@@ -1062,7 +1085,7 @@ class CallBackHandler:
             CallBackAnswer(text).answer()
 
     @prefix("cm", eval_star=True)
-    def calendar_month(self, command, back, date, arguments, call: CallbackQuery):
+    def calendar_monthly(self, command, back, date, arguments, call: CallbackQuery):
         if date == "now":
             date = now_time_calendar()
 
@@ -1083,7 +1106,7 @@ class CallBackHandler:
             CallBackAnswer(get_translate("errors.invalid_date")).answer()
 
     @prefix("cy", eval_star=True)
-    def calendar_year(self, command, back, year, arguments):
+    def calendar_yearly(self, command, back, year, arguments):
         if year == "now":
             year = request.entity.now_time().year
 
@@ -1121,6 +1144,48 @@ class CallBackHandler:
                 TextMessage(markup=markup).edit(only_markup=True)
         else:
             CallBackAnswer(get_translate("errors.invalid_date")).answer()
+
+    @prefix("cmf", eval_star=True)
+    def calendar_month_frequently_used_dates_dates(self, command, back, year, month, arguments):
+        if is_valid_year(year):
+            markup = create_frequently_used_dates_keyboard("cm", command, back, arguments, year, month)
+            try:
+                TextMessage(markup=markup).edit(only_markup=True)
+            except ApiTelegramException:
+                pass
+        else:
+            CallBackAnswer(get_translate("errors.invalid_date")).answer()
+
+    @prefix("cyf", eval_star=True)
+    def calendar_year_frequently_used_dates(self, command, back, year, arguments):
+        if is_valid_year(year):
+            markup = create_frequently_used_dates_keyboard("cy", command, back, arguments, year)
+            try:
+                TextMessage(markup=markup).edit(only_markup=True)
+            except ApiTelegramException:
+                pass
+        else:
+            CallBackAnswer(get_translate("errors.invalid_date")).answer()
+
+    @prefix("ctf", eval_star=True)
+    def calendar_twenty_year_frequently_used_dates(self, command, back, decade, arguments):
+        if is_valid_year(int(str(decade) + "0")):
+            markup = create_frequently_used_dates_keyboard("ct", command, back, arguments, decade)
+            try:
+                TextMessage(markup=markup).edit(only_markup=True)
+            except ApiTelegramException:
+                pass
+        else:
+            CallBackAnswer(get_translate("errors.invalid_date")).answer()
+
+    @prefix("frd", {"mode": ("str", "d"), "date": "str"})
+    def frequently_used_dates(self, mode: str | None = None, date: datetime | None = None):
+        generated = frequently_used_dates_settings_message(mode, date)
+        if generated:
+            try:
+                generated.edit()
+            except ApiTelegramException:
+                CallBackAnswer("ok").answer(show_alert=True)
 
     @prefix("us")
     def update_search(self, message: Message):
@@ -1368,6 +1433,7 @@ class CallBackHandler:
             TextMessage(get_translate("errors.success")).edit()
 
     @prefix("lm", {"calendar_date": "date", "date": "date"})
+    @stats
     def limits_message(self, calendar_date: datetime | None, date: datetime):
         if calendar_date is None:
             calendar_date = request.entity.now_time()

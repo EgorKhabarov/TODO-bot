@@ -1992,6 +1992,105 @@ UPDATE users_settings
         except Error as e:
             raise ApiError(e)
 
+    def increment_date_usage(self, date: str, count: int = 1) -> None:
+        """
+        Sets the status for the user with user_id.
+        Does NOT conduct any checks
+        """
+        try:
+            db.execute(
+                f"""
+INSERT INTO frequently_used_dates (user_id, group_id, date, count, last_visited)
+     VALUES (:user_id, :group_id, :date, 1, CURRENT_TIMESTAMP)
+ON CONFLICT ({'user_id' if self.safe_user_id else 'group_id'}, date) DO
+UPDATE
+   SET count = count + :count,
+       last_visited = CURRENT_TIMESTAMP;
+""",
+                params={
+                    "user_id": self.safe_user_id,
+                    "group_id": self.group_id,
+                    "date": date,
+                    "count": count,
+                },
+                commit=True,
+            )
+        except Error as e:
+            raise ApiError(e)
+
+    def toggle_frequently_used_date_pin(self, date: str) -> None:
+        try:
+            db.execute(
+                """
+UPDATE frequently_used_dates
+   SET pinned = 1 - pinned
+ WHERE date = :date
+       AND user_id IS :user_id
+       AND group_id IS :group_id;
+""",
+                params={
+                    "user_id": self.safe_user_id,
+                    "group_id": self.group_id,
+                    "date": date,
+                },
+                commit=True,
+            )
+        except Error as e:
+            raise ApiError(e)
+
+    def remove_frequently_used_date(self, date: str) -> None:
+        # TODO remove
+        try:
+            db.execute(
+                """
+DELETE FROM frequently_used_dates
+      WHERE date = :date
+            AND user_id IS :user_id
+            AND group_id IS :group_id;
+""",
+                params={
+                    "date": date,
+                    "user_id": self.safe_user_id,
+                    "group_id": self.group_id,
+                },
+                commit=True,
+            )
+        except Error as e:
+            raise ApiError(e)
+
+    def get_frequently_used_dates(self, min_count: int = 2) -> list[tuple[int | str, ...]]:
+        try:
+            frequently_used_dates_raw = db.execute(
+                """
+SELECT date, count, pinned, last_visited
+  FROM frequently_used_dates
+ WHERE user_id IS :user_id
+       AND group_id IS :group_id
+       AND count > :min_count
+ ORDER BY pinned DESC,
+          count DESC,
+          last_visited DESC
+ LIMIT 10;
+""",
+                params={
+                    "user_id": self.safe_user_id,
+                    "group_id": self.group_id,
+                    "min_count": min_count,
+                },
+            )
+        except Error as e:
+            raise ApiError(e)
+
+        frequently_used_dates: list[tuple[int | str, ...]] = []
+
+        for frequently_used_date, count, pinned, last_visited in frequently_used_dates_raw:
+            frequently_used_date: str
+            count: int
+            pinned: int
+            last_visited: str
+            frequently_used_dates.append((frequently_used_date, count, pinned, last_visited))
+        return frequently_used_dates
+
     def edit_user_username(self, username: str) -> None:
         if self.group_id:
             raise Forbidden
