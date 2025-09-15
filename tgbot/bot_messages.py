@@ -31,6 +31,7 @@ from tgbot.message_generator import (
 from tgbot.buttons_utils import (
     delmarkup,
     encode_id,
+    decode_id,
     create_select_status_keyboard,
     create_yearly_calendar_keyboard,
     create_monthly_calendar_keyboard,
@@ -1946,10 +1947,10 @@ def open_message(arguments: str) -> TextMessage | None:
     regex_year = re.compile(r"^(?P<year>\d{4})$")
     regex_year_month = re.compile(r"^(?P<year>\d{4}) (?P<month>\d{1,2})$")
     regex_year_month_day = re.compile(
-        r"^(?P<year>\d{4}) (?P<month>\d{1,2}) (?P<day>\d{1,2})$"
+        r"^(?P<year>\d{4}) (?P<month>\d{1,2}) (?P<day>\d{1,2})(?: page (?P<page>[1-9]|[1-3][0-9]|40))?$"
     )
 
-    if arguments in ("calendar today", "calendar now", "today", "now"):
+    if arguments.startswith(("calendar today", "calendar now", "today", "now")):
         return daily_message(request.entity.now_time())
 
     elif arguments == "calendar":
@@ -1966,19 +1967,49 @@ def open_message(arguments: str) -> TextMessage | None:
 
     elif m := regex_year.match(arguments.removeprefix("calendar ")):
         year = int(m.group("year"))
+        if not is_valid_year(year):
+            raise ApiError("Invalid date")
         return yearly_calendar_message(year, "dl", "mnm")
 
     elif m := regex_year_month.match(arguments.removeprefix("calendar ")):
         year, month = int(m.group("year")), int(m.group("month"))
+        if not is_valid_year(year):
+            raise ApiError("Invalid date")
         return monthly_calendar_message((year, month), "dl", "mnm")
 
     elif m := regex_year_month_day.match(arguments.removeprefix("calendar ")):
-        year, month, day = (
+        year, month, day, page = (
             int(m.group("year")),
             int(m.group("month")),
             int(m.group("day")),
+            int(m.group("page")),
         )
-        return daily_message(datetime(year, month, day))
+        if not is_valid_year(year):
+            raise ApiError("Invalid date")
 
-    else:
-        return TextMessage(get_translate("errors.error"))
+        date = datetime(year, month, day).strftime("%d.%m.%Y")
+
+        if page > 1:
+            generated = daily_message(date)
+            row, column = page // 5 + 2, page % 5 - 1
+            try:
+                button = generated.markup.keyboard[row][column]
+            except IndexError:
+                return daily_message(date)
+
+            callback_data = button.callback_data
+
+            if callback_data == "None" and callback_data.startswith("pd "):
+                return daily_message(date)
+
+            string_id = callback_data.rsplit(" ", maxsplit=1)[-1]
+            id_list = decode_id(string_id)
+            text_generated = daily_message(date, id_list, page)
+            edit_button_data(generated.markup, 0, 1, f"se _ {string_id} pd {date}")
+            edit_button_data(generated.markup, 0, 2, f"ses _ {string_id} pd {date}")
+            text_generated.markup = generated.markup
+            return text_generated
+
+        return daily_message(date)
+
+    raise ApiError("Invalid arguments")
