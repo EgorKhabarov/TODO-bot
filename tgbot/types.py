@@ -65,33 +65,46 @@ SELECT group_id,
         try:
             group = db.execute(
                 """
-SELECT group_id,
-       chat_id,
-       name,
-       owner_id,
-       max_event_id
-  FROM groups
- WHERE chat_id = :group_chat_id;
+SELECT g.group_id,
+       g.chat_id,
+       g.name,
+       g.owner_id,
+       g.max_event_id,
+       u.user_status
+  FROM groups AS g
+  JOIN users  AS u
+    /*
+    If the user is banned, the group is banned for everyone `ON g.owner_id = u.user_id`
+    If a user is banned, the group is banned for that user  `ON u.chat_id = :user_chat_id`
+    */
+    ON u.chat_id = :user_chat_id
+ WHERE g.chat_id = :group_chat_id;
 """,
-                params={"group_chat_id": group_chat_id},
+                params={
+                    "group_chat_id": group_chat_id,
+                    "user_chat_id": user_chat_id,
+                },
             )[0]
         except Error as e:
             raise ApiError(e)
         except IndexError:
             raise GroupNotFound
 
-        telegram_group_member = bot.get_chat_member(group_chat_id, user_chat_id)
-        match telegram_group_member.status:
-            case "member":
-                member_status = 0
-            case "administrator":
-                member_status = 1
-            case "creator":
-                member_status = 2
-            case _:
-                member_status = 0
+        group_id, chat_id, name, owner_id, max_event_id, user_status = group
 
-        return TelegramGroup(*group, "", member_status)
+        if user_status == -1:
+            member_status = -1
+        else:
+            telegram_group_member = bot.get_chat_member(group_chat_id, user_chat_id)
+            match telegram_group_member.status:
+                case "administrator":
+                    member_status = 1
+                case "creator":
+                    member_status = 2
+                case _:  # "member"
+                    member_status = 0
+
+        return TelegramGroup(group_id, chat_id, name, owner_id, max_event_id, "", member_status)
 
 
 class TelegramUser(User):

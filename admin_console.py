@@ -8,7 +8,7 @@ from typing import Literal, Any, Callable
 from IPython import embed
 from table2string import Table, Themes, Theme
 
-from config import WSGI_PATH
+from config import WSGI_PATH, __version__
 from todoapi.types import db, Account  # noqa
 from tgbot.types import TelegramAccount  # noqa
 
@@ -52,7 +52,8 @@ def execute(
             for func in functions
         )
 
-    result = db.execute(query, params, commit, column_names=True, functions=functions)
+    with db.connection(), db.cursor():
+        result = db.execute(query, params, commit, column_names=True, functions=functions)
 
     if mode == "table":
         if max_width is max or max_height is max:
@@ -130,6 +131,86 @@ def restart_server() -> None:
         print(f"{WSGI_PATH=}")
 
 
+def chat_list(page: int = 1) -> None:
+    execute(
+        """
+SELECT c.date, 
+       c.id, 
+       c.type, 
+       c.title, 
+       c.username, 
+       c.first_name, 
+       c.last_name, 
+       (
+           SELECT group_concat(j.key || ': ' || j.value, char(10))
+           FROM json_each(c.json) AS j
+       ) AS json
+  FROM chats AS c
+ LIMIT :limit
+OFFSET :offset;
+""",
+        params={
+            "limit": 10,
+            "offset": (page - 1) * 10,
+        },
+    )
+
+
+def user_list(page: int = 1) -> None:
+    execute(
+        """
+SELECT user_id,
+       username,
+       email,
+       user_status,
+       max_event_id as event_count,
+       reg_date,
+       chat_id
+  FROM users
+ LIMIT :limit
+OFFSET :offset;
+""",
+        params={
+            "limit": 10,
+            "offset": (page - 1) * 10,
+        },
+    )
+
+
+def user(user_id: int) -> None:
+    execute(
+        """
+SELECT user_id,
+       username,
+       email,
+       user_status,
+       max_event_id as event_count,
+       reg_date,
+       chat_id
+  FROM users
+ WHERE user_id = :user_id;
+""",
+        params={"user_id": user_id},
+    )
+
+
+def ban(user_id: int, user_status: int = -1) -> None:
+    execute(
+        """
+UPDATE users
+   SET user_status = :user_status
+ WHERE user_id = :user_id;
+""",
+        params={
+            "user_id": user_id,
+            "user_status": user_status,
+        },
+        commit=True,
+    )
+    print("\x1b[2A")
+    user(user_id)
+
+
 HELP = """
 exit -> Ctrl+D
 
@@ -154,8 +235,14 @@ Account(user_id: int, group_id: str = None)
 TelegramAccount(chat_id: int, group_chat_id: int = None)
 terminal_size() -> tuple[int, int]
 restart_server()
+
+chat_list(page: int = 1)
+user_list(page: int = 1)
+user(user_id: int)
+ban(user_id: int, user_status: int = -1)
 """
 
 
 if __name__ == "__main__":
+    print(f"TODO-bot {__version__}")
     embed(colors="Linux")

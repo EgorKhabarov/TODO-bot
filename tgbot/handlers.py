@@ -404,7 +404,10 @@ def command_handler(message: Message) -> None:
     elif command_text in ("login", "signup"):
         TextMessage(get_translate("errors.failure")).reply(message)
 
-    elif command_text.startswith(("open_", "open ")):
+    elif command_text == "open":
+        TextMessage(get_translate("messages.open")).send()
+
+    elif command_text.startswith("open_"):
         regex = re.compile(r"_+")
 
         def open_split(text_: str) -> str:
@@ -438,14 +441,23 @@ def command_handler(message: Message) -> None:
                 ).splitlines()
             )
 
-        generated = open_message(
-            " ".join(
-                (
-                    open_split(parsed_command["command"].split("_", maxsplit=1)[1]),
-                    parsed_command["arguments"]["arg"] or "",
-                )
-            ).strip()
-        )
+        try:
+            generated = open_message(
+                " ".join(
+                    (
+                        open_split(parsed_command["command"].split("_", maxsplit=1)[1]),
+                        parsed_command["arguments"]["arg"] or "",
+                    )
+                ).strip()
+            )
+        except ApiError:
+            generated = TextMessage(
+                f"""
+<b><u>{get_translate("errors.invalid_request")}</u></b>
+
+{get_translate("messages.open")}
+"""
+            )
         generated.send()
 
 

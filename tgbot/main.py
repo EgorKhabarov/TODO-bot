@@ -63,15 +63,16 @@ def migrate_chat(message: Message):
         "from_chat_id": message.chat.id,
         "to_chat_id": message.migrate_to_chat_id,
     }
-    db.execute(
-        """
+    with db.connection(), db.cursor():
+        db.execute(
+            """
 UPDATE groups
    SET chat_id = :to_chat_id
  WHERE chat_id = :from_chat_id;
 """,
-        params=params,
-        commit=True,
-    )
+            params=params,
+            commit=True,
+        )
     bot.send_message(
         message.migrate_to_chat_id,
         get_translate("text.migrate").format(**params),

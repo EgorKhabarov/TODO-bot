@@ -1223,6 +1223,40 @@ Visibility <b>{}</b>m""",
             "ru": "Нажмите чтобы закрепить",
             "en": "Press for pin",
         },
+        "open": {
+            "ru": """
+<b>Daily message</b>
+/open_calendar_today
+/open_calendar_now
+/open_today
+/open_now
+
+<b>Monthly calendar message</b>
+/open_calendar
+
+<b>Yearly calendar message</b>
+/open_calendar_year
+
+<b>Help message</b>
+/open_help
+""".strip(),
+            "en": """
+<b>Daily message</b>
+/open_calendar_today
+/open_calendar_now
+/open_today
+/open_now
+
+<b>Monthly calendar message</b>
+/open_calendar
+
+<b>Yearly calendar message</b>
+/open_calendar_year
+
+<b>Help message</b>
+/open_help
+""".strip(),
+        },
     },
     "buttons": {
         "commands": {
@@ -1915,6 +1949,10 @@ or create an account
         "request_empty": {
             "ru": "Запрос пустой :/",
             "en": "Request is empty :/",
+        },
+        "invalid_request": {
+            "ru": "Ошибка в запросе",
+            "en": "Error in request",
         },
         "nothing_found": {
             "ru": "🕸  Ничего не нашлось🕷  🕸",

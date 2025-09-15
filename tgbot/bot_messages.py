@@ -20,7 +20,7 @@ from tgbot.request import request
 from tgbot.limits import get_limit_link
 from tgbot.time_utils import parse_utc_datetime
 from tgbot.bot_actions import delete_message_action
-from tgbot.lang import get_translate, get_theme_emoji
+from tgbot.lang import get_translate, get_theme_emoji, translation
 from tgbot.types import TelegramAccount, TelegramSettings
 from tgbot.message_generator import (
     TextMessage,
@@ -48,7 +48,7 @@ from tgbot.utils import (
 from todoapi.logger import logger
 from todoapi.types import db, group_limits
 from todoapi.utils import sqlite_format_date, is_valid_year, chunks
-from todoapi.exceptions import EventNotFound, GroupNotFound, UserNotFound
+from todoapi.exceptions import EventNotFound, GroupNotFound, UserNotFound, ApiError
 from telegram_utils.buttons_generator import generate_buttons, edit_button_data
 
 
@@ -1951,6 +1951,9 @@ def open_message(arguments: str) -> TextMessage | None:
         return yearly_calendar_message(None, "dl", "mnm")
 
     elif arguments.startswith("help"):
+        keys = list(translation["messages"]["help"].keys())[1:]
+        if arguments.removeprefix("help").strip() not in keys:
+            raise ApiError("Wrong help key")
         return help_message(arguments.removeprefix("help").strip() or "page main")
 
     elif m := regex_year.match(arguments.removeprefix("calendar ")):
