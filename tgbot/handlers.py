@@ -1598,7 +1598,7 @@ def reply_handler(message: Message, reply_to_message: Message) -> None:
         delete_message_action(message)
 
 
-def cache_add_event_date(state: str = None) -> str | bool:
+def cache_add_event_date(state: str | None = None) -> str | bool:
     """
     Clears the user's message receipt status
     and changes the message by id from add_event_date
@@ -1627,7 +1627,7 @@ def cache_add_event_date(state: str = None) -> str | bool:
 
 
 def cache_create_group(
-    state: str = None, mode: str = "al", page: int = 1
+    state: str | None = None, mode: str = "al", page: int = 1
 ) -> str | bool:
     """
     Clears the user's message receipt status

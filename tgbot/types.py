@@ -27,8 +27,8 @@ class TelegramGroup(Group):
         name: str,
         owner_id: int,
         max_event_id: int,
-        entry_date: str = None,
-        member_status: int = None,
+        entry_date: str | None = None,
+        member_status: int | None = None,
     ):
         super().__init__(
             group_id, name, owner_id, max_event_id, entry_date, member_status
@@ -123,8 +123,8 @@ class TelegramUser(User):
         user_status: int,
         username: str,
         password: str,
-        max_event_id: int = None,
-        reg_date: str = None,
+        max_event_id: int | None = None,
+        reg_date: str | None = None,
     ):
         self.chat_id = chat_id
         super().__init__(
@@ -216,7 +216,7 @@ SELECT user_id,
 
 
 class TelegramAccount(Account):
-    def __init__(self, chat_id: int, group_chat_id: int = None):
+    def __init__(self, chat_id: int, group_chat_id: int | None = None):
         self.chat_id, self.group_chat_id = chat_id, group_chat_id
         super().__init__(
             self.user.user_id if not group_chat_id else 0,
@@ -278,13 +278,13 @@ SELECT lang,
 
     def set_telegram_user_settings(
         self,
-        lang: Literal["ru", "en"] = None,
-        sub_urls: Literal[0, 1] = None,
-        city: str = None,
-        timezone: int = None,
-        notifications: Literal[0, 1, 2] | bool = None,
-        notifications_time: str = None,
-        theme: int = None,
+        lang: Literal["ru", "en"] | None = None,
+        sub_urls: Literal[0, 1] | None = None,
+        city: str | None = None,
+        timezone: int | None = None,
+        notifications: Literal[0, 1, 2] | bool | None = None,
+        notifications_time: str | None = None,
+        theme: int | None = None,
     ) -> None:
         """
         user_id            INT  UNIQUE NOT NULL,
@@ -378,7 +378,7 @@ UPDATE tg_settings
             raise ApiError(e)
 
     def set_group_telegram_chat_id(
-        self, group_id: str = None, chat_id: int = None
+        self, group_id: str | None = None, chat_id: int | None = None
     ) -> None:
         group_id = group_id or self.group_id
 
@@ -594,7 +594,7 @@ OFFSET :offset;
 
 
 def get_telegram_account_from_password(
-    username: str, password: str, group_chat_id: str = None
+    username: str, password: str, group_chat_id: str | None = None
 ) -> TelegramAccount:
     try:
         user = db.execute(
@@ -618,7 +618,7 @@ SELECT chat_id,
 
 
 def set_user_telegram_chat_id(
-    account: Account | TelegramAccount, chat_id: int = None
+    account: Account | TelegramAccount, chat_id: int | None = None
 ) -> None:
     try:
         db.execute(

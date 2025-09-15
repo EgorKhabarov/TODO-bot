@@ -103,11 +103,13 @@ SELECT event_id,
 
 
 class TextMessage:
-    def __init__(self, text: str = None, markup: InlineKeyboardMarkup = None):
+    def __init__(
+        self, text: str | None = None, markup: InlineKeyboardMarkup | None = None
+    ):
         self.text = text
         self.markup = markup
 
-    def send(self, chat_id: int = None, **kwargs) -> Message:
+    def send(self, chat_id: int | None = None, **kwargs) -> Message:
         return bot.send_message(
             chat_id=int(chat_id or request.chat_id),
             text=self.text,
@@ -118,11 +120,11 @@ class TextMessage:
 
     def edit(
         self,
-        chat_id: int = None,
-        message_id: int = None,
+        chat_id: int | None = None,
+        message_id: int | None = None,
         *,
         only_markup: bool = False,
-        markup: InlineKeyboardMarkup = None,
+        markup: InlineKeyboardMarkup | None = None,
         **kwargs,
     ) -> None:
         """
@@ -203,7 +205,12 @@ class CallBackAnswer:
     def __init__(self, text: str):
         self.text = text
 
-    def answer(self, call_id: int = None, show_alert: bool = None, url: str = None):
+    def answer(
+        self,
+        call_id: int | None = None,
+        show_alert: bool | None = None,
+        url: str | None = None,
+    ):
         if not call_id and request.is_callback:
             call_id = request.query.id
 
@@ -221,7 +228,7 @@ class ChatAction:
     def __init__(self, action: str):
         self.action = action
 
-    def send(self, chat_id: int = None, **kwargs) -> None:
+    def send(self, chat_id: int | None = None, **kwargs) -> None:
         bot.send_chat_action(
             chat_id=chat_id or request.chat_id,
             action=self.action,
@@ -234,8 +241,8 @@ class DocumentMessage:
     def __init__(
         self,
         document: Any | StringIO,
-        caption: str = None,
-        markup: InlineKeyboardMarkup = None,
+        caption: str | None = None,
+        markup: InlineKeyboardMarkup | None = None,
         file_name: str | None = None,
     ):
         self.__document = document
@@ -245,7 +252,7 @@ class DocumentMessage:
             document.name if hasattr(document, "name") else None
         ) or file_name
 
-    def send(self, chat_id: int = None, **kwargs):
+    def send(self, chat_id: int | None = None, **kwargs):
         bot.send_document(
             chat_id=chat_id or request.chat_id,
             document=InputFile(self.__document, self.file_name),
@@ -273,7 +280,7 @@ class EventMessage(TextMessage):
         self,
         title: str = "",
         event_date_representation: str = "",
-        markup: InlineKeyboardMarkup = None,
+        markup: InlineKeyboardMarkup | None = None,
     ):
         str_date, rel_date, week_date = relatively_string_date(
             self.event.days_before_event(request.entity.settings.timezone)
@@ -316,7 +323,7 @@ class EventsMessage(TextMessage):
         self,
         date: str = "now",
         event_list: tuple | list[Event, ...] = tuple(),
-        markup: InlineKeyboardMarkup = None,
+        markup: InlineKeyboardMarkup | None = None,
         page: int = 0,
         page_indent: int = 0,
     ):

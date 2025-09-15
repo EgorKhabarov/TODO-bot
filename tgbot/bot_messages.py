@@ -341,7 +341,9 @@ def frequently_used_dates_settings_message(
     )
 
 
-def help_message(path: str = "page main", markup_path: str | None = None) -> TextMessage:
+def help_message(
+    path: str = "page main", markup_path: str | None = None
+) -> TextMessage:
     """
     Help message
     """
@@ -491,7 +493,7 @@ LIMIT 1;
 
 
 def event_message(
-    event_id: int, in_wastebasket: bool = False, message_id: int = None
+    event_id: int, in_wastebasket: bool = False, message_id: int | None = None
 ) -> EventMessage | None:
     """
     Message to interact with one event
@@ -1376,7 +1378,7 @@ DELETE FROM events
 
 
 def notification_message(
-    n_date: datetime | str = None,
+    n_date: datetime | str | None = None,
     id_list: list[int] = (),
     page: int = 0,
     from_command: bool = False,
@@ -1550,11 +1552,11 @@ SELECT CAST(
 
 
 def monthly_calendar_message(
-    yy_mm: list[int] | tuple[int, int] = None,
-    command: str = None,
-    back: str = None,
-    custom_text: str = None,
-    arguments: str = None,
+    yy_mm: list[int] | tuple[int, int] | None = None,
+    command: str | None = None,
+    back: str | None = None,
+    custom_text: str | None = None,
+    arguments: str | None = None,
 ) -> TextMessage:
     text = custom_text if custom_text else get_translate("select.date")
     markup = create_monthly_calendar_keyboard(yy_mm, command, back, arguments)
@@ -1563,17 +1565,17 @@ def monthly_calendar_message(
 
 def yearly_calendar_message(
     year: int | None = None,
-    command: str = None,
-    back: str = None,
-    custom_text: str = None,
-    arguments: str = None,
+    command: str | None = None,
+    back: str | None = None,
+    custom_text: str | None = None,
+    arguments: str | None = None,
 ) -> TextMessage:
     text = custom_text if custom_text else get_translate("select.date")
     markup = create_yearly_calendar_keyboard(year, command, back, arguments)
     return TextMessage(text, markup)
 
 
-def limits_message(date: datetime | str = None) -> TextMessage:
+def limits_message(date: datetime | str | None = None) -> TextMessage:
     if date is None or date == "now":
         date = request.entity.now_time()
 
@@ -1587,7 +1589,7 @@ def limits_message(date: datetime | str = None) -> TextMessage:
 
 
 def group_message(
-    group_id: str, message_id: int = None, mode: str = "al"
+    group_id: str, message_id: int | None = None, mode: str = "al"
 ) -> TextMessage | None:
     try:
         if request.is_member:
@@ -1700,7 +1702,7 @@ def group_message(
 
 
 def delete_group_message(
-    group_id: str, message_id: int = None, mode: str = "al"
+    group_id: str, message_id: int | None = None, mode: str = "al"
 ) -> TextMessage | None:
     try:
         if request.is_member:
@@ -1858,7 +1860,7 @@ def select_one_message(
     is_in_wastebasket: bool = False,
     is_in_search: bool = False,
     is_open: bool = False,
-    message_id: int = None,
+    message_id: int | None = None,
     order: str = "usual",
 ) -> TextMessage | None:
     if len(id_list) == 0:

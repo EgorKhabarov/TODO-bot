@@ -200,7 +200,9 @@ class VedisCache:
 
 
 class Limit:
-    def __init__(self, status: int, user_id: int = None, group_id: str = None):
+    def __init__(
+        self, status: int, user_id: int | None = None, group_id: str | None = None
+    ):
         self.user_id = user_id
         self.group_id = group_id
         self.status = status
@@ -354,10 +356,10 @@ class ExportData:
     def __init__(
         self,
         filename: str,
-        user_id: int = None,
-        group_id: str = None,
-        __sql_where: str = None,
-        __sql_params: tuple = None,
+        user_id: int | None = None,
+        group_id: str | None = None,
+        __sql_where: str | None = None,
+        __sql_params: tuple | None = None,
     ):
         self.user_id, self.group_id = user_id, group_id
         self.filename = filename
@@ -495,7 +497,7 @@ class Event:
 
     removal_time: str
 
-    _history: str = None
+    _history: str | None = None
     """
 
     user_id: int
@@ -507,7 +509,7 @@ class Event:
     adding_time: str
     recent_changes_time: str
     removal_time: str
-    _history: str = None
+    _history: str | None = None
 
     @property
     def is_delete(self) -> bool:
@@ -667,11 +669,11 @@ class Group:
     name: str
     owner_id: int
     max_event_id: int
-    entry_date: str = None
-    member_status: int = None
-    token: str = None
-    token_create_time: str = None
-    icon: bytes = None
+    entry_date: str | None = None
+    member_status: int | None = None
+    token: str | None = None
+    token_create_time: str | None = None
+    icon: bytes | None = None
 
 
 @dataclass
@@ -688,13 +690,13 @@ class User:
         user_id: int,
         user_status: int,
         username: str,
-        token: str = None,
-        password: str = None,
-        email: str = None,
-        max_event_id: int = None,
-        token_create_time: str = None,
-        reg_date: str = None,
-        icon: bytes = None,
+        token: str | None = None,
+        password: str | None = None,
+        email: str | None = None,
+        max_event_id: int | None = None,
+        token_create_time: str | None = None,
+        reg_date: str | None = None,
+        icon: bytes | None = None,
     ):
         self.user_id = user_id
         self.user_status = user_status
@@ -796,7 +798,7 @@ SELECT user_id,
 
 
 class Account:
-    def __init__(self, user_id: int, group_id: str = None):
+    def __init__(self, user_id: int, group_id: str | None = None):
         self.user_id, self.group_id = user_id, group_id
         self.limit = Limit(
             self.user.user_status if not group_id else 0,
@@ -1284,8 +1286,8 @@ UPDATE events
         self,
         filename: str,
         file_format: str = "csv",
-        __sql_where: str = None,
-        __sql_params: str = None,
+        __sql_where: str | None = None,
+        __sql_params: str | None = None,
     ) -> tuple[StringIO | BytesIO, int]:
         if file_format not in ("csv", "xml", "json", "jsonl"):
             raise ValueError("Format Is Not Valid")
@@ -1411,7 +1413,9 @@ DELETE FROM media
         except Error as e:
             raise ApiError(e)
 
-    def check_member_exists(self, user_id: int = None, group_id: str = None) -> bool:
+    def check_member_exists(
+        self, user_id: int | None = None, group_id: str | None = None
+    ) -> bool:
         user_id = user_id or self.user_id
         group_id = group_id or self.group_id
 
@@ -1433,7 +1437,9 @@ SELECT 1
         except Error as e:
             raise ApiError(e)
 
-    def is_moderator(self, group_id: str = None, user_id: int = None) -> bool:
+    def is_moderator(
+        self, group_id: str | None = None, user_id: int | None = None
+    ) -> bool:
         user_id = user_id or self.user_id
 
         if group_id is not None and group_id != self.group_id:
@@ -1444,7 +1450,7 @@ SELECT 1
 
         return False
 
-    def is_owner(self, group_id: str = None, user_id: int = None) -> bool:
+    def is_owner(self, group_id: str | None = None, user_id: int | None = None) -> bool:
         user_id = user_id or self.user_id
 
         if (group_id is not None) and group_id != self.group_id:
@@ -1656,7 +1662,7 @@ LIMIT :limit OFFSET :offset;
 
         return [Group(*group) for group in groups]
 
-    def edit_group_name(self, name: str, group_id: str = None) -> None:
+    def edit_group_name(self, name: str, group_id: str | None = None) -> None:
         group_id = group_id or self.group_id
 
         if group_id is None:
@@ -1681,7 +1687,7 @@ UPDATE groups
         except Error as e:
             raise ApiError(e)
 
-    def edit_group_icon(self, icon: bytes, group_id: str = None) -> None:
+    def edit_group_icon(self, icon: bytes, group_id: str | None = None) -> None:
         group_id = group_id or self.group_id
 
         if group_id is None:
@@ -1706,12 +1712,12 @@ UPDATE groups
         except Error as e:
             raise ApiError(e)
 
-    def get_group_member(self, user_id: int, group_id: str = None) -> Member:
+    def get_group_member(self, user_id: int, group_id: str | None = None) -> Member:
         group_id = group_id or self.group_id
         return self.get_group_members([user_id], group_id)[0]
 
     def get_group_members(
-        self, user_ids: list[int], group_id: str = None
+        self, user_ids: list[int], group_id: str | None = None
     ) -> list[Member]:
         group_id = group_id or self.group_id
 
@@ -1739,7 +1745,7 @@ SELECT group_id,
 
         return [Member(*member) for member in members]
 
-    def add_group_member(self, user_id: int, group_id: str = None) -> None:
+    def add_group_member(self, user_id: int, group_id: str | None = None) -> None:
         group_id = group_id or self.group_id
 
         if group_id is None:
@@ -1761,7 +1767,7 @@ VALUES (:group_id, :user_id);
             raise ApiError(e)
 
     def edit_group_member_status(
-        self, member_status: int, user_id: int, group_id: str = None
+        self, member_status: int, user_id: int, group_id: str | None = None
     ) -> None:
         group_id = group_id or self.group_id
 
@@ -1792,7 +1798,7 @@ UPDATE members
         except Error as e:
             raise ApiError(e)
 
-    def remove_group_member(self, user_id: int, group_id: str = None) -> None:
+    def remove_group_member(self, user_id: int, group_id: str | None = None) -> None:
         group_id = group_id or self.group_id
 
         if group_id is None:
@@ -1820,7 +1826,7 @@ DELETE FROM members
         except Error as e:
             raise ApiError(e)
 
-    def delete_group(self, group_id: str = None) -> None:
+    def delete_group(self, group_id: str | None = None) -> None:
         group_id = group_id or self.group_id
 
         if group_id is None:
@@ -1897,13 +1903,13 @@ SELECT lang,
 
     def set_user_settings(
         self,
-        lang: Literal["ru", "en"] = None,
-        sub_urls: Literal[0, 1] = None,
-        city: str = None,
-        timezone_: int = None,
-        notifications: Literal[0, 1, 2] | bool = None,
-        notifications_time: str = None,
-        theme: int = None,
+        lang: Literal["ru", "en"] | None = None,
+        sub_urls: Literal[0, 1] | None = None,
+        city: str | None = None,
+        timezone_: int | None = None,
+        notifications: Literal[0, 1, 2] | bool | None = None,
+        notifications_time: str | None = None,
+        theme: int | None = None,
     ) -> None:
         """
         user_id            INT  UNIQUE NOT NULL,
@@ -2288,7 +2294,7 @@ VALUES (
         raise ApiError(e)
 
 
-def get_account_from_token(token: str, group_id: str = None) -> Account:
+def get_account_from_token(token: str, group_id: str | None = None) -> Account:
     try:
         user_id = db.execute(
             """
@@ -2310,7 +2316,7 @@ SELECT user_id
 
 
 def get_account_from_password(
-    username: str, password: str, group_id: str = None
+    username: str, password: str, group_id: str | None = None
 ) -> Account:
     try:
         user = db.execute(
