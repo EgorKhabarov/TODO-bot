@@ -1806,14 +1806,14 @@ def account_message(message_id: int | None = None) -> TextMessage:
     markup = generate_buttons(
         [
             (
-                [{f"{get_translate('text.get_premium')}🤩": "get_premium"}]
+                [{f"{get_translate('text.get_premium')} 🤩": "get_premium"}]
                 if request.entity.user.user_status == 0
                 else []
             ),
             (
                 [
                     {
-                        f"{get_translate('text.edit_username')}👤": {
+                        f"{get_translate('text.edit_username')} 👤": {
                             "switch_inline_query_current_chat": (
                                 f"user({message_id}).name\n"
                                 f"{html.unescape(request.entity.user.username)}"
@@ -1826,7 +1826,7 @@ def account_message(message_id: int | None = None) -> TextMessage:
             ),
             [
                 {
-                    f"{get_translate('text.edit_password')}🤫🔑": {
+                    f"{get_translate('text.edit_password')} 🤫🔑": {
                         "switch_inline_query_current_chat": (
                             "user().password\nold password: \nnew password: "
                         )

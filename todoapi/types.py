@@ -292,6 +292,7 @@ SELECT (
             tuple(self.user_max_limits.values())[1::2],
         )
 
+        # TODO проверить для чего inf и как он ведёт себя с -1 статусом
         return any(
             actual_limit + event_count >= (max_limit or inf)
             for actual_limit, max_limit in limits_event_count
