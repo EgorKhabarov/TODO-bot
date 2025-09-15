@@ -37,7 +37,7 @@ def key_func(func: Callable, x: Message | CallbackQuery) -> int:
 @rate_limit(
     rate_limit_else,
     10,
-    60*2,
+    60 * 2,
     lambda *args, **kwargs: request.chat_id,
     lambda *args, **kwargs: None,
 )
@@ -59,9 +59,7 @@ def wrapper(func: Callable, x: Message | CallbackQuery):
             if request.is_user:
                 request.entity = TelegramAccount(request.chat_id)
             else:
-                request.entity = TelegramAccount(
-                    x.from_user.id, request.chat_id
-                )
+                request.entity = TelegramAccount(x.from_user.id, request.chat_id)
         except (UserNotFound, GroupNotFound):
             request.entity = None
 
@@ -147,7 +145,8 @@ VALUES (
 
             if request.is_message:
                 if request.query.content_type != "migrate_to_chat_id" and (
-                    request.query.text.startswith("/") and not command_regex.match(_x.text)
+                    request.query.text.startswith("/")
+                    and not command_regex.match(_x.text)
                 ):
                     # If the command is addressed to other bots, then do not respond
                     return

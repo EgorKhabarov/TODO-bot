@@ -210,7 +210,10 @@ class CallBackAnswer:
         try:
             bot.answer_callback_query(call_id, self.text, show_alert, url)
         except ApiTelegramException as e:
-            if "Bad Request: query is too old and response timeout expired or query ID is invalid" not in str(e):
+            if (
+                "Bad Request: query is too old and response timeout expired or query ID is invalid"
+                not in str(e)
+            ):
                 raise
 
 

@@ -104,7 +104,15 @@ SELECT g.group_id,
                 case _:  # "member"
                     member_status = 0
 
-        return TelegramGroup(group_id, chat_id, name, owner_id, max_event_id, "", member_status)
+        return TelegramGroup(
+            group_id,
+            chat_id,
+            name,
+            owner_id,
+            max_event_id,
+            "",
+            member_status,
+        )
 
 
 class TelegramUser(User):

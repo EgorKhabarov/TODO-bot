@@ -53,7 +53,13 @@ def execute(
         )
 
     with db.connection(), db.cursor():
-        result = db.execute(query, params, commit, column_names=True, functions=functions)
+        result = db.execute(
+            query,
+            params,
+            commit,
+            column_names=True,
+            functions=functions,
+        )
 
     if mode == "table":
         if max_width is max or max_height is max:

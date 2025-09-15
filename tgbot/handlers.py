@@ -499,15 +499,14 @@ def stats(func: Callable):
             except ApiError as e:
                 logger.exception(e)
         return func(*args, **kwargs)
+
     return wrapper
 
 
 class CallBackHandler:
     def __call__(self, call: CallbackQuery):
         call_prefix = call.data.strip().split(maxsplit=1)[0]
-        method: tuple[str, dict, bool, bool, str] | None = _handlers.get(
-            call_prefix
-        )
+        method: tuple[str, dict, bool, bool, str] | None = _handlers.get(call_prefix)
 
         if method is None:
             return
@@ -1158,9 +1157,13 @@ class CallBackHandler:
             CallBackAnswer(get_translate("errors.invalid_date")).answer()
 
     @prefix("cmf", eval_star=True)
-    def calendar_month_frequently_used_dates_dates(self, command, back, year, month, arguments):
+    def calendar_month_frequently_used_dates(
+        self, command, back, year, month, arguments
+    ):
         if is_valid_year(year):
-            markup = create_frequently_used_dates_keyboard("cm", command, back, arguments, year, month)
+            markup = create_frequently_used_dates_keyboard(
+                "cm", command, back, arguments, year, month
+            )
             try:
                 TextMessage(markup=markup).edit(only_markup=True)
             except ApiTelegramException:
@@ -1171,7 +1174,9 @@ class CallBackHandler:
     @prefix("cyf", eval_star=True)
     def calendar_year_frequently_used_dates(self, command, back, year, arguments):
         if is_valid_year(year):
-            markup = create_frequently_used_dates_keyboard("cy", command, back, arguments, year)
+            markup = create_frequently_used_dates_keyboard(
+                "cy", command, back, arguments, year
+            )
             try:
                 TextMessage(markup=markup).edit(only_markup=True)
             except ApiTelegramException:
@@ -1180,9 +1185,13 @@ class CallBackHandler:
             CallBackAnswer(get_translate("errors.invalid_date")).answer()
 
     @prefix("ctf", eval_star=True)
-    def calendar_twenty_year_frequently_used_dates(self, command, back, decade, arguments):
+    def calendar_twenty_year_frequently_used_dates(
+        self, command, back, decade, arguments
+    ):
         if is_valid_year(int(str(decade) + "0")):
-            markup = create_frequently_used_dates_keyboard("ct", command, back, arguments, decade)
+            markup = create_frequently_used_dates_keyboard(
+                "ct", command, back, arguments, decade
+            )
             try:
                 TextMessage(markup=markup).edit(only_markup=True)
             except ApiTelegramException:
@@ -1191,7 +1200,9 @@ class CallBackHandler:
             CallBackAnswer(get_translate("errors.invalid_date")).answer()
 
     @prefix("frd", {"mode": ("str", "d"), "date": "str"})
-    def frequently_used_dates(self, mode: str | None = None, date: datetime | None = None):
+    def frequently_used_dates(
+        self, mode: str | None = None, date: datetime | None = None
+    ):
         generated = frequently_used_dates_settings_message(mode, date)
         if generated:
             try:

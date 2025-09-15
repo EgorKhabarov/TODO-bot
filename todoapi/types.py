@@ -2059,7 +2059,9 @@ DELETE FROM frequently_used_dates
         except Error as e:
             raise ApiError(e)
 
-    def get_frequently_used_dates(self, min_count: int = 2) -> list[tuple[int | str, ...]]:
+    def get_frequently_used_dates(
+        self, min_count: int = 2
+    ) -> list[tuple[int | str, ...]]:
         try:
             frequently_used_dates_raw = db.execute(
                 """
@@ -2084,12 +2086,19 @@ SELECT date, count, pinned, last_visited
 
         frequently_used_dates: list[tuple[int | str, ...]] = []
 
-        for frequently_used_date, count, pinned, last_visited in frequently_used_dates_raw:
+        for (
+            frequently_used_date,
+            count,
+            pinned,
+            last_visited,
+        ) in frequently_used_dates_raw:
             frequently_used_date: str
             count: int
             pinned: int
             last_visited: str
-            frequently_used_dates.append((frequently_used_date, count, pinned, last_visited))
+            frequently_used_dates.append(
+                (frequently_used_date, count, pinned, last_visited)
+            )
         return frequently_used_dates
 
     def edit_user_username(self, username: str) -> None:

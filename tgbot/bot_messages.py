@@ -58,9 +58,11 @@ def start_message() -> TextMessage:
     markup = generate_buttons(
         [
             [
-                {"Сменить язык на русский": "stl ru"}
-                if request.entity.settings.lang == "en"
-                else {"Change language to English": "stl en"}
+                (
+                    {"Сменить язык на русский": "stl ru"}
+                    if request.entity.settings.lang == "en"
+                    else {"Change language to English": "stl en"}
+                )
             ],
             [{"/menu": "mnm"}],
             [{"/calendar": "mnc ('now',)"}],
@@ -305,7 +307,9 @@ def settings_message(
     return TextMessage(text, markup)
 
 
-def frequently_used_dates_settings_message(mode: str = "d", date: datetime | None = None) -> TextMessage | None:
+def frequently_used_dates_settings_message(
+    mode: str = "d", date: datetime | None = None
+) -> TextMessage | None:
     if mode == "p" and not date:
         return
 
@@ -315,9 +319,9 @@ def frequently_used_dates_settings_message(mode: str = "d", date: datetime | Non
     frequently_used_dates = request.entity.get_frequently_used_dates()
     buttons_data = []
     for frequently_used_date, count, pinned, last_visited in frequently_used_dates:
-        button_title = f"{'📌' if pinned else '⠀⠀'} {frequently_used_date} {count}".ljust(60, config.ts)
+        button_title = f"{'📌' if pinned else '⠀⠀'} {frequently_used_date} {count}"
         button_data = f"frd p {frequently_used_date}"
-        buttons_data.append([{button_title: button_data}])
+        buttons_data.append([{button_title.ljust(60, config.ts): button_data}])
 
     if len(buttons_data) == 0:
         buttons_data.append([{get_translate("errors.message_empty"): "None"}])
