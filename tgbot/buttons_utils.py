@@ -41,6 +41,9 @@ def create_monthly_calendar_keyboard(
     else:
         year, month = now_time_calendar()
 
+    if not is_valid_year(year):
+        raise ValueError
+
     # Days with events
     has_events = {
         x[0]: x[1]
@@ -203,6 +206,9 @@ def create_yearly_calendar_keyboard(
     """
     if not year:
         year = now_time_calendar()[0]
+
+    if not is_valid_year(year):
+        raise ValueError
 
     command = f"'{command.strip()}'" if command else None
     back = f"'{back.strip()}'" if back else None
@@ -593,9 +599,9 @@ def number_to_power(string: str) -> str:
     Turns a string of numbers into a string of powers.
     For example "123" in "¹²³".
 
-    >>> number_to_power(123)
+    >>> number_to_power("123")
     '¹²³'
-    >>> number_to_power(91834683)
+    >>> number_to_power("91834683")
     '⁹¹⁸³⁴⁶⁸³'
     """
     return "".join(calendar_event_count_template[int(ch)] for ch in str(string))

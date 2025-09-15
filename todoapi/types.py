@@ -158,6 +158,7 @@ class DataBase:
                 # noinspection PyUnresolvedReferences
                 self.sqlite_connection.create_function(fn, ff.__code__.co_argcount, ff)
 
+        # from todoapi.logger import logger
         # logger.debug(
         #     "SQLite3.EXECUTE: "
         #     + " ".join([line.strip() for line in query.split("\n")]).strip()

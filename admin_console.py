@@ -140,13 +140,13 @@ def restart_server() -> None:
 def chat_list(page: int = 1) -> None:
     execute(
         """
-SELECT c.date, 
-       c.id, 
-       c.type, 
-       c.title, 
-       c.username, 
-       c.first_name, 
-       c.last_name, 
+SELECT c.date,
+       c.id,
+       c.type,
+       c.title,
+       c.username,
+       c.first_name,
+       c.last_name,
        (
            SELECT group_concat(j.key || ': ' || j.value, char(10))
            FROM json_each(c.json) AS j
