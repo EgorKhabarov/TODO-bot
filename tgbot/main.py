@@ -63,7 +63,7 @@ def migrate_chat(message: Message):
         "from_chat_id": message.chat.id,
         "to_chat_id": message.migrate_to_chat_id,
     }
-    with db.connection(), db.cursor():
+    with db.connect():
         db.execute(
             """
 UPDATE groups

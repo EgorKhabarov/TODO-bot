@@ -54,6 +54,10 @@ else:
     else:
         WSGI_PATH = None
 
+# TODO remove
+if not DATABASE_PATH.startswith("sqlite:///"):
+    DATABASE_PATH = f"sqlite:///{DATABASE_PATH}"
+
 ADMIN_IDS = tuple(config.get("ADMIN_IDS", ()))
 
 headers = {
@@ -132,5 +136,5 @@ recent_changes_time ASC
 }
 
 string_branch = "" if branch == "master" else f":{branch}"
-__version__ = "2025.09.15.12"
+__version__ = "2025.09.16.1"
 __author__ = "EgorKhabarov"

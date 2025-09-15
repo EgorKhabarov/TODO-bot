@@ -92,7 +92,7 @@ def process_account(func):
     @wraps(func)
     def check_argument(_x: Message | CallbackQuery):
         request.set(_x)
-        with db.connection(), db.cursor():
+        with db.connect():
             if request.is_message:
                 try:
                     db.execute(

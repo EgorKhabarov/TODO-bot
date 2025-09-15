@@ -65,6 +65,7 @@ def pagination(
     The amount of data in a button is limited to 64 characters
     """
 
+    db.register_function("DAYS_BEFORE_EVENT", calculate_days_before_event)
     data = db.execute(
         f"""
 SELECT event_id,
@@ -75,7 +76,6 @@ SELECT event_id,
  LIMIT 400;
 """,
         params=params,
-        functions=(("DAYS_BEFORE_EVENT", calculate_days_before_event),),
     )
     _result = []
     group = []
@@ -352,6 +352,7 @@ class EventsMessage(TextMessage):
         data = pagination(sql_where, params)
 
         if data:
+            db.register_function("DAYS_BEFORE_EVENT", calculate_days_before_event)
             first_message = [
                 Event(*event)
                 for event in db.execute(
@@ -371,7 +372,6 @@ SELECT user_id,
  ORDER BY {config.sql_order_dict[order]};
 """,
                     params=params,
-                    functions=(("DAYS_BEFORE_EVENT", calculate_days_before_event),),
                 )
             ]
 
@@ -420,6 +420,7 @@ SELECT user_id,
         Returns events included in values with the WHERE condition
         """
         try:
+            db.register_function("DAYS_BEFORE_EVENT", calculate_days_before_event)
             res = [
                 Event(*event)
                 for event in db.execute(
@@ -446,7 +447,6 @@ SELECT user_id,
                         *id_list,
                         *params,
                     ),
-                    functions=(("DAYS_BEFORE_EVENT", calculate_days_before_event),),
                 )
             ]
         except Error as e:

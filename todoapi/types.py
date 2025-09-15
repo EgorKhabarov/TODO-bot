@@ -11,7 +11,12 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Callable, Any, Literal
 
+# noinspection PyPackageRequirements
+from contextvars import ContextVar
+
 from vedis import Vedis
+from sqlalchemy import create_engine, text, event
+from sqlalchemy.engine import Engine, Connection, CursorResult
 
 import config
 from todoapi.exceptions import (
@@ -103,30 +108,38 @@ group_limits = {
         "max_groups_creator": 50,
     },
 }
+_current_connection: ContextVar[Connection | None] = ContextVar("connection", default=None)
 
 
 class DataBase:
     def __init__(self):
-        self.sqlite_connection = None
-        self.sqlite_cursor = None
-        # self.sqlite_connection = connect(config.DATABASE_PATH)
-        # self.sqlite_connection.close()
+        self.engine: Engine = create_engine(config.DATABASE_PATH, echo=True)
+        self._functions: dict[str, tuple[int, Callable]] = {}
+
+        @event.listens_for(self.engine, "connect")
+        def register_functions(dbapi_connection, connection_record):
+            for name, (argc, func) in self._functions.items():
+                dbapi_connection.create_function(name, argc, func)
 
     @contextmanager
-    def connection(self):
-        self.sqlite_connection = connect(config.DATABASE_PATH)
-        # logger.debug("connection.start()")
-        yield
-        # logger.debug("connection.close()")
-        self.sqlite_connection.close()
+    def connect(self):
+        """Открывает соединение и сохраняет его в contextvar"""
+        with self.engine.connect() as conn:
+            token = _current_connection.set(conn)
+            try:
+                yield
+            finally:
+                _current_connection.reset(token)
 
-    @contextmanager
-    def cursor(self):
-        self.sqlite_cursor = self.sqlite_connection.cursor()
-        # logger.debug("cursor.start()")
-        yield
-        # logger.debug("cursor.close()")
-        self.sqlite_cursor.close()
+    def register_function(self, name: str, func: Callable):
+        """Регистрирует пользовательскую SQL-функцию"""
+        argc = func.__code__.co_argcount
+        self._functions[name] = (argc, func)
+
+        conn = _current_connection.get(None)
+        if conn is not None:
+            raw_conn = conn.connection
+            raw_conn.create_function(name, argc, func)
 
     def execute(
         self,
@@ -134,49 +147,48 @@ class DataBase:
         params: tuple | dict = (),
         commit: bool = False,
         column_names: bool = False,
-        functions: tuple[tuple[str, Callable]] = None,
+        # functions: tuple[tuple[str, Callable]] = None,
         script: bool = False,
     ) -> list[tuple[int | str | bytes | Any, ...], ...]:
         """
-        Executes SQL query
-        I tried with, but it didn't close the file
-
-        :param query: SQL Query.
-        :param params: Query parameters (optional)
-        :param commit: Should I save my changes? (optional, defaults to False)
-        :param column_names: Insert column names into the result.
-        :param functions: Window functions. (function name, function)
-        :param script: Query consists of several requests
-        :return: Query result
+        Выполняет SQL-запрос через SQLAlchemy, сохраняя интерфейс sqlite3.
         """
-        # self.sqlite_connection = connect(config.DATABASE_PATH)
-        # self.sqlite_cursor = self.sqlite_connection.cursor()
 
-        if functions:
-            for func in functions:
-                fn, ff = func
-                # noinspection PyUnresolvedReferences
-                self.sqlite_connection.create_function(fn, ff.__code__.co_argcount, ff)
+        conn: Connection | None = _current_connection.get()
+        if conn is None:
+            raise RuntimeError("Нет активного соединения. Используй: with db.connect():")
 
-        # from todoapi.logger import logger
-        # logger.debug(
-        #     "SQLite3.EXECUTE: "
-        #     + " ".join([line.strip() for line in query.split("\n")]).strip()
-        # )
+        # если переданы новые функции — регистрируем
+        # if functions:
+        #     for fn, ff in functions:
+        #         self.register_function(fn, ff)
+
+        result: list[tuple[Any, ...]] = []
+        cursor: CursorResult | None = None
 
         if script:
-            self.sqlite_cursor.executescript(query)
+            raw_conn = conn.connection
+            raw_cursor = raw_conn.cursor()
+            raw_cursor.executescript(query)
         else:
-            self.sqlite_cursor.execute(query, params)
+            if isinstance(params, tuple):
+                raw_conn = conn.connection
+                raw_cursor = raw_conn.cursor()
+                raw_cursor.execute(query, params)
+                if raw_cursor.description:
+                    result = raw_cursor.fetchall()
+            else:
+                cursor = conn.execute(text(query), params)
+                if cursor.returns_rows:
+                    result = cursor.fetchall()
 
         if commit:
-            self.sqlite_connection.commit()
-        result = self.sqlite_cursor.fetchall()
-        if column_names and self.sqlite_cursor.description:
-            description = [column[0] for column in self.sqlite_cursor.description]
-            result = [description] + result
-        # self.sqlite_cursor.close()
-        # self.sqlite_connection.close()
+            conn.commit()
+
+        if column_names and cursor and result:
+            keys = cursor.keys()
+            result = [list(keys)] + result
+
         # noinspection PyTypeChecker
         return result
 
@@ -987,6 +999,7 @@ UPDATE users
             raise ApiError
 
         try:
+            db.register_function("DAYS_BEFORE_EVENT", lambda date, statuses: Event(0, "", 0, date, "", statuses, "", "", "").days_before_event(self.settings.timezone))
             events = db.execute(
                 f"""
 SELECT *
@@ -1002,14 +1015,6 @@ SELECT *
                     self.group_id,
                     *event_ids,
                     in_bin,
-                ),
-                functions=(
-                    (
-                        "DAYS_BEFORE_EVENT",
-                        lambda date, statuses: Event(
-                            0, "", 0, date, "", statuses, "", "", ""
-                        ).days_before_event(self.settings.timezone),
-                    ),
                 ),
             )
         except Error as e:

@@ -1471,7 +1471,7 @@ AND (
 
 def send_notifications_messages() -> None:
     n_date = datetime.now(timezone.utc)
-    with db.connection(), db.cursor():
+    with db.connect():
         result = db.execute(
             """
 -- send_notifications_messages
