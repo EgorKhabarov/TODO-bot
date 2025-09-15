@@ -340,7 +340,7 @@ def frequently_used_dates_settings_message(
     )
 
 
-def help_message(path: str = "page main") -> TextMessage:
+def help_message(path: str = "page main", markup_path: str | None = None) -> TextMessage:
     """
     Help message
     """
@@ -359,7 +359,11 @@ def help_message(path: str = "page main") -> TextMessage:
         markup = generate_buttons(keyboard)
         generated = TextMessage(f"{title}\n{text}", markup)
     else:
-        generated = TextMessage(f"{title}\n{translate}")
+        markup = None
+        if markup_path:
+            markup = help_message(markup_path).markup
+
+        generated = TextMessage(f"{title}\n{translate}", markup)
 
     return generated
 

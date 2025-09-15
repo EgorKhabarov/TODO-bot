@@ -210,54 +210,6 @@ Call up new messages using bot commands.</b>
             "ru": "Ваш аккаунт удалён.",
             "en": "Your account has been deleted.",
         },
-        "command_list": {
-            "ru": (
-                """
-/start - Старт
-/menu - Меню
-/calendar - Календарь
-/today - События на сегодня
-/weather {city} - Погода сейчас
-/forecast {city} - Прогноз погоды
-/week_event_list - Список событий на ближайшие 7 дней
-/dice - Кинуть кубик
-/export - Сохранить мои события в csv
-/help - Помощь
-/settings - Настройки
-/logout - Выйти из аккаунта
-/search {...} - Поиск
-/id - Получить свой Telegram id
-/commands - Этот список
-""",
-                """
-/clear_logs - Очистить логи
-/version | /v - Версия бота
-""",
-            ),
-            "en": (
-                """
-/start - Start
-/menu - Menu
-/calendar - Calendar
-/today - Events for today
-/weather {city} - Weather now
-/forecast {city} - Weather forecast
-/week_event_list - List of events for the next 7 days
-/dice - Roll a die
-/export - Save my events to csv
-/help - Help
-/settings - Settings
-/logout - Logout
-/search {...} - Search
-/id - Get your Telegram id
-/commands - This list
-""",
-                """
-/clear_logs - Clear logs
-/version - Bot version
-""",
-            ),
-        },
         "recover": {
             "ru": "Восстановить",
             "en": "Recover",
@@ -686,6 +638,8 @@ Buttons with text are marked with a smiley 📄. The button folder is marked wit
             "page messages": {
                 "ru": [
                     """
+<b><u>Виды сообщений</u></b>
+
 В боте есть разные виды сообщений, каждый из которых имеет свои особенности и функции.
 Выберите кнопку с темой, чтобы прочитать подробнее.
 """,
@@ -705,6 +659,8 @@ Buttons with text are marked with a smiley 📄. The button folder is marked wit
                 ],
                 "en": [
                     """
+<b><u>Types of messages</u></b>
+
 The bot has different types of messages, each of which has its own characteristics and functions.
 Select a topic button to read more.
 """,
@@ -723,7 +679,7 @@ Select a topic button to read more.
                     ],
                 ],
             },
-            "page commands": {  # TODO "messages.help.page commands"
+            "page commands": {
                 "ru": [
                     """
 <u><b>Команды бота</b></u>
@@ -742,13 +698,13 @@ Select a topic button to read more.
 /logout - Выйти из аккаунта
 /search {...} - Поиск
 /id - Получить свой Telegram id
+/open - Шорткаты для открытия сообщений
 /commands - Этот список
 """,
                     [
                         [{k.ljust(60, config.ts): v}]
                         for k, v in {
-                            "📄 Новости бота": "mnh BotNews",
-                            "📄 Версия бота": "mnh BotVersion",
+                            "📄 /open": "mnh CommandOpen",
                             "🔙": "mnh page main",
                         }.items()
                     ],
@@ -771,13 +727,13 @@ Select a topic button to read more.
 /logout - Logout
 /search {...} - Search
 /id - Get your Telegram id
+/open - Shortcuts for opening messages
 /commands - This list
 """,
                     [
                         [{k.ljust(60, config.ts): v}]
                         for k, v in {
-                            "📄 Bot news": "mnh BotNews",
-                            "📄 Bot version": "mnh BotVersion",
+                            "📄 /open": "mnh CommandOpen",
                             "🔙": "mnh page main",
                         }.items()
                     ],
@@ -1156,6 +1112,44 @@ The bot notifies about important "🟥" events, events with recurring status ("�
 <pre><code class='language-version'>{config.__version__}{config.string_branch}</code></pre>
 """,
             },
+            "CommandOpen": {
+                "ru": f"""
+<u>Команды бота > <b>/open</b></u>
+
+<b>Daily message</b>
+/open_today[_page_&lt;page&gt;]
+/open_now[_page_&lt;page&gt;]
+
+<b>Monthly/Yearly calendar message</b>
+/open_calendar
+/open_calendar_year
+
+<b>Help message</b>
+/open_help
+
+<b>Open</b>
+/open[_&lt;year&gt;[_&lt;month&gt;[_&lt;day&gt;[_page_&lt;page&gt;]]]]
+""",
+                "en": f"""
+<u>Bot commands > <b>/open</b></u>
+
+<b>Daily message</b>
+/open_today[_page_&lt;page&gt;]
+/open_now[_page_&lt;page&gt;]
+
+<b>Monthly calendar message</b>
+/open_calendar
+
+<b>Yearly calendar message</b>
+/open_calendar_year
+
+<b>Help message</b>
+/open_help
+
+<b>Open</b>
+/open[_&lt;year&gt;[_&lt;month&gt;[_&lt;day&gt;[_page_&lt;page&gt;]]]]
+""",
+            },
         },
         "weather": {
             "ru": """{} {} <u>{}</u>
@@ -1222,40 +1216,6 @@ Visibility <b>{}</b>m""",
         "frequently_used_dates": {
             "ru": "Нажмите чтобы закрепить",
             "en": "Press for pin",
-        },
-        "open": {
-            "ru": """
-<b>Daily message</b>
-/open_calendar_today
-/open_calendar_now
-/open_today
-/open_now
-
-<b>Monthly calendar message</b>
-/open_calendar
-
-<b>Yearly calendar message</b>
-/open_calendar_year
-
-<b>Help message</b>
-/open_help
-""".strip(),
-            "en": """
-<b>Daily message</b>
-/open_calendar_today
-/open_calendar_now
-/open_today
-/open_now
-
-<b>Monthly calendar message</b>
-/open_calendar
-
-<b>Yearly calendar message</b>
-/open_calendar_year
-
-<b>Help message</b>
-/open_help
-""".strip(),
         },
     },
     "buttons": {

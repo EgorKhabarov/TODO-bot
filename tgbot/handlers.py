@@ -278,6 +278,15 @@ def command_handler(message: Message) -> None:
     parsed_command = parse_command(message_text, {"arg": "long str"})
     command_text: str = parsed_command["command"]
 
+    # Help shortcuts
+    match command_text:
+        case "commands":
+            help_message("page_commands").send()
+            return
+        case "open":
+            help_message("CommandOpen", "page commands").send()
+            return
+
     if command_text == "start":
         if add_group_pattern.match(message.text) and request.is_member:
             TextMessage(get_translate("errors.already_connected_group")).reply(message)
@@ -389,12 +398,6 @@ def command_handler(message: Message) -> None:
 
         TextMessage(text).reply(message)
 
-    elif command_text == "commands":
-        text, admin_commands = get_translate("text.command_list")
-        if is_secure_chat(message):
-            text += admin_commands
-        TextMessage(text).send()
-
     elif command_text == "logout":
         if request.is_user:
             set_user_telegram_chat_id(request.entity, None)
@@ -403,9 +406,6 @@ def command_handler(message: Message) -> None:
 
     elif command_text in ("login", "signup"):
         TextMessage(get_translate("errors.failure")).reply(message)
-
-    elif command_text == "open":
-        TextMessage(get_translate("messages.open")).send()
 
     elif command_text.startswith("open_"):
         regex = re.compile(r"_+")
@@ -445,19 +445,14 @@ def command_handler(message: Message) -> None:
             generated = open_message(
                 " ".join(
                     (
-                        open_split(parsed_command["command"].split("_", maxsplit=1)[1]),
+                        open_split(command_text.split("_", maxsplit=1)[1]),
                         parsed_command["arguments"]["arg"] or "",
                     )
                 ).strip()
             )
         except ApiError:
-            generated = TextMessage(
-                f"""
-<b><u>{get_translate("errors.invalid_request")}</u></b>
-
-{get_translate("messages.open")}
-"""
-            )
+            TextMessage(get_translate("errors.invalid_request")).send()
+            generated = help_message("CommandOpen", "page commands")
         generated.send()
 
 
