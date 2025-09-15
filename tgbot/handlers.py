@@ -1250,6 +1250,25 @@ class CallBackHandler:
 
         CallBackAnswer(get_translate("text.saved")).answer()
 
+    @prefix("stl", {"lang": "str"})
+    def settings_update_lang(self, lang: str):
+        if len(lang) != 2:
+            raise ApiError
+
+        try:
+            request.entity.set_telegram_user_settings(lang=lang)
+        except ValueError:
+            return CallBackAnswer(get_translate("errors.error")).answer()
+
+        try:
+            set_bot_commands()
+            start_message().edit()
+        except ApiTelegramException as e:
+            if "message is not modified" not in str(e):
+                return CallBackAnswer(get_translate("errors.error")).answer()
+
+        CallBackAnswer(get_translate("text.saved")).answer()
+
     @prefix("bcl")
     def bin_clear(self):
         request.entity.clear_basket()

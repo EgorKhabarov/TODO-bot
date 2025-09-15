@@ -54,7 +54,18 @@ from telegram_utils.buttons_generator import generate_buttons, edit_button_data
 
 def start_message() -> TextMessage:
     text = get_translate("messages.start")
-    markup = generate_buttons([[{"/menu": "mnm"}], [{"/calendar": "mnc ('now',)"}]])
+
+    markup = generate_buttons(
+        [
+            [
+                {"Сменить язык на русский": "stl ru"}
+                if request.entity.settings.lang == "en"
+                else {"Change language to English": "stl en"}
+            ],
+            [{"/menu": "mnm"}],
+            [{"/calendar": "mnc ('now',)"}],
+        ]
+    )
     return TextMessage(text, markup)
 
 
