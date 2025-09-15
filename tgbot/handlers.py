@@ -373,7 +373,11 @@ def command_handler(message: Message) -> None:
 
     elif command_text == "id":
         if message.reply_to_message:
-            text = f"Message id <code>{message.reply_to_message.id}</code>"
+            text = (
+                f"Message id <code>{message.reply_to_message.id}</code>\n"
+                f"User id <code>{request.entity.user_id}</code>\n"
+                f"Chat id <code>{chat_id}</code>"
+            )
         else:
             text = (
                 f"User id <code>{request.entity.user_id}</code>\n"
