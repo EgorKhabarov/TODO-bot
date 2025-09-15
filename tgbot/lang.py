@@ -252,6 +252,10 @@ Call up new messages using bot commands.</b>
             "ru": "Очистить корзину",
             "en": "Clear basket",
         },
+        "bin_is_emptied": {
+            "ru": "Корзина очищена",
+            "en": "Bin is emptied",
+        },
         "send_event_text": {
             "ru": "Отправьте текст события",
             "en": "Send the text of the event",
@@ -1948,6 +1952,12 @@ or create an account
             "commit_changes": {
                 "ru": "Вы не сохранили настройки! Нажмите 💾 чтобы сохранить",
                 "en": "You have not saved your settings! Click 💾 to save",
+            },
+        },
+        "bin": {
+            "confirmation_of_purification": {
+                "ru": "Вы действительно хотите безвозвратно удалить события в корзине? Нажмите повторно для удаления событий в корзине",
+                "en": "Are you sure you want to permanently delete the events in your trash? Click again to delete the events in your trash",
             },
         },
         "event": {

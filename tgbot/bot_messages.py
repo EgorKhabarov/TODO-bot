@@ -1323,10 +1323,11 @@ AND (
     return generated
 
 
-def trash_can_message(id_list: list[int] = (), page: int = 0) -> EventsMessage:
+def trash_can_message(id_list: list[int] = (), page: int = 0, cleansing_confirmed: bool = False) -> EventsMessage:
     """
     :param id_list: List of event_id
     :param page: Page number
+    :param cleansing_confirmed: Cleansing confirmed
     """
     sql_where = """
 user_id IS ?
@@ -1354,7 +1355,7 @@ DELETE FROM events
     markup = generate_buttons(
         [
             [{"🔼": "None"}, {"↕️": "None"}],
-            [{f"🧹 {clean_bin_translate}": "bcl"}, {"🔄": "mnb"}],
+            [{f"🧹 {clean_bin_translate}": "bcl" if cleansing_confirmed else "bclc"}, {"🔄": "mnb"}],
             [{get_theme_emoji("back"): "mnm"}],
         ]
     )

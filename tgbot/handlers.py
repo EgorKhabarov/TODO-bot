@@ -1357,13 +1357,20 @@ class CallBackHandler:
         CallBackAnswer(get_translate("text.saved")).answer()
 
     @prefix("bcl")
-    def bin_clear(self):
-        request.entity.clear_basket()
-
-        try:
-            trash_can_message().edit()
-        except ApiTelegramException:
-            CallBackAnswer("ok").answer(show_alert=True)
+    @prefix("bclc")
+    def bin_clear(self, str_prefix: str = "bclc"):
+        if (request.is_user and request.entity.is_premium) or request.is_member:
+            if str_prefix == "bcl":
+                request.entity.clear_basket()
+                CallBackAnswer(get_translate("text.bin_is_emptied")).answer(show_alert=True)
+            else:
+                CallBackAnswer(get_translate("errors.bin.confirmation_of_purification")).answer(show_alert=True)
+            try:
+                trash_can_message(cleansing_confirmed=str_prefix == "bclc").edit()
+            except ApiTelegramException:
+                CallBackAnswer("ok").answer(show_alert=True)
+        else:
+            CallBackAnswer(get_translate("errors.error")).answer(show_alert=True)
 
     @prefix("bem", {"event_id": "int"})
     def event_message_bin(self, event_id: int, message_id: int):
