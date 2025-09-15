@@ -169,10 +169,29 @@ SELECT user_id,
        username,
        email,
        user_status,
-       max_event_id as event_count,
+       max_event_id - 1 as event_count,
        reg_date,
        chat_id
   FROM users
+ LIMIT :limit
+OFFSET :offset;
+""",
+        params={
+            "limit": 10,
+            "offset": (page - 1) * 10,
+        },
+    )
+
+
+def group_list(page: int = 1) -> None:
+    execute(
+        """
+SELECT group_id,
+       name,
+       owner_id,
+       max_event_id - 1 as event_count,
+       chat_id
+  FROM groups
  LIMIT :limit
 OFFSET :offset;
 """,
@@ -229,21 +248,22 @@ execute(
     max_width: int | min | max | None = max,
     max_height: int | min | max | None = max,
     align: tuple[AlignType] | AlignType = "*",
-    name: str = None,
-    name_align: Literal["<", ">", "^"] = None,
+    name: str | None = None,
+    name_align: Literal["<", ">", "^"] | None = None,
     return_data: bool = False,
 )
 export(
     query: str = "SELECT * FROM events;",
     params: dict | tuple = (),
 )
-Account(user_id: int, group_id: str = None)
-TelegramAccount(chat_id: int, group_chat_id: int = None)
+Account(user_id: int, group_id: str | None = None)
+TelegramAccount(chat_id: int, group_chat_id: int | None = None)
 terminal_size() -> tuple[int, int]
 restart_server()
 
 chat_list(page: int = 1)
 user_list(page: int = 1)
+group_list(page: int = 1)
 user(user_id: int)
 ban(user_id: int, user_status: int = -1)
 """
