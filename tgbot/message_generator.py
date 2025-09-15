@@ -449,7 +449,8 @@ SELECT user_id,
                 )
             ]
         except DataBaseError as e:
-            logger.info(
+            # TODO raise
+            logger.error(
                 f'[message_generator.py -> MessageGenerator.get_events] DataBaseError "{e}"'
             )
             self.event_list = []
