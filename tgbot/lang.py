@@ -643,7 +643,7 @@ reg_date: {}</code></pre>
                 "ru": "📚 Помощь",
                 "en": "📚 Help",
             },
-            "page 1": {
+            "page main": {
                 "ru": [
                     """
 Добро пожаловать в раздел помощи.
@@ -656,8 +656,9 @@ reg_date: {}</code></pre>
                             "📄 События": "mnh Events",
                             "📄 Статусы": "mnh Statuses",
                             "📄 Лимиты": "mnh Limits",
-                            "📂 Виды сообщений": "mnh page 2",
-                            "🗞 О боте": "mnh page 3",
+                            "📂 Виды сообщений": "mnh page messages",
+                            "📂 Команды": "mnh page commands",
+                            "🗞 О боте": "mnh page about",
                             "🔙": "mnm",
                         }.items()
                     ],
@@ -674,14 +675,15 @@ Buttons with text are marked with a smiley 📄. The button folder is marked wit
                             "📄 Events": "mnh Events",
                             "📄 Statuses": "mnh Statuses",
                             "📄 Limits": "mnh Limits",
-                            "📂 Types of messages": "mnh page 2",
-                            "🗞 About bot": "mnh page 3",
+                            "📂 Types of messages": "mnh page messages",
+                            "📂 Commands": "mnh page commands",
+                            "🗞 About bot": "mnh page about",
                             "🔙": "mnm",
                         }.items()
                     ],
                 ],
             },
-            "page 2": {
+            "page messages": {
                 "ru": [
                     """
 В боте есть разные виды сообщений, каждый из которых имеет свои особенности и функции.
@@ -697,7 +699,7 @@ Buttons with text are marked with a smiley 📄. The button folder is marked wit
                             "📄 Корзина": "mnh Basket",
                             "📄 Поиск": "mnh Search",
                             "📄 Уведомления": "mnh Notifications",
-                            "🔙": "mnh page 1",
+                            "🔙": "mnh page main",
                         }.items()
                     ],
                 ],
@@ -716,12 +718,72 @@ Select a topic button to read more.
                             "📄 Basket": "mnh Basket",
                             "📄 Search": "mnh Search",
                             "📄 Notifications": "mnh Notifications",
-                            "🔙": "mnh page 1",
+                            "🔙": "mnh page main",
                         }.items()
                     ],
                 ],
             },
-            "page 3": {
+            "page commands": {  # TODO "messages.help.page commands"
+                "ru": [
+                    """
+<u><b>Команды бота</b></u>
+
+/start - Старт
+/menu - Меню
+/calendar - Календарь
+/today - События на сегодня
+/weather {city} - Погода сейчас
+/forecast {city} - Прогноз погоды
+/week_event_list - Список событий на ближайшие 7 дней
+/dice - Кинуть кубик
+/export - Сохранить мои события в csv
+/help - Помощь
+/settings - Настройки
+/logout - Выйти из аккаунта
+/search {...} - Поиск
+/id - Получить свой Telegram id
+/commands - Этот список
+""",
+                    [
+                        [{k.ljust(60, config.ts): v}]
+                        for k, v in {
+                            "📄 Новости бота": "mnh BotNews",
+                            "📄 Версия бота": "mnh BotVersion",
+                            "🔙": "mnh page main",
+                        }.items()
+                    ],
+                ],
+                "en": [
+                    """
+<u><b>Bot commands</b></u>
+
+/start - Start
+/menu - Menu
+/calendar - Calendar
+/today - Events for today
+/weather {city} - Weather now
+/forecast {city} - Weather forecast
+/week_event_list - List of events for the next 7 days
+/dice - Roll a die
+/export - Save my events to csv
+/help - Help
+/settings - Settings
+/logout - Logout
+/search {...} - Search
+/id - Get your Telegram id
+/commands - This list
+""",
+                    [
+                        [{k.ljust(60, config.ts): v}]
+                        for k, v in {
+                            "📄 Bot news": "mnh BotNews",
+                            "📄 Bot version": "mnh BotVersion",
+                            "🔙": "mnh page main",
+                        }.items()
+                    ],
+                ],
+            },
+            "page about": {
                 "ru": [
                     """
 <u><b>О боте</b></u>
@@ -733,7 +795,7 @@ Select a topic button to read more.
                         for k, v in {
                             "📄 Новости бота": "mnh BotNews",
                             "📄 Версия бота": "mnh BotVersion",
-                            "🔙": "mnh page 1",
+                            "🔙": "mnh page main",
                         }.items()
                     ],
                 ],
@@ -748,7 +810,7 @@ Select a topic button to read more.
                         for k, v in {
                             "📄 Bot news": "mnh BotNews",
                             "📄 Bot version": "mnh BotVersion",
-                            "🔙": "mnh page 1",
+                            "🔙": "mnh page main",
                         }.items()
                     ],
                 ],

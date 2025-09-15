@@ -115,7 +115,7 @@ def test_bot_callback_mnc():
 
 def test_bot_callback_mnh():
     with Chat() as chat:
-        setup_request(callback_mock("mnh page 1"))
+        setup_request(callback_mock("mnh page main"))
         callback_handler(request.query)
         assert chat.comparer(
             lambda m, u, k: (

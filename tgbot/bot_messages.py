@@ -303,7 +303,7 @@ def settings_message(
     return TextMessage(text, markup)
 
 
-def help_message(path: str = "page 1") -> TextMessage:
+def help_message(path: str = "page main") -> TextMessage:
     """
     Help message
     """
@@ -1918,7 +1918,7 @@ def open_message(arguments: str) -> TextMessage | None:
         return yearly_calendar_message(None, "dl", "mnm")
 
     elif arguments.startswith("help"):
-        return help_message(arguments.removeprefix("help").strip() or "page 1")
+        return help_message(arguments.removeprefix("help").strip() or "page main")
 
     elif m := regex_year.match(arguments.removeprefix("calendar ")):
         year = int(m.group("year"))

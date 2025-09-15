@@ -547,7 +547,7 @@ class CallBackHandler:
         date = now_time_calendar() if date == "now" else date
         monthly_calendar_message(date, "dl", "mnm").edit()
 
-    @prefix("mnh", {"page": ("long str", "page 1")})
+    @prefix("mnh", {"page": ("long str", "page main")})
     def help_message(self, page: str, message: Message):
         markup = None if page.startswith("page") else message.reply_markup
 
