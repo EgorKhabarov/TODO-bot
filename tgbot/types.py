@@ -1,4 +1,3 @@
-from sqlite3 import Error
 from functools import cached_property
 from typing import Literal
 
@@ -7,6 +6,7 @@ from tgbot.bot import bot
 from todoapi.types import User, db, Group, Settings, Account
 from todoapi.exceptions import (
     ApiError,
+    DataBaseError,
     UserNotFound,
     GroupNotFound,
     NotEnoughPermissions,
@@ -50,7 +50,7 @@ SELECT group_id,
 """,
                 params={"group_id": group_id},
             )[0]
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
         except IndexError:
             raise GroupNotFound
@@ -85,7 +85,7 @@ SELECT g.group_id,
                     "user_chat_id": user_chat_id,
                 },
             )[0]
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
         except IndexError:
             raise GroupNotFound
@@ -154,7 +154,7 @@ SELECT user_id,
 """,
                 params={"user_id": user_id},
             )[0]
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
         except IndexError:
             raise UserNotFound
@@ -179,7 +179,7 @@ SELECT user_id,
 """,
                 params={"chat_id": chat_id},
             )[0]
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
         except IndexError:
             raise UserNotFound
@@ -207,7 +207,7 @@ SELECT user_id,
 
             if not verify_password(user[4], password):
                 raise IndexError
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
         except IndexError:
             raise UserNotFound
@@ -269,7 +269,7 @@ SELECT lang,
                     "group_id": self.group_id,
                 },
             )[0]
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
         except IndexError:
             raise (GroupNotFound if self.group_id else UserNotFound)
@@ -374,7 +374,7 @@ UPDATE tg_settings
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def set_group_telegram_chat_id(
@@ -401,7 +401,7 @@ UPDATE groups
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def get_group(self, group_id: str) -> TelegramGroup:
@@ -444,7 +444,7 @@ SELECT entry_date,
                     self.user_id,
                 ),
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         if not groups:
@@ -488,7 +488,7 @@ OFFSET :offset;
                     "offset": 12 * page,
                 },
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         return [TelegramGroup(*group) for group in groups]
@@ -519,7 +519,7 @@ OFFSET :offset;
                     "offset": 12 * page,
                 },
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         return [TelegramGroup(*group) for group in groups]
@@ -553,7 +553,7 @@ OFFSET :offset;
                     "offset": 12 * page,
                 },
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         return [TelegramGroup(*group) for group in groups]
@@ -587,7 +587,7 @@ OFFSET :offset;
                     "offset": 12 * page,
                 },
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         return [TelegramGroup(*group) for group in groups]
@@ -609,7 +609,7 @@ SELECT chat_id,
 
         if not verify_password(user[1], password):
             raise IndexError
-    except Error as e:
+    except DataBaseError as e:
         raise ApiError(e)
     except IndexError:
         raise UserNotFound
@@ -633,5 +633,5 @@ UPDATE users
             },
             commit=True,
         )
-    except Error as e:
+    except DataBaseError as e:
         raise ApiError(e)

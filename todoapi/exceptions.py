@@ -1,4 +1,11 @@
+from sqlite3 import Error
+
+
 class ApiError(Exception):
+    pass
+
+
+class DataBaseError(Error):
     pass
 
 

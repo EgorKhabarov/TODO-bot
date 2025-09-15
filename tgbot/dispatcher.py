@@ -1,6 +1,5 @@
 import json
 import traceback
-from sqlite3 import Error
 from functools import wraps
 from ast import literal_eval
 from typing import Callable
@@ -21,7 +20,7 @@ from tgbot.message_generator import CallBackAnswer, TextMessage
 from todoapi.types import db
 from todoapi.logger import logger
 from todoapi.utils import is_admin_id, rate_limit
-from todoapi.exceptions import UserNotFound, GroupNotFound, ApiError
+from todoapi.exceptions import UserNotFound, GroupNotFound, ApiError, DataBaseError
 from telegram_utils.command_parser import command_regex
 
 
@@ -140,7 +139,7 @@ VALUES (
                         },
                         commit=True,
                     )
-                except Error as e:
+                except DataBaseError as e:
                     print(type(e), e)  # TODO
 
             if request.is_message:

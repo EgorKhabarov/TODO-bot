@@ -1,6 +1,5 @@
 from io import StringIO
 from copy import deepcopy
-from sqlite3 import Error
 from datetime import datetime
 from typing import Any
 
@@ -19,7 +18,7 @@ from tgbot.buttons_utils import encode_id, number_to_power
 from tgbot.utils import add_status_effect, get_message_thread_id
 from todoapi.logger import logger
 from todoapi.types import db, Event
-from todoapi.exceptions import EventNotFound
+from todoapi.exceptions import EventNotFound, DataBaseError
 
 
 event_formats = {
@@ -449,9 +448,9 @@ SELECT user_id,
                     ),
                 )
             ]
-        except Error as e:
+        except DataBaseError as e:
             logger.info(
-                f'[message_generator.py -> MessageGenerator.get_events] Error "{e}"'
+                f'[message_generator.py -> MessageGenerator.get_events] DataBaseError "{e}"'
             )
             self.event_list = []
         else:

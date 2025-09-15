@@ -1,10 +1,10 @@
 import csv
 import json
-from collections import UserList
 from uuid import uuid4
+from sqlite3 import Error
+from collections import UserList
 from io import StringIO, BytesIO
 from dataclasses import dataclass
-from sqlite3 import Error, connect
 import xml.etree.ElementTree as xml  # noqa
 from functools import cached_property
 from contextlib import contextmanager
@@ -25,6 +25,7 @@ from todoapi.exceptions import (
     WrongDate,
     TextIsTooBig,
     UserNotFound,
+    DataBaseError,
     GroupNotFound,
     MediaNotFound,
     EventNotFound,
@@ -172,24 +173,27 @@ class DataBase:
         result = []
         cursor: CursorResult | None = None
 
-        if script:
-            raw_conn = conn.connection
-            raw_cursor = raw_conn.cursor()
-            raw_cursor.executescript(query)
-        else:
-            if isinstance(params, tuple):
+        try:
+            if script:
                 raw_conn = conn.connection
                 raw_cursor = raw_conn.cursor()
-                raw_cursor.execute(query, params)
-                if raw_cursor.description:
-                    result = raw_cursor.fetchall()
+                raw_cursor.executescript(query)
             else:
-                cursor = conn.execute(text(query), params)
-                if cursor.returns_rows:
-                    result = cursor.fetchall()
+                if isinstance(params, tuple):
+                    raw_conn = conn.connection
+                    raw_cursor = raw_conn.cursor()
+                    raw_cursor.execute(query, params)
+                    if raw_cursor.description:
+                        result = raw_cursor.fetchall()
+                else:
+                    cursor = conn.execute(text(query), params)
+                    if cursor.returns_rows:
+                        result = cursor.fetchall()
 
-        if commit:
-            conn.commit()
+            if commit:
+                conn.commit()
+        except Error as e:
+            raise DataBaseError(e)
 
         if column_names and cursor and result:
             keys = cursor.keys()
@@ -295,7 +299,7 @@ SELECT (
                     "date_6": date[6:],
                 },
             )[0]
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def is_exceeded_for_events(
@@ -348,7 +352,7 @@ SELECT (
 """,
                 params={"user_id": self.user_id},
             )[0]
-        except (Error, IndexError):
+        except (DataBaseError, IndexError):
             raise ApiError
 
         return (
@@ -401,7 +405,7 @@ SELECT event_id,
         )
         try:
             self.table = db.execute(self.query, params=self.params, column_names=True)
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         self.row_count = len(self.table)
@@ -573,7 +577,7 @@ SELECT media_id,
                     "group_id": self.group_id,
                 },
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         return [Media(*media) for media in media_list]
@@ -747,7 +751,7 @@ SELECT user_id,
 """,
                 params={"token": token},
             )[0]
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
         except IndexError:
             raise UserNotFound
@@ -774,7 +778,7 @@ SELECT user_id,
 """,
                 params={"user_id": user_id},
             )[0]
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
         except IndexError:
             raise UserNotFound
@@ -804,7 +808,7 @@ SELECT user_id,
 
             if not verify_password(user[4], password):
                 raise IndexError
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
         except IndexError:
             raise UserNotFound
@@ -882,7 +886,7 @@ SELECT 1
                     },
                 )
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def create_event(self, date: str, text: str) -> int:
@@ -894,7 +898,7 @@ SELECT 1
         :raise TextIsTooBig: if len(text) >= 3800
         :raise WrongDate:
         :raise LimitExceeded:
-        :raise ApiError: sqlite3.Error
+        :raise ApiError: sqlite3.Error DataBaseError
         """
         text_len = len(text)
 
@@ -990,7 +994,7 @@ UPDATE users
                     params={"user_id": self.user_id},
                     commit=True,
                 )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         return max_event_id
@@ -1023,7 +1027,7 @@ SELECT *
                     in_bin,
                 ),
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         if not events:
@@ -1068,7 +1072,7 @@ SELECT *
                     updated_after,
                 ),
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         return EventsList(Event(*event) for event in events)
@@ -1105,7 +1109,7 @@ UPDATE events
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def edit_event_date(self, event_id: int, date: str) -> None:
@@ -1134,7 +1138,7 @@ UPDATE events
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def edit_event_status(self, event_id: int, statuses: list[str]) -> None:
@@ -1176,7 +1180,7 @@ UPDATE events
                 ),
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def delete_event(self, event_id: int, in_bin=False) -> None:
@@ -1198,7 +1202,7 @@ DELETE FROM events
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def delete_event_to_bin(self, event_id: int) -> None:
@@ -1224,7 +1228,7 @@ UPDATE events
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def recover_event(self, event_id: int) -> None:
@@ -1249,7 +1253,7 @@ UPDATE events
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def clear_basket(self) -> None:
@@ -1267,7 +1271,7 @@ DELETE FROM events
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def clear_event_history(self, event_id: int) -> None:
@@ -1290,7 +1294,7 @@ UPDATE events
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def export_data(
@@ -1327,7 +1331,7 @@ SELECT 1
                     },
                 )
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def add_event_media(
@@ -1360,7 +1364,7 @@ VALUES (
                     "media": media,
                 },
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def get_event_media(self, event_id: int, media_id: str) -> Media:
@@ -1392,7 +1396,7 @@ SELECT media_id,
                     "group_id": self.group_id,
                 },
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         if not medias:
@@ -1421,7 +1425,7 @@ DELETE FROM media
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def check_member_exists(
@@ -1445,7 +1449,7 @@ SELECT 1
                     },
                 )
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def is_moderator(
@@ -1493,7 +1497,7 @@ VALUES (:group_id, :owner_id, :token, :name, :icon);
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         return group_id
@@ -1534,7 +1538,7 @@ SELECT entry_date,
                     self.user_id,
                 ),
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         if not groups or not len(groups) == len(members):
@@ -1575,7 +1579,7 @@ LIMIT :limit OFFSET :offset;
                     "offset": 12 * page,
                 },
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         return [Group(*group) for group in groups]
@@ -1606,7 +1610,7 @@ LIMIT :limit OFFSET :offset;
                     "offset": 12 * page,
                 },
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         return [Group(*group) for group in groups]
@@ -1637,7 +1641,7 @@ LIMIT :limit OFFSET :offset;
                     "offset": 12 * page,
                 },
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         return [Group(*group) for group in groups]
@@ -1668,7 +1672,7 @@ LIMIT :limit OFFSET :offset;
                     "offset": 12 * page,
                 },
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         return [Group(*group) for group in groups]
@@ -1695,7 +1699,7 @@ UPDATE groups
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def edit_group_icon(self, icon: bytes, group_id: str | None = None) -> None:
@@ -1720,7 +1724,7 @@ UPDATE groups
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def get_group_member(self, user_id: int, group_id: str | None = None) -> Member:
@@ -1748,7 +1752,7 @@ SELECT group_id,
 """,
                 params=(group_id, *user_ids),
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         if not members:
@@ -1774,7 +1778,7 @@ VALUES (:group_id, :user_id);
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def edit_group_member_status(
@@ -1806,7 +1810,7 @@ UPDATE members
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def remove_group_member(self, user_id: int, group_id: str | None = None) -> None:
@@ -1834,7 +1838,7 @@ DELETE FROM members
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def delete_group(self, group_id: str | None = None) -> None:
@@ -1855,7 +1859,7 @@ DELETE FROM groups
                 params={"group_id": group_id},
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def edit_group_owner(self, new_owner_id: int) -> None:
@@ -1883,7 +1887,7 @@ UPDATE groups
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def get_settings(self):
@@ -1905,7 +1909,7 @@ SELECT lang,
 """,
                 params={"user_id": self.user_id},
             )[0]
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
         except IndexError:
             raise UserNotFound
@@ -2008,7 +2012,7 @@ UPDATE users_settings
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def increment_date_usage(self, date: str, count: int = 1) -> None:
@@ -2034,7 +2038,7 @@ UPDATE
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def toggle_frequently_used_date_pin(self, date: str) -> None:
@@ -2054,7 +2058,7 @@ UPDATE frequently_used_dates
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def remove_frequently_used_date(self, date: str) -> None:
@@ -2074,7 +2078,7 @@ DELETE FROM frequently_used_dates
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def get_frequently_used_dates(
@@ -2099,7 +2103,7 @@ SELECT date, count, pinned, last_visited
                     "min_count": min_count,
                 },
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         frequently_used_dates: list[tuple[int | str, ...]] = []
@@ -2137,7 +2141,7 @@ SELECT COUNT(username)
                     "username": username,
                 },
             )[0][0]
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         if count_username != 0:
@@ -2156,7 +2160,7 @@ UPDATE users
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def edit_user_password(self, old_password: str, new_password: str) -> None:
@@ -2182,7 +2186,7 @@ UPDATE users
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def edit_user_icon(self, icon: bytes) -> None:
@@ -2205,7 +2209,7 @@ UPDATE users
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
     def reset_user_token(self) -> str:
@@ -2227,7 +2231,7 @@ UPDATE users
                 },
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
         return token
@@ -2245,7 +2249,7 @@ DELETE FROM users
                 params={"user_id": self.user_id},
                 commit=True,
             )
-        except Error as e:
+        except DataBaseError as e:
             raise ApiError(e)
 
 
@@ -2272,7 +2276,7 @@ SELECT (
                 "username": username,
             },
         )[0]
-    except Error as e:
+    except DataBaseError as e:
         raise ApiError(e)
 
     if count_email != 0:
@@ -2301,7 +2305,7 @@ VALUES (
             },
             commit=True,
         )
-    except Error as e:
+    except DataBaseError as e:
         raise ApiError(e)
 
 
@@ -2318,7 +2322,7 @@ SELECT user_id
                 "group_id": group_id,
             },
         )[0][0]
-    except Error as e:
+    except DataBaseError as e:
         raise ApiError(e)
     except IndexError:
         raise UserNotFound
@@ -2342,7 +2346,7 @@ SELECT user_id,
 
         if not verify_password(user[1], password):
             raise IndexError
-    except Error as e:
+    except DataBaseError as e:
         raise ApiError(e)
     except IndexError:
         raise UserNotFound
@@ -2368,7 +2372,7 @@ UPDATE users
             },
             commit=True,
         )
-    except Error as e:
+    except DataBaseError as e:
         raise ApiError(e)
 
 
