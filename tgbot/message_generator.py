@@ -5,6 +5,9 @@ from datetime import datetime
 from typing import Any
 
 # noinspection PyPackageRequirements
+from telebot.apihelper import ApiTelegramException
+
+# noinspection PyPackageRequirements
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, InputFile
 
 import config
@@ -204,7 +207,11 @@ class CallBackAnswer:
         if not call_id and request.is_callback:
             call_id = request.query.id
 
-        bot.answer_callback_query(call_id, self.text, show_alert, url)
+        try:
+            bot.answer_callback_query(call_id, self.text, show_alert, url)
+        except ApiTelegramException as e:
+            if "Bad Request: query is too old and response timeout expired or query ID is invalid" not in str(e):
+                raise
 
 
 class ChatAction:

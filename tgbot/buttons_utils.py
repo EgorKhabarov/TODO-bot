@@ -13,15 +13,17 @@ from telegram_utils.buttons_generator import generate_buttons
 
 
 # alphabet = "0123456789aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
-alphabet = "".join(chr(i) for i in range(33, 126)).replace(",", "")
+# alphabet = "".join(chr(i) for i in range(33, 126)).replace(",", "")
+alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!#$%&()*+-/:;<=>?@{|}[]^_"
+alphabet_base = len(alphabet)
 calendar_event_count_template = ("⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹")
 
 
 def create_monthly_calendar_keyboard(
-    year_month: list | tuple[int, int] = None,
-    command: str = None,
-    back: str = None,
-    arguments: str = None,
+    year_month: list | tuple[int, int] | None = None,
+    command: str | None = None,
+    back: str | None = None,
+    arguments: str | None = None,
 ) -> InlineKeyboardMarkup:
     """
     Creates a monthly calendar and returns an inline keyboard
@@ -186,15 +188,14 @@ SELECT DISTINCT CAST (STRFTIME('%w', {sqlite_format_date('date')}) - 1 AS INT)
             else []
         ),
     ]
-
     return generate_buttons(markup)
 
 
 def create_yearly_calendar_keyboard(
     year: int | None,
-    command: str = None,
-    back: str = None,
-    arguments: str = None,
+    command: str | None = None,
+    back: str | None = None,
+    arguments: str | None = None,
 ) -> InlineKeyboardMarkup:
     """
     Creates a calendar of months for a specific year and returns an inline keyboard
@@ -315,15 +316,14 @@ SELECT date
             else []
         ),
     ]
-
     return generate_buttons(markup)
 
 
 def create_twenty_year_calendar_keyboard(
     decade: int,
-    command: str = None,
-    back: str = None,
-    arguments: str = None,
+    command: str | None = None,
+    back: str | None = None,
+    arguments: str | None = None,
 ) -> InlineKeyboardMarkup:
     command = f"'{command.strip()}'" if command else None
     back = f"'{back.strip()}'" if back else None
@@ -427,7 +427,6 @@ SELECT 1
             ],
         ]
     )
-
     return markup
 
 
@@ -558,13 +557,18 @@ def number_to_power(string: str) -> str:
     """
     Turns a string of numbers into a string of powers.
     For example "123" in "¹²³".
+
+    >>> number_to_power(123)
+    '¹²³'
+    >>> number_to_power(91834683)
+    '⁹¹⁸³⁴⁶⁸³'
     """
     return "".join(calendar_event_count_template[int(ch)] for ch in str(string))
 
 
 def exel_str_int(excel_string: str) -> int:
     return sum(
-        (alphabet.index(char) + 1) * len(alphabet) ** i
+        (alphabet.index(char) + 1) * alphabet_base ** i
         for i, char in enumerate(reversed(excel_string))
     )
 
@@ -572,7 +576,7 @@ def exel_str_int(excel_string: str) -> int:
 def int_str_exel(number: int) -> str:
     result = ""
     while number:
-        number, remainder = divmod(number - 1, len(alphabet))
+        number, remainder = divmod(number - 1, alphabet_base)
         result = alphabet[remainder] + result
     return result
 

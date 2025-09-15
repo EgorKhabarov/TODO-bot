@@ -1,3 +1,4 @@
+import requests
 from threading import Thread
 
 import config
@@ -12,7 +13,13 @@ def start_bot():
         if bot_webhook_info.url:
             bot.remove_webhook()
 
-        bot.infinity_polling()
+        try:
+            bot.infinity_polling()
+        except (
+            requests.exceptions.ReadTimeout,
+            requests.exceptions.ConnectionError,
+        ) as e:
+            logger.error(str(e))
 
 
 def start_notifications_thread():

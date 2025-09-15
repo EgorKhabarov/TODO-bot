@@ -114,19 +114,19 @@ class DataBase:
 
     @contextmanager
     def connection(self):
-        # self.sqlite_connection = connect(config.DATABASE_PATH)
+        self.sqlite_connection = connect(config.DATABASE_PATH)
         # logger.debug("connection.start()")
         yield
         # logger.debug("connection.close()")
-        # self.sqlite_connection.close()
+        self.sqlite_connection.close()
 
     @contextmanager
     def cursor(self):
-        # self.sqlite_cursor = self.sqlite_connection.cursor()
+        self.sqlite_cursor = self.sqlite_connection.cursor()
         # logger.debug("cursor.start()")
         yield
         # logger.debug("cursor.close()")
-        # self.sqlite_cursor.close()
+        self.sqlite_cursor.close()
 
     def execute(
         self,
@@ -149,8 +149,8 @@ class DataBase:
         :param script: Query consists of several requests
         :return: Query result
         """
-        self.sqlite_connection = connect(config.DATABASE_PATH)
-        self.sqlite_cursor = self.sqlite_connection.cursor()
+        # self.sqlite_connection = connect(config.DATABASE_PATH)
+        # self.sqlite_cursor = self.sqlite_connection.cursor()
 
         if functions:
             for func in functions:
@@ -175,7 +175,7 @@ class DataBase:
             description = [column[0] for column in self.sqlite_cursor.description]
             result = [description] + result
         # self.sqlite_cursor.close()
-        self.sqlite_connection.close()
+        # self.sqlite_connection.close()
         # noinspection PyTypeChecker
         return result
 
