@@ -1,13 +1,13 @@
 requests~=2.32.5
-pyTelegramBotAPI~=4.29.0
+pyTelegramBotAPI~=4.29.1
 pillow~=11.3.0
-pytest~=8.4.1
+pytest~=8.4.2
 vedis~=0.7.2
 Flask~=3.1.2
 PyYAML~=6.0.2
 cachetools~=6.2.0
 ipython~=9.5.0
-GitPython~=3.1.43
+GitPython~=3.1.45
 argon2-cffi~=25.1.0
 table2string~=2.0.1
 SQLAlchemy~=2.0.43

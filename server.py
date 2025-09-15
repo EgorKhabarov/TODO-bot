@@ -175,7 +175,7 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
             commit_hash = pull_info[0].commit.hexsha
             print(f'build_commit = "{commit_hash}"')
 
-            os.system("pip install -r requirements.txt")
+            os.system("pip install -U -r requirements.txt")
 
             if config.WSGI_PATH:
                 try:
