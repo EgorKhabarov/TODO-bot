@@ -1521,35 +1521,35 @@ SELECT CAST(
             },
         )
 
-    for chat_id, n_type, a_type in result:
-        try:
-            if a_type.startswith("user"):
-                request.entity = TelegramAccount(chat_id)
-            elif a_type.startswith("group:"):
-                owner_id = a_type.split(":")[1]
-                request.entity = TelegramAccount(owner_id, chat_id)
-        except (UserNotFound, GroupNotFound):
-            continue
-
-        if request.entity.user.user_status == -1:
-            continue
-
-        match n_type:
-            case 2:
-                generated = week_event_list_message()
-            case _:
-                generated = notification_message(from_command=True)
-
-        if generated and generated.event_list:
+        for chat_id, n_type, a_type in result:
             try:
-                generated.send(request.entity.request_chat_id)
-                status = "Ok"
-            except ApiTelegramException:
-                status = "Error"
+                if a_type.startswith("user"):
+                    request.entity = TelegramAccount(chat_id)
+                elif a_type.startswith("group:"):
+                    owner_id = a_type.split(":")[1]
+                    request.entity = TelegramAccount(owner_id, chat_id)
+            except (UserNotFound, GroupNotFound):
+                continue
 
-            logger.info(
-                f"notifications -> {request.entity.request_chat_id} -> {status}"
-            )
+            if request.entity.user.user_status == -1:
+                continue
+
+            match n_type:
+                case 2:
+                    generated = week_event_list_message()
+                case _:
+                    generated = notification_message(from_command=True)
+
+            if generated and generated.event_list:
+                try:
+                    generated.send(request.entity.request_chat_id)
+                    status = "Ok"
+                except ApiTelegramException:
+                    status = "Error"
+
+                logger.info(
+                    f"notifications -> {request.entity.request_chat_id} -> {status}"
+                )
 
 
 def monthly_calendar_message(

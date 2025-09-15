@@ -109,30 +109,34 @@ group_limits = {
     },
 }
 _current_connection: ContextVar[Connection | None] = ContextVar("connection", default=None)
+engine: Engine = create_engine(config.DATABASE_PATH, echo=False)
 
 
 class DataBase:
     def __init__(self):
-        self.engine: Engine = create_engine(config.DATABASE_PATH, echo=True)
         self._functions: dict[str, tuple[int, Callable]] = {}
 
-        @event.listens_for(self.engine, "connect")
+        @event.listens_for(engine, "connect")
         def register_functions(dbapi_connection, connection_record):
             for name, (argc, func) in self._functions.items():
                 dbapi_connection.create_function(name, argc, func)
 
     @contextmanager
     def connect(self):
-        """Открывает соединение и сохраняет его в contextvar"""
-        with self.engine.connect() as conn:
+        with engine.connect() as conn:
             token = _current_connection.set(conn)
             try:
                 yield
             finally:
                 _current_connection.reset(token)
 
-    def register_function(self, name: str, func: Callable):
-        """Регистрирует пользовательскую SQL-функцию"""
+    def register_function(self, name: str, func: Callable) -> None:
+        """
+        :param name: Function name
+        :param func: Window functions
+
+        """
+        # noinspection PyUnresolvedReferences
         argc = func.__code__.co_argcount
         self._functions[name] = (argc, func)
 
@@ -141,29 +145,31 @@ class DataBase:
             raw_conn = conn.connection
             raw_conn.create_function(name, argc, func)
 
+    @staticmethod
     def execute(
-        self,
         query: str,
         params: tuple | dict = (),
         commit: bool = False,
         column_names: bool = False,
-        # functions: tuple[tuple[str, Callable]] = None,
         script: bool = False,
     ) -> list[tuple[int | str | bytes | Any, ...], ...]:
         """
-        Выполняет SQL-запрос через SQLAlchemy, сохраняя интерфейс sqlite3.
+        Executes SQL query
+        I tried with, but it didn't close the file
+
+        :param query: SQL Query.
+        :param params: Query parameters (optional)
+        :param commit: Should I save my changes? (optional, defaults to False)
+        :param column_names: Insert column names into the result.
+        :param script: Query consists of several requests
+        :return: Query result
         """
 
         conn: Connection | None = _current_connection.get()
         if conn is None:
             raise RuntimeError("Нет активного соединения. Используй: with db.connect():")
 
-        # если переданы новые функции — регистрируем
-        # if functions:
-        #     for fn, ff in functions:
-        #         self.register_function(fn, ff)
-
-        result: list[tuple[Any, ...]] = []
+        result = []
         cursor: CursorResult | None = None
 
         if script:
