@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 import csv
 import subprocess
@@ -9,7 +10,7 @@ from IPython import embed
 from table2string import Table, Themes, Theme
 
 from config import WSGI_PATH, __version__
-from todoapi.types import db, Account  # noqa
+from todoapi.types import db, Account as todoapiAccount
 from tgbot.types import TelegramAccount  # noqa
 
 
@@ -234,6 +235,21 @@ UPDATE users
     )
     print("\x1b[2A")
     user(user_id)
+
+
+class Account(todoapiAccount):
+    def __init__(self, user_id: int, group_id: str | None = None):
+        with db.connect():
+            super().__init__(user_id, group_id)
+        self.conn = None
+
+    def __enter__(self):
+        self.conn = db.connect()
+        self.conn.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return self.conn.__exit__(exc_type, exc_val, exc_tb)
 
 
 HELP = """
