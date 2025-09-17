@@ -109,7 +109,10 @@ group_limits = {
         "max_groups_creator": 50,
     },
 }
-_current_connection: ContextVar[Connection | None] = ContextVar("connection", default=None)
+_current_connection: ContextVar[Connection | None] = ContextVar(
+    "connection",
+    default=None,
+)
 engine: Engine = create_engine(config.DATABASE_PATH, echo=False)
 
 
@@ -168,7 +171,7 @@ class DataBase:
 
         conn: Connection | None = _current_connection.get()
         if conn is None:
-            raise RuntimeError("Нет активного соединения. Используй: with db.connect():")
+            raise RuntimeError("db connection is None. Use `with db.connect():`")
 
         result = []
         cursor: CursorResult | None = None
@@ -1009,7 +1012,12 @@ UPDATE users
             raise ApiError
 
         try:
-            db.register_function("DAYS_BEFORE_EVENT", lambda date, statuses: Event(0, "", 0, date, "", statuses, "", "", "").days_before_event(self.settings.timezone))
+            db.register_function(
+                "DAYS_BEFORE_EVENT",
+                lambda date, statuses: Event(
+                    0, "", 0, date, "", statuses, "", "", ""
+                ).days_before_event(self.settings.timezone),
+            )
             events = db.execute(
                 f"""
 SELECT *

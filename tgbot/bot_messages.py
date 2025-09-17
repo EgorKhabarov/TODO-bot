@@ -544,7 +544,9 @@ def event_message(
     else:
         delete_permanently_translate = get_translate("text.delete_permanently")
         recover_translate = get_translate("text.recover")
-        delete_permanently_button = f"bed {event_id}" if is_deletion_confirmed else f"bemc {event_id}"
+        delete_permanently_button = (
+            f"bed {event_id}" if is_deletion_confirmed else f"bemc {event_id}"
+        )
         markup = [
             [
                 {f"❌ {delete_permanently_translate}": delete_permanently_button},
@@ -588,7 +590,9 @@ AND removal_time IS {'NOT' if is_in_wastebasket else ''} NULL
         args_key = "b"
         delete_permanently_translate = get_translate("text.delete_permanently")
         recover_translate = get_translate("text.recover")
-        delete_permanently_button = f"bsd {string_id}" if is_deletion_confirmed else f"bsmc {string_id}"
+        delete_permanently_button = (
+            f"bsd {string_id}" if is_deletion_confirmed else f"bsmc {string_id}"
+        )
         markup = [
             [
                 {f"❌ {delete_permanently_translate}": delete_permanently_button},
@@ -1003,7 +1007,10 @@ AND group_id IS ?
     return generated
 
 
-def before_event_delete_message(event_id: int, is_deletion_confirmed: bool = False) -> EventMessage | None:
+def before_event_delete_message(
+    event_id: int,
+    is_deletion_confirmed: bool = False,
+) -> EventMessage | None:
     """
     Generates a message with delete buttons,
     deleting to bin (for premium) and changing the date.
@@ -1015,7 +1022,11 @@ def before_event_delete_message(event_id: int, is_deletion_confirmed: bool = Fal
 
     delete_permanently = get_translate("text.delete_permanently")
     trash_bin = get_translate("text.trash_bin")
-    delete_permanently_button = f"ed {event.event_id} {event.date}" if is_deletion_confirmed else f"ebdc {event.event_id} {event.date}"
+    delete_permanently_button = (
+        f"ed {event.event_id} {event.date}"
+        if is_deletion_confirmed
+        else f"ebdc {event.event_id} {event.date}"
+    )
     markup = generate_buttons(
         [
             [
@@ -1035,7 +1046,10 @@ def before_event_delete_message(event_id: int, is_deletion_confirmed: bool = Fal
     return generated
 
 
-def before_events_delete_message(id_list: list[int], is_deletion_confirmed: bool = False) -> EventsMessage:
+def before_events_delete_message(
+    id_list: list[int],
+    is_deletion_confirmed: bool = False,
+) -> EventsMessage:
     """
     Generates a message with delete buttons,
     deleting to bin (for premium) and changing the date.
@@ -1057,7 +1071,9 @@ AND removal_time IS NULL
     date = generated.event_list[0].date if generated.event_list else ""
     delete_permanently = get_translate("text.delete_permanently")
     trash_bin = get_translate("text.trash_bin")
-    delete_permanently_button = f"esd {string_id} {date}" if is_deletion_confirmed else f"esbdc {string_id}"
+    delete_permanently_button = (
+        f"esd {string_id} {date}" if is_deletion_confirmed else f"esbdc {string_id}"
+    )
     markup = [
         [
             {f"❌ {delete_permanently}": delete_permanently_button},
@@ -1332,7 +1348,11 @@ AND (
     return generated
 
 
-def trash_can_message(id_list: list[int] = (), page: int = 0, cleansing_confirmed: bool = False) -> EventsMessage:
+def trash_can_message(
+    id_list: list[int] = (),
+    page: int = 0,
+    cleansing_confirmed: bool = False,
+) -> EventsMessage:
     """
     :param id_list: List of event_id
     :param page: Page number
@@ -1364,7 +1384,10 @@ DELETE FROM events
     markup = generate_buttons(
         [
             [{"🔼": "None"}, {"↕️": "None"}],
-            [{f"🧹 {clean_bin_translate}": "bcl" if cleansing_confirmed else "bclc"}, {"🔄": "mnb"}],
+            [
+                {f"🧹 {clean_bin_translate}": "bcl" if cleansing_confirmed else "bclc"},
+                {"🔄": "mnb"},
+            ],
             [{get_theme_emoji("back"): "mnm"}],
         ]
     )
@@ -1886,7 +1909,11 @@ def select_one_message(
         if is_open:
             generated = daily_message(event.date)
         else:
-            generated = event_message(event.event_id, is_in_wastebasket, message_id=message_id)
+            generated = event_message(
+                event.event_id,
+                is_in_wastebasket,
+                message_id=message_id,
+            )
 
         return generated
 

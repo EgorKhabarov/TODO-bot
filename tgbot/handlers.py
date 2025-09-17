@@ -774,12 +774,16 @@ class CallBackHandler:
 
     @prefix("ebd", {"event_id": "int", "date": "date"})
     @prefix("ebdc", {"event_id": "int", "date": "date"})
-    def event_before_delete(self, event_id: int, date: datetime, str_prefix: str = "ebd"):
+    def event_before_delete(
+        self, event_id: int, date: datetime, str_prefix: str = "ebd"
+    ):
         if str_prefix == "ebdc":
             text = get_translate("errors.confirmation_of_deletion.event")
             CallBackAnswer(text).answer(show_alert=True)
 
-        generated = before_event_delete_message(event_id, is_deletion_confirmed=str_prefix == "ebdc")
+        generated = before_event_delete_message(
+            event_id, is_deletion_confirmed=str_prefix == "ebdc"
+        )
         if generated is None:
             generated = daily_message(date)
         generated.edit()
@@ -871,7 +875,8 @@ class CallBackHandler:
             CallBackAnswer(text).answer(show_alert=True)
 
         generated = before_events_delete_message(
-            decode_id(id_list), is_deletion_confirmed=str_prefix == "esbdc",
+            decode_id(id_list),
+            is_deletion_confirmed=str_prefix == "esbdc",
         )
         generated.edit()
 
@@ -1389,9 +1394,11 @@ class CallBackHandler:
         if (request.is_user and request.entity.is_premium) or request.is_member:
             if str_prefix == "bcl":
                 request.entity.clear_basket()
-                CallBackAnswer(get_translate("text.bin_is_emptied")).answer(show_alert=True)
+                text = get_translate("text.bin_is_emptied")
+
             else:
-                CallBackAnswer(get_translate("errors.bin.confirmation_of_purification")).answer(show_alert=True)
+                text = get_translate("errors.bin.confirmation_of_purification")
+            CallBackAnswer(text).answer(show_alert=True)
             try:
                 trash_can_message(cleansing_confirmed=str_prefix == "bclc").edit()
             except ApiTelegramException:
@@ -1443,7 +1450,9 @@ class CallBackHandler:
 
     @prefix("bsm", {"id_list": "str"})
     @prefix("bsmc", {"id_list": "str"})
-    def events_message_bin(self, id_list: str, message: Message, str_prefix: str = "bem"):
+    def events_message_bin(
+        self, id_list: str, message: Message, str_prefix: str = "bem"
+    ):
         if id_list == "_" or not id_list:
             id_list = encode_id(
                 [
@@ -1463,7 +1472,7 @@ class CallBackHandler:
         generated = events_message(
             decode_id(id_list),
             is_in_wastebasket=True,
-            is_deletion_confirmed=str_prefix == "bsmc"
+            is_deletion_confirmed=str_prefix == "bsmc",
         )
         if generated:
             generated.edit()
