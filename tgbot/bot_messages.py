@@ -493,17 +493,20 @@ LIMIT 1;
 
 
 def event_message(
-    event_id: int, in_wastebasket: bool = False, message_id: int | None = None
+    event_id: int,
+    is_in_wastebasket: bool = False,
+    is_deletion_confirmed: bool = False,
+    message_id: int | None = None,
 ) -> EventMessage | None:
     """
     Message to interact with one event
     """
-    generated = EventMessage(event_id, in_wastebasket)
+    generated = EventMessage(event_id, is_in_wastebasket)
     event = generated.event
     if not event:
         return None
 
-    if not in_wastebasket:
+    if not is_in_wastebasket:
         markup = [
             [
                 (
@@ -541,9 +544,10 @@ def event_message(
     else:
         delete_permanently_translate = get_translate("text.delete_permanently")
         recover_translate = get_translate("text.recover")
+        delete_permanently_button = f"bed {event_id}" if is_deletion_confirmed else f"bemc {event_id}"
         markup = [
             [
-                {f"❌ {delete_permanently_translate}": f"bed {event_id}"},
+                {f"❌ {delete_permanently_translate}": delete_permanently_button},
                 {f"↩️ {recover_translate}": f"ber {event_id} {event.date}"},
             ],
             [{get_theme_emoji("back"): "mnb"}],
@@ -559,7 +563,9 @@ def event_message(
 
 
 def events_message(
-    id_list: list[int], is_in_wastebasket: bool = False
+    id_list: list[int],
+    is_in_wastebasket: bool = False,
+    is_deletion_confirmed: bool = False,
 ) -> EventsMessage:
     """
     Message to interact with events
@@ -582,9 +588,10 @@ AND removal_time IS {'NOT' if is_in_wastebasket else ''} NULL
         args_key = "b"
         delete_permanently_translate = get_translate("text.delete_permanently")
         recover_translate = get_translate("text.recover")
+        delete_permanently_button = f"bsd {string_id}" if is_deletion_confirmed else f"bsmc {string_id}"
         markup = [
             [
-                {f"❌ {delete_permanently_translate}": f"bsd {string_id}"},
+                {f"❌ {delete_permanently_translate}": delete_permanently_button},
                 {f"↩️ {recover_translate}": f"bsr {string_id} {date}"},
             ],
             [{get_theme_emoji("back"): "mnb"}],
@@ -996,7 +1003,7 @@ AND group_id IS ?
     return generated
 
 
-def before_event_delete_message(event_id: int) -> EventMessage | None:
+def before_event_delete_message(event_id: int, is_deletion_confirmed: bool = False) -> EventMessage | None:
     """
     Generates a message with delete buttons,
     deleting to bin (for premium) and changing the date.
@@ -1008,10 +1015,11 @@ def before_event_delete_message(event_id: int) -> EventMessage | None:
 
     delete_permanently = get_translate("text.delete_permanently")
     trash_bin = get_translate("text.trash_bin")
+    delete_permanently_button = f"ed {event.event_id} {event.date}" if is_deletion_confirmed else f"ebdc {event.event_id} {event.date}"
     markup = generate_buttons(
         [
             [
-                {f"❌ {delete_permanently}": f"ed {event.event_id} {event.date}"},
+                {f"❌ {delete_permanently}": delete_permanently_button},
                 (
                     {f"🗑 {trash_bin}": f"edb {event.event_id} {event.date}"}
                     if request.entity.is_premium
@@ -1027,7 +1035,7 @@ def before_event_delete_message(event_id: int) -> EventMessage | None:
     return generated
 
 
-def before_events_delete_message(id_list: list[int]) -> EventsMessage:
+def before_events_delete_message(id_list: list[int], is_deletion_confirmed: bool = False) -> EventsMessage:
     """
     Generates a message with delete buttons,
     deleting to bin (for premium) and changing the date.
@@ -1049,9 +1057,10 @@ AND removal_time IS NULL
     date = generated.event_list[0].date if generated.event_list else ""
     delete_permanently = get_translate("text.delete_permanently")
     trash_bin = get_translate("text.trash_bin")
+    delete_permanently_button = f"esd {string_id} {date}" if is_deletion_confirmed else f"esbdc {string_id}"
     markup = [
         [
-            {f"❌ {delete_permanently}": f"esd {string_id} {date}"},
+            {f"❌ {delete_permanently}": delete_permanently_button},
             (
                 {f"🗑 {trash_bin}": f"esdb {string_id} {date}"}
                 if is_wastebasket_available
@@ -1877,7 +1886,7 @@ def select_one_message(
         if is_open:
             generated = daily_message(event.date)
         else:
-            generated = event_message(event.event_id, is_in_wastebasket, message_id)
+            generated = event_message(event.event_id, is_in_wastebasket, message_id=message_id)
 
         return generated
 

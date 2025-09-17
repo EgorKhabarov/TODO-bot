@@ -704,7 +704,7 @@ class CallBackHandler:
             logger.error(traceback.format_exc())
             text = get_translate("errors.error")
         else:
-            generated = event_message(event_id, False, message_id)
+            generated = event_message(event_id, message_id=message_id)
             return generated.edit()
 
         CallBackAnswer(text).answer(show_alert=True)
@@ -727,7 +727,7 @@ class CallBackHandler:
             text = get_translate("errors.error")
         else:
             CallBackAnswer(get_translate("text.changes_saved")).answer()
-            event_message(event_id, False, message_id).edit()
+            event_message(event_id, message_id=message_id).edit()
             return
         CallBackAnswer(text).answer(show_alert=True)
 
@@ -743,7 +743,7 @@ class CallBackHandler:
             call_answer.answer(show_alert=True)
         else:
             CallBackAnswer(get_translate("text.changes_saved")).answer()
-            event_message(event_id, False, message_id).edit()
+            event_message(event_id, message_id=message_id).edit()
 
     @prefix("ed", {"event_id": "int", "date": "date"})
     def event_delete(self, event_id: int, date: datetime):
@@ -773,8 +773,13 @@ class CallBackHandler:
         generated.edit()
 
     @prefix("ebd", {"event_id": "int", "date": "date"})
-    def event_before_delete(self, event_id: int, date: datetime):
-        generated = before_event_delete_message(event_id)
+    @prefix("ebdc", {"event_id": "int", "date": "date"})
+    def event_before_delete(self, event_id: int, date: datetime, str_prefix: str = "ebd"):
+        if str_prefix == "ebdc":
+            text = get_translate("errors.confirmation_of_deletion.event")
+            CallBackAnswer(text).answer(show_alert=True)
+
+        generated = before_event_delete_message(event_id, is_deletion_confirmed=str_prefix == "ebdc")
         if generated is None:
             generated = daily_message(date)
         generated.edit()
@@ -859,8 +864,15 @@ class CallBackHandler:
             CallBackAnswer(text).answer(show_alert=True)
 
     @prefix("esbd", {"id_list": "str"})
-    def events_before_delete(self, id_list: str):
-        generated = before_events_delete_message(decode_id(id_list))
+    @prefix("esbdc", {"id_list": "str"})
+    def events_before_delete(self, id_list: str, str_prefix: str = "esbd"):
+        if str_prefix == "esbdc":
+            text = get_translate("errors.confirmation_of_deletion.events")
+            CallBackAnswer(text).answer(show_alert=True)
+
+        generated = before_events_delete_message(
+            decode_id(id_list), is_deletion_confirmed=str_prefix == "esbdc",
+        )
         generated.edit()
 
     @prefix("essd", {"id_list": "str", "date": "date"})
@@ -924,6 +936,21 @@ class CallBackHandler:
     def select_event(
         self, info: str, id_list: str, call_data: str, message_id: int, message: Message
     ):
+        """
+        info:
+        b - in wastebasket (bin)
+        s - search
+        _ - daily massage
+        o - open (open in daily massage)
+        os -
+
+        :param info:
+        :param id_list:
+        :param call_data:
+        :param message_id:
+        :param message:
+        :return:
+        """
         back_data = call_data.removeprefix(f"{info} {id_list}").strip()
         # TODO Добавить если поставить кавычки " или ', то можно внутри юзать пробел
 
@@ -1373,8 +1400,17 @@ class CallBackHandler:
             CallBackAnswer(get_translate("errors.error")).answer(show_alert=True)
 
     @prefix("bem", {"event_id": "int"})
-    def event_message_bin(self, event_id: int, message_id: int):
-        generated = event_message(event_id, True, message_id=message_id)
+    @prefix("bemc", {"event_id": "int"})
+    def event_message_bin(self, event_id: int, str_prefix: str = "bem"):
+        if str_prefix == "bemc":
+            text = get_translate("errors.confirmation_of_deletion.event")
+            CallBackAnswer(text).answer(show_alert=True)
+
+        generated = event_message(
+            event_id,
+            is_in_wastebasket=True,
+            is_deletion_confirmed=str_prefix == "bemc",
+        )
         if generated:
             try:
                 generated.edit()
@@ -1406,7 +1442,8 @@ class CallBackHandler:
         trash_can_message().edit()
 
     @prefix("bsm", {"id_list": "str"})
-    def events_message_bin(self, id_list: str, message: Message):
+    @prefix("bsmc", {"id_list": "str"})
+    def events_message_bin(self, id_list: str, message: Message, str_prefix: str = "bem"):
         if id_list == "_" or not id_list:
             id_list = encode_id(
                 [
@@ -1419,7 +1456,15 @@ class CallBackHandler:
             text = get_translate("errors.no_events_to_interact")
             return CallBackAnswer(text).answer(show_alert=True)
 
-        generated = events_message(decode_id(id_list), True)
+        if str_prefix == "bsmc":
+            text = get_translate("errors.confirmation_of_deletion.events")
+            CallBackAnswer(text).answer(show_alert=True)
+
+        generated = events_message(
+            decode_id(id_list),
+            is_in_wastebasket=True,
+            is_deletion_confirmed=str_prefix == "bsmc"
+        )
         if generated:
             generated.edit()
         else:

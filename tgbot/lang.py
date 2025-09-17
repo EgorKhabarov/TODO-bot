@@ -1966,6 +1966,16 @@ or create an account
                 "en": "Are you sure you want to clear the event's change history? Click again to clear change history",
             },
         },
+        "confirmation_of_deletion": {
+            "event": {
+                "ru": "Вы действительно хотите безвозвратно удалить событие? Нажмите повторно для удаления события",
+                "en": "Are you sure you want to permanently delete the event? Click again to permanently delete the event",
+            },
+            "events": {
+                "ru": "Вы действительно хотите безвозвратно удалить события? Нажмите повторно для удаления событий",
+                "en": "Are you sure you want to permanently delete events? Click again to permanently delete events",
+            },
+        },
     },
     "select": {
         "status_to_event": {
