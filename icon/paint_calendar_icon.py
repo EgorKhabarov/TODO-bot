@@ -1,5 +1,6 @@
 from PIL import Image, ImageDraw, ImageFont
 
+
 ICON_SIZE: int = 778
 ICON_NAME: str = "calendar_icon"
 FONT_PATH = "../fonts/roboto-black.ttf"

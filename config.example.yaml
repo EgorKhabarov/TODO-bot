@@ -4,6 +4,9 @@ LOG_FILE_PATH: "logs/latest.log"
 BOT_TOKEN: ""  # https://t.me/BotFather
 WEATHER_API_KEY: ""  # https://home.openweathermap.org/api_keys
 
+MIN_CALENDAR_YEAR: 1900
+MAX_CALENDAR_YEAR: 2300
+
 BOT_NOTIFICATIONS: True  # Are notifications enabled at the bot level?
 LIMIT_IMAGE_GENERATOR_URL: ""  # "/limit" Flask endpoint for generating pictures of limits
 

@@ -27,7 +27,7 @@ def filter_function(test_line: str) -> bool:
     return any(test_line.startswith(rl) for rl in removal_lines_start)
 
 
-def clear_logs():
+def clear_logs() -> None:
     log_folder = Path(LOG_FILE_PATH).parent
     utc_time = datetime.now(timezone.utc)
     output_file_path = os.path.join(

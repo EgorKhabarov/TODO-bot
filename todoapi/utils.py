@@ -24,7 +24,7 @@ sql_datetime_pattern = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
 password_hasher = PasswordHasher()
 
 
-def sqlite_format_date(_column):
+def sqlite_format_date(_column: str) -> str:
     """
     Database sql column converts from format
     dd.mm.yyyy to yyyy.mm.dd for sql expression
@@ -47,14 +47,26 @@ def is_admin_id(chat_id: int) -> bool:
 
 def is_valid_year(year: int) -> bool:
     """
-    Is the year valid (in the range from 1900 to 2300)?
+    Is the year valid (in the range from config.MIN_CALENDAR_YEAR to config.MAX_CALENDAR_YEAR)?
     """
-    return 1900 <= year <= 2300
+    return config.MIN_CALENDAR_YEAR <= year <= config.MAX_CALENDAR_YEAR
 
 
-def chunks(lst, n):
+def chunks(lst: tuple | list, n: int):
     """
-    Yield successive n-sized chunks from lst.
+    Yield successive n-sized chunks from lst
+
+    >>> for chunk in chunks(list(range(20)), 3):
+    ...     print(chunk)
+    ...
+    [0, 1, 2]
+    [3, 4, 5]
+    [6, 7, 8]
+    [9, 10, 11]
+    [12, 13, 14]
+    [15, 16, 17]
+    [18, 19]
+
     """
     for i in range(0, len(lst), n):
         yield lst[i : i + n]
@@ -101,5 +113,5 @@ def rate_limit(
     return decorator
 
 
-def generate_token(length=32):
+def generate_token(length: int = 32):
     return "".join(random.choices(string.ascii_letters + string.digits, k=length))

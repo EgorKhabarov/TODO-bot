@@ -28,6 +28,9 @@ LOG_FILE_PATH = config.get("LOG_FILE_PATH", "logs/latest.log")
 BOT_TOKEN = config.get("BOT_TOKEN", "")
 WEATHER_API_KEY = config.get("WEATHER_API_KEY", "")
 
+MIN_CALENDAR_YEAR: int = int(config.get("MIN_CALENDAR_YEAR", 1900))
+MAX_CALENDAR_YEAR: int = int(config.get("MAX_CALENDAR_YEAR", 2300))
+
 BOT_NOTIFICATIONS = config.get("BOT_NOTIFICATIONS", True)
 LIMIT_IMAGE_GENERATOR_URL = config.get("LIMIT_IMAGE_GENERATOR_URL")
 
@@ -135,5 +138,5 @@ recent_changes_time ASC
 }
 
 string_branch = "" if branch == "master" else f":{branch}"
-__version__ = "2025.09.19.0"
+__version__ = "2025.09.19.1"
 __author__ = "EgorKhabarov"

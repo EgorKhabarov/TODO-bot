@@ -1,5 +1,6 @@
 from PIL import Image, ImageDraw
 
+
 ICON_SIZE: int = 778
 ICON_NAME: str = "minimalistic_notepad_icon"
 
@@ -17,7 +18,7 @@ COLOR_CLOCK_HANDS_LDARK = (134, 73, 0)
 COLOR_CLOCK_HANDS_DARK = (98, 54, 0)
 
 
-def image_generator(icon_size: int) -> Image:
+def image_generator(icon_size: int) -> Image.Image:
     _image = Image.new("RGB", (icon_size, icon_size), COLOR_BACKGROUND)
     draw = ImageDraw.Draw(_image)
     x, y = 195, 147
@@ -38,7 +39,7 @@ def image_generator(icon_size: int) -> Image:
     return _image
 
 
-def draw_lock(image: Image):
+def draw_lock(image: Image.Image):
     draw = ImageDraw.Draw(image)
     x, y = 450, 346
 
@@ -63,7 +64,7 @@ def draw_lock(image: Image):
     )
 
 
-def draw_clock(image: Image):
+def draw_clock(image: Image.Image):
     draw = ImageDraw.Draw(image)
     x, y = 450, 440
 
@@ -133,4 +134,6 @@ if __name__ == "__main__":
     img = image_generator(ICON_SIZE)
     # draw_lock(img)
     # draw_clock(img)
-    img.save(f"{ICON_NAME}.png", "png")
+    # from icon.utils import get_emoji
+    # draw_emoji(img, "📝")
+    img.save(f"{ICON_NAME}.png", "PNG")
