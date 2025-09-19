@@ -1,5 +1,4 @@
 DATABASE_PATH: "data/database.sqlite3"
-VEDIS_PATH: "data/export_cooldown.vedis"
 LOG_FILE_PATH: "logs/latest.log"
 
 BOT_TOKEN: ""  # https://t.me/BotFather

@@ -144,6 +144,13 @@ CREATE TABLE IF NOT EXISTS frequently_used_dates (
     FOREIGN KEY (group_id) REFERENCES groups(group_id)
 );
 
+CREATE TABLE IF NOT EXISTS chat_states (
+    chat_id    INT,
+    state_type TEXT,
+    state      TEXT,
+    PRIMARY KEY (chat_id, state_type)
+);
+
 ------------------------------------------------------------------------------------------------------------------------
 
 -- When deleting a user, we delete all rows associated with it.

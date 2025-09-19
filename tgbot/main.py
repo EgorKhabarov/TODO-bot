@@ -23,8 +23,8 @@ from tgbot.utils import (
 )
 from tgbot.handlers import (
     reply_handler,
-    add_event_cache,
-    add_group_cache,
+    add_event_state,
+    add_group_state,
     command_handler,
     callback_handler,
     cache_create_group,
@@ -200,7 +200,7 @@ def processing_reply_message(message: Message):
     reply_handler(message, message.reply_to_message)
 
 
-@bot.message_handler(func=lambda m: add_group_cache[m.chat.id])
+@bot.message_handler(func=lambda m: add_group_state.get_state(m.chat.id))
 @process_account
 def processing_group_create_message(message: Message):
     """
@@ -227,7 +227,7 @@ def processing_group_create_message(message: Message):
                 delete_message_action(message)
 
 
-@bot.message_handler(func=lambda m: add_event_cache[m.chat.id])
+@bot.message_handler(func=lambda m: add_event_state.get_state(m.chat.id))
 @process_account
 def add_event_handler(message: Message):
     """

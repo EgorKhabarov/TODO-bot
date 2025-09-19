@@ -23,7 +23,6 @@ except git.exc.InvalidGitRepositoryError:
     branch = "master"
 
 DATABASE_PATH = config.get("DATABASE_PATH", "data/database.sqlite3")
-VEDIS_PATH = config.get("VEDIS_PATH", "data/export_cooldown.vedis")
 LOG_FILE_PATH = config.get("LOG_FILE_PATH", "logs/latest.log")
 
 BOT_TOKEN = config.get("BOT_TOKEN", "")
@@ -136,5 +135,5 @@ recent_changes_time ASC
 }
 
 string_branch = "" if branch == "master" else f":{branch}"
-__version__ = "2025.09.17.2"
+__version__ = "2025.09.19.0"
 __author__ = "EgorKhabarov"

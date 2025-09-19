@@ -133,20 +133,15 @@ apihelper.CUSTOM_REQUEST_SENDER = custom_sender
 
 
 config.BOT_TOKEN = "0:TEST_TOKEN"
-test_vedis = Path("tests/data/test_vedis.vedis")
 test_database_path = Path("tests/data/test_database.sqlite3")
 test_database_copy_path = Path("tests/data/test_database_copy.sqlite3")
 test_database_path.parent.mkdir(parents=True, exist_ok=True)
-config.VEDIS_PATH = test_vedis
 
 if test_database_path.exists():
     os.remove(test_database_path)
 
 if test_database_copy_path.exists():
     os.remove(test_database_copy_path)
-
-if test_vedis.exists():
-    os.remove(test_vedis)
 
 config.DATABASE_PATH = test_database_copy_path
 from todoapi.db_creator import create_tables  # noqa: E402

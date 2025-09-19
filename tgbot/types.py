@@ -235,11 +235,11 @@ class TelegramAccount(Account):
             return None
 
     @property
-    def request_chat_id(self):
+    def request_chat_id(self) -> int:
         return self.group_chat_id or self.chat_id
 
     @property
-    def request_id(self):
+    def request_id(self) -> int | str:
         return self.group_id or self.user_id
 
     @property

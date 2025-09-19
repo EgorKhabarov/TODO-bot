@@ -1,20 +1,20 @@
 import csv
 import json
 from uuid import uuid4
+import xml.etree.ElementTree as xml  # noqa
 from sqlite3 import Error
+from cachetools import LFUCache
 from collections import UserList
 from io import StringIO, BytesIO
 from dataclasses import dataclass
-import xml.etree.ElementTree as xml  # noqa
-from functools import cached_property
 from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
 from typing import Callable, Any, Literal
+from functools import cached_property, wraps
+from datetime import datetime, timedelta, timezone
 
 # noinspection PyPackageRequirements
 from contextvars import ContextVar
 
-from vedis import Vedis
 from sqlalchemy import create_engine, text, event
 from sqlalchemy.engine import Engine, Connection, CursorResult
 
@@ -205,23 +205,95 @@ class DataBase:
         # noinspection PyTypeChecker
         return result
 
+    @property
+    def is_connected(self) -> bool:
+        return bool(_current_connection.get())
 
-class VedisCache:
-    def __init__(self, table: str):
-        self.table = table
 
-    def __getitem__(self, key: Any) -> None | str:
-        with vdb.transaction():
-            data = vdb.hget(self.table, key)
-            return data.decode() if data else None
+def db_connect_decorator[T](func: Callable[..., T]) -> T:
+    @wraps(func)
+    def wrapper(*args, **kwargs) -> T:
+        if db.is_connected:
+            return func(*args, **kwargs)
 
-    def __setitem__(self, key, value):
-        with vdb.transaction():
-            vdb.hset(self.table, key, value)
+        with db.connect():
+            return func(*args, **kwargs)
 
-    def __delitem__(self, key):
-        with vdb.transaction():
-            vdb.hdel(self.table, key)
+    return wrapper
+
+
+class ChatStateMachine:
+    def __init__(self, state_type: str):
+        self.state_type = state_type
+        self.cache = LFUCache(maxsize=100)
+
+    @db_connect_decorator
+    def get_state(self, chat_id: int) -> None | str:
+        cache_key: str = f"{self.state_type}:{chat_id}"
+
+        if cache_key in self.cache:
+            return self.cache[cache_key]
+
+        try:
+            state = db.execute(
+                """
+SELECT state
+  FROM chat_states
+ WHERE chat_id = :chat_id
+       AND state_type = :state_type;
+""",
+                params={
+                    "chat_id": chat_id,
+                    "state_type": self.state_type,
+                },
+            )[0][0]
+        except IndexError:
+            self.cache[cache_key] = None
+            return None
+
+        self.cache[cache_key] = state
+        return state
+
+    def set_state(self, chat_id: int, state: str) -> None:
+        cache_key: str = f"{self.state_type}:{chat_id}"
+        self.cache[cache_key] = state
+
+        db.execute(
+            """
+INSERT INTO chat_states (chat_id, state_type, state)
+     VALUES (:chat_id, :state_type, :state)
+ON CONFLICT(chat_id, state_type) DO
+UPDATE
+   SET state = excluded.state;
+""",
+            params={
+                "chat_id": chat_id,
+                "state_type": self.state_type,
+                "state": state,
+            },
+            commit=True,
+        )
+
+    def delete_state(self, chat_id: int) -> None:
+        cache_key: str = f"{self.state_type}:{chat_id}"
+
+        if cache_key in self.cache:
+            if self.cache[cache_key] is None:
+                return
+            self.cache[cache_key] = None
+
+        db.execute(
+            """
+DELETE FROM chat_states
+      WHERE chat_id = :chat_id
+            AND state_type = :state_type;
+""",
+            params={
+                "chat_id": chat_id,
+                "state_type": self.state_type,
+            },
+            commit=True,
+        )
 
 
 class Limit:
@@ -2385,4 +2457,3 @@ UPDATE users
 
 
 db = DataBase()
-vdb = Vedis(config.VEDIS_PATH)

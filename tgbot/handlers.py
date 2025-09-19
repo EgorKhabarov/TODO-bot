@@ -106,7 +106,7 @@ from todoapi.log_cleaner import clear_logs
 from todoapi.utils import is_valid_year, re_username
 from todoapi.types import (
     Account,
-    VedisCache,
+    ChatStateMachine,
     create_user,
     set_user_status,
     get_account_from_password,
@@ -116,8 +116,8 @@ from telegram_utils.buttons_generator import generate_buttons, edit_button_data
 from telegram_utils.command_parser import parse_command, get_command_arguments
 
 
-add_event_cache = VedisCache("add_event")
-add_group_cache = VedisCache("add_group")
+add_event_state = ChatStateMachine("add_event")
+add_group_state = ChatStateMachine("add_group")
 
 
 def not_login_handler(x: CallbackQuery | Message) -> None:
@@ -1670,17 +1670,17 @@ def cache_add_event_date(state: str | None = None) -> str | bool:
     """
 
     if state:
-        add_event_cache[request.entity.request_chat_id] = state
+        add_event_state.set_state(request.entity.request_chat_id, state)
         return True
 
-    data = add_event_cache[request.entity.request_chat_id]
+    data = add_event_state.get_state(request.entity.request_chat_id)
 
     if state is None:
         return data
 
     if data:
         msg_date, message_id = data.split(",")
-        del add_event_cache[request.entity.request_chat_id]
+        add_event_state.delete_state(request.entity.request_chat_id)
         try:
             daily_message(msg_date).edit(request.entity.request_chat_id, message_id)
         except ApiTelegramException:
@@ -1700,17 +1700,17 @@ def cache_create_group(
     """
 
     if state:
-        add_group_cache[request.entity.request_chat_id] = state
+        add_group_state.set_state(request.entity.request_chat_id, state)
         return True
 
-    data = add_group_cache[request.entity.request_chat_id]
+    data = add_group_state.get_state(request.entity.request_chat_id)
 
     if state is None:
         return data
 
     if data:
         message_id = int(data)
-        del add_group_cache[request.entity.request_chat_id]
+        add_group_state.delete_state(request.entity.request_chat_id)
         try:
             groups_message(mode, page).edit(request.entity.request_chat_id, message_id)
         except ApiTelegramException:
