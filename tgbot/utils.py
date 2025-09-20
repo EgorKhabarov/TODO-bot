@@ -47,6 +47,25 @@ link_sub = re.compile(r"<a href=\"(.+?)\">(.+?)(\n*?)</a>")
 add_group_pattern = re.compile(r"\A/start@\w{5,32} group-(\d+)-([a-z\d]{32})\Z")
 
 
+class Cycle:
+    """
+    like itertools but added param init_index
+    """
+
+    def __init__(self, data, init_index: int = 0):
+        self.data = data
+        self.index = init_index
+
+    def __next__(self):
+        try:
+            self.index += 1
+            result = self.data[self.index]
+        except IndexError:
+            self.index = 0
+            result = self.data[self.index]
+        return result
+
+
 def telegram_log(action: str, text: str):
     text = text.replace("\n", "\\n")
     thread_id = getattr(request.query, "message", request.query).message_thread_id
@@ -686,22 +705,3 @@ def get_message_thread_id() -> int | None:
         message_thread_id = None
 
     return message_thread_id
-
-
-class Cycle:
-    """
-    like itertools but added param init_index
-    """
-
-    def __init__(self, data, init_index: int = 0):
-        self.data = data
-        self.index = init_index
-
-    def __next__(self):
-        try:
-            self.index += 1
-            result = self.data[self.index]
-        except IndexError:
-            self.index = 0
-            result = self.data[self.index]
-        return result
