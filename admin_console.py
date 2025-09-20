@@ -4,7 +4,7 @@ import csv
 import subprocess
 from pprint import pprint, pformat
 from datetime import datetime, timezone
-from typing import Literal, Any, Callable
+from typing import Literal, Any
 
 from IPython import embed
 from table2string import Table, Themes, Theme
@@ -18,7 +18,6 @@ def execute(
     query: str,
     params: dict | tuple = (),
     commit: bool = False,
-    # functions: tuple[tuple[str, Callable]] | None = None,
     mode: Literal["table", "raw", "pprint"] = "table",
     max_width: int | type(max) | type(max) | None = max,
     max_height: int | type(max) | type(max) | None = max,
@@ -46,13 +45,6 @@ def execute(
     :param theme:
     :return:
     """
-    # if functions:
-    #     functions = tuple(
-    #         # noinspection PyUnresolvedReferences
-    #         (lambda fn, ff: (fn, ff.__code__.co_argcount, ff))(*func)
-    #         for func in functions
-    #     )
-    #     raise RuntimeError()
 
     with db.connect():
         result = db.execute(
@@ -203,7 +195,7 @@ OFFSET :offset;
     )
 
 
-def user(user_id: int) -> None:
+def user(*, user_id: int | None = None, chat_id: int | str | None = None) -> None:
     execute(
         """
 SELECT user_id,
@@ -214,9 +206,13 @@ SELECT user_id,
        reg_date,
        chat_id
   FROM users
- WHERE user_id = :user_id;
+ WHERE user_id = :user_id
+       OR chat_id IS :chat_id;
 """,
-        params={"user_id": user_id},
+        params={
+            "user_id": user_id,
+            "chat_id": chat_id,
+        },
     )
 
 
@@ -234,7 +230,7 @@ UPDATE users
         commit=True,
     )
     print("\x1b[2A")
-    user(user_id)
+    user(user_id=user_id)
 
 
 class Account(todoapiAccount):
@@ -259,29 +255,35 @@ execute(
     query: str,
     params: dict | tuple = (),
     commit: bool = False,
-    func: tuple[str, Callable] | None = None,
     mode: Literal["table", "raw", "pprint"] = "table",
-    max_width: int | min | max | None = max,
-    max_height: int | min | max | None = max,
-    align: tuple[AlignType] | AlignType = "*",
-    name: str | None = None,
-    name_align: Literal["<", ">", "^"] | None = None,
+    max_width: int | type(max) | type(max) | None = max,
+    max_height: int | type(max) | type(max) | None = max,
+    maximize_height: bool = False,
+    align: tuple[str, ...] | str = "*",
+    name: str = None,
+    name_align: str = "^",
     return_data: bool = False,
+    theme: Theme = Themes.ascii_thin,
 )
 export(
     query: str = "SELECT * FROM events;",
     params: dict | tuple = (),
-)
-Account(user_id: int, group_id: str | None = None)
-TelegramAccount(chat_id: int, group_chat_id: int | None = None)
+) -> str  # file path
 terminal_size() -> tuple[int, int]
 restart_server()
 
 chat_list(page: int = 1)
 user_list(page: int = 1)
 group_list(page: int = 1)
-user(user_id: int)
+user(*, user_id: int | None = None, chat_id: int | str | None = None)
 ban(user_id: int, user_status: int = -1)
+
+with Account(user_id: int) as account:
+    ...
+
+db.register_function(name: str, func: (...) -> Any)
+Account(user_id: int, group_id: str | None = None)
+TelegramAccount(chat_id: int, group_chat_id: int | None = None)
 """
 
 

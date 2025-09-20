@@ -24,18 +24,28 @@ from todoapi.exceptions import EventNotFound, DataBaseError
 event_formats = {
     "dl": "<b>{numd}.{event_id}.</b>{statuses}\n{markdown_text}\n",
     "dt": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> {reldate}\n{markdown_text}\n",
-    "b": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> ({days_before_delete})\n{markdown_text}\n",
-    "r": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> {reldate}{days_before}\n{markdown_text}\n",
+    "b": (
+        "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> "
+        "({days_before_delete})\n{markdown_text}\n"
+    ),
+    "r": (
+        "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> "
+        "{reldate}{days_before}\n{markdown_text}\n"
+    ),
     "s": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u>\n{markdown_text}\n",
     "a": "<b>{date}.{event_id}.</b>{statuses} <u><i>{strdate}  {weekday}</i></u> {reldate}\n{text}\n",
 }
 """
 "dl" - Template for events for one day
+
 "dt" - Template for events on different days
+
 "b" - Template for the cart, shows the number of days until the event is allocated
-"r" - A pattern for events that can be repeated,
-      shows the number of days until the next repetition
+
+"r" - A pattern for events that can be repeated, shows the number of days until the next repetition
+
 "s" - Template for displaying events, without relative dates
+
 "a" - Template for displaying an event message, without markdown markup
 """
 

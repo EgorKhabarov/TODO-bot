@@ -29,6 +29,7 @@ rate_limit_200_1800 = LRUCache(maxsize=100)
 rate_limit_30_60 = LRUCache(maxsize=100)
 
 
+# noinspection PyUnusedLocal
 def key_func(func: Callable, x: Message | CallbackQuery) -> int:
     return (x if isinstance(x, Message) else x.message).chat.id
 

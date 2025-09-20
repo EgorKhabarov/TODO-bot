@@ -1,11 +1,7 @@
-FROM python:3.11
-
-WORKDIR /app
-
-COPY . /app
-
-RUN pip install --no-cache-dir -r requirements.txt
-
+FROM python:3.13-slim
+WORKDIR /TODO-bot
+COPY requirements.txt .
+RUN pip install --no-cache-dir -U -r requirements.txt
+COPY . .
 EXPOSE 5000
-
-CMD ["python", "server.py"]
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "server:app"]

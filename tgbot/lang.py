@@ -269,7 +269,7 @@ Call up new messages using bot commands.</b>
             "en": "Recurring events",
         },
         "week_events": {
-            "ru": "Cобытия в ближайшие 7 дней",
+            "ru": "События в ближайшие 7 дней",
             "en": "Events in the next 7 days",
         },
         "are_you_sure_edit": {
@@ -1273,7 +1273,7 @@ Visibility <b>{}</b>m""",
                         BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
                         BotCommand("weather", "{city} Погода"),
                         BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
-                        BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
+                        BotCommand("week_event_list", "События в ближайшие 7 дней"),
                         BotCommand("dice", "Кинуть кубик"),
                         BotCommand(
                             "export",
@@ -1313,7 +1313,7 @@ Visibility <b>{}</b>m""",
                         BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
                         BotCommand("weather", "{city} Погода"),
                         BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
-                        BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
+                        BotCommand("week_event_list", "События в ближайшие 7 дней"),
                         BotCommand("dice", "Кинуть кубик"),
                         BotCommand(
                             "export",
@@ -1349,7 +1349,7 @@ Visibility <b>{}</b>m""",
                         BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
                         BotCommand("weather", "{city} Погода"),
                         BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
-                        BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
+                        BotCommand("week_event_list", "События в ближайшие 7 дней"),
                         BotCommand("dice", "Кинуть кубик"),
                         BotCommand(
                             "export",
@@ -1389,7 +1389,7 @@ Visibility <b>{}</b>m""",
                         BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
                         BotCommand("weather", "{city} Погода"),
                         BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
-                        BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
+                        BotCommand("week_event_list", "События в ближайшие 7 дней"),
                         BotCommand("dice", "Кинуть кубик"),
                         BotCommand(
                             "export",
@@ -1425,7 +1425,7 @@ Visibility <b>{}</b>m""",
                         BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
                         BotCommand("weather", "{city} Погода"),
                         BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
-                        BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
+                        BotCommand("week_event_list", "События в ближайшие 7 дней"),
                         BotCommand("dice", "Кинуть кубик"),
                         BotCommand(
                             "export",
@@ -1467,7 +1467,7 @@ Visibility <b>{}</b>m""",
                         BotCommand("today", "Вызвать сообщение с сегодняшним днём"),
                         BotCommand("weather", "{city} Погода"),
                         BotCommand("forecast", "{city} Прогноз погоды на 5 дней"),
-                        BotCommand("week_event_list", "Cобытия в ближайшие 7 дней"),
+                        BotCommand("week_event_list", "События в ближайшие 7 дней"),
                         BotCommand("dice", "Кинуть кубик"),
                         BotCommand(
                             "export",
@@ -1619,7 +1619,7 @@ Visibility <b>{}</b>m""",
             "3": {
                 "ru": (
                     (
-                        "🗒 Cписок (ставит ▪️)",
+                        "🗒 Список (ставит ▪️)",
                         "🧮 Порядковый список (1️⃣, 2️⃣ и т д)",
                     ),
                     (
@@ -1881,7 +1881,7 @@ or create an account
             "en": "You are already on this page",
         },
         "status_already_posted": {
-            "ru": "Cтатус уже стоит на событии",
+            "ru": "Статус уже стоит на событии",
             "en": "Status is already posted on event",
         },
         "more_5_statuses": {
