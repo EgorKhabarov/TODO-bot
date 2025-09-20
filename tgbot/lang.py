@@ -1117,7 +1117,7 @@ The bot notifies about important "🟥" events, events with recurring status ("�
 """,
             },
             "CommandOpen": {
-                "ru": f"""
+                "ru": """
 <u>Команды бота > <b>/open</b></u>
 
 <b>Daily message</b>
@@ -1134,7 +1134,7 @@ The bot notifies about important "🟥" events, events with recurring status ("�
 <b>Open</b>
 /open[_&lt;year&gt;[_&lt;month&gt;[_&lt;day&gt;[_page_&lt;page&gt;]]]]
 """,
-                "en": f"""
+                "en": """
 <u>Bot commands > <b>/open</b></u>
 
 <b>Daily message</b>

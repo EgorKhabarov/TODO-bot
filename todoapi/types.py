@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 # noinspection PyPackageRequirements
 from contextvars import ContextVar
 
-from sqlalchemy import create_engine, text, event
+from sqlalchemy import create_engine, text as sqlalchemy_text, event
 from sqlalchemy.engine import Engine, Connection, CursorResult
 
 import config
@@ -189,7 +189,7 @@ class DataBase:
                     if raw_cursor.description:
                         result = raw_cursor.fetchall()
                 else:
-                    cursor = conn.execute(text(query), params)
+                    cursor = conn.execute(sqlalchemy_text(query), params)
                     if cursor.returns_rows:
                         result = cursor.fetchall()
 
