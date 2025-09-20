@@ -513,7 +513,10 @@ SELECT event_id,
             xml.SubElement(xml_event, "statuses").text = event_statuses
             xml.SubElement(xml_event, "text").text = event_text
             xml.SubElement(xml_event, "adding_time").text = event_adding_time
-            xml.SubElement(xml_event, "recent_changes_time").text = event_recent_changes_time
+            xml.SubElement(
+                xml_event,
+                "recent_changes_time",
+            ).text = event_recent_changes_time
             xml.SubElement(xml_event, "history").text = event_history
             xml.indent(xml_event, space="  ")
 

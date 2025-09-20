@@ -133,7 +133,8 @@ apihelper.CUSTOM_REQUEST_SENDER = custom_sender
 
 
 config.BOT_TOKEN = "0:TEST_TOKEN"
-test_database_path = Path("tests/data/test_database.sqlite3")  # TODO SQLALCHEMY_DATABASE_URI
+# TODO SQLALCHEMY_DATABASE_URI
+test_database_path = Path("tests/data/test_database.sqlite3")
 test_database_copy_path = Path("tests/data/test_database_copy.sqlite3")
 test_database_path.parent.mkdir(parents=True, exist_ok=True)
 

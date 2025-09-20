@@ -22,7 +22,10 @@ try:
 except git.exc.InvalidGitRepositoryError:
     branch = "master"
 
-SQLALCHEMY_DATABASE_URI = config.get("SQLALCHEMY_DATABASE_URI", "sqlite:///data/database.sqlite3")
+SQLALCHEMY_DATABASE_URI = config.get(
+    "SQLALCHEMY_DATABASE_URI",
+    "sqlite:///data/database.sqlite3",
+)
 LOG_FILE_PATH = config.get("LOG_FILE_PATH", "logs/latest.log")
 
 BOT_TOKEN = config.get("BOT_TOKEN", "")
@@ -137,5 +140,5 @@ recent_changes_time ASC
 }
 
 string_branch = "" if branch == "master" else f":{branch}"
-__version__ = "2025.09.20.4"
+__version__ = "2025.09.21.0"
 __author__ = "EgorKhabarov"

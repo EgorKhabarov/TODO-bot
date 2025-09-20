@@ -683,11 +683,7 @@ VALUES (
                 "bio": message.chat.bio,
                 "is_forum": bool(message.chat.is_forum),
                 "json": json.dumps(
-                    {
-                        k: v
-                        for k, v in literal_eval(str(message.chat)).items()
-                        if v
-                    },
+                    {k: v for k, v in literal_eval(str(message.chat)).items() if v},
                     ensure_ascii=False,
                 ),
             },

@@ -20,7 +20,7 @@ emoji_dir.mkdir(exist_ok=True)
 def draw_emoji(image: Image.Image, emoji: str):
     emoji_image = Image.open(get_emoji(emoji)).convert("RGBA").resize((270, 270))
     mask = emoji_image.split()[3]
-    image.paste(emoji_image, (ICON_SIZE//2, ICON_SIZE//2), mask)
+    image.paste(emoji_image, (ICON_SIZE // 2, ICON_SIZE // 2), mask)
 
 
 def get_emoji(emoji: str) -> Path:
