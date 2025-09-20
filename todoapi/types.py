@@ -498,15 +498,23 @@ SELECT event_id,
         file.name = self.filename
 
         xml_events = xml.Element("events")
-        for i, d, s, t, a, r, h in self.table:
+        for (
+            event_id,
+            event_date,
+            event_statuses,
+            event_text,
+            event_adding_time,
+            event_recent_changes_time,
+            event_history,
+        ) in self.table:
             xml_event = xml.SubElement(xml_events, "event")
-            xml.SubElement(xml_event, "i").text = f"{i}"
-            xml.SubElement(xml_event, "d").text = d
-            xml.SubElement(xml_event, "s").text = s
-            xml.SubElement(xml_event, "t").text = t
-            xml.SubElement(xml_event, "a").text = a
-            xml.SubElement(xml_event, "r").text = r
-            xml.SubElement(xml_event, "h").text = h
+            xml.SubElement(xml_event, "id").text = f"{event_id}"
+            xml.SubElement(xml_event, "date").text = event_date
+            xml.SubElement(xml_event, "statuses").text = event_statuses
+            xml.SubElement(xml_event, "text").text = event_text
+            xml.SubElement(xml_event, "adding_time").text = event_adding_time
+            xml.SubElement(xml_event, "recent_changes_time").text = event_recent_changes_time
+            xml.SubElement(xml_event, "history").text = event_history
             xml.indent(xml_event, space="  ")
 
         tree = xml.ElementTree(xml_events)
