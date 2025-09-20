@@ -1,7 +1,5 @@
-import json
 import traceback
 from functools import wraps
-from ast import literal_eval
 from typing import Callable
 
 # noinspection PyPackageRequirements
@@ -14,13 +12,13 @@ from cachetools import LRUCache
 from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.utils import telegram_log
-from tgbot.types import TelegramAccount
 from tgbot.handlers import not_login_handler
+from tgbot.types import TelegramAccount, add_chat_cached
 from tgbot.message_generator import CallBackAnswer, TextMessage
 from todoapi.types import db
 from todoapi.logger import logger
 from todoapi.utils import is_admin_id, rate_limit
-from todoapi.exceptions import UserNotFound, GroupNotFound, ApiError, DataBaseError
+from todoapi.exceptions import UserNotFound, GroupNotFound, ApiError
 from telegram_utils.command_parser import command_regex
 
 
@@ -94,54 +92,7 @@ def process_account(func):
         request.set(_x)
         with db.connect():
             if request.is_message:
-                try:
-                    db.execute(
-                        """
-INSERT OR IGNORE INTO chats (
-    id,
-    type,
-    title,
-    username,
-    first_name,
-    last_name,
-    bio,
-    is_forum,
-    json
-)
-VALUES (
-    :id,
-    :type,
-    :title,
-    :username,
-    :first_name,
-    :last_name,
-    :bio,
-    :is_forum,
-    :json
-);
-""",
-                        {
-                            "id": request.chat_id,
-                            "type": _x.chat.type,
-                            "title": _x.chat.title,
-                            "username": _x.chat.username,
-                            "first_name": _x.chat.first_name,
-                            "last_name": _x.chat.last_name,
-                            "bio": _x.chat.bio,
-                            "is_forum": bool(_x.chat.is_forum),
-                            "json": json.dumps(
-                                {
-                                    k: v
-                                    for k, v in literal_eval(str(_x.chat)).items()
-                                    if v
-                                },
-                                ensure_ascii=False,
-                            ),
-                        },
-                        commit=True,
-                    )
-                except DataBaseError as e:
-                    print(type(e), e)  # TODO
+                add_chat_cached(_x)
 
             if request.is_message:
                 if request.query.content_type != "migrate_to_chat_id" and (

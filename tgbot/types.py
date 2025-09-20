@@ -1,9 +1,18 @@
-from functools import cached_property
+import json
+import traceback
 from typing import Literal
+from ast import literal_eval
+from cachetools import LFUCache, cached
+from functools import cached_property
+
+# noinspection PyPackageRequirements
+from telebot.types import Message
 
 from config import ADMIN_IDS
 from tgbot.bot import bot
+from todoapi.utils import verify_password
 from todoapi.types import User, db, Group, Settings, Account
+from todoapi.logger import logger
 from todoapi.exceptions import (
     ApiError,
     DataBaseError,
@@ -12,7 +21,6 @@ from todoapi.exceptions import (
     NotEnoughPermissions,
     Forbidden,
 )
-from todoapi.utils import verify_password
 
 
 class TelegramSettings(Settings):
@@ -635,3 +643,55 @@ UPDATE users
         )
     except DataBaseError as e:
         raise ApiError(e)
+
+
+@cached(LFUCache(maxsize=1000), key=lambda m: m.chat.id)
+def add_chat_cached(message: Message) -> None:
+    try:
+        db.execute(
+            """
+INSERT OR IGNORE INTO chats (
+    id,
+    type,
+    title,
+    username,
+    first_name,
+    last_name,
+    bio,
+    is_forum,
+    json
+)
+VALUES (
+    :id,
+    :type,
+    :title,
+    :username,
+    :first_name,
+    :last_name,
+    :bio,
+    :is_forum,
+    :json
+);
+""",
+            {
+                "id": message.chat.id,
+                "type": message.chat.type,
+                "title": message.chat.title,
+                "username": message.chat.username,
+                "first_name": message.chat.first_name,
+                "last_name": message.chat.last_name,
+                "bio": message.chat.bio,
+                "is_forum": bool(message.chat.is_forum),
+                "json": json.dumps(
+                    {
+                        k: v
+                        for k, v in literal_eval(str(message.chat)).items()
+                        if v
+                    },
+                    ensure_ascii=False,
+                ),
+            },
+            commit=True,
+        )
+    except DataBaseError:
+        logger.error(traceback.format_exc())
