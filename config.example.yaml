@@ -1,4 +1,6 @@
-DATABASE_PATH: "data/database.sqlite3"
+SQLALCHEMY_DATABASE_URI: {
+    "master": "sqlite:///data/database.sqlite3",
+}
 LOG_FILE_PATH: "logs/latest.log"
 
 BOT_TOKEN: ""  # https://t.me/BotFather

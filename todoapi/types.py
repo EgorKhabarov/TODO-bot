@@ -113,7 +113,7 @@ _current_connection: ContextVar[Connection | None] = ContextVar(
     "connection",
     default=None,
 )
-engine: Engine = create_engine(config.DATABASE_PATH, echo=False)
+engine: Engine = create_engine(config.SQLALCHEMY_DATABASE_URI, echo=False)
 
 
 class DataBase:

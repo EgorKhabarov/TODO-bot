@@ -33,7 +33,7 @@ def bot_log_info():
     del bot_dict["can_connect_to_business"]
     bot_dict.update(
         {
-            "database": config.DATABASE_PATH,
+            "database": config.SQLALCHEMY_DATABASE_URI,
             "log_file": config.LOG_FILE_PATH,
             "notifications": config.BOT_NOTIFICATIONS,
             **({"webhook": True} if bot_webhook_info.url else {}),

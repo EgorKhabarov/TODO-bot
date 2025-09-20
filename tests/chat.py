@@ -133,7 +133,7 @@ apihelper.CUSTOM_REQUEST_SENDER = custom_sender
 
 
 config.BOT_TOKEN = "0:TEST_TOKEN"
-test_database_path = Path("tests/data/test_database.sqlite3")
+test_database_path = Path("tests/data/test_database.sqlite3")  # TODO SQLALCHEMY_DATABASE_URI
 test_database_copy_path = Path("tests/data/test_database_copy.sqlite3")
 test_database_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -143,11 +143,11 @@ if test_database_path.exists():
 if test_database_copy_path.exists():
     os.remove(test_database_copy_path)
 
-config.DATABASE_PATH = test_database_copy_path
+config.SQLALCHEMY_DATABASE_URI = test_database_copy_path
 from todoapi.db_creator import create_tables  # noqa: E402
 
 create_tables()
-config.DATABASE_PATH = test_database_path
+config.SQLALCHEMY_DATABASE_URI = test_database_path
 shutil.copy(test_database_copy_path, test_database_path)
 
 history.set([])

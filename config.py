@@ -22,7 +22,7 @@ try:
 except git.exc.InvalidGitRepositoryError:
     branch = "master"
 
-DATABASE_PATH = config.get("DATABASE_PATH", "data/database.sqlite3")
+SQLALCHEMY_DATABASE_URI = config.get("SQLALCHEMY_DATABASE_URI", "sqlite:///data/database.sqlite3")
 LOG_FILE_PATH = config.get("LOG_FILE_PATH", "logs/latest.log")
 
 BOT_TOKEN = config.get("BOT_TOKEN", "")
@@ -45,8 +45,11 @@ GITHUB_WEBHOOK_SECRET = config.get("GITHUB_WEBHOOK_SECRET", "")
 
 __wp = config.get("WSGI_PATH")
 
-if isinstance(DATABASE_PATH, dict):
-    DATABASE_PATH = DATABASE_PATH[branch]
+if isinstance(SQLALCHEMY_DATABASE_URI, dict):
+    try:
+        SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI[branch]
+    except KeyError:
+        SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI["master"]
 
 if __wp:
     WSGI_PATH = Path(__wp)
@@ -55,10 +58,6 @@ else:
         WSGI_PATH = Path(f"/var/www/{os.getenv('USERNAME')}_pythonanywhere_com_wsgi.py")
     else:
         WSGI_PATH = None
-
-# TODO remove
-if not DATABASE_PATH.startswith("sqlite:///"):
-    DATABASE_PATH = f"sqlite:///{DATABASE_PATH}"
 
 ADMIN_IDS = tuple(config.get("ADMIN_IDS", ()))
 
@@ -138,5 +137,5 @@ recent_changes_time ASC
 }
 
 string_branch = "" if branch == "master" else f":{branch}"
-__version__ = "2025.09.20.0"
+__version__ = "2025.09.20.1"
 __author__ = "EgorKhabarov"
