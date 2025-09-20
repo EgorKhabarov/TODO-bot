@@ -210,9 +210,9 @@ class DataBase:
         return bool(_current_connection.get())
 
 
-def db_connect_decorator[T](func: Callable[..., T]) -> T:
+def db_connect_decorator(func: Callable) -> Any:
     @wraps(func)
-    def wrapper(*args, **kwargs) -> T:
+    def wrapper(*args, **kwargs) -> Any:
         if db.is_connected:
             return func(*args, **kwargs)
 
