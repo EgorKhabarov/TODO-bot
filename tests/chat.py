@@ -1,11 +1,9 @@
 import os
-import shutil
 from pprint import pformat
 from pathlib import Path
 
 # noinspection PyPackageRequirements
 from contextvars import ContextVar
-from typing import Callable
 
 # noinspection PyPackageRequirements
 from telebot import apihelper, util
@@ -13,22 +11,25 @@ from telebot import apihelper, util
 # noinspection PyPackageRequirements
 from telebot.types import Message, CallbackQuery
 
+from typing import Callable
+from sqlalchemy import create_engine
+
 import config
+import todoapi.types
 
 
 class Chat:
+    def __init__(self):
+        self.conn = None
+
     def __enter__(self):
-        shutil.copy(test_database_copy_path, test_database_path)
-
-        create_user("example@gmail.com", "example_username", "example_password")
-        account = get_account_from_password("example_username", "example_password")
-        set_user_telegram_chat_id(account, 1)
-
+        self.conn = todoapi.types.db.connect()
+        self.conn.__enter__()
         history.set([])
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
+        return self.conn.__exit__(exc_type, exc_val, exc_tb)
 
     def comparer(
         self,
@@ -50,9 +51,9 @@ len(
                 *self.history[n].values()
             ), f"""
 (
-{inspect.getsource(func)}
+    {ljust(inspect.getsource(func))}
 )(
-*{pformat(tuple(self.history[n].values()), sort_dicts=False)}
+    *{ljust(pformat(tuple(self.history[n].values()), sort_dicts=False), 5)}
 )"""
 
         return True
@@ -129,31 +130,43 @@ def setup_request(x: Message | CallbackQuery):
         request.entity = TelegramAccount(x.from_user.id, request.chat_id)
 
 
+def ljust(text: str, indent: int = 4) -> str:
+    return f"\n{' ' * indent}".join(text.splitlines()).lstrip(" ")
+
+
 apihelper.CUSTOM_REQUEST_SENDER = custom_sender
 
 
 config.BOT_TOKEN = "0:TEST_TOKEN"
-# TODO SQLALCHEMY_DATABASE_URI
+
 test_database_path = Path("tests/data/test_database.sqlite3")
-test_database_copy_path = Path("tests/data/test_database_copy.sqlite3")
 test_database_path.parent.mkdir(parents=True, exist_ok=True)
 
 if test_database_path.exists():
     os.remove(test_database_path)
 
-if test_database_copy_path.exists():
-    os.remove(test_database_copy_path)
+config.SQLALCHEMY_DATABASE_URI = f"sqlite:///{test_database_path}"
+todoapi.types.engine = create_engine(config.SQLALCHEMY_DATABASE_URI, echo=False)
+todoapi.types.db = todoapi.types.DataBase()
 
-config.SQLALCHEMY_DATABASE_URI = test_database_copy_path
 from todoapi.db_creator import create_tables  # noqa: E402
 
 create_tables()
-config.SQLALCHEMY_DATABASE_URI = test_database_path
-shutil.copy(test_database_copy_path, test_database_path)
-
 history.set([])
-from todoapi.types import create_user, get_account_from_password  # noqa: E402
-from tgbot.request import request  # noqa: E402
-from tgbot.types import set_user_telegram_chat_id, TelegramAccount  # noqa: E402
+
+if True:  # noqa: E402  # import not at top of file
+    from todoapi.types import create_user, get_account_from_password
+    from tgbot.request import request
+    from tgbot.types import set_user_telegram_chat_id, TelegramAccount
+
+with todoapi.types.db.connect():
+    create_user("example@gmail.com", "example_username", "example_password")
+    account = get_account_from_password("example_username", "example_password")
+    set_user_telegram_chat_id(account, 1)
+
+todoapi.types.db.execute_ = todoapi.types.db.execute
+todoapi.types.db.execute = lambda *args, **kwargs: todoapi.types.db.execute_(
+    *args, **{**kwargs, "commit": False}
+)
 
 history.set(None)

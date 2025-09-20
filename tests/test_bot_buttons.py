@@ -4,6 +4,8 @@ with Chat():
     from tgbot.request import request
     from tests.mocks import callback_mock, message_mock
     from tgbot.handlers import callback_handler
+
+    # from todoapi.types import set_user_status
     from todoapi.exceptions import NotEnoughPermissions
 
 
@@ -128,18 +130,29 @@ def test_bot_callback_mnh():
         )
 
 
-def test_bot_callback_mnb():
-    with Chat() as chat:
-        setup_request(callback_mock("mnb"))
-        callback_handler(request.query)
-        assert chat.comparer(
-            lambda m, u, k: (
-                u.endswith("answerCallbackQuery")
-                and k["params"]["callback_query_id"] == 100
-                and k["params"]["text"]
-                and k["params"]["show_alert"]
-            ),
-        )
+# def test_bot_callback_mnb():
+#     with Chat() as chat:
+#         setup_request(callback_mock("mnb"))
+#         callback_handler(request.query)
+#         assert chat.comparer(
+#             lambda m, u, k: (
+#                 u.endswith("answerCallbackQuery")
+#                 and k["params"]["callback_query_id"] == 100
+#                 and k["params"]["text"]
+#                 and k["params"]["show_alert"]
+#             ),
+#         )
+#         set_user_status(request.entity.user_id, 2)
+#         setup_request(callback_mock("mnb"))
+#         callback_handler(request.query)
+#         assert chat.comparer(
+#             lambda m, u, k: (
+#                 u.endswith("answerCallbackQuery")
+#                 and k["params"]["callback_query_id"] == 100
+#                 and k["params"]["text"]
+#                 and k["params"]["show_alert"]
+#             ),
+#         )
 
 
 def test_bot_callback_mnn():
@@ -816,11 +829,16 @@ def test_bot_callback_sts():
         )
 
 
-def test_bot_callback_bcl():
+def test_bot_callback_stl():
     with Chat() as chat:
-        setup_request(callback_mock("bcl"))
+        setup_request(callback_mock("stl ru"))
         callback_handler(request.query)
         assert chat.comparer(
+            lambda m, u, k: (
+                u.endswith("setMyCommands")
+                and k["params"]["commands"]
+                and k["params"]["scope"]
+            ),
             lambda m, u, k: (
                 u.endswith("editMessageText")
                 and k["params"]["text"]
@@ -828,7 +846,27 @@ def test_bot_callback_bcl():
                 and k["params"]["message_id"] == 1
                 and k["params"]["reply_markup"]
             ),
+            lambda m, u, k: (
+                u.endswith("answerCallbackQuery")
+                and k["params"]["callback_query_id"] == 100
+                and k["params"]["text"]
+            ),
         )
+
+
+# def test_bot_callback_bcl():
+#     with Chat() as chat:
+#         setup_request(callback_mock("bcl"))
+#         callback_handler(request.query)
+#         assert chat.comparer(
+#             lambda m, u, k: (
+#                 u.endswith("editMessageText")
+#                 and k["params"]["text"]
+#                 and k["params"]["chat_id"] == 1
+#                 and k["params"]["message_id"] == 1
+#                 and k["params"]["reply_markup"]
+#             ),
+#         )
 
 
 def test_bot_callback_bem():

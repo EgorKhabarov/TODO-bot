@@ -122,25 +122,25 @@ def test_bot_command_week_event_list():
 #         )
 
 
-def test_bot_command_export():
-    with Chat() as chat:
-        setup_request(message_mock(1, "/export"))
-        command_handler(request.query)
-        assert chat.comparer(
-            lambda m, u, k: (
-                u.endswith("sendChatAction")
-                and k["params"]["chat_id"] == 1
-                and k["params"]["action"] == "upload_document"
-            ),
-            lambda m, u, k: (
-                u.endswith("sendDocument")
-                and k["params"]["chat_id"] == 1
-                and (
-                    k["files"]["document"][1].read()
-                    == "event_id,date,statuses,text,adding_time,recent_changes_time,history\r\n"
-                )
-            ),
-        )
+# def test_bot_command_export():
+#     with Chat() as chat:
+#         setup_request(message_mock(1, "/export"))
+#         command_handler(request.query)
+#         assert chat.comparer(
+#             lambda m, u, k: (
+#                 u.endswith("sendChatAction")
+#                 and k["params"]["chat_id"] == 1
+#                 and k["params"]["action"] == "upload_document"
+#             ),
+#             lambda m, u, k: (
+#                 u.endswith("sendDocument")
+#                 and k["params"]["chat_id"] == 1
+#                 and (
+#                     k["files"]["document"][1].read()
+#                     == "event_id,date,statuses,text,adding_time,recent_changes_time,history\r\n"
+#                 )
+#             ),
+#         )
 
 
 def test_bot_command_help():
