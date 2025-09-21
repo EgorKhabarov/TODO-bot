@@ -689,5 +689,5 @@ VALUES (
             },
             commit=True,
         )
-    except DataBaseError:
-        logger.error(traceback.format_exc())
+    except DataBaseError as e:
+        logger.exception(e)

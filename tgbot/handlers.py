@@ -700,8 +700,8 @@ class CallBackHandler:
             text = get_translate("errors.more_5_statuses")
         except StatusRepeats:
             text = get_translate("errors.status_already_posted")
-        except ApiError:
-            logger.error(traceback.format_exc())
+        except ApiError as e:
+            logger.exception(e)
             text = get_translate("errors.error")
         else:
             generated = event_message(event_id, message_id=message_id)
@@ -1562,8 +1562,8 @@ class CallBackHandler:
             ChatAction("upload_document").send()
             try:
                 DocumentMessage(file).send()
-            except ApiTelegramException:
-                logger.error(traceback.format_exc())
+            except ApiTelegramException as e:
+                logger.exception(e)
                 TextMessage(get_translate("errors.file_is_too_big")).send()
                 return 2
             else:

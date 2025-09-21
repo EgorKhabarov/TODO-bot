@@ -76,8 +76,8 @@ def wrapper(func: Callable, x: Message | CallbackQuery):
                 return
 
             return func(x)
-    except (ApiError, ApiTelegramException):
-        logger.error(traceback.format_exc())
+    except (ApiError, ApiTelegramException) as e:
+        logger.exception(e)
         text = get_translate("errors.error")
 
         if request.is_callback:
