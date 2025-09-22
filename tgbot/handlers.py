@@ -818,7 +818,9 @@ class CallBackHandler:
 
     @prefix("ehc", {"event_id": "int", "date": "date"})
     def clear_event_history_commit(self, event_id: int, date: datetime):
-        generated = event_history_message(event_id, date, 1, 0, True)
+        generated = event_history_message(
+            event_id, date, 1, 0, commit_clear_history=True
+        )
         try:
             generated.edit()
         except ApiTelegramException:

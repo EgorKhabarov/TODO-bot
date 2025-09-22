@@ -211,22 +211,23 @@ BEGIN
            AND group_id IS OLD.group_id;
 
     UPDATE events
-       SET history = JSON_ARRAY(
-               JSON_EXTRACT(history, '$[#-10]'),
-               JSON_EXTRACT(history, '$[#-9]'),
-               JSON_EXTRACT(history, '$[#-8]'),
-               JSON_EXTRACT(history, '$[#-7]'),
-               JSON_EXTRACT(history, '$[#-6]'),
-               JSON_EXTRACT(history, '$[#-5]'),
-               JSON_EXTRACT(history, '$[#-4]'),
-               JSON_EXTRACT(history, '$[#-3]'),
-               JSON_EXTRACT(history, '$[#-2]'),
-               JSON_EXTRACT(history, '$[#-1]')
-           )
+       SET history = (
+           SELECT JSON_GROUP_ARRAY(JSON(value))
+             FROM (
+               SELECT e.value, e.key
+               FROM (
+                 SELECT key, value
+                   FROM JSON_EACH(events.history)
+                  ORDER BY key DESC
+                  LIMIT 30
+               ) AS e
+               ORDER BY e.key
+             )
+       )
      WHERE event_id = NEW.event_id
-           AND user_id IS OLD.user_id
-           AND group_id IS OLD.group_id
-           AND JSON_ARRAY_LENGTH(history) > 10;
+       AND user_id IS OLD.user_id
+       AND group_id IS OLD.group_id
+       AND JSON_ARRAY_LENGTH(history) > 30;
 END;
 
 -- When deleting an event, we delete the media belonging to this event.

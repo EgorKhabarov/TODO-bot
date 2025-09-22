@@ -662,12 +662,19 @@ def event_history_message(
     date: datetime,
     page: int = 1,
     offset: int = 0,
+    limit: int = 5,
+    *,
     commit_clear_history: bool = False,
 ) -> EventMessage | None:
     generated = EventMessage(event_id)
     event = generated.event
     if not event:
         return None
+
+    try:
+        event.history
+    except json.decoder.JSONDecodeError as e:
+        raise ApiError(e)
 
     (
         translate_event_history,
@@ -676,7 +683,7 @@ def event_history_message(
     ) = get_translate("text.event_history")
 
     index = 0
-    if event.history and event.history[offset:]:
+    if event.history and event.history[offset : offset + limit]:
         limit_text_length = 4000
         changes = []
 
@@ -701,7 +708,7 @@ def event_history_message(
             change_len_ = len(change_)
             return change_, change_len_
 
-        history = event.history[::-1][offset:]
+        history = event.history[::-1][offset : offset + limit]
 
         for action, (old_val, new_val), time in history:
             change, change_len = format_diff(action, old_val, new_val, time)
