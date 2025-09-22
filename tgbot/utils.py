@@ -20,8 +20,8 @@ from tgbot.bot import bot
 from tgbot.request import request
 from tgbot.lang import get_translate
 from tgbot.time_utils import relatively_string_date
-from todoapi.logger import logger
-from todoapi.utils import is_admin_id, rate_limit, sqlite_format_date
+from notes_api.logger import logger
+from notes_api.utils import is_admin_id, rate_limit, sqlite_format_date
 
 
 re_inline_message = re.compile(rf"\A@{re.escape(bot.user.username)} ")

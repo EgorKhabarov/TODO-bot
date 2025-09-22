@@ -9,10 +9,10 @@ from telebot.types import Message
 
 from config import ADMIN_IDS
 from tgbot.bot import bot
-from todoapi.utils import verify_password
-from todoapi.types import User, db, Group, Settings, Account
-from todoapi.logger import logger
-from todoapi.exceptions import (
+from notes_api.utils import verify_password
+from notes_api.types import User, db, Group, Settings, Account
+from notes_api.logger import logger
+from notes_api.exceptions import (
     ApiError,
     DataBaseError,
     UserNotFound,

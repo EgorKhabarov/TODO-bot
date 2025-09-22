@@ -19,7 +19,7 @@ from sqlalchemy import create_engine, text as sqlalchemy_text, event
 from sqlalchemy.engine import Engine, Connection, CursorResult
 
 import config
-from todoapi.exceptions import (
+from notes_api.exceptions import (
     ApiError,
     Forbidden,
     WrongDate,
@@ -37,7 +37,7 @@ from todoapi.exceptions import (
     NotEnoughPermissions,
     StatusLengthExceeded,
 )
-from todoapi.utils import (
+from notes_api.utils import (
     re_date,
     re_username,
     hash_password,

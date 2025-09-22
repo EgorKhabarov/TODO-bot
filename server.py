@@ -6,7 +6,7 @@ from telebot.types import Update
 from flask import Flask, request, abort, send_file
 
 import config
-from todoapi.logger import logger
+from notes_api.logger import logger
 
 
 app = Flask(__name__)

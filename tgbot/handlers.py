@@ -87,7 +87,7 @@ from tgbot.utils import (
     extract_search_filters,
     generate_search_sql_condition,
 )
-from todoapi.exceptions import (
+from notes_api.exceptions import (
     ApiError,
     WrongDate,
     TextIsTooBig,
@@ -101,10 +101,10 @@ from todoapi.exceptions import (
     StatusLengthExceeded,
     NotEnoughPermissions,
 )
-from todoapi.logger import logger
-from todoapi.log_cleaner import clear_logs
-from todoapi.utils import is_valid_year, re_username
-from todoapi.types import (
+from notes_api.logger import logger
+from notes_api.log_cleaner import clear_logs
+from notes_api.utils import is_valid_year, re_username
+from notes_api.types import (
     Account,
     ChatStateMachine,
     create_user,

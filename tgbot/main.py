@@ -37,9 +37,9 @@ from tgbot.bot_messages import (
     search_results_message,
     confirm_changes_message,
 )
-from todoapi.types import db
-from todoapi.logger import logger
-from todoapi.exceptions import (
+from notes_api.types import db
+from notes_api.logger import logger
+from notes_api.exceptions import (
     WrongDate,
     TextIsTooBig,
     LimitExceeded,

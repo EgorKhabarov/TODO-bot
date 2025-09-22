@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import config
 from tgbot.bot_messages import send_notifications_messages
-from todoapi.log_cleaner import clear_logs
+from notes_api.log_cleaner import clear_logs
 
 
 def start_background_loop():

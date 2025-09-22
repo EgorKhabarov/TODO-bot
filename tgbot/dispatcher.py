@@ -14,10 +14,10 @@ from tgbot.utils import telegram_log
 from tgbot.handlers import not_login_handler
 from tgbot.types import TelegramAccount, add_chat_cached
 from tgbot.message_generator import CallBackAnswer, TextMessage
-from todoapi.types import db
-from todoapi.logger import logger
-from todoapi.utils import is_admin_id, rate_limit
-from todoapi.exceptions import UserNotFound, GroupNotFound, ApiError
+from notes_api.types import db
+from notes_api.logger import logger
+from notes_api.utils import is_admin_id, rate_limit
+from notes_api.exceptions import UserNotFound, GroupNotFound, ApiError
 from telegram_utils.command_parser import command_regex
 
 

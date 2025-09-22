@@ -8,7 +8,7 @@ from PIL import Image, ImageFont
 
 from tgbot.request import request
 from tgbot.lang import get_translate
-from todoapi.types import event_limits
+from notes_api.types import event_limits
 from config import LIMIT_IMAGE_GENERATOR_URL
 
 

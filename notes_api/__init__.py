@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from todoapi.db_creator import create_tables
+from notes_api.db_creator import create_tables
 
 
 Path("data").mkdir(exist_ok=True)

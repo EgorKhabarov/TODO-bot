@@ -46,10 +46,10 @@ from tgbot.utils import (
     highlight_text_difference,
     generate_search_sql_condition,
 )
-from todoapi.logger import logger
-from todoapi.types import db, group_limits
-from todoapi.utils import sqlite_format_date, is_valid_year, chunks
-from todoapi.exceptions import EventNotFound, GroupNotFound, UserNotFound, ApiError
+from notes_api.logger import logger
+from notes_api.types import db, group_limits
+from notes_api.utils import sqlite_format_date, is_valid_year, chunks
+from notes_api.exceptions import EventNotFound, GroupNotFound, UserNotFound, ApiError
 from telegram_utils.buttons_generator import generate_buttons, edit_button_data
 
 

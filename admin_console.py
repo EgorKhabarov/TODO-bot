@@ -10,7 +10,7 @@ from IPython import embed
 from table2string import Table, Themes, Theme
 
 from config import WSGI_PATH, __version__
-from todoapi.types import db, Account as todoapiAccount
+from notes_api.types import db, Account as notes_api_Account
 from tgbot.types import TelegramAccount  # noqa
 
 
@@ -233,7 +233,7 @@ UPDATE users
     user(user_id=user_id)
 
 
-class Account(todoapiAccount):
+class Account(notes_api_Account):
     def __init__(self, user_id: int, group_id: str | None = None):
         with db.connect():
             super().__init__(user_id, group_id)

@@ -16,9 +16,9 @@ from tgbot.lang import get_translate
 from tgbot.time_utils import relatively_string_date
 from tgbot.buttons_utils import encode_id, number_to_power
 from tgbot.utils import add_status_effect, get_message_thread_id
-from todoapi.logger import logger
-from todoapi.types import db, Event
-from todoapi.exceptions import EventNotFound, DataBaseError
+from notes_api.logger import logger
+from notes_api.types import db, Event
+from notes_api.exceptions import EventNotFound, DataBaseError
 
 
 event_formats = {

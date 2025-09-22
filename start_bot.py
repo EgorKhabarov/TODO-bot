@@ -5,7 +5,7 @@ import config
 from tgbot.main import bot
 from tgbot.background_loop import start_background_loop
 from tgbot.bot import bot_webhook_info, bot_log_info
-from todoapi.logger import logger
+from notes_api.logger import logger
 
 
 def start_bot():

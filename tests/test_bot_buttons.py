@@ -5,8 +5,8 @@ with Chat():
     from tests.mocks import callback_mock, message_mock
     from tgbot.handlers import callback_handler
 
-    # from todoapi.types import set_user_status
-    from todoapi.exceptions import NotEnoughPermissions
+    # from notes_api.types import set_user_status
+    from notes_api.exceptions import NotEnoughPermissions
 
 
 def test_bot_callback_mnm():
@@ -526,7 +526,7 @@ def test_bot_callback_esdb():
         except NotEnoughPermissions:
             pass
         else:
-            assert False, "not raised todoapi.exceptions.NotEnoughPermissions"
+            assert False, "not raised notes_api.exceptions.NotEnoughPermissions"
 
         # Change user status
         chat.clear()
