@@ -132,7 +132,7 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
                 or "User-Agent" not in request.headers
                 or not request.headers.get("User-Agent").startswith("GitHub-Hookshot/")
             ):
-                abort(abort_code)
+                return abort(abort_code)
 
             event = request.headers.get("X-GitHub-Event")
             if event == "ping":
@@ -141,7 +141,7 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
                 return json.dumps({"msg": "Wrong event type"})
 
             if not request.is_json:
-                abort(415, "Change `Content type` to `application/json`")
+                return abort(415, "Change `Content type` to `application/json`")
 
             x_hub_signature = request.headers.get("X-Hub-Signature")
             # webhook content type should be application/json for request.data to have the payload
@@ -152,12 +152,12 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
                 config.GITHUB_WEBHOOK_SECRET,
             ):
                 print("Deploy signature failed: {sig}".format(sig=x_hub_signature))
-                abort(abort_code)
+                return abort(abort_code)
 
             payload = request.get_json()
             if payload is None:
                 print("Deploy payload is empty: {payload}".format(payload=payload))
-                abort(abort_code)
+                return abort(abort_code)
 
             update_type, branch = payload["ref"].split("/", maxsplit=2)[1:]
             repo = git.Repo()
@@ -165,7 +165,11 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
             if update_type != "heads" or branch != repo.active_branch.name:
                 return json.dumps({"msg": f"Not {repo.active_branch.name}, ignoring"})
 
-            pull_info = repo.remotes.origin.pull()
+            try:
+                pull_info = repo.remotes.origin.pull()
+            except git.exc.GitCommandError as e:
+                logger.exception(e)
+                return abort(500, e)
 
             if len(pull_info) == 0:
                 return json.dumps({"msg": "Didn't pull any information from remote!"})
@@ -175,13 +179,17 @@ if config.GITHUB_WEBHOOK and config.GITHUB_WEBHOOK_FLASK_PATH:
             commit_hash = pull_info[0].commit.hexsha
             print(f'build_commit = "{commit_hash}"')
 
-            os.system("pip install -U -r requirements.txt")
+            try:
+                os.system("pip install -U -r requirements.txt")
+            except Exception as e:
+                logger.exception(e)
+                return abort(500, e)
 
             if config.WSGI_PATH:
                 try:
                     os.system(f"touch {config.WSGI_PATH}")
-                except OSError:
-                    pass
+                except OSError as e:
+                    logger.exception(e)
 
             return f"Updated PythonAnywhere server to commit {commit_hash}"
 
