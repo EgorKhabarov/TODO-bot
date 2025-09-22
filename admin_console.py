@@ -288,5 +288,5 @@ TelegramAccount(chat_id: int, group_chat_id: int | None = None)
 
 
 if __name__ == "__main__":
-    print(f"TODO-bot {__version__}")
+    print(f"notes-assistant {__version__}")
     embed(colors="Linux")
