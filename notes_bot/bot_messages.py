@@ -15,20 +15,20 @@ from telebot import formatting
 from telebot.types import InlineKeyboardButton, Message
 
 import config
-from tgbot.bot import bot
-from tgbot.request import request
-from tgbot.limits import get_limit_link
-from tgbot.time_utils import parse_utc_datetime
-from tgbot.bot_actions import delete_message_action
-from tgbot.lang import get_translate, get_theme_emoji, translation
-from tgbot.types import TelegramAccount, TelegramSettings
-from tgbot.message_generator import (
+from notes_bot.bot import bot
+from notes_bot.request import request
+from notes_bot.limits import get_limit_link
+from notes_bot.time_utils import parse_utc_datetime
+from notes_bot.bot_actions import delete_message_action
+from notes_bot.lang import get_translate, get_theme_emoji, translation
+from notes_bot.types import TelegramAccount, TelegramSettings
+from notes_bot.message_generator import (
     TextMessage,
     EventMessage,
     EventsMessage,
     event_formats,
 )
-from tgbot.buttons_utils import (
+from notes_bot.buttons_utils import (
     delmarkup,
     encode_id,
     decode_id,
@@ -36,7 +36,7 @@ from tgbot.buttons_utils import (
     create_yearly_calendar_keyboard,
     create_monthly_calendar_keyboard,
 )
-from tgbot.utils import (
+from notes_bot.utils import (
     Cycle,
     re_edit_message,
     html_to_markdown,

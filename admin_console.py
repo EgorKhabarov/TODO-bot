@@ -11,7 +11,7 @@ from table2string import Table, Themes, Theme
 
 from config import WSGI_PATH, __version__
 from notes_api.types import db, Account as notes_api_Account
-from tgbot.types import TelegramAccount  # noqa
+from notes_bot.types import TelegramAccount  # noqa
 
 
 def execute(

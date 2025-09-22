@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 # noinspection PyPackageRequirements
 from telebot.types import Message, CallbackQuery
-from tgbot.types import TelegramAccount
+from notes_bot.types import TelegramAccount
 
 
 @dataclass

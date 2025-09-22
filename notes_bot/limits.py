@@ -6,8 +6,8 @@ from telebot.formatting import hide_link
 from PIL.ImageDraw import Draw
 from PIL import Image, ImageFont
 
-from tgbot.request import request
-from tgbot.lang import get_translate
+from notes_bot.request import request
+from notes_bot.lang import get_translate
 from notes_api.types import event_limits
 from config import LIMIT_IMAGE_GENERATOR_URL
 

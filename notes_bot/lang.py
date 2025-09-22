@@ -4,7 +4,7 @@ from typing import Any, Literal
 from telebot.types import BotCommand
 
 import config
-from tgbot.request import request
+from notes_bot.request import request
 
 
 def end(lang: str):

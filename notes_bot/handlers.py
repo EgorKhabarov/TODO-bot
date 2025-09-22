@@ -15,18 +15,18 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import Message, CallbackQuery
 
 import config
-from tgbot.bot import bot
-from tgbot.request import request
-from tgbot.time_utils import now_time_calendar
-from tgbot.bot_actions import delete_message_action
-from tgbot.lang import get_translate, get_theme_emoji
-from tgbot.message_generator import (
+from notes_bot.bot import bot
+from notes_bot.request import request
+from notes_bot.time_utils import now_time_calendar
+from notes_bot.bot_actions import delete_message_action
+from notes_bot.lang import get_translate, get_theme_emoji
+from notes_bot.message_generator import (
     ChatAction,
     TextMessage,
     CallBackAnswer,
     DocumentMessage,
 )
-from tgbot.buttons_utils import (
+from notes_bot.buttons_utils import (
     delmarkup,
     encode_id,
     decode_id,
@@ -35,7 +35,7 @@ from tgbot.buttons_utils import (
     create_twenty_year_calendar_keyboard,
     create_frequently_used_dates_keyboard,
 )
-from tgbot.bot_messages import (
+from notes_bot.bot_messages import (
     menu_message,
     help_message,
     open_message,
@@ -69,12 +69,12 @@ from tgbot.bot_messages import (
     before_events_delete_message,
     frequently_used_dates_settings_message,
 )
-from tgbot.types import (
+from notes_bot.types import (
     TelegramAccount,
     set_user_telegram_chat_id,
     get_telegram_account_from_password,
 )
-from tgbot.utils import (
+from notes_bot.utils import (
     fetch_weather,
     fetch_forecast,
     is_secure_chat,

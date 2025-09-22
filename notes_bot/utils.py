@@ -16,10 +16,10 @@ from telebot.types import Message, CallbackQuery, BotCommandScopeChat
 from telebot.apihelper import ApiTelegramException
 
 import config
-from tgbot.bot import bot
-from tgbot.request import request
-from tgbot.lang import get_translate
-from tgbot.time_utils import relatively_string_date
+from notes_bot.bot import bot
+from notes_bot.request import request
+from notes_bot.lang import get_translate
+from notes_bot.time_utils import relatively_string_date
 from notes_api.logger import logger
 from notes_api.utils import is_admin_id, rate_limit, sqlite_format_date
 

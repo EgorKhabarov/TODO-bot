@@ -8,12 +8,12 @@ from telebot.types import Message, CallbackQuery
 from telebot.apihelper import ApiTelegramException
 from cachetools import LRUCache
 
-from tgbot.request import request
-from tgbot.lang import get_translate
-from tgbot.utils import telegram_log
-from tgbot.handlers import not_login_handler
-from tgbot.types import TelegramAccount, add_chat_cached
-from tgbot.message_generator import CallBackAnswer, TextMessage
+from notes_bot.request import request
+from notes_bot.lang import get_translate
+from notes_bot.utils import telegram_log
+from notes_bot.handlers import not_login_handler
+from notes_bot.types import TelegramAccount, add_chat_cached
+from notes_bot.message_generator import CallBackAnswer, TextMessage
 from notes_api.types import db
 from notes_api.logger import logger
 from notes_api.utils import is_admin_id, rate_limit

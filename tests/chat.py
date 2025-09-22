@@ -156,8 +156,8 @@ history.set([])
 
 if True:  # noqa: E402  # import not at top of file
     from notes_api.types import create_user, get_account_from_password
-    from tgbot.request import request
-    from tgbot.types import set_user_telegram_chat_id, TelegramAccount
+    from notes_bot.request import request
+    from notes_bot.types import set_user_telegram_chat_id, TelegramAccount
 
 with notes_api.types.db.connect():
     create_user("example@gmail.com", "example_username", "example_password")

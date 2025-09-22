@@ -14,9 +14,9 @@ app = Flask(__name__)
 # noinspection PyBroadException
 try:
     from start_bot import start_bot, start_notifications_thread
-    from tgbot.main import bot
-    from tgbot.limits import create_image_from_link
-    from tgbot.bot import bot_webhook_info, bot_log_info
+    from notes_bot.main import bot
+    from notes_bot.limits import create_image_from_link
+    from notes_bot.bot import bot_webhook_info, bot_log_info
 
     logger.info(bot_log_info())
 

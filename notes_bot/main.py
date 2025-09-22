@@ -5,14 +5,14 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import CallbackQuery, Message
 
 import config
-from tgbot.bot import bot
-from tgbot.request import request
-from tgbot.buttons_utils import delmarkup
-from tgbot.dispatcher import process_account
-from tgbot.message_generator import TextMessage
-from tgbot.bot_actions import delete_message_action
-from tgbot.lang import get_translate, get_theme_emoji
-from tgbot.utils import (
+from notes_bot.bot import bot
+from notes_bot.request import request
+from notes_bot.buttons_utils import delmarkup
+from notes_bot.dispatcher import process_account
+from notes_bot.message_generator import TextMessage
+from notes_bot.bot_actions import delete_message_action
+from notes_bot.lang import get_translate, get_theme_emoji
+from notes_bot.utils import (
     telegram_log,
     re_edit_message,
     html_to_markdown,
@@ -21,7 +21,7 @@ from tgbot.utils import (
     re_group_edit_name_message,
     re_user_edit_password_message,
 )
-from tgbot.handlers import (
+from notes_bot.handlers import (
     reply_handler,
     add_event_state,
     add_group_state,
@@ -30,7 +30,7 @@ from tgbot.handlers import (
     cache_create_group,
     cache_add_event_date,
 )
-from tgbot.bot_messages import (
+from notes_bot.bot_messages import (
     group_message,
     groups_message,
     account_message,

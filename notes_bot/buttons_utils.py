@@ -4,9 +4,9 @@ from calendar import monthcalendar
 from telebot.types import InlineKeyboardMarkup
 
 import config
-from tgbot.request import request
-from tgbot.lang import get_translate, get_theme_emoji
-from tgbot.time_utils import now_time_calendar, year_info, get_week_number
+from notes_bot.request import request
+from notes_bot.lang import get_translate, get_theme_emoji
+from notes_bot.time_utils import now_time_calendar, year_info, get_week_number
 from notes_api.types import db
 from notes_api.utils import is_valid_year, chunks, sqlite_format_date
 from telegram_utils.buttons_generator import generate_buttons

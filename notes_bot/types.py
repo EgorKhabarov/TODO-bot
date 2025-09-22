@@ -8,7 +8,7 @@ from functools import cached_property
 from telebot.types import Message
 
 from config import ADMIN_IDS
-from tgbot.bot import bot
+from notes_bot.bot import bot
 from notes_api.utils import verify_password
 from notes_api.types import User, db, Group, Settings, Account
 from notes_api.logger import logger

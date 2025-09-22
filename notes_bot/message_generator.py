@@ -10,12 +10,12 @@ from telebot.apihelper import ApiTelegramException
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, InputFile
 
 import config
-from tgbot.bot import bot
-from tgbot.request import request
-from tgbot.lang import get_translate
-from tgbot.time_utils import relatively_string_date
-from tgbot.buttons_utils import encode_id, number_to_power
-from tgbot.utils import add_status_effect, get_message_thread_id
+from notes_bot.bot import bot
+from notes_bot.request import request
+from notes_bot.lang import get_translate
+from notes_bot.time_utils import relatively_string_date
+from notes_bot.buttons_utils import encode_id, number_to_power
+from notes_bot.utils import add_status_effect, get_message_thread_id
 from notes_api.logger import logger
 from notes_api.types import db, Event
 from notes_api.exceptions import EventNotFound, DataBaseError
