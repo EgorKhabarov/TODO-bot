@@ -42,7 +42,7 @@ def home():
 
 @app.get("/favicon.ico")
 def favicon():
-    return send_file("icon/notepad_icon.png")
+    return send_file("icons/notepad_icon.png")
 
 
 @app.get("/v")
